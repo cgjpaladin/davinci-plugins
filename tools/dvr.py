@@ -28,6 +28,18 @@ import DaVinciResolveScript as _bmd
 # 基础连接 — 每个脚本的第一步
 # ═══════════════════════════════════════════
 
+def _safe(func):
+    """@safe_resolve_call 装饰器 — 自动检查 Resolve 连接状态（灵感来自 resolve-mcp）"""
+    from functools import wraps
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        r = _bmd.scriptapp("Resolve")
+        if not r:
+            raise RuntimeError("请先启动 DaVinci Resolve Studio")
+        return func(*args, **kwargs)
+    return wrapper
+
+
 def resolve():
     """获取 Resolve 对象。失败抛 RuntimeError。"""
     r = _bmd.scriptapp("Resolve")
@@ -350,6 +362,40 @@ def save_settings(data, name="runner"):
             _json.dump(data, f, indent=2, ensure_ascii=False)
     except:
         pass
+
+
+# ═══════════════════════════════════════════
+# 轨道操作（灵感来自 dvrctl）
+# ═══════════════════════════════════════════
+
+def lock_track(track_type="video", index=1, lock=True):
+    """锁定/解锁指定轨道。"""
+    tl = timeline()
+    if not tl:
+        return False
+    return tl.SetTrackLock(track_type, index, lock)
+
+
+def lock_all_tracks(track_type="video", lock=True):
+    """锁定/解锁所有指定类型的轨道。"""
+    tl = timeline()
+    if not tl:
+        return False
+    count = tl.GetTrackCount(track_type)
+    for i in range(1, int(count) + 1):
+        tl.SetTrackLock(track_type, i, lock)
+    return True
+
+
+def delete_tracks(track_type="video", keep=1):
+    """删除指定类型轨道，保留前 keep 条。"""
+    tl = timeline()
+    if not tl:
+        return False
+    count = int(tl.GetTrackCount(track_type))
+    for i in range(count, keep, -1):
+        tl.DeleteTrack(track_type, i)
+    return True
 
 
 if __name__ == "__main__":
