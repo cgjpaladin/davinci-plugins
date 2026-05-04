@@ -191,17 +191,37 @@ def process(*_):
             ops_logger.session_end(prepared.cache_hits, 0, prepared.cache_hits)
             return
 
-        # 余额检查
+        # 余额检查（无痕AI 余额不足自动降级）
         _, total_est, _ = estimate_cost(prepared.tasks, mode)
-        info(f"预估: {total_est} 点 (¥{total_est*0.19:.2f})")
-        pts = query_balance()
-        if pts > 0:
-            ops_logger.balance_check(pts, total_est, "proceed" if pts >= total_est else "blocked")
-            _bal(f"💰 {pts:.1f} 点")
-            if pts < total_est:
-                fail(f"余额不足: {pts:.1f} < {total_est}")
-                ops_logger.session_end(0, 0, len(prepared.tasks), pts)
-                return
+        info(f"预估: {total_est} 积分" if adapter_name == "wuhenai" else f"预估: {total_est} 点")
+
+        if adapter_name == "wuhenai":
+            try:
+                bal = adapter.get_balance()
+                pts = bal.get("balance", 0)
+                _bal(f"💰 {pts:.1f} 积分")
+                if pts < total_est:
+                    warn(f"无痕AI 余额不足 ({pts:.0f} < {total_est})，降级 GhostCut")
+                    adapter_name = "ghostcut"
+                    adapter_cfg = deepcopy(ADAPTER_CONFIGS["ghostcut"])
+                    adapter_cfg["model"] = mode
+                    adapter = GhostCutAdapter(adapter_cfg)
+            except:
+                warn("无痕AI 余额查询失败，降级 GhostCut")
+                adapter_name = "ghostcut"
+                adapter_cfg = deepcopy(ADAPTER_CONFIGS["ghostcut"])
+                adapter_cfg["model"] = mode
+                adapter = GhostCutAdapter(adapter_cfg)
+
+        if adapter_name == "ghostcut":
+            pts = query_balance()
+            if pts > 0:
+                ops_logger.balance_check(pts, total_est, "proceed" if pts >= total_est else "blocked")
+                _bal(f"💰 {pts:.1f} 点")
+                if pts < total_est:
+                    fail(f"余额不足: {pts:.1f} < {total_est}")
+                    ops_logger.session_end(0, 0, len(prepared.tasks), pts)
+                    return
         else:
             warn("余额查询失败，跳过保护")
 

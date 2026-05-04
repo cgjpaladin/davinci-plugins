@@ -74,12 +74,13 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         adapter_cfg["method"] = "sel_area"
         AdapterClass = WuhenAIV2Adapter
 
-        # OSS 预检
+        # OSS 预检（余额预检放在后面）
         try:
             probe = AdapterClass(adapter_cfg)
             if not dry_run and not scan_only and not probe.check_oss():
                 warn("无痕AI OSS 不可用，自动降级为 GhostCut")
                 adapter_name = "ghostcut"
+            if adapter_name == "ghostcut":
                 adapter_cfg = deepcopy(ADAPTER_CONFIGS["ghostcut"])
                 adapter_cfg["model"] = mode
                 AdapterClass = GhostCutAdapter
@@ -192,8 +193,38 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     if pts > 0:
         info(f"余额: {pts:.1f} {cost_info}")
         if pts < total_est:
-            fail(f"余额不足: {pts:.1f} < {total_est}")
-            ops_logger.balance_check(pts, total_est, "blocked")
+            if adapter_name == "wuhenai":
+                # 无痕AI 余额不足 → 试试降级 GhostCut
+                warn(f"无痕AI 余额不足 ({pts:.1f} < {total_est})，自动降级为 GhostCut")
+                adapter_name = "ghostcut"
+                adapter_cfg = deepcopy(ADAPTER_CONFIGS["ghostcut"])
+                adapter_cfg["model"] = mode
+                AdapterClass = GhostCutAdapter
+                cost_info = "点"
+                report["adapter"] = "ghostcut"
+                report["adapter_fallback"] = True
+                report["adapter_fallback_reason"] = "余额不足"
+                # 重新查 GhostCut 余额
+                try:
+                    adapter2 = GhostCutAdapter(adapter_cfg)
+                    bal2 = adapter2.get_balance()
+                    now_ms = time.time() * 1000
+                    pts = sum(a["pointBalance"] for a in bal2.get("pointAssets", [])
+                              if a["pointBalance"] > 0 and a.get("expireTime", now_ms+1) > now_ms)
+                    report["cost"]["balance"] = round(pts, 1)
+                    info(f"GhostCut 余额: {pts:.1f} 点")
+                    if pts < total_est:
+                        fail(f"GhostCut 余额也不足: {pts:.1f} < {total_est}")
+                        ops_logger.balance_check(pts, total_est, "blocked")
+                        report["error"] = "余额不足"
+                        _write_report(report, report_json)
+                        return report
+                    ops_logger.balance_check(pts, total_est, "proceed")
+                except Exception:
+                    warn("GhostCut 余额查询失败，跳过保护")
+            else:
+                fail(f"余额不足: {pts:.1f} < {total_est}")
+                ops_logger.balance_check(pts, total_est, "blocked")
             report["error"] = "余额不足"
             _write_report(report, report_json)
             return report
