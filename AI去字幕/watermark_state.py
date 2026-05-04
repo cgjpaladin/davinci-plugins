@@ -17,11 +17,11 @@ watermark_state.py — 项目级去水印状态管理 + 并发锁
 
 import json
 import os
-import subprocess
+import shutil
 import time
 from typing import Optional
 
-from config import get_state_dir, get_lock_dir, get_output_dir
+from config import get_state_dir, get_lock_dir, get_output_dir, hide_path
 
 # 状态文件路径 — 由 init() 设置
 _state_file = None
@@ -34,15 +34,7 @@ def init(project_root: str = None):
     state_dir = get_state_dir(project_root)
     _state_file = os.path.join(state_dir, ".watermark_state.json")
     _lock_dir = get_lock_dir(project_root)
-    _ensure_hidden(_state_file)
-
-
-def _ensure_hidden(filepath: str):
-    if os.path.exists(filepath):
-        try:
-            subprocess.run(["chflags", "hidden", filepath], capture_output=True)
-        except Exception:
-            pass
+    hide_path(_state_file)
 
 
 def _load_state() -> dict:
@@ -58,15 +50,30 @@ def _load_state() -> dict:
 def _save_state(state: dict):
     if not _state_file:
         return
-    os.makedirs(os.path.dirname(_state_file), exist_ok=True)
-    # 写入前备份
-    import shutil
-    bak = _state_file + ".bak"
+    sdir = os.path.dirname(_state_file)
+    os.makedirs(sdir, exist_ok=True)
+
+    # 轮转备份：保留最近 N 份
     if os.path.exists(_state_file):
-        shutil.copy2(_state_file, bak)
+        ts = time.strftime("%Y%m%d")
+        bak = f"{_state_file}.{ts}.bak"
+        if not os.path.exists(bak):
+            shutil.copy2(_state_file, bak)
+        # 清理旧备份
+        try:
+            backups = sorted(
+                [f for f in os.listdir(sdir)
+                 if f.startswith(".watermark_state.json.") and f.endswith(".bak")],
+                reverse=True,
+            )
+            for old in backups[_BAK_KEEP:]:
+                os.remove(os.path.join(sdir, old))
+        except Exception:
+            pass
+
     with open(_state_file, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2, ensure_ascii=False)
-    _ensure_hidden(_state_file)
+    hide_path(_state_file)
 
 
 # ============================================================
@@ -75,6 +82,18 @@ def _save_state(state: dict):
 # ============================================================
 
 _LOCK_TTL = 600  # 10 分钟
+_BAK_KEEP = 7      # 保留最近 N 份备份
+
+
+def _safe_lock_path(clip_name: str) -> str:
+    """构建锁路径并校验在 lock_dir 内部（防止路径穿越）"""
+    if not _lock_dir:
+        return ""
+    lock_path = os.path.realpath(os.path.join(_lock_dir, f"{clip_name}.lock"))
+    real_lock_dir = os.path.realpath(_lock_dir)
+    if not lock_path.startswith(real_lock_dir + os.sep):
+        return ""
+    return lock_path
 
 
 def acquire_lock(clip_name: str) -> bool:
@@ -84,10 +103,10 @@ def acquire_lock(clip_name: str) -> bool:
     如果锁已过期（>10分钟），自动抢占。
     Returns: True=抢到锁, False=别人正在处理
     """
-    if not _lock_dir:
-        return True
-    lock_path = os.path.join(_lock_dir, f"{clip_name}.lock")
-    
+    lock_path = _safe_lock_path(clip_name)
+    if not lock_path:
+        return True  # 无锁目录 = 不需要锁
+
     # 如果锁存在但已过期 → 删除旧锁，重新抢
     if os.path.isdir(lock_path):
         try:
@@ -96,7 +115,7 @@ def acquire_lock(clip_name: str) -> bool:
                 os.rmdir(lock_path)
         except OSError:
             return False  # 删不掉 = 别人正在用
-    
+
     try:
         os.mkdir(lock_path)
         return True
@@ -106,9 +125,9 @@ def acquire_lock(clip_name: str) -> bool:
 
 def release_lock(clip_name: str):
     """释放片段的处理锁"""
-    if not _lock_dir:
+    lock_path = _safe_lock_path(clip_name)
+    if not lock_path:
         return
-    lock_path = os.path.join(_lock_dir, f"{clip_name}.lock")
     try:
         os.rmdir(lock_path)
     except OSError:
@@ -117,9 +136,10 @@ def release_lock(clip_name: str):
 
 def is_locked(clip_name: str) -> bool:
     """检查片段是否被锁定"""
-    if not _lock_dir:
+    lock_path = _safe_lock_path(clip_name)
+    if not lock_path:
         return False
-    return os.path.isdir(os.path.join(_lock_dir, f"{clip_name}.lock"))
+    return os.path.isdir(lock_path)
 
 
 # ============================================================

@@ -368,7 +368,7 @@ class ClipflowAdapter(BaseAdapter):
 
                 if status == 2000:
                     # 任务完成，获取素材结果
-                    download_path = getattr(self, '_last_output_path', None)
+                    download_path = self._output_path
 
                     if asset_id:
                         asset_data = self._api_get(

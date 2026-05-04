@@ -2,7 +2,11 @@
 配置管理
 
 集中管理所有 API 密钥、路径设置和适配器参数。
-配置文件位置：与插件脚本同目录的 config.py
+密钥通过环境变量或 .env 文件注入，不硬编码。
+
+.env 文件位置（按优先级）：
+  1. {PLUGIN_DIR}/.env          — 部署在 SMB，团队共享
+  2. ~/.watermark.env           — 个人覆盖
 
 路径架构（生产模式）：
   {项目根}/04_素材/03_去水印/
@@ -14,10 +18,37 @@
 """
 
 import os
+import subprocess
 import time
 
 # 全局版本号 — 所有模块引用这一个变量
-__version__ = "0.5"
+__version__ = "0.5.1"
+
+# ============================================================
+# .env 加载（优先 SMB 共享，其次个人）
+# ============================================================
+def _load_dotenv(path: str):
+    """手动解析 .env 文件（零依赖），加载到 os.environ"""
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    key, _, value = line.partition("=")
+                    key = key.strip()
+                    value = value.strip().strip('"').strip("'")
+                    if key and key not in os.environ:
+                        os.environ[key] = value
+    except Exception:
+        pass
+
+# 加载顺序：个人 > SMB（SMB 先加载，个人后覆盖）
+_load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+_load_dotenv(os.path.expanduser("~/.watermark.env"))
 
 # ============================================================
 # 调试模式
@@ -26,26 +57,39 @@ __version__ = "0.5"
 DEBUG = os.environ.get("WATERMARK_DEBUG", "") == "1"
 
 # ============================================================
-# API 密钥
+# API 密钥 — 通过环境变量或 .env 注入，不设硬编码默认值
 # ============================================================
-GHOSTCUT_APP_KEY = os.environ.get("GHOSTCUT_APP_KEY", "4fec8e3a2bf949d0b478b4ca5f4159b4")
-GHOSTCUT_APP_SECRET = os.environ.get("GHOSTCUT_APP_SECRET", "828b2c80bd3b46999b38b719d16c86ab")
+GHOSTCUT_APP_KEY = os.environ.get("GHOSTCUT_APP_KEY", "")
+GHOSTCUT_APP_SECRET = os.environ.get("GHOSTCUT_APP_SECRET", "")
 
 WUHENAI_API_KEY = os.environ.get("WUHENAI_API_KEY", "")
-CLIPFLOW_API_KEY = os.environ.get("CLIPFLOW_API_KEY", WUHENAI_API_KEY)  # Clipflow = 无痕AI = 岁羽网络
-WUHENAI_V2_API_KEY = os.environ.get("WUHENAI_V2_API_KEY", "sk_live_8b7bf70bb2a706bac58bfe7c321201b03330")  # V2.1 api.wuhenai.com
+CLIPFLOW_API_KEY = os.environ.get("CLIPFLOW_API_KEY", WUHENAI_API_KEY)
+WUHENAI_V2_API_KEY = os.environ.get("WUHENAI_V2_API_KEY", "")
 
-# 阿里云 OSS（无痕AI V2.1 文件存储用）
-OSS_ACCESS_KEY_ID = os.environ.get("OSS_ACCESS_KEY_ID", "LTAI5t92ouSefdBapipjVBRU")
-OSS_ACCESS_KEY_SECRET = os.environ.get("OSS_ACCESS_KEY_SECRET", "PpTEgX9lTphGdLQuFSwortEEALiP7i")
+OSS_ACCESS_KEY_ID = os.environ.get("OSS_ACCESS_KEY_ID", "")
+OSS_ACCESS_KEY_SECRET = os.environ.get("OSS_ACCESS_KEY_SECRET", "")
 OSS_BUCKET = os.environ.get("OSS_BUCKET", "wuhenai-clipflow")
 OSS_REGION = os.environ.get("OSS_REGION", "cn-hangzhou")
-VOLCENGINE_ACCESS_KEY = os.environ.get("VOLCENGINE_ACCESS_KEY", "AKLTOTNmZDc4NDZiZDgwNDY5ODllNDhjZjNjMTgxMDRjNWI")
-VOLCENGINE_SECRET_KEY = os.environ.get("VOLCENGINE_SECRET_KEY", "Tm1ZeE1EWmlOelprTlRFM05HTm1aRGxtWlRWaU1EZGhaamRsWVdFNE9Uaw==")
+VOLCENGINE_ACCESS_KEY = os.environ.get("VOLCENGINE_ACCESS_KEY", "")
+VOLCENGINE_SECRET_KEY = os.environ.get("VOLCENGINE_SECRET_KEY", "")
 TENCENT_SECRET_ID = os.environ.get("TENCENT_SECRET_ID", "")
 TENCENT_SECRET_KEY = os.environ.get("TENCENT_SECRET_KEY", "")
 ALIYUN_ACCESS_KEY = os.environ.get("ALIYUN_ACCESS_KEY", "")
 ALIYUN_SECRET_KEY = os.environ.get("ALIYUN_SECRET_KEY", "")
+
+# ============================================================
+# 工具函数
+# ============================================================
+
+def hide_path(path: str):
+    """macOS 隐藏文件/目录（SMB 兼容）。所有模块统一用这个。"""
+    if not os.path.exists(path):
+        return
+    try:
+        subprocess.run(["chflags", "hidden", path], capture_output=True)
+    except Exception:
+        pass
+
 
 # ============================================================
 # 达芬奇路径
@@ -143,8 +187,7 @@ def get_log_dir(project_root: str = None) -> str:
     out = get_output_dir(project_root)
     d = os.path.join(out, ".ops_logs")
     os.makedirs(d, exist_ok=True)
-    # macOS 隐藏
-    os.system(f'chflags hidden "{d}" 2>/dev/null')
+    hide_path(d)
     return d
 
 
@@ -167,7 +210,6 @@ API_TIMEOUT = 600
 MAX_SOURCE_DURATION = 30  # 短剧片段通常 15-20 秒，30 秒足够覆盖
 MAX_CONCURRENT = int(os.environ.get("WATERMARK_CONCURRENT", "5"))
 SCAN_ONLY = os.environ.get("WATERMARK_SCAN_ONLY", "") == "1"
-MAX_CONCURRENT = int(os.environ.get("WATERMARK_CONCURRENT", "5"))
 
 # ============================================================
 # 额度保护

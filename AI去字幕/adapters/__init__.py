@@ -93,12 +93,17 @@ class BaseAdapter(ABC):
         """
         ...
 
-    def process(self, task: WatermarkTask, timeout: int = 600) -> WatermarkResult:
+    def process(self, task: WatermarkTask, timeout: int = 600,
+                output_path: str = None) -> WatermarkResult:
         """
-        一键处理：提交 → 等待 → 返回
-        
-        大多数场景下直接用这个方法即可。
+        一键处理：提交 → 等待 → 下载
+
+        Args:
+            task: 去水印任务描述
+            timeout: 最大等待时间（秒）
+            output_path: 结果下载路径。None 则不下载，返回远程 URL。
         """
+        self._output_path = output_path
         try:
             task_id = self.submit(task)
             return self.wait_for_result(task_id, timeout)

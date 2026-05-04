@@ -181,6 +181,11 @@ class GhostCutAdapter(BaseAdapter):
         """
         if not os.path.exists(local_path):
             raise FileNotFoundError(f"文件不存在: {local_path}")
+
+        # 大文件保护：短剧片段通常 < 500MB，超过则警告但不阻断
+        file_size_mb = os.path.getsize(local_path) / (1024 * 1024)
+        if file_size_mb > 500:
+            print(f"[GhostCut] ⚠ 文件较大 ({file_size_mb:.0f}MB)，上传可能耗时较长")
         
         filename = os.path.basename(local_path)
         
@@ -277,8 +282,8 @@ class GhostCutAdapter(BaseAdapter):
                     # 成功
                     video_url = content.get("videoUrl", "")
                     
-                    # 如果设置了 _last_output_path，自动下载
-                    download_path = getattr(self, '_last_output_path', None)
+                    # 如果指定了 output_path，自动下载
+                    download_path = self._output_path
                     if download_path:
                         print(f"[GhostCut] 下载处理结果到: {download_path}")
                         urllib.request.urlretrieve(video_url, download_path)
@@ -308,6 +313,173 @@ class GhostCutAdapter(BaseAdapter):
             
             time.sleep(poll_interval)
             poll_interval = min(poll_interval * 1.5, 30)  # 逐渐拉长到30秒
+
+    def process_batch(self, tasks: list, timeout: int = 600) -> list:
+        """
+        批量处理：上传全部 → 一次提交 → 一起轮询 → 逐个下载。
+
+        GhostCut API 原生支持：
+        - urls[] 接受多文件
+        - idWorks[] 接受多任务查询
+        总耗时 ≈ 最慢那个片段 + 上传开销（GPU 并行）。
+
+        Args:
+            tasks: [WatermarkTask, ...]
+            timeout: 总超时（秒）
+
+        Returns:
+            与 tasks 顺序对应的 [WatermarkResult, ...]
+        """
+        n = len(tasks)
+        print(f"[GhostCut] 批量处理 {n} 个片段")
+
+        # ── Phase 1: 上传所有文件 → CDN URLs ──
+        records = []
+        for i, task in enumerate(tasks):
+            video_url = task.video_path
+            parsed = urlparse(video_url)
+            if not parsed.scheme.startswith("http"):
+                base = os.path.basename(video_url)
+                print(f"[GhostCut] [{i+1}/{n}] 上传: {base}")
+                video_url = self._upload_file(video_url)
+            base_name = os.path.splitext(os.path.basename(task.video_path))[0] if task.video_path else f"clip_{i}"
+            records.append({
+                "video_url": video_url,
+                "base_name": base_name,
+                "task": task,
+                "task_id": None,
+                "result": None,
+            })
+        print(f"[GhostCut] 上传完成")
+
+        # ── Phase 2: 一次提交所有任务 ──
+        model_name = self.default_model
+        urls = [r["video_url"] for r in records]
+        names = [r["base_name"] for r in records]
+
+        if model_name == "basic":
+            payload = {
+                "urls": urls,
+                "names": names,
+                "resolution": "1080p",
+                "needChineseOcclude": 3,
+                "videoInpaintLang": tasks[0].language if tasks else "zh",
+            }
+        elif model_name in ("pro_box", "pro_large"):
+            masks = tasks[0].mask_regions if tasks else None
+            if not masks:
+                raise ValueError(f"{model_name} 模式必须指定 mask_regions")
+            model_value = self.MODEL_MAP.get(model_name, "advanced")
+            payload = {
+                "urls": urls,
+                "names": names,
+                "resolution": "1080p",
+                "needChineseOcclude": 2,
+                "videoInpaintLang": tasks[0].language if tasks else "zh",
+                "videoInpaintMasks": json.dumps(masks),
+                "extraOptions": json.dumps({
+                    "extra_inpaint_config": {"model": model_value}
+                }),
+            }
+        else:
+            raise ValueError(f"process_batch 不支持模式: {model_name}")
+
+        resp = self._api_post(self.CREATE_TASK, payload)
+        data_list = resp["body"]["dataList"]
+
+        if len(data_list) != n:
+            print(f"[GhostCut] ⚠ 返回 {len(data_list)} 个任务，期望 {n} 个")
+
+        for i, item in enumerate(data_list):
+            if i < len(records):
+                records[i]["task_id"] = str(item["id"])
+        print(f"[GhostCut] 已提交 {len(data_list)} 个任务，等待处理...")
+
+        # ── Phase 3: 一起轮询 ──
+        all_ids = [int(r["task_id"]) for r in records if r["task_id"]]
+        start_time = time.time()
+        poll_interval = 5
+        pending_ids = set(all_ids)
+        id_to_idx = {int(r["task_id"]): i for i, r in enumerate(records) if r["task_id"]}
+
+        while pending_ids:
+            elapsed = time.time() - start_time
+            if elapsed > timeout:
+                for tid in pending_ids:
+                    idx = id_to_idx[tid]
+                    records[idx]["result"] = WatermarkResult(
+                        success=False, task_id=str(tid),
+                        error_message=f"任务超时 ({timeout}秒)",
+                    )
+                break
+
+            try:
+                status_resp = self._api_post(
+                    self.CHECK_STATUS,
+                    {"idWorks": list(pending_ids)},
+                )
+                contents = status_resp["body"].get("content", [])
+
+                for content in contents:
+                    tid = content.get("id")
+                    if tid is None:
+                        continue
+                    status = content.get("processStatus", -1)
+
+                    if status == 1:  # 成功
+                        pending_ids.discard(tid)
+                        idx = id_to_idx.get(tid)
+                        if idx is not None:
+                            video_url = content.get("videoUrl", "")
+                            download_path = self._output_path
+                            if download_path and len(records) == 1:
+                                # 单文件可自动下载，多文件由调用者处理
+                                urllib.request.urlretrieve(video_url, download_path)
+                                records[idx]["result"] = WatermarkResult(
+                                    success=True, task_id=str(tid),
+                                    output_path=download_path,
+                                    metadata={"video_url": video_url, "name": content.get("name", "")},
+                                )
+                            else:
+                                records[idx]["result"] = WatermarkResult(
+                                    success=True, task_id=str(tid),
+                                    output_path=video_url,  # 远程 URL，调用者自行下载
+                                    metadata={"video_url": video_url, "name": content.get("name", "")},
+                                )
+                    elif status > 1:  # 失败
+                        pending_ids.discard(tid)
+                        idx = id_to_idx.get(tid)
+                        if idx is not None:
+                            records[idx]["result"] = WatermarkResult(
+                                success=False, task_id=str(tid),
+                                error_message=content.get("errorDetail", f"处理失败，状态码: {status}"),
+                            )
+
+                if pending_ids:
+                    done = n - len(pending_ids)
+                    print(f"[GhostCut] 进度: {done}/{n} 完成, {len(pending_ids)} 处理中")
+
+            except (urllib.error.URLError, OSError) as e:
+                print(f"[GhostCut] 网络错误: {e}，{poll_interval}秒后重试...")
+
+            if pending_ids:
+                time.sleep(poll_interval)
+                poll_interval = min(poll_interval * 1.5, 30)
+
+        # ── Phase 4: 返回结果 ──
+        results = []
+        for r in records:
+            if r["result"] is None:
+                r["result"] = WatermarkResult(
+                    success=False, task_id=r.get("task_id", ""),
+                    error_message="未知错误",
+                )
+            results.append(r["result"])
+
+        success_count = sum(1 for r in results if r.success)
+        total_elapsed = time.time() - start_time
+        print(f"[GhostCut] 批量完成: {success_count}/{n} 成功, 总耗时 {total_elapsed:.0f}s")
+        return results
 
     def check_health(self) -> bool:
         """测试 API 凭证有效性（查询余额）"""

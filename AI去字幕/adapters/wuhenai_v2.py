@@ -337,7 +337,7 @@ class WuhenAIV2Adapter(BaseAdapter):
                 if status == "success":
                     # 从 OSS 下载结果
                     output_key = task_info.get("output_key", f"output/{task_id}.mp4")
-                    download_path = getattr(self, "_last_output_path", None)
+                    download_path = self._output_path
 
                     if download_path:
                         self._download_from_oss(output_key, download_path)
