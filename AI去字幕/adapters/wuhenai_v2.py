@@ -391,6 +391,27 @@ class WuhenAIV2Adapter(BaseAdapter):
             print(f"[无痕AI V2] 健康检查失败: {e}")
             return False
 
+    def check_oss(self) -> bool:
+        """检查 OSS 是否可用（预检，避免处理到一半才报错）。"""
+        try:
+            date = formatdate(time.time(), usegmt=True)
+            headers = {"Date": date}
+            auth = self._oss_sign("GET", "healthcheck", headers)
+            headers["Authorization"] = auth
+            url = f"https://{self._oss_endpoint()}/"
+            req = urllib.request.Request(url, headers=headers, method="GET")
+            with urllib.request.urlopen(req, timeout=10, context=_SSL_CTX) as resp:
+                return resp.status in (200, 403)  # 403 可能是权限但桶存在
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            if "UserDisable" in body:
+                print(f"[无痕AI V2] ⚠ OSS 桶已被禁用（可能欠费），请登录阿里云控制台处理")
+                return False
+            return True  # 其他 HTTP 错误可能只是权限问题
+        except Exception as e:
+            print(f"[无痕AI V2] ⚠ OSS 连接失败: {e}")
+            return False
+
     # ── 批量处理 ──────────────────────────────────────────────
 
     def process_batch(self, tasks: list[WatermarkTask], timeout: int = 600) -> list[WatermarkResult]:

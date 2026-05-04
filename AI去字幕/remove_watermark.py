@@ -32,6 +32,7 @@ from config import (
 )
 from adapters import WatermarkTask, WatermarkResult
 from adapters.ghostcut import GhostCutAdapter
+from adapters.wuhenai_v2 import WuhenAIV2Adapter
 from watermark_state import mark_processed, get_clip_status, release_lock, acquire_lock, init as state_init
 from core import (
     connect_resolve, scan_io_clips, prepare_tasks,
@@ -48,29 +49,50 @@ import ops_logger
 
 def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
                  scan_only: bool = False, report_json: str = "",
-                 batch: bool = False) -> dict:
+                 batch: bool = False, adapter_name: str = "wuhenai") -> dict:
     """执行完整去字幕流程，返回结构化报告。
 
     Args:
-        mode: 处理模式 ("basic"/"pro_box")，None=取环境变量默认
-        dry_run: 只诊断不调 API
-        force: 跳过缓存复用
-        scan_only: 仅扫描 IO
-        report_json: 报告输出路径（空=不写文件）
-
-    Returns:
-        dict: 结构化报告，供 AI 审核
+        adapter_name: "wuhenai" (默认) | "ghostcut"
     """
     mode = mode or DEFAULT_MODE
     report = {
         "version": __version__,
         "mode": mode,
         "mode_label": MODE_LABELS.get(mode, mode),
+        "adapter": adapter_name,
         "dry_run": dry_run,
         "force": force,
         "scan_only": scan_only,
         "started_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
+
+    # ── 适配器选择 + OSS 预检（无痕AI）──
+    if adapter_name == "wuhenai":
+        adapter_cfg = deepcopy(ADAPTER_CONFIGS["wuhenai_v2"])
+        adapter_cfg["model"] = "video_removal_std"
+        adapter_cfg["method"] = "sel_area"
+        AdapterClass = WuhenAIV2Adapter
+
+        # OSS 预检
+        try:
+            probe = AdapterClass(adapter_cfg)
+            if not dry_run and not scan_only and not probe.check_oss():
+                warn("无痕AI OSS 不可用，自动降级为 GhostCut")
+                adapter_name = "ghostcut"
+                adapter_cfg = deepcopy(ADAPTER_CONFIGS["ghostcut"])
+                adapter_cfg["model"] = mode
+                AdapterClass = GhostCutAdapter
+                report["adapter"] = "ghostcut"
+                report["adapter_fallback"] = True
+                report["adapter_fallback_reason"] = "OSS不可用"
+        except Exception:
+            pass  # 预检失败不阻断，继续尝试
+
+    if adapter_name == "ghostcut":
+        adapter_cfg = deepcopy(ADAPTER_CONFIGS["ghostcut"])
+        adapter_cfg["model"] = mode
+        AdapterClass = GhostCutAdapter
 
     # ── 1. 连接 ──
     try:
@@ -149,13 +171,26 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
 
     # ── 5. 余额 ──
     total_units, total_est, unit_cost = estimate_cost(prepared.tasks, mode)
-    pts = query_balance()
+    try:
+        adapter = AdapterClass(adapter_cfg)
+        bal = adapter.get_balance()
+        if adapter_name == "wuhenai":
+            pts = bal.get("balance", 0)
+            cost_info = "积分"
+        else:
+            now_ms = time.time() * 1000
+            pts = sum(a["pointBalance"] for a in bal.get("pointAssets", [])
+                      if a["pointBalance"] > 0 and a.get("expireTime", now_ms+1) > now_ms)
+            cost_info = "点"
+    except Exception:
+        pts = 0; cost_info = "点"
+
     report["cost"] = {"units": total_units, "points": total_est, "unit_cost": unit_cost,
                       "yuan": round(total_est * 0.19, 2), "balance": round(pts, 1)}
 
-    step(f"💰 {report['mode_label']} — {total_est}点(¥{report['cost']['yuan']})")
+    step(f"💰 {report['mode_label']} — {total_est}{cost_info}(¥{report['cost']['yuan']}) | {adapter_name}")
     if pts > 0:
-        info(f"余额: {pts:.1f} 点")
+        info(f"余额: {pts:.1f} {cost_info}")
         if pts < total_est:
             fail(f"余额不足: {pts:.1f} < {total_est}")
             ops_logger.balance_check(pts, total_est, "blocked")
@@ -178,9 +213,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         return report
 
     # ── 6. 处理（串行或批量）──
-    adapter_cfg = deepcopy(ADAPTER_CONFIGS["ghostcut"])
-    adapter_cfg["model"] = mode  # CLI mode 透传到适配器
-    adapter = GhostCutAdapter(adapter_cfg)
+    adapter = AdapterClass(adapter_cfg)
     results = []
 
     if batch:
@@ -334,6 +367,8 @@ def main():
                         help="结构化报告输出路径")
     parser.add_argument("--batch", action="store_true",
                         help="批量并行处理（上传全部→一次提交→一起等）")
+    parser.add_argument("--adapter", choices=["wuhenai", "ghostcut"], default="wuhenai",
+                        help="API 适配器 (默认: wuhenai，OSS不通自动降级ghostcut)")
     args = parser.parse_args()
 
     try:
@@ -344,6 +379,7 @@ def main():
             scan_only=args.scan_only,
             report_json=args.report_json,
             batch=args.batch,
+            adapter_name=args.adapter,
         )
     except Exception as e:
         fail(str(e))
