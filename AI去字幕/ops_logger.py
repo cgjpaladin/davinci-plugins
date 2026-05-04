@@ -1,0 +1,155 @@
+"""
+操作日志模块 — 项目级 JSONL 结构化 + 隐藏文件
+
+设计原则：
+- JSONL 格式：每行一个 JSON 对象，AI 直接解析
+- 线程安全：threading.Lock 保护并发写入
+- 项目级：日志跟项目走，{项目}/04_素材/03_去水印/.ops_logs/
+- 按 hostname + 日期分文件，20 台机器互不冲突
+- 隐藏文件：macOS chflags hidden
+- 零依赖：仅 Python 标准库
+  clip_scan      — 片段扫描
+  balance_check  — 余额查询
+  task_submit    — API 任务提交
+  task_result    — API 任务完成
+  task_error     — API 任务失败
+  session_end    — 会话结束
+"""
+
+import json
+import os
+import socket
+import threading
+from datetime import datetime, timezone
+
+_lock = threading.Lock()
+_log_dir = None
+_session_id = None
+
+
+def init(log_dir: str):
+    """初始化日志系统，创建隐藏目录"""
+    global _log_dir
+    _log_dir = log_dir
+    os.makedirs(_log_dir, exist_ok=True)
+    # macOS: 隐藏目录
+    os.system(f'chflags hidden "{_log_dir}" 2>/dev/null')
+
+
+def _file_path():
+    """按 hostname + 日期分文件，20 台机器互不冲突"""
+    host = socket.gethostname().split(".")[0]
+    date = datetime.now().strftime("%Y-%m-%d")
+    return os.path.join(_log_dir, f"op_{host}_{date}.jsonl")
+
+
+def _write(entry: dict):
+    if not _log_dir:
+        return
+    with _lock:
+        path = _file_path()
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        # 隐藏单个文件
+        os.system(f'chflags hidden "{path}" 2>/dev/null')
+
+
+def session_start(project_name: str, timeline_name: str, mode: str, balance: float):
+    """会话开始"""
+    import uuid
+    global _session_id
+    _session_id = uuid.uuid4().hex[:12]
+    _write({
+        "ts": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+        "host": socket.gethostname().split(".")[0],
+        "event": "session_start",
+        "session": _session_id,
+        "project": project_name,
+        "timeline": timeline_name,
+        "mode": mode,
+        "balance_before": round(balance, 1),
+    })
+
+
+def clip_scan(total: int, skipped: int, clips: list):
+    """片段扫描结果"""
+    _write({
+        "ts": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+        "host": socket.gethostname().split(".")[0],
+        "event": "clip_scan",
+        "session": _session_id,
+        "total": total,
+        "skipped": skipped,
+        "to_process": total - skipped,
+        "clips": clips,
+    })
+
+
+def balance_check(balance: float, estimated: float, action: str):
+    """余额检查"""
+    _write({
+        "ts": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+        "host": socket.gethostname().split(".")[0],
+        "event": "balance_check",
+        "session": _session_id,
+        "balance": round(balance, 1),
+        "estimated": estimated,
+        "action": action,  # "proceed" | "blocked" | "unknown"
+    })
+
+
+def task_submit(clip_name: str, mode: str, duration: float, attempt: int = 0):
+    """API 任务提交"""
+    _write({
+        "ts": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+        "host": socket.gethostname().split(".")[0],
+        "event": "task_submit",
+        "session": _session_id,
+        "clip": clip_name,
+        "mode": mode,
+        "duration_sec": round(duration, 1),
+        "attempt": attempt,
+    })
+
+
+def task_result(clip_name: str, task_id: str, elapsed: float, success: bool):
+    """API 任务结果"""
+    _write({
+        "ts": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+        "host": socket.gethostname().split(".")[0],
+        "event": "task_result",
+        "session": _session_id,
+        "clip": clip_name,
+        "task_id": str(task_id),
+        "elapsed_sec": round(elapsed, 1),
+        "success": success,
+    })
+
+
+def task_error(clip_name: str, error_msg: str, attempt: int):
+    """API 任务错误"""
+    _write({
+        "ts": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+        "host": socket.gethostname().split(".")[0],
+        "event": "task_error",
+        "session": _session_id,
+        "clip": clip_name,
+        "error": error_msg[:200],
+        "attempt": attempt,
+    })
+
+
+def session_end(ok: int, fail: int, total: int, balance_after: float = None):
+    """会话结束"""
+    entry = {
+        "ts": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+        "host": socket.gethostname().split(".")[0],
+        "event": "session_end",
+        "session": _session_id,
+        "ok": ok,
+        "fail": fail,
+        "total": total,
+    }
+    if balance_after is not None:
+        entry["balance_after"] = round(balance_after, 1)
+    _write(entry)
