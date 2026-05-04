@@ -178,7 +178,9 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         return report
 
     # ── 6. 处理（串行或批量）──
-    adapter = GhostCutAdapter(deepcopy(ADAPTER_CONFIGS["ghostcut"]))
+    adapter_cfg = deepcopy(ADAPTER_CONFIGS["ghostcut"])
+    adapter_cfg["model"] = mode  # CLI mode 透传到适配器
+    adapter = GhostCutAdapter(adapter_cfg)
     results = []
 
     if batch:

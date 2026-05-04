@@ -198,7 +198,9 @@ def process(*_):
             warn("余额查询失败，跳过保护")
 
         # 串行处理（含重试）
-        adapter = GhostCutAdapter(deepcopy(ADAPTER_CONFIGS["ghostcut"]))
+        adapter_cfg = deepcopy(ADAPTER_CONFIGS["ghostcut"])
+        adapter_cfg["model"] = mode
+        adapter = GhostCutAdapter(adapter_cfg)
         results = []; total = len(prepared.tasks)
 
         for idx, t in enumerate(prepared.tasks, 1):
