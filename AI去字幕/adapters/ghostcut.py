@@ -431,21 +431,11 @@ class GhostCutAdapter(BaseAdapter):
                         idx = id_to_idx.get(tid)
                         if idx is not None:
                             video_url = content.get("videoUrl", "")
-                            download_path = self._output_path
-                            if download_path and len(records) == 1:
-                                # 单文件可自动下载，多文件由调用者处理
-                                urllib.request.urlretrieve(video_url, download_path)
-                                records[idx]["result"] = WatermarkResult(
-                                    success=True, task_id=str(tid),
-                                    output_path=download_path,
-                                    metadata={"video_url": video_url, "name": content.get("name", "")},
-                                )
-                            else:
-                                records[idx]["result"] = WatermarkResult(
-                                    success=True, task_id=str(tid),
-                                    output_path=video_url,  # 远程 URL，调用者自行下载
-                                    metadata={"video_url": video_url, "name": content.get("name", "")},
-                                )
+                            records[idx]["result"] = WatermarkResult(
+                                success=True, task_id=str(tid),
+                                output_path=video_url,  # 远程 URL，调用者自行下载
+                                metadata={"video_url": video_url, "name": content.get("name", "")},
+                            )
                     elif status > 1:  # 失败
                         pending_ids.discard(tid)
                         idx = id_to_idx.get(tid)
