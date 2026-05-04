@@ -299,7 +299,13 @@ def process(*_):
             fn = os.path.basename(path)
             dl, ep, subdir, clean_name = build_output_path(fn, od, mode)
 
-            urllib.request.urlretrieve(result.output_path, dl)
+            try:
+                urllib.request.urlretrieve(result.output_path, dl)
+            except Exception as e:
+                fail(f"  {clean_name} 下载失败: {e}")
+                release_lock(name)
+                continue
+
             if mp_item.ReplaceClipPreserveSubClip(dl):
                 mark_processed(mp_item.GetClipProperty("File Name") or fn, dl, mode)
                 ok_count += 1

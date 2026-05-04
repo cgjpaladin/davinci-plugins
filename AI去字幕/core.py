@@ -234,7 +234,7 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
                 stats["skipped_disabled"] += 1
                 continue
 
-            name = item.GetName()
+            name = item.GetName() or f"clip_{item.GetStart()}"  # 兜底空文件名
             # 同名去重：已有的 Orange 版本优先保留
             if name in seen:
                 existing_item, _ = seen[name]
@@ -401,6 +401,8 @@ def prepare_tasks(
 
         if c.duration > MAX_SOURCE_DURATION:
             continue
+        if c.duration <= 0:
+            continue  # 时长异常，跳过
 
         valid_clips.append(c)
 

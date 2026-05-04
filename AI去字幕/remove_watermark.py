@@ -328,8 +328,14 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         file_name = os.path.basename(path)
         dl, ep, subdir, clean_name = build_output_path(file_name, output_dir, mode)
 
-        urllib.request.urlretrieve(result.output_path, dl)
-        info(f"→ {ep}/{subdir}/{clean_name} ({os.path.getsize(dl)/1024/1024:.1f}MB)")
+        try:
+            urllib.request.urlretrieve(result.output_path, dl)
+            info(f"→ {ep}/{subdir}/{clean_name} ({os.path.getsize(dl)/1024/1024:.1f}MB)")
+        except Exception as e:
+            fail_list.append({"name": name, "error": f"下载失败: {e}"})
+            fail(f"{clean_name} 下载失败: {e}")
+            release_lock(name)
+            continue
 
         if mp_item.ReplaceClipPreserveSubClip(dl):
             fn = mp_item.GetClipProperty("File Name") or name
