@@ -33,6 +33,13 @@ GHOSTCUT_APP_SECRET = os.environ.get("GHOSTCUT_APP_SECRET", "828b2c80bd3b46999b3
 
 WUHENAI_API_KEY = os.environ.get("WUHENAI_API_KEY", "")
 CLIPFLOW_API_KEY = os.environ.get("CLIPFLOW_API_KEY", WUHENAI_API_KEY)  # Clipflow = 无痕AI = 岁羽网络
+WUHENAI_V2_API_KEY = os.environ.get("WUHENAI_V2_API_KEY", "sk_live_8b7bf70bb2a706bac58bfe7c321201b03330")  # V2.1 api.wuhenai.com
+
+# 阿里云 OSS（无痕AI V2.1 文件存储用）
+OSS_ACCESS_KEY_ID = os.environ.get("OSS_ACCESS_KEY_ID", "LTAI5t92ouSefdBapipjVBRU")
+OSS_ACCESS_KEY_SECRET = os.environ.get("OSS_ACCESS_KEY_SECRET", "PpTEgX9lTphGdLQuFSwortEEALiP7i")
+OSS_BUCKET = os.environ.get("OSS_BUCKET", "wuhenai-clipflow")
+OSS_REGION = os.environ.get("OSS_REGION", "cn-hangzhou")
 VOLCENGINE_ACCESS_KEY = os.environ.get("VOLCENGINE_ACCESS_KEY", "AKLTOTNmZDc4NDZiZDgwNDY5ODllNDhjZjNjMTgxMDRjNWI")
 VOLCENGINE_SECRET_KEY = os.environ.get("VOLCENGINE_SECRET_KEY", "Tm1ZeE1EWmlOelprTlRFM05HTm1aRGxtWlRWaU1EZGhaamRsWVdFNE9Uaw==")
 TENCENT_SECRET_ID = os.environ.get("TENCENT_SECRET_ID", "")
@@ -211,6 +218,16 @@ ADAPTER_CONFIGS = {
         "enabled": False,
         "api_key": CLIPFLOW_API_KEY,
         "algorithm": 1,  # 1=无痕模式, 0=极速模式
+    },
+    "wuhenai_v2": {
+        "enabled": True,
+        "api_key": WUHENAI_V2_API_KEY,
+        "oss_access_key_id": OSS_ACCESS_KEY_ID,
+        "oss_access_key_secret": OSS_ACCESS_KEY_SECRET,
+        "oss_bucket": OSS_BUCKET,
+        "oss_region": OSS_REGION,
+        "model": "video_removal_std",
+        "method": "sel_area",  # Seedance 字幕固定底部，sel_area 省33%积分
     },
     "volcengine": {
         "enabled": False,

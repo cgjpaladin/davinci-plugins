@@ -19,6 +19,7 @@ import subprocess
 import sys
 import time
 import traceback
+import urllib.request
 from copy import deepcopy
 
 # 自动识别插件所在目录（支持 SMB 共享部署）
@@ -54,19 +55,16 @@ def get_resolve():
     return resolve
 
 
-def get_video_duration(file_path):
-    """用 ffprobe 快速获取视频时长（秒），兼容达芬奇 PATH 环境"""
-    for ff_cmd in ("ffprobe", "/opt/homebrew/bin/ffprobe", "/usr/local/bin/ffprobe"):
-        try:
-            result = subprocess.run(
-                [ff_cmd, "-v", "quiet", "-show_entries", "format=duration",
-                 "-of", "csv=p=0", file_path],
-                capture_output=True, text=True, timeout=10
-            )
-            return float(result.stdout.strip())
-        except Exception:
-            continue
-    return 0
+def get_video_duration(mp_item):
+    """从 MediaPoolItem 获取视频时长（秒），零外部依赖。"""
+    try:
+        frames = mp_item.GetClipProperty("Frames") or "0"
+        fps = mp_item.GetClipProperty("FPS") or "24"
+        total = int(frames)
+        rate = float(fps)
+        return total / rate if rate > 0 else 0
+    except Exception:
+        return 0
 
 
 def get_source_items(timeline):
@@ -80,13 +78,14 @@ def get_source_items(timeline):
     io_out = io.get("video", {}).get("out", 0)
     
     if io_out <= io_in:
-        raise RuntimeError("请先在时间线上设置 IO 区间（选中要去字幕的片段）")
+        print("[IO] 未设置 — 请在时间线上打好入出点再运行")
+        return None
     
     print(f"[IO] 帧 {io_in} → {io_out}")
     
     results = []
     seen = {}  # name → (item, track#) — 同片段多轨时保留最佳
-    stats = {"total": 0, "skipped_nomp": 0, "skipped_nopath": 0}
+    stats = {"total": 0, "skipped_nomp": 0, "skipped_nopath": 0, "skipped_disabled": 0, "skipped_nonvideo": 0, "skipped_compound": 0}
     
     for t in range(1, timeline.GetTrackCount("video") + 1):
         items = timeline.GetItemListInTrack("video", t)
@@ -95,6 +94,10 @@ def get_source_items(timeline):
         for item in items:
             s, e = item.GetStart(), item.GetEnd()
             if s < io_out and e > io_in:
+                # 跳过禁用片段
+                if not item.GetClipEnabled():
+                    stats["skipped_disabled"] += 1
+                    continue
                 name = item.GetName()
                 # 保留颜色匹配的版本；如果已有匹配的则跳过
                 if name in seen:
@@ -115,11 +118,33 @@ def get_source_items(timeline):
         mp = item.GetMediaPoolItem()
         if not mp:
             stats["skipped_nomp"] += 1
+            if CLIP_COLOR and color == CLIP_COLOR:
+                print(f"  ⚠ {name}: 无媒体池引用，无法处理")
+            continue
+        
+        # 虚拟容器片段 — 无实体文件，跳过并告知用户
+        mp_type = mp.GetClipProperty("Type") or ""
+        if mp_type in ("复合", "Fusion", "VFX连接"):
+            label = {"复合": "复合片段", "Fusion": "Fusion片段", "VFX连接": "VFX连接片段"}.get(mp_type, mp_type)
+            stats["skipped_compound"] += 1
+            if CLIP_COLOR and color == CLIP_COLOR:
+                print(f"  ⚠ {name}: {label}，无法直接去字幕（请先展开或渲染）")
+            continue
+        
+        # 只处理视频片段（排除静帧/音频/纯色/调整片段/窗口等）
+        if "视频" not in mp_type:
+            stats["skipped_nonvideo"] += 1
+            if CLIP_COLOR and color == CLIP_COLOR:
+                type_label = mp_type or "未知类型"
+                print(f"  ⚠ {name}: 非视频片段（{type_label}），无法处理")
             continue
         
         path = mp.GetClipProperty("File Path")
         if not path or not os.path.exists(path):
             stats["skipped_nopath"] += 1
+            if CLIP_COLOR and color == CLIP_COLOR:
+                reason = "文件缺失（脱机）" if path else "无文件路径"
+                print(f"  ⚠ {name}: {reason}")
             continue
         
         results.append((mp, name, path))
@@ -128,7 +153,18 @@ def get_source_items(timeline):
     color_tag = CLIP_COLOR or "全部"
     skipped_total = sum(stats[k] for k in stats if k.startswith("skipped_"))
     ok = len(results)
+    
+    # 跳过明细（只显示非零项）
+    skip_details = []
+    for label, key in [("禁用", "skipped_disabled"), ("无引用", "skipped_nomp"),
+                       ("复合", "skipped_compound"), ("非视频", "skipped_nonvideo"),
+                       ("脱机/无文件", "skipped_nopath")]:
+        if stats.get(key, 0):
+            skip_details.append(f"{label}{stats[key]}")
+    
     print(f"\n  🎬 检测到 {stats['total']} 个片段，其中 {ok} 个符合筛选")
+    if skip_details:
+        print(f"  跳过: {', '.join(skip_details)}")
     
     if not results and DEFAULT_MODE not in ("pro", "pro_box"):
         raise RuntimeError(f"IO 区间内没有{color_tag}色视频片段（共扫描 {stats['total']} 个片段，跳过 {skipped_total} 个）")
@@ -161,6 +197,8 @@ def main():
         
         # 1. IO 区间内所有片段
         items = get_source_items(timeline)
+        if items is None:
+            return
         print(f"\n[任务] 共 {len(items)} 个片段\n")
         
         if not items:
@@ -198,14 +236,23 @@ def main():
                     s2, e2 = item2.GetStart(), item2.GetEnd()
                     if s2 >= i_out or e2 <= i_in:
                         continue
+                    # 跳过禁用片段
+                    if not item2.GetClipEnabled():
+                        continue
                     nm2 = item2.GetName()
-                    if nm2 in scanned_names or "_去字幕_快速预览" not in nm2:
+                    # 严格匹配 去字幕 命名格式，防止 "快速预览.mp4" 碰瓷
+                    if nm2 in scanned_names or not re.search(r'_去字幕_快速预览_v\d+\.\w+$', nm2):
                         continue
                     mp2 = item2.GetMediaPoolItem()
                     if not mp2:
                         continue
-                    # 找原片：状态文件优先，兜底 find
-                    rst = need_restore(nm2, DEFAULT_MODE)
+                    # 只处理视频片段
+                    mp2_type = mp2.GetClipProperty("Type") or ""
+                    if "视频" not in mp2_type:
+                        continue
+                    # 找原片：状态文件优先（用文件名做 key），兜底 find
+                    file_name = mp2.GetClipProperty("File Name") or nm2
+                    rst = need_restore(file_name, DEFAULT_MODE)
                     if rst:
                         items.append((mp2, nm2, rst))
                     else:
@@ -245,11 +292,11 @@ def main():
             
             if DEFAULT_MODE in ("pro", "pro_box") and is_preview:
                 print(f"  ↻ {name}: 还原原片")
-                mp_item.ReplaceClip(path)  # path 已在上游设为原片路径
+                mp_item.ReplaceClipPreserveSubClip(path)  # path 已在上游设为原片路径
             else:
-                record_original(name, path)
+                record_original(mp_item.GetClipProperty("File Name"), path)
             
-            duration = get_video_duration(path)
+            duration = get_video_duration(mp_item)
             if duration > MAX_SOURCE_DURATION:
                 print(f"  ⛔ {name}: 时长 {duration:.0f}秒 > 上限，跳过")
                 continue
@@ -282,6 +329,58 @@ def main():
             print(f"  共 {len(valid_tasks)} 个片段待处理")
             print(f"{'='*40}\n")
             ops_logger.session_end(0, 0, len(valid_tasks))
+            return
+        
+        # ── 缓存复用：先检查输出目录有无已处理文件 ──
+        force_mode = os.environ.get("WATERMARK_FORCE", "") == "1"
+        mode_tag = MODE_FILE_TAGS.get(DEFAULT_MODE, DEFAULT_MODE)
+        cache_hits = []
+        
+        if not force_mode:
+            print(f"\n{'─'*40}")
+            print(f"  📦 检查缓存...")
+            remaining = []
+            for mp_item, name, path, kwargs, dur in valid_tasks:
+                file_name = mp_item.GetClipProperty("File Name") or name
+                base = os.path.splitext(file_name)[0]
+                cached = None
+                
+                # 扫输出目录找 {base}_去字幕_{mode}_v*.mp4，取最高版本
+                cached_ver = -1
+                try:
+                    for root_dir, _, files in os.walk(output_dir):
+                        for f in files:
+                            if f.startswith(f"{base}_去字幕_{mode_tag}_v") and f.endswith(".mp4"):
+                                ver_match = re.search(r'_v(\d+)\.mp4$', f)
+                                ver = int(ver_match.group(1)) if ver_match else 0
+                                if ver > cached_ver:
+                                    cached_ver = ver
+                                    cached = os.path.join(root_dir, f)
+                except Exception:
+                    pass
+                
+                if cached:
+                    print(f"  ✅ {file_name}: 已有缓存 → 直接替换")
+                    if mp_item.ReplaceClipPreserveSubClip(cached):
+                        mark_processed(file_name, cached, DEFAULT_MODE)
+                        cache_hits.append(name)
+                    else:
+                        print(f"  ⚠ {file_name}: 缓存替换失败，将重新处理")
+                        remaining.append((mp_item, name, path, kwargs, dur))
+                else:
+                    remaining.append((mp_item, name, path, kwargs, dur))
+            
+            if cache_hits:
+                print(f"  📦 缓存命中 {len(cache_hits)} 个，剩余 {len(remaining)} 个需 API 处理")
+            else:
+                print(f"  📦 无缓存，全部需 API 处理")
+            valid_tasks = remaining
+            print(f"{'─'*40}")
+        
+        if not valid_tasks:
+            total_ok = len(cache_hits)
+            print(f"\n  🎉 全部由缓存完成！无需调用 API")
+            ops_logger.session_end(total_ok, 0, total_ok)
             return
         
         # ── 余额预估（按时长：每 30 秒为一个计费单位）──
@@ -335,7 +434,7 @@ def main():
             # 原子锁
             if not acquire_lock(name):
                 print(f"  [{idx}] {name} → ⏭ 其他用户正在处理，跳过")
-                results.append((mp_item, name, WatermarkResult(
+                results.append((mp_item, name, path, WatermarkResult(
                     success=False, task_id="", error_message="其他用户正在处理此片段"
                 ), 0))
                 continue
@@ -377,7 +476,7 @@ def main():
                 print(f"  ✅ {name} ({elapsed:.0f}秒 | ID: {getattr(result, 'task_id', '')})")
             else:
                 print(f"  ❌ {name}: {getattr(result, 'error_message', '未知错误') if result else '处理失败'}")
-            results.append((mp_item, name, result or WatermarkResult(success=False), elapsed if 'elapsed' in dir() else 0))
+            results.append((mp_item, name, path, result or WatermarkResult(success=False), elapsed if 'elapsed' in dir() else 0))
             print()  # 片段间空行
         
         
@@ -385,17 +484,19 @@ def main():
         
         # 5. 下载 + ReplaceClip（串行 — Resolve 不线程安全）
         success_count = 0
-        for mp_item, name, result, elapsed in results:
+        for mp_item, name, path, result, elapsed in results:
             if not result or not result.success:
                 continue
             
-            base_name = re.sub(r'_去字幕_.*$', '', os.path.splitext(name)[0])
+            # 使用真实文件名（非时间线显示名），防止改名碰瓷
+            file_name = os.path.basename(path)
+            base_name = re.sub(r'_去字幕_.*$', '', os.path.splitext(file_name)[0])
             mode_tag = MODE_FILE_TAGS.get(DEFAULT_MODE, DEFAULT_MODE)
             subdir = "01_预览版" if DEFAULT_MODE == "basic" else "02_正式出片"
             
-            # EP 分组
+            # EP 分组 — 从真实文件名提取
             ep = "EP00"
-            ep_match = re.match(r'(EP\d+)', name)
+            ep_match = re.match(r'(EP\d+)', file_name)
             if ep_match:
                 ep = ep_match.group(1)
             ep_dir = os.path.join(output_dir, ep, subdir)
@@ -413,10 +514,11 @@ def main():
             urllib.request.urlretrieve(result.output_path, dl)
             print(f"  → {ep}/{subdir}/{clean_name} ({os.path.getsize(dl)/1024/1024:.1f} MB)")
             
-            if mp_item.ReplaceClip(dl):
+            if mp_item.ReplaceClipPreserveSubClip(dl):
                 print(f"  ↻ ReplaceClip 完成")
-                mark_processed(name, dl, DEFAULT_MODE)
-                print(f"  📋 状态: {get_clip_status(name)}\n")
+                file_name = mp_item.GetClipProperty("File Name") or name
+                mark_processed(file_name, dl, DEFAULT_MODE)
+                print(f"  📋 状态: {get_clip_status(file_name)}\n")
                 success_count += 1
             else:
                 print(f"  ⚠ ReplaceClip 失败\n")
