@@ -213,21 +213,23 @@ def main():
                         try:
                             result = subprocess.run(
                                 ["find", "04_素材/02_视频/", "-name", f"{base2}.mp4"],
-                                capture_output=True, text=True,
+                                capture_output=True, text=True, encoding="utf-8",
                                 cwd=project_root, timeout=10
                             )
                             found = result.stdout.strip()
                             if found:
                                 items.append((mp2, nm2, found))
-                        except Exception:
-                            pass  # find 失败，这个片段跳过
+                            else:
+                                print(f"  ⚠ {nm2}: 检测到预览版但找不到原片，跳过")
+                        except Exception as e:
+                            print(f"  ⚠ {nm2}: 搜索原片失败 ({e})")
                     scanned_names.add(nm2)
                     pro_upgrades += 1
-        if pro_upgrades:
-            print(f"  ↻ 检测到 {pro_upgrades} 个已有预览版，将升级")
         
         # 4. 前置校验
         print(f"\n  校验:")
+        if pro_upgrades:
+            print(f"  ↻ 检测到 {pro_upgrades} 个已有预览版，将升级")
         valid_tasks = []
         for mp_item, name, path in items:
             is_preview = "_去字幕_快速预览" in name
