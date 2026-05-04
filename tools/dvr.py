@@ -247,5 +247,110 @@ def status():
     return "\n".join(lines)
 
 
+# ═══════════════════════════════════════════
+# 帧率映射（来自 Batch_io_Pro.py + 官方文档）
+# ═══════════════════════════════════════════
+
+FPS_MAP = {
+    '16': 16.0, '18': 18.0,
+    '23': 23.976, '23.976': 23.976, '24': 24.0, '24.0': 24.0,
+    '25': 25.0, '29': 29.97, '29.97': 29.97,
+    '30': 30.0, '30.0': 30.0, '47': 47.952, '47.952': 47.952,
+    '48': 48.0, '50': 50.0,
+    '59': 59.94, '59.94': 59.94, '60': 60.0,
+    '72': 72.0, '95': 95.904, '95.904': 95.904,
+    '96': 96.0, '100': 100.0,
+    '119': 119.88, '119.88': 119.88, '120': 120.0,
+}
+
+
+def fps():
+    """获取当前时间线帧率（float）。"""
+    tl = timeline()
+    if not tl:
+        return 24.0
+    try:
+        fps_str = str(tl.GetSetting("timelineFrameRate"))
+        return FPS_MAP.get(fps_str, float(fps_str))
+    except:
+        return 24.0
+
+
+def frames_to_tc(frames, drop_frame=None):
+    """帧号 → SMPTE 时码字符串 (HH:MM:SS:FF)。"""
+    fr = fps()
+    if drop_frame is None:
+        try:
+            drop_frame = bool(int(timeline().GetSetting("timelineDropFrameTimecode")))
+        except:
+            drop_frame = False
+    
+    fr_round = int(round(fr))
+    frames = abs(int(frames))
+    
+    if drop_frame:
+        drop = int(round(fr * 0.066666))
+        frames_per_10min = int(round(fr * 600))
+        frames_per_min = fr_round * 60 - drop
+        d = frames // frames_per_10min
+        m = frames % frames_per_10min
+        if m > drop:
+            frames += drop * 9 * d + drop * ((m - drop) // frames_per_min)
+        else:
+            frames += drop * 9 * d
+    
+    hr = frames // (fr_round * 3600)
+    mn = (frames // (fr_round * 60)) % 60
+    sc = (frames // fr_round) % 60
+    fr2 = frames % fr_round
+    
+    sep = ";" if drop_frame else ":"
+    return f"{hr:02d}:{mn:02d}:{sc:02d}{sep}{fr2:02d}"
+
+
+# ═══════════════════════════════════════════
+# 片段颜色（来自 Batch_io_Pro.py）
+# ═══════════════════════════════════════════
+
+CLIP_COLORS = {
+    'Orange': (0, 110, 235), 'Apricot': (51, 168, 255),
+    'Yellow': (28, 169, 226), 'Lime': (21, 198, 159),
+    'Olive': (32, 153, 94), 'Green': (100, 143, 68),
+    'Teal': (153, 152, 0), 'Navy': (119, 50, 31),
+    'Blue': (161, 118, 67), 'Purple': (160, 115, 153),
+    'Violet': (141, 87, 208), 'Pink': (181, 140, 233),
+    'Tan': (151, 176, 185), 'Beige': (119, 160, 198),
+    'Brown': (0, 102, 153), 'Chocolate': (63, 90, 140),
+}
+
+
+# ═══════════════════════════════════════════
+# 设置持久化（来自 导出时间线标记.lua 的灵感）
+# ═══════════════════════════════════════════
+
+import json as _json
+
+def load_settings(name="runner"):
+    """读取持久化设置（JSON 文件，存于脚本同目录）。"""
+    settings_path = os.path.join(_here, f".{name}_settings.json")
+    try:
+        if os.path.exists(settings_path):
+            with open(settings_path, "r") as f:
+                return _json.load(f)
+    except:
+        pass
+    return {}
+
+
+def save_settings(data, name="runner"):
+    """写入持久化设置。"""
+    settings_path = os.path.join(_here, f".{name}_settings.json")
+    try:
+        with open(settings_path, "w") as f:
+            _json.dump(data, f, indent=2, ensure_ascii=False)
+    except:
+        pass
+
+
 if __name__ == "__main__":
     print(status())
