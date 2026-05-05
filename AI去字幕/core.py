@@ -8,23 +8,25 @@ remove_watermark.py 和 ui_external.py 的共同基础层。
 - 零副作用：不 print/log/ui，只返回数据
 """
 
-import math
 import os
 import re
 import time
 import unicodedata
+import urllib.request
 from copy import deepcopy
-from typing import Optional, NamedTuple
+from typing import Optional, NamedTuple, Callable
 
 from config import (
-    COST_PER_MODE, DEFAULT_MODE, MAX_SOURCE_DURATION,
-    CLIP_COLOR, DEFAULT_MASK_REGION, MODE_FILE_TAGS,
+    DEFAULT_MODE, MAX_SOURCE_DURATION,
+    CLIP_COLOR, DEFAULT_MASK_REGION,
     ADAPTER_CONFIGS, DEBUG,
     get_project_root, get_output_dir, get_log_dir,
 )
-from adapters import WatermarkTask
-from adapters.ghostcut import GhostCutAdapter
-from watermark_state import record_original, mark_processed, need_restore
+from pricing import estimate_cost, point_to_yuan
+from pricing import oss_tracker
+from adapters import WatermarkTask, WatermarkResult
+from adapters.wuhenai_v2 import WuhenAIV21Adapter
+from watermark_state import record_original, mark_processed, need_restore, acquire_lock, release_lock
 import ops_logger
 
 
@@ -39,6 +41,7 @@ class ClipEntry(NamedTuple):
     path: str                # 磁盘文件路径
     file_name: str           # File Name（最稳定标识）
     duration: float          # 秒
+    start_frame: int         # 时间线起始帧
     is_preview: bool         # 是否已有快速预览版
     is_pro_done: bool        # 是否已有正式出片版
 
@@ -114,23 +117,22 @@ def extract_ep(filename: str) -> str:
     return m.group(1) if m else "EP00"
 
 
-def build_output_path(file_name: str, output_dir: str, mode: str) -> str:
+def build_output_path(file_name: str, output_dir: str, mode: str = "") -> str:
     """
     构建输出版本化路径。
     返回 (full_path, ep, subdir, clean_name)
 
-    目录结构: {output_dir}/{EP}/{01_预览版|02_正式出片}/{base}_去字幕_{tag}_v{XX}.mp4
+    目录结构: {output_dir}/{EP}/{base}_去字幕_v{XX}.mp4
     """
     base_name = re.sub(r'_去字幕_.*$', '', os.path.splitext(file_name)[0])
-    mode_tag = MODE_FILE_TAGS.get(mode, mode)
-    subdir = "01_预览版" if mode == "basic" else "02_正式出片"
+    subdir = ""
     ep = extract_ep(file_name)
-    ep_dir = os.path.join(output_dir, ep, subdir)
+    ep_dir = os.path.join(output_dir, ep)
     os.makedirs(ep_dir, exist_ok=True)
 
     version = 1
     while True:
-        clean_name = f"{base_name}_去字幕_{mode_tag}_v{version:02d}.mp4"
+        clean_name = f"{base_name}_去字幕_v{version:02d}.mp4"
         full = os.path.join(ep_dir, clean_name)
         if not os.path.exists(full):
             break
@@ -139,19 +141,18 @@ def build_output_path(file_name: str, output_dir: str, mode: str) -> str:
     return full, ep, subdir, clean_name
 
 
-def find_cached_output(file_name: str, output_dir: str, mode: str) -> Optional[str]:
+def find_cached_output(file_name: str, output_dir: str, mode: str = None) -> Optional[str]:
     """
     扫输出目录找已处理文件。返回最高版本路径 / None。
     """
     base = os.path.splitext(file_name)[0]
-    mode_tag = MODE_FILE_TAGS.get(mode, mode)
     cached = None
     cached_ver = -1
 
     try:
         for root_dir, _, files in os.walk(output_dir):
             for f in files:
-                if f.startswith(f"{base}_去字幕_{mode_tag}_v") and f.endswith(".mp4"):
+                if f.startswith(f"{base}_去字幕_v") and f.endswith(".mp4"):
                     ver_match = re.search(r'_v(\d+)\.mp4$', f)
                     ver = int(ver_match.group(1)) if ver_match else 0
                     if ver > cached_ver:
@@ -163,29 +164,31 @@ def find_cached_output(file_name: str, output_dir: str, mode: str) -> Optional[s
     return cached
 
 
-def estimate_cost(tasks: list, mode: str) -> tuple:
-    """
-    预估消耗。返回 (total_units, total_points, unit_cost)
-    unit_cost 用 COST_PER_MODE，每 30 秒为一个计费单位。
-    """
-    unit_cost = COST_PER_MODE.get(mode, 5)
-    total_units = sum(max(1, math.ceil(t.duration / 30)) for t in tasks)
-    total_points = unit_cost * total_units
-    return total_units, total_points, unit_cost
-
+# ═══════════════════════════════════════════
+# 余额查询
+# ═══════════════════════════════════════════
 
 def query_balance(adapter_config: dict = None) -> float:
-    """查询鬼手余额，返回可用点数。异常返回 0。"""
+    """查询无痕AI 2.1 余额（默认），返回可用点数。异常返回 0。
+
+    如需查鬼手余额，传入 adapter_config=ADAPTER_CONFIGS['ghostcut']。
+    """
     try:
-        cfg = adapter_config or deepcopy(ADAPTER_CONFIGS["ghostcut"])
-        adapter = GhostCutAdapter(cfg)
-        bal = adapter.get_balance()
-        now_ms = time.time() * 1000
-        pts = sum(
-            a["pointBalance"] for a in bal.get("pointAssets", [])
-            if a["pointBalance"] > 0 and a.get("expireTime", now_ms + 1) > now_ms
-        )
-        return pts
+        if adapter_config and adapter_config.get("app_key"):
+            # 鬼手（备用适配器）
+            from adapters.ghostcut import GhostCutAdapter
+            adapter = GhostCutAdapter(adapter_config)
+            bal = adapter.get_balance()
+            now_ms = time.time() * 1000
+            return sum(
+                a["pointBalance"] for a in bal.get("pointAssets", [])
+                if a["pointBalance"] > 0 and a.get("expireTime", now_ms + 1) > now_ms
+            )
+        else:
+            cfg = adapter_config or deepcopy(ADAPTER_CONFIGS["wuhenai_v21"])
+            adapter = WuhenAIV21Adapter(cfg)
+            bal = adapter.get_balance()
+            return bal.get("balance", 0)
     except Exception:
         return 0
 
@@ -242,8 +245,8 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
                     continue
             seen[name] = (item, t)
 
-    # 第二轮：过滤 + 构建 ClipEntry
-    for name, (item, t) in seen.items():
+    # 第二轮：过滤 + 构建 ClipEntry（按时间线位置排序）
+    for name, (item, t) in sorted(seen.items(), key=lambda x: x[1][0].GetStart()):
         stats["total"] += 1
         color = item.GetClipColor()
 
@@ -286,6 +289,7 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
         clips.append(ClipEntry(
             mp_item=mp, name=name, path=path,
             file_name=file_name, duration=duration,
+            start_frame=item.GetStart(),
             is_preview="_去字幕_快速预览" in name,
             is_pro_done="_去字幕_正式出片" in name,
         ))
@@ -360,7 +364,7 @@ def prepare_tasks(
                     clips.append(ClipEntry(
                         mp_item=mp2, name=nm2, path=original,
                         file_name=file_name2, duration=get_video_duration(mp2),
-                        is_preview=True, is_pro_done=False,
+                        start_frame=item2.GetStart(), is_preview=True, is_pro_done=False,
                     ))
                 else:
                     # 兜底: 文件系统搜索
@@ -377,7 +381,7 @@ def prepare_tasks(
                             clips.append(ClipEntry(
                                 mp_item=mp2, name=nm2, path=found,
                                 file_name=file_name2, duration=get_video_duration(mp2),
-                                is_preview=True, is_pro_done=False,
+                                start_frame=item2.GetStart(), is_preview=True, is_pro_done=False,
                             ))
                     except Exception:
                         pass
@@ -490,43 +494,175 @@ def normalize_for_match(s: str) -> str:
 # Post-check 输出验证
 # ═══════════════════════════════════════════
 
-def post_check(output_files: list):
-    """验证输出文件完整性。
+def post_check(output_files: list) -> dict:
+    """验证输出文件完整性（纯函数，不输出）。
 
     Args:
         output_files: 已生成的文件路径列表
+
+    Returns:
+        {"total": int, "ok": int, "fail": int, "problems": [{"file": str, "issues": [str]}]}
     """
-    from logger import ok, warn, fail, info as _info
+    result = {"total": len(output_files), "ok": 0, "fail": 0, "problems": []}
 
     if not output_files:
-        _info("无输出文件，跳过验证")
-        return
-
-    total = len(output_files)
-    ok_count = 0
-    fail_count = 0
+        return result
 
     for f in output_files:
         name = os.path.basename(f)
-        problems = []
+        issues = []
 
-        # 零字节检测
         if not os.path.exists(f):
-            problems.append("文件不存在")
+            issues.append("文件不存在")
         else:
             size = os.path.getsize(f)
             if size == 0:
-                problems.append("零字节文件")
+                issues.append("零字节文件")
             elif size < 1024 * 100:  # < 100KB
-                problems.append(f"文件过小 ({size} bytes)")
+                issues.append(f"文件过小 ({size} bytes)")
 
-        if problems:
-            fail(f"{name}: {', '.join(problems)}")
-            fail_count += 1
+        if issues:
+            result["problems"].append({"file": name, "issues": issues})
+            result["fail"] += 1
         else:
-            ok_count += 1
+            result["ok"] += 1
 
-    if fail_count == 0:
-        ok(f"全部 {total} 个文件校验通过")
-    else:
-        warn(f"{ok_count}/{total} 通过, {fail_count} 个异常")
+    return result
+
+
+# ═══════════════════════════════════════════
+# 共享流水线 — CLI 和 UI 的共同基础
+# ═══════════════════════════════════════════
+
+def create_wuhenai_adapter(mode: str = "pro_box") -> WuhenAIV21Adapter:
+    """创建标准配置的无痕AI 2.1 适配器（sel_area 模式）。
+    CLI 和 UI 都通过这个函数创建适配器，保证行为一致。
+    """
+    adapter_cfg = deepcopy(ADAPTER_CONFIGS["wuhenai_v21"])
+    adapter_cfg["model"] = "video_removal_std"
+    adapter_cfg["method"] = "sel_area"
+    return WuhenAIV21Adapter(adapter_cfg)
+
+
+def process_single_clip(
+    task,
+    adapter: WuhenAIV21Adapter,
+    mode: str,
+    on_attempt: Callable = None,
+    cancel_check=None,
+) -> tuple:
+    """
+    处理单个片段：加锁 → 重试(最多3次) → 返回结果。
+    出错时自动释放锁。CLI 和 UI 共享同一处理逻辑。
+
+    Args:
+        task: TaskRecord
+        adapter: 已初始化的无痕AI 2.1 适配器
+        mode: 处理模式
+        on_attempt: (attempt: int, name: str) -> None  每次尝试前回调
+
+    Returns:
+        (WatermarkResult, elapsed_seconds)
+    """
+    if not acquire_lock(task.name):
+        return (WatermarkResult(success=False, task_id="", error_message="被锁定"), 0)
+
+    result = None
+    elapsed = 0
+    for attempt in range(3):
+        if on_attempt:
+            on_attempt(attempt, task.name)
+
+        try:
+            ops_logger.task_submit(task.name, mode, task.duration, attempt)
+            t0 = time.time()
+            result = adapter.process(WatermarkTask(**task.kwargs), timeout=600, cancel_check=cancel_check)
+            elapsed = time.time() - t0
+            ops_logger.task_result(
+                task.name, str(getattr(result, 'task_id', '')), elapsed, result.success,
+            )
+            if not result.success:
+                release_lock(task.name)
+            break
+        except Exception as e:
+            if attempt < 2:
+                wait = 3 * (attempt + 1)
+                ops_logger.task_error(task.name, str(e)[:200], attempt)
+                time.sleep(wait)
+            else:
+                ops_logger.task_error(task.name, str(e)[:100], attempt)
+                release_lock(task.name)
+                result = WatermarkResult(
+                    success=False, task_id="",
+                    error_message=f"重试2次后失败: {str(e)[:100]}",
+                )
+
+    return (result, elapsed)
+
+
+def download_and_apply(
+    results: list,
+    output_dir: str,
+    mode: str,
+    check_stop: Callable = None,
+    on_done: Callable = None,
+    on_fail: Callable = None,
+) -> tuple:
+    """
+    下载 API 处理结果 → ReplaceClip → 标记完成。
+    CLI 和 UI 共享同一下载替换逻辑。
+
+    Args:
+        results: [(mp_item, name, path, result, elapsed), ...]
+        output_dir: 输出根目录
+        mode: 处理模式
+        check_stop: () -> bool, 返回 True 则中断
+        on_done: (ep, subdir, clean_name) -> None
+        on_fail: (clean_name, error) -> None
+
+    Returns:
+        (success_count, fail_list, output_files)
+    """
+    success_count = 0
+    fail_list = []
+    output_files = []
+
+    for mp_item, name, path, result, elapsed in results:
+        if check_stop and check_stop():
+            break
+        if not result or not result.success:
+            fail_list.append({
+                "name": name,
+                "error": getattr(result, 'error_message', '') if result else '',
+            })
+            continue
+
+        file_name = os.path.basename(path)
+        dl, ep, subdir, clean_name = build_output_path(file_name, output_dir, mode)
+
+        try:
+            is_remote = result.output_path.startswith("http")
+            urllib.request.urlretrieve(result.output_path, dl)
+            if is_remote:
+                oss_tracker.track_download(os.path.getsize(dl))
+        except Exception as e:
+            fail_list.append({"name": name, "error": f"下载失败: {e}"})
+            if on_fail:
+                on_fail(clean_name, f"下载失败: {e}")
+            release_lock(name)
+            continue
+
+        if mp_item.ReplaceClipPreserveSubClip(dl):
+            fn = mp_item.GetClipProperty("File Name") or file_name
+            mark_processed(fn, dl, mode)
+            success_count += 1
+            output_files.append(dl)
+            if on_done:
+                on_done(ep, subdir, clean_name)
+        else:
+            fail_list.append({"name": name, "error": "ReplaceClip 失败"})
+            if on_fail:
+                on_fail(clean_name, "ReplaceClip 失败")
+        release_lock(name)
+
+    return success_count, fail_list, output_files

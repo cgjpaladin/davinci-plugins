@@ -94,7 +94,7 @@ class BaseAdapter(ABC):
         ...
 
     def process(self, task: WatermarkTask, timeout: int = 600,
-                output_path: str = None) -> WatermarkResult:
+                output_path: str = None, cancel_check=None) -> WatermarkResult:
         """
         一键处理：提交 → 等待 → 下载
 
@@ -106,7 +106,7 @@ class BaseAdapter(ABC):
         self._output_path = output_path
         try:
             task_id = self.submit(task)
-            return self.wait_for_result(task_id, timeout)
+            return self.wait_for_result(task_id, timeout, cancel_check=cancel_check)
         except Exception as e:
             return WatermarkResult(
                 success=False,

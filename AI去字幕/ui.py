@@ -47,8 +47,9 @@ dlg.On["close_btn"].Clicked = _close
 # 阶段2: 加载业务模块
 try:
     sys.path.insert(0, "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕")
-    from config import DEFAULT_MODE, MODE_LABELS, __version__
+    from config import DEFAULT_MODE, __version__
     from core import connect_resolve, scan_io_clips, query_balance, CLIP_COLOR as _CLIP_COLOR
+    from pricing import point_to_yuan
 
     itm["title_lb"].Text = f"AI 去字幕 v{__version__}"
 
@@ -65,12 +66,11 @@ try:
         else:
             info_lines.append(f"IO 内: {report.valid} 个待处理片段")
 
-        mode_label = MODE_LABELS.get(DEFAULT_MODE, "正式出片")
-        info_lines.append(f"模式: {mode_label}")
+        info_lines.append("模式: 正式出片")
 
         pts = query_balance()
         if pts > 0:
-            info_lines.append(f"余额: {pts:.1f} 点 (¥{pts*0.19:.2f})")
+            info_lines.append(f"余额: {pts:.1f} 点 (¥{point_to_yuan(pts):.2f})")
     except Exception as e:
         info_lines.append(f"状态: {e}")
 

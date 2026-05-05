@@ -146,6 +146,25 @@ def task_result(clip_name: str, task_id: str, elapsed: float, success: bool):
     })
 
 
+def task_detail(clip_name: str, task_id: str, upload_sec: float = 0,
+                api_sec: float = 0, download_sec: float = 0,
+                upload_mb: float = 0, download_mb: float = 0):
+    """任务子步骤耗时（用于性能复盘）"""
+    _write({
+        "ts": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+        "host": _get_ip(),
+        "event": "task_detail",
+        "session": _session_id,
+        "clip": clip_name,
+        "task_id": str(task_id),
+        "upload_sec": round(upload_sec, 1),
+        "api_sec": round(api_sec, 1),
+        "download_sec": round(download_sec, 1),
+        "upload_mb": round(upload_mb, 2),
+        "download_mb": round(download_mb, 2),
+    })
+
+
 def task_error(clip_name: str, error_msg: str, attempt: int):
     """API 任务错误"""
     _write({
@@ -159,7 +178,8 @@ def task_error(clip_name: str, error_msg: str, attempt: int):
     })
 
 
-def session_end(ok: int, fail: int, total: int, balance_after: float = None):
+def session_end(ok: int, fail: int, total: int, balance_after: float = None,
+                points_spent: int = 0, elapsed_sec: int = 0, cost_yuan: float = 0):
     """会话结束"""
     entry = {
         "ts": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
@@ -169,7 +189,25 @@ def session_end(ok: int, fail: int, total: int, balance_after: float = None):
         "ok": ok,
         "fail": fail,
         "total": total,
+        "points_spent": points_spent,
+        "elapsed_sec": elapsed_sec,
+        "cost_yuan": cost_yuan,
     }
     if balance_after is not None:
         entry["balance_after"] = round(balance_after, 1)
     _write(entry)
+
+
+def cost_estimate(points: int, yuan: float, estimated_min: int, need: int, cache: int):
+    """费用预估（扫描后）"""
+    _write({
+        "ts": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+        "host": _get_ip(),
+        "event": "cost_estimate",
+        "session": _session_id,
+        "est_points": points,
+        "est_yuan": yuan,
+        "est_minutes": estimated_min,
+        "need_process": need,
+        "cache_hits": cache,
+    })

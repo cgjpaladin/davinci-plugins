@@ -22,7 +22,7 @@ import subprocess
 import time
 
 # 全局版本号 — 所有模块引用这一个变量
-__version__ = "0.5.1"
+__version__ = "0.6.0"
 
 # ============================================================
 # .env 加载（优先 SMB 共享，其次个人）
@@ -213,14 +213,7 @@ SCAN_ONLY = os.environ.get("WATERMARK_SCAN_ONLY", "") == "1"
 # ============================================================
 # 额度保护
 # ============================================================
-COST_PER_MODE = {
-    "basic": 1,
-    "lite": 2,
-    "pro": 10,
-    "pro_box": 5,
-}
-MIN_BALANCE = 0
-NO_CONFIRM = os.environ.get("WATERMARK_NO_CONFIRM", "") == "1"
+# 定价集中管理在 pricing.py，换供应商只改那一行 ACTIVE_PROVIDER。
 
 # 日志（生产模式用动态路径，这里给调试模式一个兜底）
 _LOG_TS = time.strftime("%Y%m%d_%H%M%S")
@@ -239,8 +232,8 @@ MODE_LABELS = {"basic": "快速预览", "pro_box": "正式出片"}
 # 输出文件名标签（剪辑师看到的中文名，不含供应商）
 MODE_FILE_TAGS = {"basic": "快速预览", "pro_box": "正式出片", "lite": "精修Lite", "pro": "精修Pro"}
 
-# Seedance 字幕遮罩区域
-DEFAULT_MASK_REGION = [[0, 0.62], [1, 0.62], [1, 0.88], [0, 0.88]]
+# Seedance 字幕遮罩区域（底部23%，适配无痕AI 480000px rect限制）
+DEFAULT_MASK_REGION = [[0, 0.77], [1, 0.77], [1, 1.0], [0, 1.0]]
 
 # 片段颜色过滤
 CLIP_COLOR = os.environ.get("WATERMARK_COLOR", "Orange")  # 裁缝老师用橘黄
@@ -255,7 +248,7 @@ ADAPTER_CONFIGS = {
         "app_secret": GHOSTCUT_APP_SECRET,
         "model": DEFAULT_MODE,
     },
-    "wuhenai_v2": {
+    "wuhenai_v21": {
         "enabled": True,
         "api_key": WUHENAI_V2_API_KEY,
         "oss_access_key_id": OSS_ACCESS_KEY_ID,
