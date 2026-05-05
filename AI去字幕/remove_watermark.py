@@ -316,7 +316,7 @@ def main():
     parser.add_argument("--scan-only", action="store_true",
                         help="仅扫描 IO，不调 API")
     parser.add_argument("--force", action="store_true",
-                        help="跳过缓存复用，强制重新处理")
+                        help="跳过可复用片段，强制重新处理")
     parser.add_argument("--report-json", default="",
                         help="结构化报告输出路径")
     parser.add_argument("--batch", action="store_true",

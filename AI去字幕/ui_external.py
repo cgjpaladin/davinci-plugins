@@ -403,7 +403,7 @@ def scan_io(*_):
             rem_f = int(f - total_sec * fps)
             pos_str = f"{h:02d}:{m2:02d}:{s:02d}:{rem_f:02d}"
             is_cached = od and find_cached_output(c.file_name, od)
-            label = "缓存命中" if is_cached else "需处理"
+            label = "可复用" if is_cached else "需处理"
             emoji = "🟢" if is_cached else "🟡"
             info(f"  {emoji} {c.name}	位置：{pos_str}	长度：{c.duration:.0f}秒	{label}")
             if is_cached:
@@ -420,7 +420,7 @@ def scan_io(*_):
         total_time = int(need * avg / 60) if need > 0 else 0
         summary = f"当前选区内，共 {len(clips)} 个符合筛选条件的片段。"
         if cache_hits > 0:
-            summary += f" 其中 {cache_hits} 个已有本地缓存  |  {need} 个待处理"
+            summary += f" 其中 {cache_hits} 个可复用  |  {need} 个待处理"
         info(summary)
         ops_logger.cost_estimate(pts, yuan, total_time, need, cache_hits)
         if need > 0:
@@ -524,9 +524,9 @@ def process(*_):
                 info(msg)
         wuhenai_set_logger(_adapter_log)
 
-        info("── 缓存替换中 ──")
+        info("── 可复用 ──")
         if prepared.cache_hits:
-            info(f"📦 缓存命中 {prepared.cache_hits} 个，直接替换")
+            info(f"📦 可复用 {prepared.cache_hits} 个，直接替换")
             for cn in prepared.cache_hit_names:
                 log_ok(f"  {cn}")
         if not prepared.tasks:
@@ -608,7 +608,7 @@ def process(*_):
         if fail_count > 0:
             parts.append(f"{fail_count} 个失败")
         if prepared.cache_hits > 0:
-            parts.append(f"{prepared.cache_hits} 个缓存替换")
+            parts.append(f"{prepared.cache_hits} 个可复用")
         log_ok(f"处理完成: {'，'.join(parts)}")
         info("── 最终报告 ──")
         t_elapsed = int(time.time() - t_start)
