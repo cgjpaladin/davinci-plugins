@@ -23,7 +23,7 @@ import DaVinciResolveScript as bmd
 from config import (
     DEBUG, get_project_root, get_output_dir, get_log_dir, __version__,
 )
-from watermark_state import init as state_init
+from watermark_state import init as state_init, is_locked as state_is_locked
 import ops_logger
 from core import (
     connect_resolve, scan_io_clips, prepare_tasks,
@@ -256,10 +256,26 @@ _ui_lock = threading.Lock()
 _ui_pending = {"status": "", "balance": "", "progress": 0.0, "btn_scan": None, "btn_start": None, "btn_pick": None, "btn_stop": None, "warn": None}
 
 def _st(t):
-    """设置状态文本（主线程直写 + 子线程挂起）"""
+    """设置状态文本（主线程直写 + 文件记录）"""
     try: itm[ST_LB].Text = t
     except: pass
     with _ui_lock: _ui_pending["status"] = t
+    _log_file(f"[状态] {t}")
+
+def _log_file(msg: str):
+    """写本地 + SMB 双日志（操作和状态，方便远程 debug）"""
+    try:
+        with open(_UI_LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
+    except: pass
+    try:
+        with open(_SMB_LOG, "a", encoding="utf-8") as f:
+            f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
+    except: pass
+
+def _log_action(action: str):
+    """记录用户操作到日志"""
+    _log_file(f"[操作] {action}")
 def _bal(t):
     try: itm[BAL_LB].Text = t
     except: pass
@@ -323,6 +339,7 @@ def _set_proj(path):
 
 def pick_project(*_):
     """打开 macOS 原生文件夹选择器"""
+    _log_action("选择项目路径")
     try:
         r = subprocess.run(
             ['osascript', '-e',
@@ -344,6 +361,7 @@ def pick_project(*_):
 
 # ── 扫描 ──
 def scan_io(*_):
+    _log_action("扫描当前选区")
     _st("扫描中...")
     _state["clips_scanned"] = False
     try: itm[LOG_LB].Text = ""
@@ -358,6 +376,13 @@ def scan_io(*_):
             info("IO 内无符合筛选的片段"); _st("无有效片段"); return
 
         _state["clips"] = clips
+
+        info("── 扫描中 ──")
+
+        # 获取 IO 范围
+        io = timeline.GetMarkInOut()
+        io_in = io.get("video", {}).get("in", 0) if io else 0
+        io_out = io.get("video", {}).get("out", 0) if io else 0
 
         # 时间线帧率 → 帧号转分:秒
         fps_str = project.GetSetting("timelineFrameRate")
@@ -404,7 +429,7 @@ def scan_io(*_):
         _state["clips_scanned"] = True
         itm[BTN_START].Enabled = bool(_state["project_root"])
         _st(f"待处理: {report.valid} 个片段")
-        _smb_log(f"扫描 — 项目: {project.GetName()} 时间线: {timeline.GetName()} IO内{report.valid}片段 需处理{need} 预估¥{yuan}")
+        _smb_log(f"扫描 — 项目: {project.GetName()} 时间线: {timeline.GetName()} IO={io_in}→{io_out} 内{report.valid}片段 需处理{need} 预估¥{yuan}")
         refresh_bal()
     except Exception as e:
         fail(f"扫描失败: {e}")
@@ -499,7 +524,7 @@ def process(*_):
                 info(msg)
         wuhenai_set_logger(_adapter_log)
 
-        info("──────────────")
+        info("── 缓存替换中 ──")
         if prepared.cache_hits:
             info(f"📦 缓存命中 {prepared.cache_hits} 个，直接替换")
             for cn in prepared.cache_hit_names:
@@ -507,7 +532,7 @@ def process(*_):
         if not prepared.tasks:
             log_ok("全部完成！" if prepared.cache_hits else "没有有效任务"); return
 
-        info("──────────────")
+        info("── AI处理中 ──")
 
         # 余额
         from pricing import point_to_yuan, ACTIVE_PROVIDER
@@ -538,38 +563,54 @@ def process(*_):
             except:
                 fail("达芬奇已断开，停止处理")
                 break
-            _st(f"{idx}/{total} {t.name}"); _pg(idx/total)
-
-            info(f"[{idx}/{total}] {t.name} → 上传中...")
+            _st(f"{idx:02d}/{total} {t.name}"); _pg(idx/total)
+            pad = len(str(total))
+            info(f"[{idx:0{pad}d}/{total}] 处理中  {t.name}")
             result, elapsed = process_single_clip(t, adapter, MODE, cancel_check=lambda: _state["stop"])
             if result.success:
-                info(f"[{idx}/{total}] {t.name}  耗时 {elapsed:.0f}s")
                 _smb_log(f"  ✅ {t.name} ({elapsed:.0f}s)")
             else:
                 msg = getattr(result, 'error_message', '未知错误')
-                (warn if msg == "被锁定" else fail)(f"[{idx}/{total}] {t.name}: {msg}")
+                if msg == "被锁定":
+                    owner = state_is_locked(t.name) or "其他同事"
+                    warn(f"[{idx:02d}/{total}] {t.name}: {owner} 正在处理中")
+                else:
+                    fail(f"[{idx:02d}/{total}] {t.name}: {msg}")
                 _smb_log(f"  ❌ {t.name}: {msg}")
             results.append((t.mp_item, t.name, t.path, result, elapsed))
 
-        # 下载（停止标志不影响已完成任务的结果下载）
-        info("──────────────")
+        # 下载并替换
+        info("── 替换回时间线 ──")
         _pg(0.9)
         _state["stop"] = False
+        _replaced = 0
+        _rpad = len(str(len(results)))
+        def _on_replaced(ep, subdir, name):
+            nonlocal _replaced
+            _replaced += 1
+            log_ok(f"[{_replaced:0{_rpad}d}/{len(results)}] 已替换  {name}")
         ok_count, fail_list, output_files = download_and_apply(
             results, od, MODE,
             check_stop=lambda: _state["stop"],
-            on_done=lambda ep, subdir, name: log_ok(f"  {subdir}/{name}"),
+            on_done=_on_replaced,
             on_fail=lambda name, err: fail(f"  {name}: {err}"),
         )
 
         pc = post_check(output_files)
-        if pc["fail"] == 0 and pc["total"] > 0:
-            log_ok(f"全部 {pc['total']} 个校验通过")
-        elif pc["fail"] > 0:
-            warn(f"{pc['ok']}/{pc['total']} 通过, {pc['fail']} 异常")
+        if pc["fail"] > 0:
+            warn(f"校验异常: {pc['ok']}/{pc['total']} 通过, {pc['fail']} 失败")
 
+        fail_count = len(results) - ok_count
         _pg(1.0); _st(f"完成 {ok_count}/{len(results)}")
-        log_ok(f"{ok_count}/{len(results)} 完成")
+        parts = []
+        if ok_count > 0:
+            parts.append(f"{ok_count} 个 AI 处理完成")
+        if fail_count > 0:
+            parts.append(f"{fail_count} 个失败")
+        if prepared.cache_hits > 0:
+            parts.append(f"{prepared.cache_hits} 个缓存替换")
+        log_ok(f"处理完成: {'，'.join(parts)}")
+        info("── 最终报告 ──")
         t_elapsed = int(time.time() - t_start)
         pts_after = query_balance()
         pts_used = pts_before - pts_after if pts_before > 0 and pts_after > 0 else 0
@@ -591,6 +632,7 @@ def process(*_):
 
 # ── 停止 ──
 def stop(*_):
+    _log_action("停止")
     if _state["processing"]:
         _state["stop"] = True; warn("停止中...")
 
@@ -602,6 +644,7 @@ dlg.On[BTN_PICK].Clicked = pick_project
 
 def start_process(*_):
     """主线程校验 + StepLoop 轮询（子线程处理，主线程刷 UI）"""
+    _log_action("开始处理")
     if _state["processing"]:
         return
     if not _state["project_root"]:

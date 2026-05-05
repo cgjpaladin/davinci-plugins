@@ -220,7 +220,7 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
 
     stats = {"total": 0, "skipped_nomp": 0, "skipped_nopath": 0,
              "skipped_disabled": 0, "skipped_nonvideo": 0, "skipped_compound": 0}
-    seen = {}  # name → (item, track#)
+    candidates = []  # (item, track#)  → 第二轮用 File Name 去重
     clips = []
 
     for t in range(1, timeline.GetTrackCount("video") + 1):
@@ -237,16 +237,14 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
                 stats["skipped_disabled"] += 1
                 continue
 
-            name = item.GetName() or f"clip_{item.GetStart()}"  # 兜底空文件名
-            # 同名去重：已有的 Orange 版本优先保留
-            if name in seen:
-                existing_item, _ = seen[name]
-                if clip_color and existing_item.GetClipColor() == clip_color:
-                    continue
-            seen[name] = (item, t)
+            candidates.append((item, t))
 
-    # 第二轮：过滤 + 构建 ClipEntry（按时间线位置排序）
-    for name, (item, t) in sorted(seen.items(), key=lambda x: x[1][0].GetStart()):
+    # 按时间线位置排序
+    candidates.sort(key=lambda x: x[0].GetStart())
+
+    # 第二轮：用 File Name 去重 + 过滤 + 构建 ClipEntry
+    seen_fnames = set()
+    for item, t in candidates:
         stats["total"] += 1
         color = item.GetClipColor()
 
@@ -283,11 +281,17 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
                 pass  # 警告由调用者处理
             continue
 
-        file_name = mp.GetClipProperty("File Name") or name
+        file_name = mp.GetClipProperty("File Name") or item.GetName() or f"clip_{item.GetStart()}"
+        
+        # 用 File Name 去重
+        if file_name in seen_fnames:
+            continue
+        seen_fnames.add(file_name)
+        
         duration = get_video_duration(mp)
 
         clips.append(ClipEntry(
-            mp_item=mp, name=name, path=path,
+            mp_item=mp, name=file_name, path=path,
             file_name=file_name, duration=duration,
             start_frame=item.GetStart(),
             is_preview="_去字幕_快速预览" in name,
@@ -360,7 +364,7 @@ def prepare_tasks(
                 # 找原片
                 file_name2 = mp2.GetClipProperty("File Name") or nm2
                 original = need_restore(file_name2, mode)
-                if original:
+                if original and os.path.exists(original):
                     clips.append(ClipEntry(
                         mp_item=mp2, name=nm2, path=original,
                         file_name=file_name2, duration=get_video_duration(mp2),

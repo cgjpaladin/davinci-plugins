@@ -18,10 +18,24 @@ watermark_state.py — 项目级去水印状态管理 + 并发锁
 import json
 import os
 import shutil
+import socket
 import time
 from typing import Optional
 
 from config import get_state_dir, get_lock_dir, get_output_dir, hide_path
+
+# 本机局域网 IP — 锁和状态里记录，方便排查
+def _get_lan_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("192.168.1.1", 1))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except:
+        return socket.gethostname()
+_HOST_IP = _get_lan_ip()
+_HOST_NICK = f"工号{_HOST_IP.rsplit('.', 1)[-1]}"  # 192.168.1.200 → 工号200
 
 # 状态文件路径 — 由 init() 设置
 _state_file = None
@@ -118,6 +132,12 @@ def acquire_lock(clip_name: str) -> bool:
 
     try:
         os.mkdir(lock_path)
+        # 写锁信息：谁锁的，什么时候
+        try:
+            with open(os.path.join(lock_path, ".info"), "w") as f:
+                json.dump({"ip": _HOST_IP, "user": _HOST_NICK, "time": time.strftime("%Y-%m-%d %H:%M:%S")}, f)
+        except OSError:
+            pass
         return True
     except FileExistsError:
         return False
@@ -134,12 +154,20 @@ def release_lock(clip_name: str):
         pass
 
 
-def is_locked(clip_name: str) -> bool:
-    """检查片段是否被锁定"""
+def is_locked(clip_name: str) -> Optional[str]:
+    """检查片段是否被锁定。返回工号（如'工号200'），未锁返回 None。"""
     lock_path = _safe_lock_path(clip_name)
-    if not lock_path:
-        return False
-    return os.path.isdir(lock_path)
+    if not lock_path or not os.path.isdir(lock_path):
+        return None
+    try:
+        info_file = os.path.join(lock_path, ".info")
+        if os.path.isfile(info_file):
+            with open(info_file, "r") as f:
+                data = json.load(f)
+            ip = data.get("ip", "")
+            return f"工号{ip.rsplit('.', 1)[-1]}" if ip else "工号??"
+    except: pass
+    return "工号??"
 
 
 # ============================================================
@@ -158,6 +186,7 @@ def record_original(clip_name: str, original_path: str):
         "original_path": original_path,
         "current_path": original_path,
         "status": "original",
+        "ip": _HOST_IP,
         "last_updated": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
     _save_state(state)
@@ -172,6 +201,7 @@ def mark_processed(clip_name: str, processed_path: str, mode: str):
         "original_path": entry.get("original_path", processed_path),
         "current_path": processed_path,
         "status": f"{mode}_done",
+        "ip": _HOST_IP,
         "last_updated": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
     _save_state(state)
