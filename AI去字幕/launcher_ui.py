@@ -20,8 +20,22 @@ if not os.path.exists(_PYTHON):
 # 记录子进程输出到临时文件，方便排查问题
 import tempfile
 _log = os.path.join(tempfile.gettempdir(), "ai_subtitle_ui.log")
+
+# 从 SMB 读取版本号
+_version = "?.?.?"
+try:
+    _cfg = os.path.join(_SMB_PLUGIN, "config.py")
+    if os.path.exists(_cfg):
+        with open(_cfg, encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("__version__"):
+                    _version = line.split("=")[1].strip().strip('"').strip("'")
+                    break
+except Exception:
+    pass
+
 with open(_log, "a", encoding="utf-8") as f:
-    f.write(f"\n=== AI去字幕 UI 启动 {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+    f.write(f"\n=== AI去字幕 UI 启动 v{_version} {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
 # 确保子进程 UTF-8 环境（达芬奇内嵌 Python 默认 ASCII）
 _env = os.environ.copy()
 _env["PYTHONIOENCODING"] = "utf-8"

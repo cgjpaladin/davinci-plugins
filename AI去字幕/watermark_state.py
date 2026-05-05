@@ -35,7 +35,7 @@ def _get_lan_ip():
     except:
         return socket.gethostname()
 _HOST_IP = _get_lan_ip()
-_HOST_NICK = f"工号{_HOST_IP.rsplit('.', 1)[-1]}"  # 192.168.1.200 → 工号200
+_HOST_NICK = f"{_HOST_IP}的同事"  # 192.168.1.200 → 192.168.1.200的同事
 
 # 状态文件路径 — 由 init() 设置
 _state_file = None
@@ -155,7 +155,7 @@ def release_lock(clip_name: str):
 
 
 def is_locked(clip_name: str) -> Optional[str]:
-    """检查片段是否被锁定。返回工号（如'工号200'），未锁返回 None。"""
+    """检查片段是否被锁定。返回用户标识（如'192.168.1.200的同事'），未锁返回 None。"""
     lock_path = _safe_lock_path(clip_name)
     if not lock_path or not os.path.isdir(lock_path):
         return None
@@ -165,9 +165,9 @@ def is_locked(clip_name: str) -> Optional[str]:
             with open(info_file, "r") as f:
                 data = json.load(f)
             ip = data.get("ip", "")
-            return f"工号{ip.rsplit('.', 1)[-1]}" if ip else "工号??"
+            return f"{ip}的同事" if ip else "未知同事"
     except: pass
-    return "工号??"
+    return "未知同事"
 
 
 # ============================================================

@@ -138,13 +138,10 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     ops_logger.clip_scan(len(clips), 0, [c.name for c in clips])
 
     # ── 4. 任务准备 ──
-    prepared = prepare_tasks(clips, timeline, mode, output_dir, project_root, force=force)
+    prepared = prepare_tasks(clips, mode, output_dir, force=force)
     report["cache_hits"] = prepared.cache_hits
-    report["pro_upgrades"] = prepared.pro_upgrades
     report["task_count"] = len(prepared.tasks)
 
-    if prepared.pro_upgrades:
-        info(f"↻ {prepared.pro_upgrades} 个预览版将升级")
     if prepared.cache_hits:
         step(f"📦 缓存命中 {prepared.cache_hits} 个，剩余 {len(prepared.tasks)} 个需 API")
     if not prepared.tasks:

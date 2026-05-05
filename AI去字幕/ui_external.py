@@ -377,7 +377,7 @@ def scan_io(*_):
 
         _state["clips"] = clips
 
-        info("── 扫描中 ──")
+        info("── ① 扫描选区 ──")
 
         # 获取 IO 范围
         io = timeline.GetMarkInOut()
@@ -418,9 +418,10 @@ def scan_io(*_):
         yuan = point_to_yuan(pts)
         avg = max(60, min(120, need_secs / max(1, need) * 3)) if need > 0 else 0
         total_time = int(need * avg / 60) if need > 0 else 0
-        summary = f"当前选区内，共 {len(clips)} 个符合筛选条件的片段。"
+        summary = f"扫描结果：当前选区内，共 {len(clips)} 个符合筛选条件的片段"
         if cache_hits > 0:
-            summary += f" 其中 {cache_hits} 个可复用  |  {need} 个待处理"
+            summary += f"（其中 {cache_hits} 个可复用）"
+        summary += f"  |  {need} 个待处理"
         info(summary)
         ops_logger.cost_estimate(pts, yuan, total_time, need, cache_hits)
         if need > 0:
@@ -507,7 +508,7 @@ def process(*_):
         ops_logger.clip_scan(len(clips), 0, [c.name for c in clips])
 
         # 任务准备
-        prepared = prepare_tasks(clips, timeline, MODE, od, pr, force=False)
+        prepared = prepare_tasks(clips, MODE, od, force=False)
 
         # 适配器
         adapter = create_wuhenai_adapter()
@@ -524,15 +525,17 @@ def process(*_):
                 info(msg)
         wuhenai_set_logger(_adapter_log)
 
-        info("── 可复用 ──")
+        info("── ② 缓存复用 ──")
         if prepared.cache_hits:
-            info(f"📦 可复用 {prepared.cache_hits} 个，直接替换")
+            info(f"📦 缓存命中 {prepared.cache_hits} 个，直接替换")
             for cn in prepared.cache_hit_names:
                 log_ok(f"  {cn}")
+        else:
+            info("  无可复用缓存")
         if not prepared.tasks:
             log_ok("全部完成！" if prepared.cache_hits else "没有有效任务"); return
 
-        info("── AI处理中 ──")
+        info("── ③ AI处理 ──")
 
         # 余额
         from pricing import point_to_yuan, ACTIVE_PROVIDER
@@ -580,7 +583,7 @@ def process(*_):
             results.append((t.mp_item, t.name, t.path, result, elapsed))
 
         # 下载并替换
-        info("── 替换回时间线 ──")
+        info("── ④ 替换回时间线 ──")
         _pg(0.9)
         _state["stop"] = False
         _replaced = 0
@@ -602,15 +605,14 @@ def process(*_):
 
         fail_count = len(results) - ok_count
         _pg(1.0); _st(f"完成 {ok_count}/{len(results)}")
-        parts = []
-        if ok_count > 0:
-            parts.append(f"{ok_count} 个 AI 处理完成")
-        if fail_count > 0:
-            parts.append(f"{fail_count} 个失败")
+        total_done = ok_count + prepared.cache_hits
+        msg = f"🎉 处理完成: {total_done} 个处理完成"
         if prepared.cache_hits > 0:
-            parts.append(f"{prepared.cache_hits} 个可复用")
-        log_ok(f"处理完成: {'，'.join(parts)}")
-        info("── 最终报告 ──")
+            msg += f"（其中 {prepared.cache_hits} 个可复用）"
+        if fail_count > 0:
+            msg += f"，{fail_count} 个失败"
+        log_ok(msg)
+        info("── ⑤ 最终报告 ──")
         t_elapsed = int(time.time() - t_start)
         pts_after = query_balance()
         pts_used = pts_before - pts_after if pts_before > 0 and pts_after > 0 else 0

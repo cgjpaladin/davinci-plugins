@@ -26,7 +26,7 @@ from pricing import estimate_cost, point_to_yuan
 from pricing import oss_tracker
 from adapters import WatermarkTask, WatermarkResult
 from adapters.wuhenai_v2 import WuhenAIV21Adapter
-from watermark_state import record_original, mark_processed, need_restore, acquire_lock, release_lock
+from watermark_state import record_original, mark_processed, acquire_lock, release_lock
 import ops_logger
 
 
@@ -42,8 +42,6 @@ class ClipEntry(NamedTuple):
     file_name: str           # File Name（最稳定标识）
     duration: float          # 秒
     start_frame: int         # 时间线起始帧
-    is_preview: bool         # 是否已有快速预览版
-    is_pro_done: bool        # 是否已有正式出片版
 
 
 class ScanReport(NamedTuple):
@@ -67,7 +65,7 @@ class PreparedTasks(NamedTuple):
     tasks: list             # [TaskRecord, ...]
     cache_hits: int         # 由缓存完成的片段数
     cache_hit_names: list   # 缓存命中的片段名
-    pro_upgrades: int       # 预览版升级数
+
 
 
 # ═══════════════════════════════════════════
@@ -282,6 +280,12 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
             continue
 
         file_name = mp.GetClipProperty("File Name") or item.GetName() or f"clip_{item.GetStart()}"
+        display_name = item.GetName() or file_name  # 用于离线产物过滤
+
+        # 跳过所有"去字幕"产物（_去字幕_快速预览_ / _去字幕_正式出片_ 等）
+        # 这类片段不是原片，不应出现在扫描结果中
+        if "_去字幕_" in display_name:
+            continue
         
         # 用 File Name 去重
         if file_name in seen_fnames:
@@ -294,8 +298,6 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
             mp_item=mp, name=file_name, path=path,
             file_name=file_name, duration=duration,
             start_frame=item.GetStart(),
-            is_preview="_去字幕_快速预览" in name,
-            is_pro_done="_去字幕_正式出片" in name,
         ))
 
     # 构造报告
@@ -310,102 +312,34 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
 
 
 # ═══════════════════════════════════════════
-# 任务准备 — 校验 + 缓存 + Pro 升级
+# 任务准备 — 校验 + 缓存
 # ═══════════════════════════════════════════
 
 def prepare_tasks(
     clips: list,
-    timeline,
     mode: str,
     output_dir: str,
-    project_root: str = "",
     force: bool = False,
 ) -> PreparedTasks:
     """
-    完整的任务准备流水线：
-     1. 前置校验（已完成/预览版/时长）
-     2. Pro 升级扫描（找已有预览版 → 还原原片 → 重新处理）
-     3. 缓存复用（扫输出目录）
-     4. 构建 TaskRecord 列表
+    任务准备流水线：
+     1. 前置校验（时长）
+     2. 缓存复用（扫输出目录）
+     3. 构建 TaskRecord 列表
 
     Args:
         clips: scan_io_clips 返回的 ClipEntry 列表
-        timeline: 达芬奇 Timeline 对象
-        mode: 处理模式 ("basic"/"pro_box")
+        mode: 处理模式
         output_dir: 输出目录
-        project_root: 项目根目录
         force: True 则跳过缓存复用
 
     Returns:
-        PreparedTasks: (tasks, cache_hits, cache_hit_names, pro_upgrades)
+        PreparedTasks: (tasks, cache_hits, cache_hit_names)
     """
-    # ── Step 1: Pro 升级扫描 ──
-    pro_upgrades = 0
-    io_in, io_out = get_io(timeline)
-
-    if mode in ("pro", "pro_box"):
-        scanned_names = {c.name for c in clips}
-        for t2 in range(1, timeline.GetTrackCount("video") + 1):
-            for item2 in timeline.GetItemListInTrack("video", t2) or []:
-                s2, e2 = item2.GetStart(), item2.GetEnd()
-                if s2 >= io_out or e2 <= io_in:
-                    continue
-                if not item2.GetClipEnabled():
-                    continue
-                nm2 = item2.GetName()
-                if nm2 in scanned_names or not re.search(r'_去字幕_快速预览_v\d+\.\w+$', nm2):
-                    continue
-                mp2 = item2.GetMediaPoolItem()
-                if not mp2:
-                    continue
-                mp2_type = mp2.GetClipProperty("Type") or ""
-                if "视频" not in mp2_type:
-                    continue
-                # 找原片
-                file_name2 = mp2.GetClipProperty("File Name") or nm2
-                original = need_restore(file_name2, mode)
-                if original and os.path.exists(original):
-                    clips.append(ClipEntry(
-                        mp_item=mp2, name=nm2, path=original,
-                        file_name=file_name2, duration=get_video_duration(mp2),
-                        start_frame=item2.GetStart(), is_preview=True, is_pro_done=False,
-                    ))
-                else:
-                    # 兜底: 文件系统搜索
-                    base2 = re.sub(r'_去字幕_.*$', '', os.path.splitext(nm2)[0])
-                    try:
-                        import subprocess
-                        result = subprocess.run(
-                            ["find", "04_素材/02_视频/", "-name", f"{base2}.mp4"],
-                            capture_output=True, text=True, encoding="utf-8",
-                            cwd=project_root, timeout=10
-                        )
-                        found = result.stdout.strip()
-                        if found:
-                            clips.append(ClipEntry(
-                                mp_item=mp2, name=nm2, path=found,
-                                file_name=file_name2, duration=get_video_duration(mp2),
-                                start_frame=item2.GetStart(), is_preview=True, is_pro_done=False,
-                            ))
-                    except Exception:
-                        pass
-                scanned_names.add(nm2)
-                pro_upgrades += 1
-
-    # ── Step 2: 前置校验 ──
+    # ── Step 1: 前置校验 ──
     valid_clips = []
     for c in clips:
-        if c.is_pro_done:
-            continue  # 已有正式出片版
-
-        if mode == "basic" and c.is_preview:
-            continue  # 已有预览版
-
-        if mode in ("pro", "pro_box") and c.is_preview:
-            # 还原原片
-            c.mp_item.ReplaceClipPreserveSubClip(c.path)
-        else:
-            record_original(c.file_name, c.path)
+        record_original(c.file_name, c.path)
 
         if c.duration > MAX_SOURCE_DURATION:
             continue
@@ -414,7 +348,7 @@ def prepare_tasks(
 
         valid_clips.append(c)
 
-    # ── Step 3: 缓存复用 ──
+    # ── Step 2: 缓存复用 ──
     cache_hit_names = []
     remaining_clips = []
 
@@ -430,7 +364,7 @@ def prepare_tasks(
     else:
         remaining_clips = valid_clips
 
-    # ── Step 4: 构建 TaskRecord ──
+    # ── Step 3: 构建 TaskRecord ──
     task_records = []
     for c in remaining_clips:
         kwargs = {"video_path": c.path, "language": "zh", "model": mode}
@@ -449,7 +383,6 @@ def prepare_tasks(
         tasks=task_records,
         cache_hits=len(cache_hit_names),
         cache_hit_names=cache_hit_names,
-        pro_upgrades=pro_upgrades,
     )
 
 

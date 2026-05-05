@@ -17,14 +17,51 @@ for f in ui_external.py core.py config.py pricing.py remove_watermark.py logger.
 done
 [ $FAIL -ne 0 ] && echo "❌ 语法错误，先修" && exit 1
 
-# ── 2. 同步到 SMB ──
+# ── 2. pre_flight 检查（轻量 → 智能升级）──
 echo ""
-echo "═══ 2. 同步到 SMB ═══"
+echo "═══ 2. pre_flight ═══"
+
+# 检测 core.py 是否有改动（本地 vs SMB）
+CORE_CHANGED=0
+if [ -f "$SMB/core.py" ] && ! diff core.py "$SMB/core.py" > /dev/null 2>&1; then
+    CORE_CHANGED=1
+elif [ ! -f "$SMB/core.py" ]; then
+    CORE_CHANGED=1  # 首次部署也算改动
+fi
+
+# 2a. 轻量检查（永远跑，零 API 消耗）
+echo "  轻量: 导入链..."
+python3 -c "
+import sys, os
+sys.path.insert(0, '.')
+for m in ['config','pricing','logger','watermark_state','ops_logger','adapters']:
+    __import__(m)
+    print(f'    ✅ {m}')
+" 2>&1 || { echo "  ❌ 导入链失败，先修"; exit 1; }
+
+# 2b. 如果 core.py 有改动 → 自动升级为完整 pre_flight
+if [ $CORE_CHANGED -eq 1 ]; then
+    echo ""
+    echo "  ⚠️  core.py 有改动 → 自动升级完整 pre_flight（含余额查询）"
+    echo "  ─────────────────────────────────"
+    if [ -f "$SMB/tests/pre_flight.py" ]; then
+        python3 "$SMB/tests/pre_flight.py" || { echo ""; echo "❌ pre_flight 未通过，先修再部署"; exit 1; }
+    else
+        echo "  ⚠️  SMB 上无 tests/pre_flight.py，跳过（需先 sync）"
+    fi
+else
+    echo "  ✅ core.py 无变动，跳过完整 pre_flight"
+    echo "  💡 如果需要强制完整检查: python3 tests/pre_flight.py"
+fi
+
+# ── 3. 同步到 SMB ──
+echo ""
+echo "═══ 3. 同步到 SMB ═══"
 bash sync.sh
 
-# ── 3. diff 确认 ──
+# ── 4. diff 确认 ──
 echo ""
-echo "═══ 3. diff 检查 ═══"
+echo "═══ 4. diff 检查 ═══"
 for f in ui_external.py core.py config.py pricing.py adapters/wuhenai_v2.py adapters/__init__.py; do
     if [ -f "$f" ] && [ -f "$SMB/$f" ]; then
         if diff "$f" "$SMB/$f" > /dev/null 2>&1; then
@@ -35,9 +72,9 @@ for f in ui_external.py core.py config.py pricing.py adapters/wuhenai_v2.py adap
     fi
 done
 
-# ── 4. UI 日志 ──
+# ── 5. UI 日志 ──
 echo ""
-echo "═══ 4. UI 日志（最近 10 行）═══"
+echo "═══ 5. UI 日志（最近 10 行）═══"
 LOG=$(find /var/folders -name "ai_subtitle_ui.log" -mmin -30 2>/dev/null | head -1)
 if [ -n "$LOG" ]; then
     tail -10 "$LOG" 2>/dev/null | grep -v "^===" || echo "  （空或只有启动行）"
@@ -45,9 +82,9 @@ else
     echo "  （无最近日志）"
 fi
 
-# ── 5. 达芬奇状态 ──
+# ── 6. 达芬奇状态 ──
 echo ""
-echo "═══ 5. 达芬奇状态 ═══"
+echo "═══ 6. 达芬奇状态 ═══"
 python3 -c "
 import sys, os
 os.environ['RESOLVE_SCRIPT_API'] = '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting'
