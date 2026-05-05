@@ -23,14 +23,15 @@ import DaVinciResolveScript as bmd
 from config import (
     DEBUG, get_project_root, get_output_dir, get_log_dir, __version__,
 )
-from watermark_state import init as state_init, is_locked as state_is_locked
+from watermark_state import init as state_init, is_locked as state_is_locked, acquire_lock, release_lock
 import ops_logger
 from core import (
     connect_resolve, scan_io_clips, prepare_tasks,
     estimate_cost, query_balance, post_check, CLIP_COLOR as _CLIP_COLOR,
-    create_wuhenai_adapter, process_single_clip, download_and_apply,
+    create_wuhenai_adapter, download_and_apply,
 )
 from adapters.wuhenai_v2 import wuhenai_set_logger
+from adapters import WatermarkTask
 from logger import UILogger, set_logger, info, warn, fail, ok as log_ok
 
 WIN_ID = "com.myjc.ai_subtitle_ui"
@@ -404,6 +405,7 @@ def scan_io(*_):
         od = pr and get_output_dir(pr) or ""
         cache_hits = 0
         need_secs = 0
+        need_pts = 0
         for c in clips:
             # 帧 → 时控码 时:分:秒:帧
             f = c.start_frame
@@ -422,14 +424,16 @@ def scan_io(*_):
                 cache_hits += 1
             else:
                 need_secs += c.duration
+                need_pts += int(c.duration) + (1 if c.duration % 1 > 0 else 0)  # ceil
 
         # 总结
         from pricing import point_to_yuan
         need = len(clips) - cache_hits
-        pts = max(1, int(need_secs))
+        pts = max(1, need_pts)
         yuan = point_to_yuan(pts)
         avg = max(60, min(120, need_secs / max(1, need) * 3)) if need > 0 else 0
-        total_time = int(need * avg / 60) if need > 0 else 0
+        # 批量并行：同时处理，总时间 ≈ 上传+处理+下载，约 2x素材时长 + 60s 基础开销
+        total_time = max(1, int((need_secs * 2 + 60) / 60)) if need > 0 else 0
         summary = f"扫描结果：当前选区内，共 {len(clips)} 个符合筛选条件的片段"
         if od:
             if cache_hits > 0:
@@ -462,7 +466,7 @@ def _refresh_scan_display():
     pr = _state["project_root"]
     od = pr and get_output_dir(pr) or ""
     fps = _state.get("fps", 25.0)
-    cache_hits = 0; need_secs = 0
+    cache_hits = 0; need_secs = 0; need_pts = 0
 
     itm[LOG_LB].Text = ""
     info("── ① 扫描选区 ──")
@@ -480,9 +484,10 @@ def _refresh_scan_display():
             cache_hits += 1
         else:
             need_secs += c.duration
+            need_pts += int(c.duration) + (1 if c.duration % 1 > 0 else 0)
 
     need = len(clips) - cache_hits
-    pts = max(1, int(need_secs))
+    pts = max(1, need_pts)
     yuan = point_to_yuan(pts)
     summary = f"扫描结果：当前选区内，共 {len(clips)} 个符合筛选条件的片段"
     if cache_hits > 0:
@@ -570,17 +575,31 @@ def process(*_):
 
         # 适配器
         adapter = create_wuhenai_adapter()
-        # 适配器日志：进度走状态栏，其余过滤
+        # 适配器日志：三阶段进度
+        _last_progress = [""]
+        _uploaded = [0]
+        _phase = [""]  # "upload" | "submit" | "poll"
         def _adapter_log(msg: str):
-            if "状态:" in msg:
-                try:
-                    pct = msg.split("进度:")[1].strip() if "进度:" in msg else ""
-                    _st(f"处理中{pct}%" if pct else "排队中...")
-                except: pass
-            elif "任务已提交" in msg:
-                _st(msg.split("] ")[-1] if "] " in msg else msg)
-            elif any(kw in msg for kw in ("任务超时", "取消失败", "网络错误")):
-                info(msg)
+            prefix = "[无痕AI 2.1]"
+            if prefix not in msg:
+                return
+            body = msg.split(f"{prefix} ")[-1] if f"{prefix} " in msg else ""
+            if "上传到 OSS:" in body or "OSS 已存在" in body:
+                _uploaded[0] += 1
+                _phase[0] = "upload"
+            elif "已提交:" in body:
+                if _phase[0] == "upload":
+                    info(f"  📤 上传完成，{_uploaded[0]} 个文件")
+                _phase[0] = "submit"
+            elif "批量完成" in body:
+                pass  # 我们自己会打印耗时
+            elif "进度:" in body:
+                prog = body.split("进度: ")[-1].strip()
+                if prog != _last_progress[0]:
+                    _last_progress[0] = prog
+                    info(f"  ⏳ {prog}")
+            elif any(kw in body for kw in ("任务超时", "取消失败", "网络错误")):
+                info(f"  ⚠ {body}")
         wuhenai_set_logger(_adapter_log)
 
         info("── ② 缓存复用 ──")
@@ -609,7 +628,7 @@ def process(*_):
             itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
             return
 
-        info("── ③ AI处理 ──")
+        info("── ③ AI去字幕中 ──")
 
         # 余额
         from pricing import point_to_yuan, ACTIVE_PROVIDER
@@ -628,33 +647,37 @@ def process(*_):
 
         results = []; total = len(prepared.tasks)
 
-        for idx, t in enumerate(prepared.tasks, 1):
+        # 抢锁
+        locked_tasks = []
+        for t in prepared.tasks:
             if _state["stop"]:
-                warn("⏹ 已停止，不再处理剩余片段")
                 break
-            # 每处理前检查达芬奇是否还活着
-            try:
-                if not bmd.scriptapp('Resolve'):
-                    fail("达芬奇已断开，停止处理")
-                    break
-            except:
-                fail("达芬奇已断开，停止处理")
-                break
-            _st(f"{idx:02d}/{total} {t.name}"); _pg(idx/total)
-            pad = len(str(total))
-            info(f"[{idx:0{pad}d}/{total}] 处理中  {t.name}")
-            result, elapsed = process_single_clip(t, adapter, MODE, cancel_check=lambda: _state["stop"])
-            if result.success:
-                _smb_log(f"  ✅ {t.name} ({elapsed:.0f}s)")
+            if acquire_lock(t.name):
+                locked_tasks.append(t)
             else:
-                msg = getattr(result, 'error_message', '未知错误')
-                if msg == "被锁定":
-                    owner = state_is_locked(t.name) or "其他同事"
-                    warn(f"[{idx:02d}/{total}] {t.name}: {owner} 正在处理中")
-                else:
-                    fail(f"[{idx:02d}/{total}] {t.name}: {msg}")
+                owner = state_is_locked(t.name) or "其他同事"
+                warn(f"  {t.name}: {owner} 正在处理中")
+        if not locked_tasks:
+            info("  所有片段已被锁定或已停止"); return
+
+        # 批量处理
+        info(f"  批量处理 {len(locked_tasks)} 个片段（并行模式）")
+        info(f"  上传并提交中...")
+        api_tasks = [WatermarkTask(**t.kwargs) for t in locked_tasks]
+
+        t_batch = time.time()
+        api_results = adapter.process_batch(api_tasks, timeout=600)
+        elapsed = time.time() - t_batch
+        info(f"  全部完成，耗时 {elapsed:.0f}秒")
+
+        for t, r in zip(locked_tasks, api_results):
+            if r and r.success:
+                _smb_log(f"  ✅ {t.name} ({elapsed:.0f}s batch)")
+            else:
+                msg = getattr(r, 'error_message', '未知错误') if r else '处理失败'
+                release_lock(t.name)
                 _smb_log(f"  ❌ {t.name}: {msg}")
-            results.append((t.mp_item, t.name, t.path, result, elapsed))
+            results.append((t.mp_item, t.name, t.path, r, elapsed / len(locked_tasks)))
 
         # 下载并替换
         info("── ④ 替换回时间线 ──")
@@ -679,6 +702,7 @@ def process(*_):
 
         fail_count = len(results) - ok_count
         _pg(1.0); _st(f"完成 {ok_count}/{len(results)}")
+        info("── ⑤ 最终报告 ──")
         total_done = ok_count + prepared.cache_hits
         msg = f"🎉 处理完成: {total_done} 个处理完成"
         if prepared.cache_hits > 0:
@@ -686,7 +710,6 @@ def process(*_):
         if fail_count > 0:
             msg += f"，{fail_count} 个失败"
         log_ok(msg)
-        info("── ⑤ 最终报告 ──")
         t_elapsed = int(time.time() - t_start)
         pts_after = query_balance()
         pts_used = pts_before - pts_after if pts_before > 0 and pts_after > 0 else 0

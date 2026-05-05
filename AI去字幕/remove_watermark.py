@@ -52,6 +52,26 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
                  scan_only: bool = False, report_json: str = "",
                  batch: bool = False) -> dict:
     """执行完整去字幕流程 (无痕AI 2.1, sel_area ¥0.36/分钟)。"""
+
+    # ── 0. 环境自检 ──
+    from config import WUHENAI_V2_API_KEY, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET
+
+    checks = [
+        ("SMB 挂载", os.path.exists("/Volumes/MYJC")),
+        ("API Key", bool(WUHENAI_V2_API_KEY)),
+        ("OSS 凭证", bool(OSS_ACCESS_KEY_ID and OSS_ACCESS_KEY_SECRET)),
+        ("达芬奇运行", os.path.exists("/Applications/DaVinci Resolve")),
+    ]
+    for name, ok_flag in checks:
+        if not ok_flag:
+            fail(f"环境自检失败: {name} 不可用")
+    if not all(f for _, f in checks):
+        step("💡 请确保: SMB 已挂载 / .env 已配置 / 达芬奇已启动")
+        report = {"error": "环境自检失败", "checks": {n: f for n, f in checks}}
+        _write_report(report, report_json)
+        return report
+    step(f"✅ 环境自检通过 (SMB/API/OSS/DVR)")
+
     mode = mode or DEFAULT_MODE
     report = {
         "version": __version__,
@@ -190,6 +210,8 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     # ── 6. 处理（串行或批量）──
     adapter = create_wuhenai_adapter()
     results = []
+    stop_file = os.path.join(PLUGIN_DIR, ".stop")
+    local_stop = os.path.join("/tmp", f"ai_subtitle.stop.{os.uname().nodename}")
 
     if batch:
         step(f"🚀 批量处理 {len(prepared.tasks)} 个片段 | 并行模式")
@@ -209,8 +231,6 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
             results.append((t.mp_item, t.name, t.path, r, elapsed / len(prepared.tasks)))
     else:
         step(f"🚀 处理 {len(prepared.tasks)} 个片段 | 串行")
-        stop_file = os.path.join(PLUGIN_DIR, ".stop")
-        local_stop = os.path.join("/tmp", f"ai_subtitle.stop.{os.uname().nodename}")
 
         def _check_stop():
             return os.path.exists(stop_file) or os.path.exists(local_stop)
@@ -318,7 +338,29 @@ def main():
                         help="结构化报告输出路径")
     parser.add_argument("--batch", action="store_true",
                         help="批量并行处理（上传全部→一次提交→一起等）")
+    parser.add_argument("--check", action="store_true",
+                        help="仅环境自检 (SMB/API/OSS/DVR)，不处理")
     args = parser.parse_args()
+
+    if args.check:
+        from config import WUHENAI_V2_API_KEY, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET
+        checks = {
+            "SMB 挂载": os.path.exists("/Volumes/MYJC"),
+            "API Key (无痕AI 2.1)": bool(WUHENAI_V2_API_KEY),
+            "OSS 凭证 (阿里云)": bool(OSS_ACCESS_KEY_ID and OSS_ACCESS_KEY_SECRET),
+            "达芬奇运行": os.path.exists("/Applications/DaVinci Resolve"),
+        }
+        title("🔍 环境自检")
+        all_ok = True
+        for name, ok_flag in checks.items():
+            (ok if ok_flag else fail)(f"{name}: {'✅' if ok_flag else '❌'}")
+            if not ok_flag:
+                all_ok = False
+        if all_ok:
+            ok("全部通过 ✅")
+        else:
+            warn("存在问题，请先修复")
+        return
 
     try:
         run_pipeline(

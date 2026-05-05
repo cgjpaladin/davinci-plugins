@@ -22,7 +22,7 @@ import subprocess
 import time
 
 # 全局版本号 — 所有模块引用这一个变量
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 
 # ============================================================
 # .env 加载（优先 SMB 共享，其次个人）
@@ -46,8 +46,9 @@ def _load_dotenv(path: str):
     except Exception:
         pass
 
-# 加载顺序：个人 > SMB（SMB 先加载，个人后覆盖）
+# 加载顺序：本地优先 → SMB 共享 → 个人覆盖（三层兜底，SMB 断了也能跑）
 _load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+_load_dotenv("/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/.env")
 _load_dotenv(os.path.expanduser("~/.watermark.env"))
 
 # ============================================================

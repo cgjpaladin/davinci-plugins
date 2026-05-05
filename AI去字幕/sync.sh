@@ -12,7 +12,6 @@ fi
 
 FILES=(
     "ui_external.py"
-    "ui.py"
     "core.py"
     "remove_watermark.py"
     "config.py"
