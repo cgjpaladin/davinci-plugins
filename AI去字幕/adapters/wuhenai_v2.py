@@ -277,23 +277,26 @@ class WuhenAIV2Adapter(BaseAdapter):
             "method": self.default_method,
         }
 
-        # 如果指定了框选区域
+        # 如果指定了框选区域（sel_area 模式必须传 rect）
         if self.default_method == "sel_area":
             regions = task.mask_regions
-            if regions:
+            vid_w, vid_h = self._get_video_resolution(video_path)
+            if regions and isinstance(regions[0], dict) and "x" in regions[0]:
                 r = regions[0]
-                if isinstance(r, dict) and "x" in r:
-                    # 获取视频真实分辨率
-                    vid_w, vid_h = self._get_video_resolution(video_path)
-                    # 归一化坐标 [0,1] → 像素坐标
-                    body["rect"] = {
-                        "x1": int(r["x"] * vid_w),
-                        "y1": int(r["y"] * vid_h),
-                        "x2": int((r["x"] + r["w"]) * vid_w),
-                        "y2": int((r["y"] + r["h"]) * vid_h),
-                    }
-                    print(f"[无痕AI V2] sel_area 框选: {vid_w}x{vid_h} → "
-                          f"({body['rect']['x1']},{body['rect']['y1']})-({body['rect']['x2']},{body['rect']['y2']})")
+                body["rect"] = {
+                    "x1": int(r["x"] * vid_w),
+                    "y1": int(r["y"] * vid_h),
+                    "x2": int((r["x"] + r["w"]) * vid_w),
+                    "y2": int((r["y"] + r["h"]) * vid_h),
+                }
+            else:
+                # 无指定区域 → 默认底部 35%（Seedance 字幕区域）
+                body["rect"] = {
+                    "x1": 0, "y1": int(vid_h * 0.65),
+                    "x2": vid_w, "y2": vid_h,
+                }
+            print(f"[无痕AI V2] sel_area 框选: {vid_w}x{vid_h} → "
+                  f"({body['rect']['x1']},{body['rect']['y1']})-({body['rect']['x2']},{body['rect']['y2']})")
 
         # Step 4: 提交
         data = self._api_post("video_removal", body)
@@ -345,13 +348,12 @@ class WuhenAIV2Adapter(BaseAdapter):
                     else:
                         output = self._oss_presigned_url(output_key, "GET", 3600)
 
-                    # 清理 OSS 上的临时文件
+                    # 清理 OSS 上的输入文件（输出保留供 pipeline 下载）
                     try:
                         input_key = task_info.get("input_key", "")
                         if input_key:
                             self._oss_delete(input_key)
-                        self._oss_delete(output_key)
-                        print(f"[无痕AI V2] OSS 临时文件已清理")
+                        # 输出不删，OSS 生命周期 1 天自动清理
                     except Exception:
                         pass
 
@@ -475,15 +477,20 @@ class WuhenAIV2Adapter(BaseAdapter):
 
             if self.default_method == "sel_area":
                 regions = task.mask_regions
-                if regions:
+                vid_w, vid_h = self._get_video_resolution(task.video_path)
+                if regions and isinstance(regions[0], dict) and "x" in regions[0]:
                     r = regions[0]
-                    if isinstance(r, dict) and "x" in r:
-                        body["rect"] = {
-                            "x1": int(r["x"] * vid_w),
-                            "y1": int(r["y"] * vid_h),
-                            "x2": int((r["x"] + r["w"]) * vid_w),
-                            "y2": int((r["y"] + r["h"]) * vid_h),
-                        }
+                    body["rect"] = {
+                        "x1": int(r["x"] * vid_w),
+                        "y1": int(r["y"] * vid_h),
+                        "x2": int((r["x"] + r["w"]) * vid_w),
+                        "y2": int((r["y"] + r["h"]) * vid_h),
+                    }
+                else:
+                    body["rect"] = {
+                        "x1": 0, "y1": int(vid_h * 0.65),
+                        "x2": vid_w, "y2": vid_h,
+                    }
 
             data = self._api_post("video_removal", body)
             rec["task_id"] = data["task_id"]
@@ -530,10 +537,9 @@ class WuhenAIV2Adapter(BaseAdapter):
                                 output_path=download_url,
                                 metadata={"status": status, "progress": progress},
                             )
-                        # 清理 OSS
+                        # 清理 OSS 输入（输出保留供 pipeline 下载）
                         try:
                             self._oss_delete(rec["input_key"])
-                            self._oss_delete(rec["output_key"])
                         except Exception:
                             pass
 
