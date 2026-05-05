@@ -1,7 +1,7 @@
 """
 适配器抽象基类 —— API 无关的接口定义。
 
-所有去水印服务商必须实现此接口。
+所有去字幕服务商必须实现此接口。
 换 API = 换一个适配器类，插件主体不动。
 """
 
@@ -22,7 +22,7 @@ class TaskStatus(Enum):
 @dataclass
 class WatermarkTask:
     """
-    去水印任务描述
+    去字幕任务描述
     
     Attributes:
         video_path: 输入视频的本地路径或公网URL
@@ -41,7 +41,7 @@ class WatermarkTask:
 @dataclass
 class WatermarkResult:
     """
-    去水印处理结果
+    去字幕处理结果
     
     Attributes:
         success: 是否成功
@@ -59,7 +59,7 @@ class WatermarkResult:
 
 class BaseAdapter(ABC):
     """
-    去水印适配器抽象基类
+    去字幕适配器抽象基类
     
     所有服务商适配器必须实现 submit() 和 wait_for_result()。
     如果服务商是同步模式，wait_for_result() 可直接返回结果。
@@ -72,7 +72,7 @@ class BaseAdapter(ABC):
     @abstractmethod
     def submit(self, task: WatermarkTask) -> str:
         """
-        提交去水印任务
+        提交去字幕任务
         
         Returns:
             task_id: 服务商返回的任务标识符
@@ -99,7 +99,7 @@ class BaseAdapter(ABC):
         一键处理：提交 → 等待 → 下载
 
         Args:
-            task: 去水印任务描述
+            task: 去字幕任务描述
             timeout: 最大等待时间（秒）
             output_path: 结果下载路径。None 则不下载，返回远程 URL。
         """

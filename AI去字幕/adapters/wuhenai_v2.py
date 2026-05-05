@@ -59,7 +59,7 @@ _TASK_STATUS_MAP = {
 
 
 class WuhenAIV21Adapter(BaseAdapter):
-    """无痕AI 2.1 去水印适配器"""
+    """无痕AI 2.1 适配器"""
 
     BASE_URL = "https://api.wuhenai.com/v2"
     OSS_REGION = "cn-hangzhou"
@@ -246,24 +246,24 @@ class WuhenAIV21Adapter(BaseAdapter):
         filename = os.path.basename(local_path)
         size = os.path.getsize(local_path)
         if self._oss_exists(object_key):
-            _log(f"[去水印] OSS 已存在，跳过上传: {filename}")
+            _log(f"[无痕AI 2.1] OSS 已存在，跳过上传: {filename}")
             return
-        _log(f"[去水印] 上传到 OSS: {filename} ({size/1024/1024:.1f}MB) → {object_key}")
+        _log(f"[无痕AI 2.1] 上传到 OSS: {filename} ({size/1024/1024:.1f}MB) → {object_key}")
         with open(local_path, "rb") as f:
             self._oss_put(object_key, f.read())
-        _log(f"[去水印] OSS 上传完成")
+        _log(f"[无痕AI 2.1] OSS 上传完成")
         # 追踪 OSS 用量
         from pricing import oss_tracker
         oss_tracker.track_upload(size)
 
     def _download_from_oss(self, object_key: str, local_path: str):
         """从 OSS 下载文件"""
-        _log(f"[去水印] 从 OSS 下载: {object_key} → {local_path}")
+        _log(f"[无痕AI 2.1] 从 OSS 下载: {object_key} → {local_path}")
         data = self._oss_get(object_key)
         os.makedirs(os.path.dirname(local_path) or ".", exist_ok=True)
         with open(local_path, "wb") as f:
             f.write(data)
-        _log(f"[去水印] 下载完成: {os.path.getsize(local_path)} bytes")
+        _log(f"[无痕AI 2.1] 下载完成: {os.path.getsize(local_path)} bytes")
         # 追踪 OSS 用量
         from pricing import oss_tracker
         oss_tracker.track_download(len(data))
@@ -329,13 +329,13 @@ class WuhenAIV21Adapter(BaseAdapter):
                     "x1": 0, "y1": int(vid_h * 0.77),
                     "x2": vid_w, "y2": vid_h,
                 }
-            _log(f"[去水印] sel_area 框选: {vid_w}x{vid_h} → "
+            _log(f"[无痕AI 2.1] sel_area 框选: {vid_w}x{vid_h} → "
                   f"({body['rect']['x1']},{body['rect']['y1']})-({body['rect']['x2']},{body['rect']['y2']})")
 
         # Step 4: 提交
         data = self._api_post("video_removal", body)
         task_id = data["task_id"]
-        _log(f"[去水印] 任务已提交: {task_id}")
+        _log(f"[无痕AI 2.1] 任务已提交: {task_id}")
 
         # 保存映射关系（轮询和下载用）
         if not hasattr(self, "_task_map"):
@@ -449,10 +449,10 @@ class WuhenAIV21Adapter(BaseAdapter):
                     last_status = current
                     status_name = _TASK_STATUS_MAP.get(status, status)
                     progress_str = f", 进度: {progress}" if status == "processing" else f", 排队: {progress}个任务"
-                    _log(f"[去水印] 状态: {status_name}{progress_str}")
+                    _log(f"[无痕AI 2.1] 状态: {status_name}{progress_str}")
 
             except (urllib.error.URLError, OSError) as e:
-                _log(f"[去水印] 网络错误: {e}，{poll_interval}秒后重试...")
+                _log(f"[无痕AI 2.1] 网络错误: {e}，{poll_interval}秒后重试...")
 
             time.sleep(poll_interval)
             poll_interval = min(poll_interval * 1.5, 30)
@@ -462,10 +462,10 @@ class WuhenAIV21Adapter(BaseAdapter):
             self._ensure_token()
             data = self._api_get("user/me")
             balance = data.get("balance", 0)
-            _log(f"[去水印] 健康检查通过, 余额: {balance} 积分")
+            _log(f"[无痕AI 2.1] 健康检查通过, 余额: {balance} 积分")
             return True
         except Exception as e:
-            _log(f"[去水印] 健康检查失败: {e}")
+            _log(f"[无痕AI 2.1] 健康检查失败: {e}")
             return False
 
     def check_oss(self) -> bool:
@@ -482,11 +482,11 @@ class WuhenAIV21Adapter(BaseAdapter):
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="replace")
             if "UserDisable" in body:
-                _log(f"[去水印] ⚠ OSS 桶已被禁用（可能欠费），请登录阿里云控制台处理")
+                _log(f"[无痕AI 2.1] ⚠ OSS 桶已被禁用（可能欠费），请登录阿里云控制台处理")
                 return False
             return True  # 其他 HTTP 错误可能只是权限问题
         except Exception as e:
-            _log(f"[去水印] ⚠ OSS 连接失败: {e}")
+            _log(f"[无痕AI 2.1] ⚠ OSS 连接失败: {e}")
             return False
 
     # ── 批量处理 ──────────────────────────────────────────────
@@ -502,7 +502,7 @@ class WuhenAIV21Adapter(BaseAdapter):
             与 tasks 顺序对应的结果列表
         """
         n = len(tasks)
-        _log(f"[去水印] 批量处理 {n} 个片段")
+        _log(f"[无痕AI 2.1] 批量处理 {n} 个片段")
 
         # ── Phase 1: 上传所有 → OSS ──
         records = []  # [{input_key, output_key, video_path, output_path, task_id?, result?}]
@@ -569,7 +569,7 @@ class WuhenAIV21Adapter(BaseAdapter):
 
             data = self._api_post("video_removal", body)
             rec["task_id"] = data["task_id"]
-            _log(f"[去水印] [{i+1}/{n}] 已提交: {rec['task_id']}")
+            _log(f"[无痕AI 2.1] [{i+1}/{n}] 已提交: {rec['task_id']}")
 
         # ── Phase 3: 一起轮询 ──
         pending = [r for r in records if r["result"] is None]
@@ -632,7 +632,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                         # 只在状态变化时打印（避免刷屏）
                         last_status = rec.get("_last_status", "")
                         if status != last_status or (status == "processing" and progress % 20 < 5):
-                            _log(f"[去水印] {rec['task_id'][-8:]}: {status_name}{progress_str}")
+                            _log(f"[无痕AI 2.1] {rec['task_id'][-8:]}: {status_name}{progress_str}")
                             rec["_last_status"] = status
 
                 except (urllib.error.URLError, OSError) as e:
@@ -641,7 +641,7 @@ class WuhenAIV21Adapter(BaseAdapter):
             pending = still_pending
             if pending:
                 done = n - len(pending)
-                _log(f"[去水印] 进度: {done}/{n} 完成, {len(pending)} 处理中")
+                _log(f"[无痕AI 2.1] 进度: {done}/{n} 完成, {len(pending)} 处理中")
                 time.sleep(poll_interval)
                 poll_interval = min(poll_interval * 1.5, 30)
 
@@ -649,7 +649,7 @@ class WuhenAIV21Adapter(BaseAdapter):
         results = [rec["result"] for rec in records]
         success_count = sum(1 for r in results if r.success)
         total_elapsed = time.time() - start_time
-        _log(f"[去水印] 批量完成: {success_count}/{n} 成功, 总耗时 {total_elapsed:.0f}s")
+        _log(f"[无痕AI 2.1] 批量完成: {success_count}/{n} 成功, 总耗时 {total_elapsed:.0f}s")
         return results
 
     def get_balance(self) -> dict:
@@ -663,8 +663,8 @@ class WuhenAIV21Adapter(BaseAdapter):
         self._ensure_token()
         try:
             self._api_post("cancel", {"task_id": task_id})
-            _log(f"[去水印] 任务已取消: {task_id}")
+            _log(f"[无痕AI 2.1] 任务已取消: {task_id}")
             return True
         except RuntimeError as e:
-            _log(f"[去水印] 取消失败: {task_id} — {e}")
+            _log(f"[无痕AI 2.1] 取消失败: {task_id} — {e}")
             return False

@@ -4,7 +4,7 @@
 设计原则：
 - JSONL 格式：每行一个 JSON 对象，AI 直接解析
 - 线程安全：threading.Lock 保护并发写入
-- 项目级：日志跟项目走，{项目}/04_素材/03_去水印/.ops_logs/
+- 项目级：日志跟项目走，{项目}/04_素材/03_去字幕/.ops_logs/
 - 按 IP 地址 + 日期分文件，20 台机器互不冲突
 - 隐藏文件：macOS chflags hidden
 - 零依赖：仅 Python 标准库

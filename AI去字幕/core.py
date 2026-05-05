@@ -320,6 +320,7 @@ def prepare_tasks(
     mode: str,
     output_dir: str,
     force: bool = False,
+    stop_check=None,
 ) -> PreparedTasks:
     """
     任务准备流水线：
@@ -354,6 +355,8 @@ def prepare_tasks(
 
     if not force:
         for c in valid_clips:
+            if stop_check and stop_check():
+                break  # 用户点了停止
             cached = find_cached_output(c.file_name, output_dir, mode)
             if cached:
                 if c.mp_item.ReplaceClipPreserveSubClip(cached):

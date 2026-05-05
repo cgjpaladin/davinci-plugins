@@ -28,7 +28,7 @@ _SSL_CTX = ssl.create_default_context()
 
 
 class GhostCutAdapter(BaseAdapter):
-    """鬼手剪辑去水印适配器"""
+    """鬼手剪辑去字幕适配器"""
 
     BASE_URL = "https://api.zhaoli.com"
     CREATE_TASK = "/v-w-c/gateway/ve/work/free"

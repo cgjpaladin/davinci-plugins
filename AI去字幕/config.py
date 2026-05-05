@@ -9,7 +9,7 @@
   2. ~/.watermark.env           — 个人覆盖
 
 路径架构（生产模式）：
-  {项目根}/04_素材/03_去水印/
+  {项目根}/04_素材/03_去字幕/
   ├── EP01/
   │   └── EP01_g1_01_v01_clean_ghostcut_probox_box_v01.mp4
   ├── .watermark_state.json       # 片段状态
@@ -22,7 +22,7 @@ import subprocess
 import time
 
 # 全局版本号 — 所有模块引用这一个变量
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 # ============================================================
 # .env 加载（优先 SMB 共享，其次个人）
@@ -110,7 +110,7 @@ SMB_MOUNT = "/Volumes/MYJC"
 # ============================================================
 # 调试模式固定路径（仅 WATERMARK_DEBUG=1 时使用）
 # ============================================================
-DEBUG_MEDIA_DIR = os.path.join(SMB_MOUNT, "09_Engineering", "达芬奇去水印测试")
+DEBUG_MEDIA_DIR = os.path.join(SMB_MOUNT, "09_Engineering", "达芬奇AI测试")
 DEBUG_SOURCE_DIR = os.path.join(DEBUG_MEDIA_DIR, "01_素材")
 DEBUG_OUTPUT_DIR = os.path.join(DEBUG_MEDIA_DIR, "02_结果")
 
@@ -158,8 +158,8 @@ def get_project_root(clip_path: str = None) -> str:
 
 def get_output_dir(project_root: str = None, ep: str = None) -> str:
     """
-    获取去水印输出目录。
-    生产: {项目根}/04_素材/03_去水印/EP{XX}/
+    获取去字幕输出目录。
+    生产: {项目根}/04_素材/03_去字幕/EP{XX}/
     调试: {DEBUG_OUTPUT_DIR}/
     """
     if DEBUG:
@@ -177,12 +177,12 @@ def get_output_dir(project_root: str = None, ep: str = None) -> str:
 
 
 def get_state_dir(project_root: str = None) -> str:
-    """状态文件和锁文件所在目录：{项目根}/04_素材/03_去水印/"""
+    """状态文件和锁文件所在目录：{项目根}/04_素材/03_去字幕/"""
     return get_output_dir(project_root)
 
 
 def get_log_dir(project_root: str = None) -> str:
-    """操作日志目录：{项目根}/04_素材/03_去水印/.ops_logs/"""
+    """操作日志目录：{项目根}/04_素材/03_去字幕/.ops_logs/"""
     out = get_output_dir(project_root)
     d = os.path.join(out, ".ops_logs")
     os.makedirs(d, exist_ok=True)
@@ -191,7 +191,7 @@ def get_log_dir(project_root: str = None) -> str:
 
 
 def get_lock_dir(project_root: str = None) -> str:
-    """并发锁目录：{项目根}/04_素材/03_去水印/.locks/"""
+    """并发锁目录：{项目根}/04_素材/03_去字幕/.locks/"""
     out = get_output_dir(project_root)
     d = os.path.join(out, ".locks")
     os.makedirs(d, exist_ok=True)

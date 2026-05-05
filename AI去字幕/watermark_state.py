@@ -1,8 +1,8 @@
 """
-watermark_state.py — 项目级去水印状态管理 + 并发锁
+watermark_state.py — 项目级去字幕状态管理 + 并发锁
 
 路径:
-  生产: {项目}/04_素材/03_去水印/.watermark_state.json
+  生产: {项目}/04_素材/03_去字幕/.watermark_state.json
   调试: {DEBUG_OUTPUT_DIR}/.watermark_state.json
 
 三层路径替换策略：

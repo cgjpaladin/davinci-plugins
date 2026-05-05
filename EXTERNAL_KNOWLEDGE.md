@@ -46,9 +46,8 @@
 
 | 项目 | 值 |
 |------|-----|
-| 官方文档 | **飞书 Wiki** `https://suiyu-network.feishu.cn/wiki/WUvXwI5vziT24qkAVdDcxTzLnef` |
+| 官方文档（唯一来源） | **飞书 Wiki** `https://suiyu-network.feishu.cn/wiki/WUvXwI5vziT24qkAVdDcxTzLnef` |
 | 怎么读 | `lark-cli docs +fetch --doc WUvXwI5vziT24qkAVdDcxTzLnef --as bot` |
-| 本地备份 | `AI去字幕/外部调研报告/wuhenapi_2_1.md` |
 | Base URL | `https://api.wuhenai.com/v2/` |
 | 代码 | `AI去字幕/adapters/wuhenai_v2.py` |
 | 定价（来源：飞书文档计费表） | video_removal_std + sel_area = 1积分/秒 |
@@ -150,6 +149,5 @@
 
 1. **查规则先翻这个文件** — 找到对应供应商的行，按「怎么读」方式获取最新文档
 2. **飞书文档用 lark-cli** — 不要 WebFetch，lark-cli 更快且带认证
-3. **本地有备份的优先读备份** — 无痕AI 的 `wuhenapi_2_1.md` 是上次同步的快照
-4. **不确定的标注「需验证」** — 不要拿记忆里的东西当成权威
-5. **新接入供应商** — 第一件事是把它的文档来源注册进这个表
+3. **不确定的标注「需验证」** — 不要拿记忆里的东西当成权威
+4. **新接入供应商** — 第一件事是把它的文档来源注册进这个表

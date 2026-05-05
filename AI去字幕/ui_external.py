@@ -46,6 +46,7 @@ _state = {"processing": False, "stop": False, "project_root": "", "clips": [], "
 BAL_LB = "bal_lb"
 OSS_LB = "oss_lb"
 PROJ_LB = "proj_lb"
+PATH_LB = "path_lb"
 BTN_SCAN, BTN_START, BTN_STOP = "btn_scan", "btn_start", "btn_stop"
 BTN_PICK = "btn_pick"
 COLOR_CB = "color_cb"
@@ -88,6 +89,13 @@ BTN_PRIMARY = (
     "QPushButton:pressed{background-color:rgb(40,100,200)}"
     "QPushButton:disabled{color:rgb(100,100,100);background-color:rgb(40,40,40);border-color:rgb(60,60,60)}"
 )
+BTN_DANGER = (
+    "QPushButton{max-height:28px;background-color:rgb(200,50,50);color:rgb(255,255,255);"
+    "border:1px solid rgb(220,70,70);border-radius:4px;padding:4px 12px;font-weight:bold}"
+    "QPushButton:hover{background-color:rgb(220,65,65)}"
+    "QPushButton:pressed{background-color:rgb(160,40,40)}"
+    "QPushButton:disabled{color:rgb(100,100,100);background-color:rgb(40,40,40);border-color:rgb(60,60,60)}"
+)
 LABEL_DIM = "color:rgb(170,170,170);font-size:12px"
 LABEL_VAL = "color:rgb(220,220,220);font-size:12px"
 
@@ -97,28 +105,28 @@ window_layout = [
 
         # 上半区：固定高度
         ui.VGroup({"Spacing": 4, "Weight": 0}, [
-            ui.HGroup({"Spacing": 8}, [
+            # Row 1: 项目路径 + 余额
+            ui.HGroup({"Spacing": 8, "Weight": 0}, [
                 ui.Button({"ID": BTN_PICK, "Text": "选择项目路径", "StyleSheet": BTN_STYLE, "Weight": 0}),
-                ui.VGroup({"Spacing": 2, "Weight": 1}, [
+                ui.Label({"ID": PATH_LB, "Text": "未指定项目路径",
+                          "StyleSheet": "color:rgb(180,180,180);font-size:11px", "Weight": 1}),
+                ui.VGroup({"Spacing": 2, "Weight": 0}, [
                     ui.Label({"ID": BAL_LB, "Text": "查询中...",
-                              "StyleSheet": "color:rgb(220,220,220);font-size:11px;qproperty-alignment:AlignRight"}),
+                              "StyleSheet": "color:rgb(220,220,220);font-size:11px;min-width:180px;qproperty-alignment:AlignRight"}),
                     ui.Label({"ID": OSS_LB, "Text": "查询中...",
-                              "StyleSheet": "color:rgb(200,200,200);font-size:11px;qproperty-alignment:AlignRight"}),
+                              "StyleSheet": "color:rgb(200,200,200);font-size:11px;min-width:180px;qproperty-alignment:AlignRight"}),
                 ]),
             ]),
-            ui.Label({"ID": "warn_lb", "Text": "⚠ 请勿删除待处理片段或切换项目",
-                      "StyleSheet": "color:rgb(255,80,80);font-size:12px;font-weight:bold"}),
-            ui.Label({"ID": PROJ_LB, "Text": "请先选择项目路径",
-                      "StyleSheet": "color:rgb(180,180,180);font-size:11px"}),
+            # Row 2: 筛选 + 扫描 + 处理
             ui.HGroup({"Spacing": 8, "Weight": 0}, [
-                ui.Label({"Text": "筛选条件", "StyleSheet": "color:rgb(150,150,150);font-size:12px", "Weight": 0}),
+                ui.Label({"Text": "筛选", "StyleSheet": "color:rgb(150,150,150);font-size:12px", "Weight": 0}),
                 ui.Label({"ID": "color_dot", "Text": "●",
                           "StyleSheet": "color:rgb(235,110,0);font-size:14px;"
                           "qproperty-alignment:AlignCenter", "Weight": 0}),
                 ui.ComboBox({"ID": COLOR_CB, "Weight": 0}),
                 ui.Button({"ID": BTN_SCAN, "Text": "扫描当前选区", "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Button({"ID": BTN_START, "Text": "开始处理", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
-                ui.Button({"ID": BTN_STOP, "Text": "停止", "StyleSheet": BTN_STYLE, "Weight": 0}),
+                ui.Button({"ID": BTN_STOP, "Text": "停止", "StyleSheet": BTN_DANGER, "Weight": 0}),
             ]),
         ]),
 
@@ -129,18 +137,16 @@ window_layout = [
                                    "padding:6px;min-height:100px",
                      "TextInteractionFlags": 13, "Weight": 1}),
 
-        # 下半区：固定高度
-        ui.VGroup({"Spacing": 2, "Weight": 0}, [
-            ui.Stack({"ID": "pg_set"}, [
-                ui.Label({"ID": PG_BG, "StyleSheet": "max-height:3px;background-color:rgb(37,37,37)"}),
-                ui.Label({"ID": PG_BAR, "StyleSheet": "max-height:3px;background-color:rgb(50,120,220)"}),
-            ]),
-            ui.HGroup({"Spacing": 0}, [
-                ui.Label({"ID": ST_LB, "Text": "就绪 — 请设置 IO 入出点后点击扫描",
-                          "StyleSheet": "color:rgb(150,150,150);font-size:11px", "Weight": 0}),
+        # 下半区：状态信息
+        ui.VGroup({"ID": "bottom_bar", "Spacing": 2, "Weight": 0}, [
+            ui.HGroup({"Spacing": 8}, [
+                ui.Label({"ID": PROJ_LB, "Text": "① 请先选择项目路径",
+                          "StyleSheet": "color:rgb(200,200,200);font-size:13px", "Weight": 2}),
+                ui.Label({"ID": "warn_lb", "Text": "⚠ 请勿删除待处理片段或切换项目",
+                          "StyleSheet": "color:rgb(255,80,80);font-size:12px;font-weight:bold", "Weight": 0}),
                 ui.Label({"Text": " ", "Weight": 1}),
-                ui.Label({"Text": f"达芬奇插件工坊 ✂️ | v{__version__}",
-                          "StyleSheet": "color:rgb(120,120,120);font-size:10px", "Weight": 0}),
+                ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | v{__version__}",
+                          "StyleSheet": "color:rgb(100,100,100);font-size:10px", "Weight": 0}),
             ]),
         ]),
     ]),
@@ -149,15 +155,18 @@ window_layout = [
 dlg = disp.AddWindow({
     "WindowTitle": f"AI 去字幕",
     "ID": WIN_ID,
-    "Geometry": [800, 100, 480, 560],
+    "Geometry": [800, 100, 700, 560],
     "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
 }, window_layout)
 
 itm = dlg.GetItems()
 
-# 初始状态
-itm[PG_BAR].Visible = False
+# 初始状态 — 未选项目路径前，筛选和扫描不可用
+itm[COLOR_CB].Enabled = False
+itm[BTN_SCAN].Enabled = False
 itm[BTN_START].Enabled = False
+itm[BTN_STOP].Enabled = False
+itm["warn_lb"].Visible = False
 itm[BTN_STOP].Enabled = False
 itm["warn_lb"].Visible = False
 
@@ -178,6 +187,9 @@ def _on_color_change(ev):
         _SELECTED_COLOR, _, (r, g, b) = _CLIP_COLORS[idx]
         itm["color_dot"].StyleSheet = (
             f"color:rgb({r},{g},{b});font-size:14px;qproperty-alignment:AlignCenter")
+        # 已选项目路径时，自动重扫
+        if _state["project_root"]:
+            scan_io()
 dlg.On[COLOR_CB].CurrentIndexChanged = _on_color_change
 
 # ── 线程安全的日志队列 ──
@@ -256,10 +268,8 @@ _ui_lock = threading.Lock()
 _ui_pending = {"status": "", "balance": "", "progress": 0.0, "btn_scan": None, "btn_start": None, "btn_pick": None, "btn_stop": None, "warn": None}
 
 def _st(t):
-    """设置状态文本（主线程直写 + 文件记录）"""
-    try: itm[ST_LB].Text = t
-    except: pass
-    with _ui_lock: _ui_pending["status"] = t
+    """设置状态文本（状态栏已隐藏，仅写日志）"""
+    pass
     _log_file(f"[状态] {t}")
 
 def _log_file(msg: str):
@@ -281,13 +291,8 @@ def _bal(t):
     except: pass
     with _ui_lock: _ui_pending["balance"] = t
 def _pg(r):
-    try:
-        itm[PG_BAR].Visible = r > 0
-        if r > 0:
-            bw = itm[PG_BG].GetGeometry() or [0,0,0,3]
-            itm[PG_BAR].Resize([max(1, int(bw[3] * r)), 3])
-    except: pass
-    with _ui_lock: _ui_pending["progress"] = r
+    """进度条（已隐藏）"""
+    pass
 def _set_btn(scan=None, start=None, pick=None, stop=None, warn=None):
     """设置按钮状态（主线程直写 + 子线程挂起）"""
     try:
@@ -313,14 +318,7 @@ def _apply_ui_state():
             bs = _ui_pending["btn_scan"]; b1 = _ui_pending["btn_start"]
             bp = _ui_pending["btn_pick"]; b2 = _ui_pending["btn_stop"]
             wl = _ui_pending["warn"]
-        if st: itm[ST_LB].Text = st
         if bal: itm[BAL_LB].Text = bal
-        if pg > 0:
-            itm[PG_BAR].Visible = True
-            bw = itm[PG_BG].GetGeometry() or [0,0,0,3]
-            itm[PG_BAR].Resize([max(1, int(bw[3] * pg)), 3])
-        elif pg == 0:
-            itm[PG_BAR].Visible = False
         if bs is not None: itm[BTN_SCAN].Enabled = bs
         if b1 is not None: itm[BTN_START].Enabled = b1
         if bp is not None: itm[BTN_PICK].Enabled = bp
@@ -330,11 +328,11 @@ def _apply_ui_state():
 
 def _set_proj(path):
     try:
-        label = path if path else "请选择项目文件夹"
+        label = path if path else "未指定项目路径"
         # 太长截断显示
-        if len(label) > 60:
-            label = "..." + label[-57:]
-        itm[PROJ_LB].Text = label
+        if len(label) > 80:
+            label = "..." + label[-77:]
+        itm[PATH_LB].Text = label
     except: pass
 
 def pick_project(*_):
@@ -351,7 +349,14 @@ def pick_project(*_):
             _state["project_root"] = path
             _set_proj(path)
             state_init(path)
+            # 解锁筛选和扫描
+            itm[COLOR_CB].Enabled = True
+            itm[BTN_SCAN].Enabled = True
             itm[BTN_START].Enabled = _state["clips_scanned"] and bool(_state["project_root"])
+            # 更新左下角引导
+            itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区" if not _state["clips_scanned"] else "③ 请点击开始处理"
+            if _state["clips_scanned"]:
+                _refresh_scan_display()  # 重新查缓存，🟠→🟢
         elif path:
             warn("所选路径不存在")
     except Exception as e:
@@ -376,6 +381,7 @@ def scan_io(*_):
             info("IO 内无符合筛选的片段"); _st("无有效片段"); return
 
         _state["clips"] = clips
+        _state["scanned_count"] = report.valid
 
         info("── ① 扫描选区 ──")
 
@@ -383,10 +389,14 @@ def scan_io(*_):
         io = timeline.GetMarkInOut()
         io_in = io.get("video", {}).get("in", 0) if io else 0
         io_out = io.get("video", {}).get("out", 0) if io else 0
+        _state["io_in"] = io_in
+        _state["io_out"] = io_out
+        _state["timeline_name"] = timeline.GetName()
 
         # 时间线帧率 → 帧号转分:秒
         fps_str = project.GetSetting("timelineFrameRate")
         fps = float(fps_str) if fps_str else 25.0
+        _state["fps"] = fps
 
         # 逐片段显示 + 缓存检测
         from core import find_cached_output
@@ -403,8 +413,10 @@ def scan_io(*_):
             rem_f = int(f - total_sec * fps)
             pos_str = f"{h:02d}:{m2:02d}:{s:02d}:{rem_f:02d}"
             is_cached = od and find_cached_output(c.file_name, od)
-            label = "可复用" if is_cached else "需处理"
-            emoji = "🟢" if is_cached else "🟡"
+            if not od:
+                label, emoji = "未知", "🟠"  # 无项目路径，无法查缓存
+            else:
+                label, emoji = ("可复用", "🟢") if is_cached else ("需处理", "🟡")
             info(f"  {emoji} {c.name}	位置：{pos_str}	长度：{c.duration:.0f}秒	{label}")
             if is_cached:
                 cache_hits += 1
@@ -419,22 +431,68 @@ def scan_io(*_):
         avg = max(60, min(120, need_secs / max(1, need) * 3)) if need > 0 else 0
         total_time = int(need * avg / 60) if need > 0 else 0
         summary = f"扫描结果：当前选区内，共 {len(clips)} 个符合筛选条件的片段"
-        if cache_hits > 0:
-            summary += f"（其中 {cache_hits} 个可复用）"
-        summary += f"  |  {need} 个待处理"
+        if od:
+            if cache_hits > 0:
+                summary += f"（其中 {cache_hits} 个可复用）"
+            summary += f"  |  {need} 个待处理"
+        else:
+            summary += "  |  请先选择项目路径以启用缓存复用"
         info(summary)
         ops_logger.cost_estimate(pts, yuan, total_time, need, cache_hits)
-        if need > 0:
+        if need > 0 and od:
             info(f"预估: ≤¥{yuan} (≤{pts} 积分) | 约 {total_time} 分钟")
 
         _state["clips_scanned"] = True
         itm[BTN_START].Enabled = bool(_state["project_root"])
+        if _state["project_root"]:
+            itm[PROJ_LB].Text = "③ 请点击开始处理"
         _st(f"待处理: {report.valid} 个片段")
         _smb_log(f"扫描 — 项目: {project.GetName()} 时间线: {timeline.GetName()} IO={io_in}→{io_out} 内{report.valid}片段 需处理{need} 预估¥{yuan}")
         refresh_bal()
     except Exception as e:
         fail(f"扫描失败: {e}")
         _smb_log(f"扫描失败: {e}")
+
+def _refresh_scan_display():
+    """选完项目路径后，刷新已扫描片段的缓存状态（🟠→🟢/🟡）"""
+    clips = _state.get("clips", [])
+    if not clips:
+        return
+    from pricing import point_to_yuan
+    pr = _state["project_root"]
+    od = pr and get_output_dir(pr) or ""
+    fps = _state.get("fps", 25.0)
+    cache_hits = 0; need_secs = 0
+
+    itm[LOG_LB].Text = ""
+    info("── ① 扫描选区 ──")
+    for c in clips:
+        f = c.start_frame
+        total_sec = int(f / fps)
+        h, m = divmod(total_sec, 3600)
+        m2, s = divmod(m, 60)
+        rem_f = int(f - total_sec * fps)
+        pos_str = f"{h:02d}:{m2:02d}:{s:02d}:{rem_f:02d}"
+        is_cached = od and find_cached_output(c.file_name, od)
+        label, emoji = ("可复用", "🟢") if is_cached else ("需处理", "🟡")
+        info(f"  {emoji} {c.name}	位置：{pos_str}	长度：{c.duration:.0f}秒	{label}")
+        if is_cached:
+            cache_hits += 1
+        else:
+            need_secs += c.duration
+
+    need = len(clips) - cache_hits
+    pts = max(1, int(need_secs))
+    yuan = point_to_yuan(pts)
+    summary = f"扫描结果：当前选区内，共 {len(clips)} 个符合筛选条件的片段"
+    if cache_hits > 0:
+        summary += f"（其中 {cache_hits} 个可复用）"
+    summary += f"  |  {need} 个待处理"
+    info(summary)
+    if need > 0:
+        avg = max(60, min(120, need_secs / max(1, need) * 3))
+        total_time = int(need * avg / 60)
+        info(f"预估: ≤¥{yuan} (≤{pts} 积分) | 约 {total_time} 分钟")
         _st("就绪")
 
 
@@ -443,7 +501,7 @@ def refresh_bal():
     pts = query_balance()
     if pts > 0:
         from pricing import point_to_yuan, ACTIVE_PROVIDER
-        name = "去字幕" if "wuhenai" in ACTIVE_PROVIDER else ACTIVE_PROVIDER
+        name = "无痕AI 2.1" if "wuhenai" in ACTIVE_PROVIDER else ACTIVE_PROVIDER
         _bal(f"{name} | ¥{point_to_yuan(pts):.2f}")
     else:
         _bal("余额: 查询失败")
@@ -508,7 +566,7 @@ def process(*_):
         ops_logger.clip_scan(len(clips), 0, [c.name for c in clips])
 
         # 任务准备
-        prepared = prepare_tasks(clips, MODE, od, force=False)
+        prepared = prepare_tasks(clips, MODE, od, force=False, stop_check=lambda: _state["stop"])
 
         # 适配器
         adapter = create_wuhenai_adapter()
@@ -526,6 +584,10 @@ def process(*_):
         wuhenai_set_logger(_adapter_log)
 
         info("── ② 缓存复用 ──")
+        # 检查是否被停止中断
+        if _state["stop"]:
+            info("  ⏹ 已停止")
+            return
         if prepared.cache_hits:
             info(f"📦 缓存命中 {prepared.cache_hits} 个，直接替换")
             for cn in prepared.cache_hit_names:
@@ -533,13 +595,25 @@ def process(*_):
         else:
             info("  无可复用缓存")
         if not prepared.tasks:
-            log_ok("全部完成！" if prepared.cache_hits else "没有有效任务"); return
+            if prepared.cache_hits:
+                info("── ⑤ 最终报告 ──")
+                log_ok("🎉 全部完成！")
+                t_elapsed = int(time.time() - t_start)
+                mins, secs = divmod(t_elapsed, 60)
+                info(f"  耗时 {mins}分{secs}秒  ·  ¥0  ·  余额 ¥{point_to_yuan(pts_before):.2f}")
+            else:
+                log_ok("没有有效任务")
+            _set_btn(scan=True, pick=True, stop=False, warn=False)
+            itm[COLOR_CB].Enabled = True
+            itm[BTN_START].Enabled = False
+            itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
+            return
 
         info("── ③ AI处理 ──")
 
         # 余额
         from pricing import point_to_yuan, ACTIVE_PROVIDER
-        name = "去字幕" if "wuhenai" in ACTIVE_PROVIDER else ACTIVE_PROVIDER
+        name = "无痕AI 2.1" if "wuhenai" in ACTIVE_PROVIDER else ACTIVE_PROVIDER
         _, total_est, _, yuan = estimate_cost(prepared.tasks, MODE)
         info(f"待处理 {len(prepared.tasks)} 个片段  预估 ¥{yuan}  ({total_est} 积分)")
         _smb_log(f"处理开始 — {project.GetName()}/{timeline.GetName()} 待处理{len(prepared.tasks)}片段 预估¥{yuan}")
@@ -628,7 +702,10 @@ def process(*_):
         traceback.print_exc()
     finally:
         _state["stop"] = False
-        _set_btn(scan=True, pick=True, stop=False)
+        itm[COLOR_CB].Enabled = True
+        _set_btn(scan=True, pick=True, stop=False, warn=False)
+        itm[BTN_START].Enabled = False
+        itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
         _pg(0.0)
 
 
@@ -656,7 +733,33 @@ def start_process(*_):
         warn("请先扫描 IO")
         return
 
+    # 校验 IO 和时间线是否变动
+    try:
+        _, _, timeline = connect_resolve()
+        io = timeline.GetMarkInOut()
+        cur_in = io.get("video", {}).get("in", 0) if io else 0
+        cur_out = io.get("video", {}).get("out", 0) if io else 0
+        if (cur_in != _state.get("io_in") or cur_out != _state.get("io_out")
+                or timeline.GetName() != _state.get("timeline_name")):
+            warn("IO 或时间线已变更，请重新扫描当前选区")
+            return
+        # 校验片段数量（防用户删了/加了片段）
+        from core import scan_io_clips
+        clips_now, report_now = scan_io_clips(timeline, _SELECTED_COLOR)
+        if clips_now is None:
+            warn("IO 入出点丢失，请重新设置并扫描")
+            return
+        if len(clips_now) != _state.get("scanned_count", 0):
+            warn(f"片段已变更（{_state.get('scanned_count',0)}→{len(clips_now)}），请重新扫描当前选区")
+            return
+    except:
+        pass  # 校验失败不阻塞（达芬奇可能未响应）
+
     _state["processing"] = True  # 主线程立即锁定，防重入
+    itm[COLOR_CB].Enabled = False
+    itm[BTN_SCAN].Enabled = False
+    itm[BTN_PICK].Enabled = False
+    itm[PROJ_LB].Text = "处理中，请勿操作..."
 
     thr = threading.Thread(target=process, daemon=True)
     thr.start()

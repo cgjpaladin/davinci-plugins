@@ -1,5 +1,5 @@
 """
-pricing.py — 去水印计费模块
+pricing.py — 去字幕计费模块
 
 所有供应商定价集中管理，换 API = 改一行 ACTIVE_PROVIDER。
 上游代码只调 estimate_cost() / point_to_yuan()，不关心底层计费模型。
