@@ -63,7 +63,6 @@ GHOSTCUT_APP_KEY = os.environ.get("GHOSTCUT_APP_KEY", "")
 GHOSTCUT_APP_SECRET = os.environ.get("GHOSTCUT_APP_SECRET", "")
 
 WUHENAI_API_KEY = os.environ.get("WUHENAI_API_KEY", "")
-CLIPFLOW_API_KEY = os.environ.get("CLIPFLOW_API_KEY", WUHENAI_API_KEY)
 WUHENAI_V2_API_KEY = os.environ.get("WUHENAI_V2_API_KEY", "")
 
 OSS_ACCESS_KEY_ID = os.environ.get("OSS_ACCESS_KEY_ID", "")
@@ -255,11 +254,6 @@ ADAPTER_CONFIGS = {
         "app_key": GHOSTCUT_APP_KEY,
         "app_secret": GHOSTCUT_APP_SECRET,
         "model": DEFAULT_MODE,
-    },
-    "clipflow": {
-        "enabled": False,
-        "api_key": CLIPFLOW_API_KEY,
-        "algorithm": 1,  # 1=无痕模式, 0=极速模式
     },
     "wuhenai_v2": {
         "enabled": True,
