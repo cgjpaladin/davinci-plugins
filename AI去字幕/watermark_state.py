@@ -115,18 +115,20 @@ def acquire_lock(clip_name: str) -> bool:
     尝试获取片段的处理锁。
     SMB 上 os.mkdir() 是原子操作。
     如果锁已过期（>10分钟），自动抢占。
-    Returns: True=抢到锁, False=别人正在处理
+    Returns: True=抢到锁, "reclaimed"=过期锁被回收, False=别人正在处理
     """
     lock_path = _safe_lock_path(clip_name)
     if not lock_path:
         return True  # 无锁目录 = 不需要锁
 
     # 如果锁存在但已过期 → 删除旧锁，重新抢
+    reclaimed = False
     if os.path.isdir(lock_path):
         try:
             mtime = os.path.getmtime(lock_path)
             if time.time() - mtime > _LOCK_TTL:
                 os.rmdir(lock_path)
+                reclaimed = True
         except OSError:
             return False  # 删不掉 = 别人正在用
 
@@ -138,7 +140,7 @@ def acquire_lock(clip_name: str) -> bool:
                 json.dump({"ip": _HOST_IP, "user": _HOST_NICK, "time": time.strftime("%Y-%m-%d %H:%M:%S")}, f)
         except OSError:
             pass
-        return True
+        return "reclaimed" if reclaimed else True
     except FileExistsError:
         return False
 

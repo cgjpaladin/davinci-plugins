@@ -197,6 +197,15 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         warn("余额查询失败，跳过保护")
 
     # ── 干跑 / 仅扫描 → 到此为止 ──
+    # 时长过滤（>30s 提示并跳过）
+    valid_tasks = []
+    for t in prepared.tasks:
+        if t.duration > 30:
+            warn(f"  ⚠ {t.name}: 时长 {t.duration:.0f}秒，超过30秒限制，跳过")
+            continue
+        valid_tasks.append(t)
+    prepared.tasks[:] = valid_tasks  # 原地替换
+
     if dry_run or scan_only:
         tag = "🔍 仅扫描" if scan_only else "🔍 Dry-run"
         step(f"{tag} — 共 {len(prepared.tasks)} 个片段，未调 API")

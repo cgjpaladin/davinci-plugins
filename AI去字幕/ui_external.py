@@ -609,6 +609,11 @@ def process(*_):
             return
         if prepared.cache_hits:
             info(f"📦 缓存命中 {prepared.cache_hits} 个，直接替换")
+            # 缓存省钱
+            cache_saved = prepared.cache_hits * 15 * 0.0091  # 15秒×¥0.0091/积分
+            if cache_saved > 0.5:
+                info(f"  💰 省了约 ¥{cache_saved:.2f}")
+                _smb_log(f"缓存省钱: ¥{cache_saved:.2f} ({prepared.cache_hits}片段)")
             for cn in prepared.cache_hit_names:
                 log_ok(f"  {cn}")
         else:
@@ -641,24 +646,75 @@ def process(*_):
             pts = bal.get("balance", 0)
             _bal(f"{name} | ¥{point_to_yuan(pts):.2f}")
             if pts < total_est:
-                fail(f"余额不足: {pts} < {total_est}"); return
+                fail(f"余额不足: {pts} < {total_est}")
+                _smb_log(f"余额不足拦截: 余额{pts}pt < 需{total_est}pt")
+                return
         except:
             warn("余额查询失败，跳过保护")
 
         results = []; total = len(prepared.tasks)
+        intercepted = 0  # 被拦截跳过的
 
         # 抢锁
         locked_tasks = []
         for t in prepared.tasks:
             if _state["stop"]:
                 break
-            if acquire_lock(t.name):
+            lock_result = acquire_lock(t.name)
+            if lock_result:
+                if lock_result == "reclaimed":
+                    _smb_log(f"锁回收: {t.name}")
+                # 文件安全预检
+                fsize = os.path.getsize(t.path)
+                if fsize == 0:
+                    warn(f"  ⚠ {t.name}: 文件大小为0，跳过")
+                    _smb_log(f"跳过零字节: {t.name}")
+                    release_lock(t.name)
+                    intercepted += 1; continue
+                if fsize > 104857600:
+                    warn(f"  ⚠ {t.name}: 文件 {fsize/1048576:.0f}MB，超过100MB限制，跳过")
+                    _smb_log(f"超大文件跳过: {t.name} {fsize/1048576:.0f}MB")
+                    release_lock(t.name)
+                    intercepted += 1; continue
+                # 时长校验
+                if t.duration <= 0:
+                    warn(f"  ⚠ {t.name}: 时长异常 ({t.duration:.1f}秒)，跳过")
+                    _smb_log(f"跳过异常时长: {t.name} {t.duration:.1f}s")
+                    release_lock(t.name)
+                    intercepted += 1; continue
+                if t.duration > 30:
+                    warn(f"  ⚠ {t.name}: 时长 {t.duration:.0f}秒，超过30秒限制，跳过")
+                    _smb_log(f"跳过超长片段: {t.name} {t.duration:.0f}s")
+                    release_lock(t.name)
+                    intercepted += 1; continue
+                    _smb_log(f"超大文件跳过: {t.name} {fsize/1048576:.0f}MB")
+                    release_lock(t.name)
+                    continue
+                # 时长校验
+                if t.duration <= 0:
+                    warn(f"  ⚠ {t.name}: 时长异常 ({t.duration:.1f}秒)，跳过")
+                    _smb_log(f"跳过异常时长: {t.name} {t.duration:.1f}s")
+                    release_lock(t.name)
+                    continue
+                if t.duration > 30:
+                    warn(f"  ⚠ {t.name}: 时长 {t.duration:.0f}秒，超过30秒限制，跳过")
+                    _smb_log(f"跳过超长片段: {t.name} {t.duration:.0f}s")
+                    release_lock(t.name)
+                    continue
                 locked_tasks.append(t)
             else:
                 owner = state_is_locked(t.name) or "其他同事"
                 warn(f"  {t.name}: {owner} 正在处理中")
+                intercepted += 1
+        # 因停止而未处理的
+        unprocessed = total - len(locked_tasks) - intercepted
         if not locked_tasks:
-            info("  所有片段已被锁定或已停止"); return
+            info("── ⑤ 最终报告 ──")
+            msg = f"🎉 处理完成: {prepared.cache_hits} 个处理完成（缓存）"
+            if intercepted > 0:
+                msg += f"，{intercepted} 个被跳过"
+            log_ok(msg)
+            return
 
         # 批量处理
         info(f"  批量处理 {len(locked_tasks)} 个片段（并行模式）")
@@ -709,6 +765,10 @@ def process(*_):
             msg += f"（其中 {prepared.cache_hits} 个可复用）"
         if fail_count > 0:
             msg += f"，{fail_count} 个失败"
+        if intercepted > 0:
+            msg += f"，{intercepted} 个被跳过"
+        if unprocessed > 0:
+            msg += f"，{unprocessed} 个未处理（已停止）"
         log_ok(msg)
         t_elapsed = int(time.time() - t_start)
         pts_after = query_balance()
@@ -765,15 +825,18 @@ def start_process(*_):
         if (cur_in != _state.get("io_in") or cur_out != _state.get("io_out")
                 or timeline.GetName() != _state.get("timeline_name")):
             warn("IO 或时间线已变更，请重新扫描当前选区")
+            _smb_log(f"校验拦截: IO/时间线已变更")
             return
         # 校验片段数量（防用户删了/加了片段）
         from core import scan_io_clips
         clips_now, report_now = scan_io_clips(timeline, _SELECTED_COLOR)
         if clips_now is None:
             warn("IO 入出点丢失，请重新设置并扫描")
+            _smb_log("校验拦截: IO 入出点丢失")
             return
         if len(clips_now) != _state.get("scanned_count", 0):
             warn(f"片段已变更（{_state.get('scanned_count',0)}→{len(clips_now)}），请重新扫描当前选区")
+            _smb_log(f"校验拦截: 片段数变更 {_state.get('scanned_count',0)}→{len(clips_now)}")
             return
     except:
         pass  # 校验失败不阻塞（达芬奇可能未响应）

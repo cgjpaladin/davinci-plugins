@@ -342,8 +342,6 @@ def prepare_tasks(
     for c in clips:
         record_original(c.file_name, c.path)
 
-        if c.duration > MAX_SOURCE_DURATION:
-            continue
         if c.duration <= 0:
             continue  # 时长异常，跳过
 
@@ -436,6 +434,7 @@ def normalize_for_match(s: str) -> str:
 
 def post_check(output_files: list) -> dict:
     """验证输出文件完整性（纯函数，不输出）。
+    检查: 文件存在→大小正常→ffprobe 可读
 
     Args:
         output_files: 已生成的文件路径列表
@@ -447,6 +446,12 @@ def post_check(output_files: list) -> dict:
 
     if not output_files:
         return result
+
+    try:
+        import subprocess
+        has_ffprobe = subprocess.run(["which", "ffprobe"], capture_output=True).returncode == 0
+    except:
+        has_ffprobe = False
 
     for f in output_files:
         name = os.path.basename(f)
@@ -460,6 +465,22 @@ def post_check(output_files: list) -> dict:
                 issues.append("零字节文件")
             elif size < 1024 * 100:  # < 100KB
                 issues.append(f"文件过小 ({size} bytes)")
+
+            # ffprobe 视频可读性 + 时长校验
+            if has_ffprobe and not issues:
+                try:
+                    r = subprocess.run(
+                        ["ffprobe", "-v", "error", "-show_entries",
+                         "format=duration", "-of", "csv=p=0", f],
+                        capture_output=True, text=True, timeout=15
+                    )
+                    dur = float(r.stdout.strip()) if r.stdout.strip() else 0
+                    if dur <= 0:
+                        issues.append("视频时长异常或无法解析")
+                    elif dur < 3:
+                        issues.append(f"视频过短 ({dur:.1f}秒)")
+                except (subprocess.TimeoutExpired, ValueError):
+                    issues.append("ffprobe 解析超时，文件可能损坏")
 
         if issues:
             result["problems"].append({"file": name, "issues": issues})
