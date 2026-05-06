@@ -249,8 +249,17 @@ class WuhenAIV21Adapter(BaseAdapter):
             _log(f"[无痕AI 2.1] OSS 已存在，跳过上传: {filename}")
             return
         _log(f"[无痕AI 2.1] 上传到 OSS: {filename} ({size/1024/1024:.1f}MB) → {object_key}")
-        with open(local_path, "rb") as f:
-            self._oss_put(object_key, f.read())
+        for attempt in range(3):
+            try:
+                with open(local_path, "rb") as f:
+                    self._oss_put(object_key, f.read())
+                break
+            except Exception as e:
+                if attempt < 2:
+                    _log(f"[无痕AI 2.1] 上传重试 {attempt+2}/3: {filename} — {e}")
+                    time.sleep(2)
+                else:
+                    raise RuntimeError(f"OSS 上传失败 3 次: {filename} — {e}")
         _log(f"[无痕AI 2.1] OSS 上传完成")
         # 追踪 OSS 用量
         from pricing import oss_tracker

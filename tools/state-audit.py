@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""state-audit.py — 检查 .watermark_state.json 一致性：找出孤键、脏数据、无原片记录等"""
+"""state-audit.py — 检查 .watermark_state.json 一致性：找出孤键、脏数据、无原片记录等
+   --clean: 清理 current_path 不存在且原片也不存在的脏记录"""
 import json, os, sys
 
-SF = sys.argv[1] if len(sys.argv) > 1 else ""
+SF = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else ""
+CLEAN = "--clean" in sys.argv
 if not SF:
     # 自动找
     for root in [
@@ -49,3 +51,17 @@ if issues:
         print(f"  ⚠ {i}")
     if len(issues) > 20:
         print(f"  ... 共 {len(issues)} 个问题")
+
+# 清理脏数据
+if CLEAN:
+    removed = 0
+    for k, v in list(data.items()):
+        cur = v.get("current_path", "")
+        orig = v.get("original_path", "")
+        if v.get("status", "").endswith("_done") and cur and not os.path.exists(cur):
+            if not orig or not os.path.exists(orig):
+                del data[k]
+                removed += 1
+    if removed > 0:
+        json.dump(data, open(SF, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+        print(f"\n🧹 清理 {removed} 条脏记录 → {SF}")
