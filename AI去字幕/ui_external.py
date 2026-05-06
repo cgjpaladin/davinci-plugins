@@ -834,7 +834,7 @@ def undo(*_):
             warn("请设置 IO 入出点"); return
 
         info("── 撤销替换 ──")
-        found = 0; undone = 0
+        found = 0; undone = 0; seen = set()
         for t in range(1, timeline.GetTrackCount("video") + 1):
             for item in timeline.GetItemListInTrack("video", t) or []:
                 if item.GetStart() < io_in or item.GetStart() > io_out:
@@ -842,25 +842,37 @@ def undo(*_):
                 nm = item.GetName()
                 if "_去字幕_" not in nm:
                     continue
+                if nm in seen:
+                    continue
+                seen.add(nm)
                 mp = item.GetMediaPoolItem()
                 if not mp:
                     continue
                 file_name = mp.GetClipProperty("File Name") or nm
-                original = get_original_path(file_name)
+                # File Name 可能带 _去字幕_ 后缀，提取干净键查状态
+                clean_key = file_name.split("_去字幕_")[0] + ".mp4" if "_去字幕_" in file_name else file_name
+                original = get_original_path(clean_key)
                 if original and os.path.exists(original):
-                    item.ReplaceClipPreserveSubClip(original)
+                    try:
+                        mp.ReplaceClipPreserveSubClip(original)
+                    except Exception as e:
+                        info(f"  ⚠ {nm}: 替换失败 ({e})，跳过")
+                        found += 1
+                        continue
                     log_ok(f"  ↩ {nm}")
                     undone += 1
                     _smb_log(f"撤销: {nm} → 原片")
                 else:
-                    info(f"  ⚠ {nm}: 无原始路径记录，跳过")
+                    info(f"  ⚠ {nm}: 无状态记录，跳过")
                 found += 1
         if found == 0:
             info("  IO 内无去字幕片段")
         else:
             info(f"  撤销 {undone}/{found} 个片段")
     except Exception as e:
+        import traceback
         fail(f"撤销失败: {e}")
+        info(traceback.format_exc())  # 仅调试用，后续可移除
 
 # ── 事件 ──
 dlg.On[WIN_ID].Close = lambda ev: disp.ExitLoop()
