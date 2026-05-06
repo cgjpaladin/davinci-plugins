@@ -35,7 +35,7 @@ from typing import Optional, Any
 from urllib.parse import urlparse, quote
 from email.utils import formatdate
 
-from . import BaseAdapter, WatermarkTask, WatermarkResult, TaskStatus
+from . import BaseAdapter, SubtitleTask, SubtitleResult, TaskStatus
 
 _SSL_CTX = ssl.create_default_context()
 
@@ -110,8 +110,11 @@ class WuhenAIV21Adapter(BaseAdapter):
             return
         url = f"{self.BASE_URL}/user/access_token?{self._common_params()}&api_key={self.api_key}"
         req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, timeout=30, context=_SSL_CTX) as resp:
-            data = json.loads(resp.read().decode())
+        try:
+            with urllib.request.urlopen(req, timeout=30, context=_SSL_CTX) as resp:
+                data = json.loads(resp.read().decode())
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"无法连接无痕AI服务器: {e.reason}") from e
         if data.get("code") != 0:
             raise RuntimeError(f"获取 token 失败: {data.get('message')}")
         self._access_token = data["data"]["access_token"]
@@ -133,6 +136,8 @@ class WuhenAIV21Adapter(BaseAdapter):
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"API {e.code}: {err_body[:300]}") from e
+        except (urllib.error.URLError, OSError) as e:
+            raise RuntimeError(f"网络错误: {e.reason}") from e
 
         if result.get("code") != 0:
             raise RuntimeError(f"API 错误: {result.get('message', 'unknown')}")
@@ -153,6 +158,8 @@ class WuhenAIV21Adapter(BaseAdapter):
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"API {e.code}: {err_body[:300]}") from e
+        except (urllib.error.URLError, OSError) as e:
+            raise RuntimeError(f"网络错误: {e.reason}") from e
 
         if result.get("code") != 0:
             raise RuntimeError(f"API 错误: {result.get('message', 'unknown')}")
@@ -196,8 +203,10 @@ class WuhenAIV21Adapter(BaseAdapter):
             err_body = e.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"OSS {e.code}: {err_body[:200]}") from e
 
-    def _oss_put(self, object_key: str, data: bytes, content_type: str = "application/octet-stream"):
-        resp = self._oss_request("PUT", object_key, data=data, content_type=content_type)
+    def _oss_put(self, object_key: str, data: bytes, content_type: str = "application/octet-stream",
+                 timeout: int = 120):
+        """OSS 上传。timeout 设为 120s（单文件上传不应该超过 2 分钟）"""
+        resp = self._oss_request("PUT", object_key, data=data, content_type=content_type, timeout=timeout)
         if resp.status not in (200, 201):
             raise RuntimeError(f"OSS PUT 失败, HTTP {resp.status}")
 
@@ -279,7 +288,7 @@ class WuhenAIV21Adapter(BaseAdapter):
 
     # ── 核心接口 ──────────────────────────────────────────────
 
-    def submit(self, task: WatermarkTask) -> str:
+    def submit(self, task: SubtitleTask) -> str:
         """
         提交去字幕任务 (V2.1 一步式)
 
@@ -360,7 +369,7 @@ class WuhenAIV21Adapter(BaseAdapter):
 
         return task_id
 
-    def wait_for_result(self, task_id: str, timeout: int = 600, cancel_check=None) -> WatermarkResult:
+    def wait_for_result(self, task_id: str, timeout: int = 600, cancel_check=None) -> SubtitleResult:
         """
         轮询任务结果，完成后从 OSS 下载
 
@@ -376,7 +385,7 @@ class WuhenAIV21Adapter(BaseAdapter):
         while True:
             elapsed = time.time() - start_time
             if elapsed > timeout:
-                return WatermarkResult(
+                return SubtitleResult(
                     success=False,
                     task_id=task_id,
                     error_message=f"任务超时 ({timeout}秒)",
@@ -385,7 +394,7 @@ class WuhenAIV21Adapter(BaseAdapter):
             # 检查取消标志
             if cancel_check and cancel_check():
                 if self.cancel(task_id):
-                    return WatermarkResult(
+                    return SubtitleResult(
                         success=False,
                         task_id=task_id,
                         error_message="用户取消",
@@ -439,7 +448,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                     except Exception:
                         pass
 
-                    return WatermarkResult(
+                    return SubtitleResult(
                         success=True,
                         task_id=task_id,
                         output_path=output,
@@ -447,7 +456,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                     )
 
                 elif status == "failed":
-                    return WatermarkResult(
+                    return SubtitleResult(
                         success=False,
                         task_id=task_id,
                         error_message=data.get("description", "任务处理失败"),
@@ -501,12 +510,18 @@ class WuhenAIV21Adapter(BaseAdapter):
 
     # ── 批量处理 ──────────────────────────────────────────────
 
-    def process_batch(self, tasks: list[WatermarkTask], timeout: int = 600) -> list[WatermarkResult]:
+    def process_batch(self, tasks: list[SubtitleTask], timeout: int = 600,
+                       cancel_check=None, progress_callback=None) -> list[SubtitleResult]:
         """
         批量处理：所有片段一起上传、一起提交、一起等、一起下载。
 
         GPU 服务器并行处理，总耗时 ≈ 最慢那个片段 + 上传/下载开销。
         不需要 Python 多线程——全部是 HTTP I/O，顺序扔上去就行。
+
+        cancel_check: 可选回调，返回 True 时取消所有排队任务并返回已完成的。
+        progress_callback: 可选回调，progress_callback(phase, ratio) 
+                           phase: "upload"/"submit"/"processing"/"download"
+                           ratio: 0.0~1.0 整体进度
 
         Returns:
             与 tasks 顺序对应的结果列表
@@ -517,7 +532,22 @@ class WuhenAIV21Adapter(BaseAdapter):
         # ── Phase 1: 上传所有 → OSS ──
         records = []  # [{input_key, output_key, video_path, output_path, task_id?, result?}]
         for i, task in enumerate(tasks):
+            if cancel_check and cancel_check():
+                _log(f"[无痕AI 2.1] 上传阶段收到停止，已上传 {i}/{n}，取消剩余")
+                break
             video_path = task.video_path
+            # 大小预检
+            try:
+                fsize = os.path.getsize(video_path)
+                if fsize == 0:
+                    records.append({"result": SubtitleResult(success=False, error_message="零字节文件")})
+                    continue
+                if fsize > 100 * 1024 * 1024:
+                    records.append({"result": SubtitleResult(success=False, error_message=f"文件过大 ({fsize/1024/1024:.0f}MB > 100MB)")})
+                    continue
+            except OSError as e:
+                records.append({"result": SubtitleResult(success=False, error_message=f"无法访问: {e}")})
+                continue
             filename = os.path.basename(video_path)
             base, ext = os.path.splitext(filename)
             fhash = hashlib.md5(video_path.encode()).hexdigest()[:8]
@@ -532,11 +562,18 @@ class WuhenAIV21Adapter(BaseAdapter):
                 "output_path": task.output_path,
                 "task_id": None,
                 "result": None,
+                "duration": task.duration,  # 用于进度加权
             })
+            # 上传进度
+            if progress_callback:
+                progress_callback("upload", (i + 1) / n * 0.2)
 
         # ── Phase 2: 提交所有 → 获取 task_id ──
         video_dims = {}  # 缓存视频分辨率，避免重复 ffprobe
         for i, rec in enumerate(records):
+            if cancel_check and cancel_check():
+                _log(f"[无痕AI 2.1] 提交阶段收到停止，已提交 {i}/{len(records)}")
+                break
             video_path = rec["video_path"]
             task = tasks[i]
 
@@ -562,7 +599,7 @@ class WuhenAIV21Adapter(BaseAdapter):
 
             if self.default_method == "sel_area":
                 regions = task.mask_regions
-                vid_w, vid_h = self._get_video_resolution(task.video_path)
+                # 使用缓存的视频分辨率，避免重复 ffprobe 子进程调用
                 if regions and isinstance(regions[0], dict) and "x" in regions[0]:
                     r = regions[0]
                     body["rect"] = {
@@ -580,17 +617,38 @@ class WuhenAIV21Adapter(BaseAdapter):
             data = self._api_post("video_removal", body)
             rec["task_id"] = data["task_id"]
             _log(f"[无痕AI 2.1] [{i+1}/{n}] 已提交: {rec['task_id']}")
+            # 提交进度
+            if progress_callback:
+                progress_callback("submit", 0.2 + (i + 1) / n * 0.1)
 
         # ── Phase 3: 一起轮询 ──
-        pending = [r for r in records if r["result"] is None]
+        pending = [r for r in records if r.get("result") is None and r.get("task_id")]
         start_time = time.time()
         poll_interval = 5
+        cancel_done = False
 
         while pending:
+            # 检查取消
+            if not cancel_done and cancel_check and cancel_check():
+                _log(f"[无痕AI 2.1] 停止：取消 {len(pending)} 个排队任务...")
+                for rec in pending:
+                    tid = rec.get("task_id")
+                    if tid:
+                        try:
+                            self.cancel(tid)
+                        except Exception:
+                            pass
+                    rec["result"] = SubtitleResult(
+                        success=False,
+                        task_id=tid,
+                        error_message="用户取消",
+                    )
+                cancel_done = True
+                break
             elapsed = time.time() - start_time
             if elapsed > timeout:
                 for rec in pending:
-                    rec["result"] = WatermarkResult(
+                    rec["result"] = SubtitleResult(
                         success=False,
                         task_id=rec["task_id"],
                         error_message=f"任务超时 ({timeout}秒)",
@@ -598,18 +656,23 @@ class WuhenAIV21Adapter(BaseAdapter):
                 break
 
             still_pending = []
+            weighted_progress = 0.0  # 按片段时长加权
+            weighted_total = 0.0
             for rec in pending:
                 try:
                     status_data = self._api_get("status", {"task_id": rec["task_id"]})
                     status = status_data.get("status", "")
                     progress = status_data.get("progress", 0)
+                    dur = rec.get("duration", 10)  # 默认 10s，避免 0 权重
+                    weighted_progress += progress * dur
+                    weighted_total += dur * 100  # max progress = 100
 
                     if status == "success":
                         output_path = rec["output_path"]
                         if output_path:
                             self._download_from_oss(rec["output_key"], output_path)
                             self._oss_delete(rec["output_key"])  # 下载完即删，OSS 只当过路
-                            rec["result"] = WatermarkResult(
+                            rec["result"] = SubtitleResult(
                                 success=True,
                                 task_id=rec["task_id"],
                                 output_path=output_path,
@@ -617,7 +680,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                             )
                         else:
                             download_url = self._oss_presigned_url(rec["output_key"], "GET", 3600)
-                            rec["result"] = WatermarkResult(
+                            rec["result"] = SubtitleResult(
                                 success=True,
                                 task_id=rec["task_id"],
                                 output_path=download_url,
@@ -630,7 +693,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                             pass
 
                     elif status == "failed":
-                        rec["result"] = WatermarkResult(
+                        rec["result"] = SubtitleResult(
                             success=False,
                             task_id=rec["task_id"],
                             error_message=status_data.get("description", "任务处理失败"),
@@ -653,10 +716,30 @@ class WuhenAIV21Adapter(BaseAdapter):
             if pending:
                 done = n - len(pending)
                 _log(f"[无痕AI 2.1] 进度: {done}/{n} 完成, {len(pending)} 处理中")
+                # 真实进度回调：汇总 API 返回的 progress + 已完成任务
+                if progress_callback:
+                    completed_ratio = done / max(n, 1)
+                    pending_ratio = weighted_progress / max(weighted_total, 1)  # 0~1
+                    overall = 0.3 + (completed_ratio + pending_ratio) * 0.6
+                    progress_callback("processing", min(overall, 0.9))
                 time.sleep(poll_interval)
                 poll_interval = min(poll_interval * 1.5, 30)
 
         # ── Phase 4: 返回结果 ──
+        # 补全可能缺失的结果（取消/未上传的）
+        for i, rec in enumerate(records):
+            if rec.get("result") is None:
+                rec["result"] = SubtitleResult(
+                    success=False,
+                    task_id=rec.get("task_id"),
+                    error_message="未处理（停止或跳过）",
+                )
+        # 补齐未上传的（records 不完整时）
+        while len(records) < n:
+            records.append({"result": SubtitleResult(
+                success=False,
+                error_message="未上传（停止）",
+            )})
         results = [rec["result"] for rec in records]
         success_count = sum(1 for r in results if r.success)
         total_elapsed = time.time() - start_time
@@ -673,7 +756,7 @@ class WuhenAIV21Adapter(BaseAdapter):
         """
         self._ensure_token()
         try:
-            self._api_post("cancel", {"task_id": task_id})
+            self._api_post("task/cancel", {"task_id": task_id})
             _log(f"[无痕AI 2.1] 任务已取消: {task_id}")
             return True
         except RuntimeError as e:

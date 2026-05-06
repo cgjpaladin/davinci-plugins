@@ -1,9 +1,9 @@
 """
-watermark_state.py — 项目级去字幕状态管理 + 并发锁
+subtitle_state.py — 项目级去字幕状态管理 + 并发锁
 
 路径:
-  生产: {项目}/04_素材/03_去字幕/.watermark_state.json
-  调试: {DEBUG_OUTPUT_DIR}/.watermark_state.json
+  生产: {项目}/04_素材/03_去字幕/.subtitle_state.json
+  调试: {DEBUG_OUTPUT_DIR}/.subtitle_state.json
 
 三层路径替换策略：
   1. 处理前：记录原片路径
@@ -35,7 +35,7 @@ def _get_lan_ip():
     except:
         return socket.gethostname()
 _HOST_IP = _get_lan_ip()
-_HOST_NICK = f"{_HOST_IP}的同事"  # 192.168.1.200 → 192.168.1.200的同事
+_HOST_NICK = f"{_HOST_IP}的同事"  # 192.168.1.200 → 192.168.1.200的同事（模块加载时固定，会话期间IP不变）
 
 # 状态文件路径 — 由 init() 设置
 _state_file = None
@@ -43,11 +43,21 @@ _lock_dir = None
 
 
 def init(project_root: str = None):
-    """初始化状态系统，必须传入项目根目录"""
+    """初始化状态系统，必须传入项目根目录。
+    自动迁移旧的 .watermark_state.json → .subtitle_state.json。"""
     global _state_file, _lock_dir
     state_dir = get_state_dir(project_root)
-    _state_file = os.path.join(state_dir, ".watermark_state.json")
+    _state_file = os.path.join(state_dir, ".subtitle_state.json")
     _lock_dir = get_lock_dir(project_root)
+
+    # 迁移旧状态文件（只做一次）
+    _old_file = os.path.join(state_dir, ".watermark_state.json")
+    if os.path.exists(_old_file) and not os.path.exists(_state_file):
+        try:
+            shutil.copy2(_old_file, _state_file)
+        except Exception:
+            pass
+
     hide_path(_state_file)
 
 
@@ -67,27 +77,48 @@ def _save_state(state: dict):
     sdir = os.path.dirname(_state_file)
     os.makedirs(sdir, exist_ok=True)
 
-    # 轮转备份：保留最近 N 份
-    if os.path.exists(_state_file):
-        ts = time.strftime("%Y%m%d")
-        bak = f"{_state_file}.{ts}.bak"
-        if not os.path.exists(bak):
-            shutil.copy2(_state_file, bak)
-        # 清理旧备份
+    # 原子写锁 — os.mkdir 在 SMB 上原子，防多机同时写覆盖
+    lock_path = _state_file + ".writelock"
+    acquired = False
+    for attempt in range(5):
         try:
-            backups = sorted(
-                [f for f in os.listdir(sdir)
-                 if f.startswith(".watermark_state.json.") and f.endswith(".bak")],
-                reverse=True,
-            )
-            for old in backups[_BAK_KEEP:]:
-                os.remove(os.path.join(sdir, old))
-        except Exception:
-            pass
+            os.mkdir(lock_path)
+            acquired = True
+            break
+        except FileExistsError:
+            time.sleep(0.2 * (attempt + 1))  # 退避: 0.2s, 0.4s, 0.6s...
+    if not acquired:
+        # 5 次都失败，最后尝试一次裸写（宁写不丢）
+        pass
 
-    with open(_state_file, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2, ensure_ascii=False)
-    hide_path(_state_file)
+    try:
+        # 轮转备份：保留最近 N 份
+        if os.path.exists(_state_file):
+            ts = time.strftime("%Y%m%d")
+            bak = f"{_state_file}.{ts}.bak"
+            if not os.path.exists(bak):
+                shutil.copy2(_state_file, bak)
+            # 清理旧备份
+            try:
+                backups = sorted(
+                    [f for f in os.listdir(sdir)
+                     if f.startswith(".subtitle_state.json.") and f.endswith(".bak")],
+                    reverse=True,
+                )
+                for old in backups[_BAK_KEEP:]:
+                    os.remove(os.path.join(sdir, old))
+            except Exception:
+                pass
+
+        with open(_state_file, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2, ensure_ascii=False)
+        hide_path(_state_file)
+    finally:
+        if acquired:
+            try:
+                os.rmdir(lock_path)
+            except OSError:
+                pass
 
 
 # ============================================================
@@ -95,8 +126,8 @@ def _save_state(state: dict):
 # 锁自动过期：10 分钟后视为失效，避免崩溃残留
 # ============================================================
 
-_LOCK_TTL = 600  # 10 分钟
-_BAK_KEEP = 7      # 保留最近 N 份备份
+_LOCK_TTL = 600  # 锁 TTL（秒）
+_BAK_KEEP = 7      # 备份保留天数
 
 
 def _safe_lock_path(clip_name: str) -> str:

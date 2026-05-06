@@ -1,0 +1,148 @@
+# -*- coding: utf-8 -*-
+"""
+stable_ui.py — AI去字幕 UI 入口
+
+架构: ui_widgets.py (UI表面) → ui_pipeline.py (业务逻辑) → stable_ui.py (事件绑定+启动)
+stable_ui.py 由 ui_external.py 灰度路由层 exec() 加载。
+"""
+import os
+import socket
+import subprocess
+import threading
+import time
+import traceback
+
+from ui_widgets import (
+    itm, dlg, disp, _state, WIN_ID, MODE,
+    _CLIP_COLORS, _SELECTED_COLOR,
+    _check_smb, _flush_log, _apply_ui_state,
+    _st, _pg, _bal, _set_btn, _set_proj,
+    _smb_log, _log_file, _log_action,
+    _ui_lock, _ui_pending,
+    _t_start, _t_estimated, _task_count,
+    _update_countdown,
+    BAL_LB, OSS_LB, PROJ_LB, PATH_LB,
+    BTN_SCAN, BTN_START, BTN_STOP, BTN_PICK, BTN_UNDO,
+    COLOR_CB, LOG_LB, ST_LB, PG_BG, PG_BAR,
+)
+from ui_pipeline import (
+    scan_io, refresh_bal, refresh_oss_bal, process, stop, undo,
+    _refresh_scan_display,
+)
+from core import connect_resolve
+from config import get_output_dir, __version__
+from logger import info, warn, fail, ok as log_ok
+
+# 关闭窗口时清理
+_cleanup_done = False
+
+def on_show(ev):
+    """窗口显示时自动刷新余额"""
+    if not _check_smb():
+        return
+    try:
+        refresh_bal()
+        refresh_oss_bal()
+    except Exception:
+        pass
+
+def on_close(ev):
+    """关闭窗口清理"""
+    global _cleanup_done
+    if _cleanup_done:
+        disp.ExitLoop()
+        return
+    _cleanup_done = True
+    try:
+        if _state.get("processing"):
+            _state["stop"] = True
+            # 停止等待时间（秒）
+            time.sleep(0.3)
+    except Exception:
+        pass
+    disp.ExitLoop()
+
+# ═══════════════════════════════════════════
+# 启动入口
+# ═══════════════════════════════════════════
+
+def start_process(*_):
+    """主线程入口：启动子线程处理 + 轮询消费日志/状态"""
+    if _state["processing"]:
+        return
+    if not _state.get("project_root"):
+        warn("请先选择项目路径")
+        return
+    if not _state.get("clips_scanned"):
+        warn("请先扫描当前选区")
+        return
+
+    _log_action("开始处理")
+    _state["processing"] = True
+    _state["stop"] = False
+
+    _set_btn(scan=False, start=False, pick=False, stop=True, warn=True)
+    _st("准备中...")
+    _pg(0)
+    itm[PROJ_LB].Text = "③ 处理中，请勿操作！"
+
+    thr = threading.Thread(target=process, daemon=True)
+    thr.start()
+
+    _t_start_local = time.time()
+    while thr.is_alive():
+        _flush_log()
+        _apply_ui_state()
+        _update_countdown()
+        disp.StepLoop(100)
+
+        # 超时保护
+        elapsed = time.time() - _t_start_local
+        if hasattr(_update_countdown, '_timeout_warned') and not _update_countdown._timeout_warned:
+            if _t_estimated > 0 and elapsed > _t_estimated * 2:
+                warn(f"⚠ 处理超时: 实际 {elapsed:.0f}秒 > 预估 {_t_estimated:.0f}秒×2，可能网络波动")
+                _smb_log(f"超时告警: elapsed={elapsed:.0f}s > estimated={_t_estimated:.0f}s×2")
+                _update_countdown._timeout_warned = True
+
+    _flush_log()
+    _apply_ui_state()
+
+    _state["processing"] = False
+    _set_btn(scan=True, start=_state.get("clips_scanned", False) and bool(_state.get("project_root")),
+             pick=True, stop=False, warn=False)
+    itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
+    _pg(0)
+    itm[PG_BAR].Visible = False
+
+    # 处理完成通知
+    try:
+        subprocess.run(
+            ["osascript", "-e", f'display notification "AI 去字幕处理完成" with title "达芬奇插件工坊"'],
+            timeout=5, capture_output=True)
+    except Exception:
+        pass
+
+# ═══════════════════════════════════════════
+# 事件绑定（必须在所有函数定义之后）
+# ═══════════════════════════════════════════
+
+dlg.On[BTN_SCAN].Clicked = scan_io
+dlg.On[BTN_START].Clicked = start_process
+dlg.On[BTN_STOP].Clicked = stop
+dlg.On[BTN_UNDO].Clicked = undo
+dlg.On[WIN_ID].Show = on_show
+dlg.On[WIN_ID].Close = on_close
+
+
+def main():
+    try:
+        dlg.Show()
+        disp.RunLoop()
+    except Exception as e:
+        fail(f"UI 错误: {e}")
+        traceback.print_exc()
+        disp.ExitLoop()
+
+
+if __name__ == "__main__":
+    main()

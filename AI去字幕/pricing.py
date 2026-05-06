@@ -13,6 +13,8 @@ pricing.py — 去字幕计费模块
 import math
 import threading
 
+from config import ADAPTER_CONFIGS
+
 # ═══════════════════════════════════════════
 # 供应商定价表
 # ═══════════════════════════════════════════
@@ -126,9 +128,12 @@ def estimate_cost(tasks: list, mode: str, provider: str = None) -> tuple:
     pt_yuan = pricing["point_to_yuan"]
 
     if provider == "wuhenai":
-        # 按秒计费: video_removal_std + sel_area
-        model = pricing["models"]["video_removal_std"]
-        unit_cost = model.get("sel_area", 1)
+        # 从适配器配置动态读取当前 model/method，与 config.py 保持同步
+        wu_cfg = ADAPTER_CONFIGS.get("wuhenai_v21", {})
+        current_model = wu_cfg.get("model", "video_removal_std")
+        current_method = wu_cfg.get("method", "sel_area")
+        model = pricing["models"].get(current_model, pricing["models"]["video_removal_std"])
+        unit_cost = model.get(current_method, 1)
         total_units = sum(math.ceil(t.duration) for t in tasks)
         total_points = math.ceil(total_units * unit_cost)
 

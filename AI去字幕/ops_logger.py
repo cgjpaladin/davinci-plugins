@@ -20,6 +20,8 @@ import json
 import os
 import socket
 import threading
+import time
+import uuid
 from datetime import datetime, timezone
 
 from config import hide_path
@@ -28,6 +30,7 @@ _lock = threading.Lock()
 _log_dir = None
 _session_id = None
 _host_ip = None
+_SMB_HOST = os.environ.get("SMB_HOST", "192.168.1.154")
 
 
 def _get_ip() -> str:
@@ -38,7 +41,7 @@ def _get_ip() -> str:
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(1)
-        s.connect(("192.168.1.154", 1))  # SMB 服务器
+        s.connect((_SMB_HOST, 1))
         _host_ip = s.getsockname()[0]
         s.close()
     except Exception:
@@ -68,15 +71,28 @@ def _write(entry: dict):
     if not _log_dir:
         return
     with _lock:
+        import random as _random
+        line = json.dumps(entry, ensure_ascii=False) + "\n"
         path = _file_path()
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        hide_path(path)
+
+        # SMB 多机并发写入加固：随机抖动 + 重试
+        for attempt in range(3):
+            try:
+                time.sleep(_random.uniform(0.001, 0.05))  # 1-50ms 随机错峰
+                with open(path, "a", encoding="utf-8") as f:
+                    f.write(line)
+                hide_path(path)
+                break
+            except (IOError, OSError):
+                if attempt < 2:
+                    time.sleep(0.3 * (attempt + 1))
+                else:
+                    # 3 次都失败，静默丢弃（不阻塞主流程）
+                    pass
 
 
 def session_start(project_name: str, timeline_name: str, mode: str, balance: float):
     """会话开始"""
-    import uuid
     global _session_id
     _session_id = uuid.uuid4().hex[:12]
     _write({

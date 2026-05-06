@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-remove_watermark.py — 达芬奇 AI 去字幕插件
+remove_subtitle.py — 达芬奇 AI 去字幕插件
 
 双入口：
-  人类入口: 达芬奇 Workspace → Scripts → remove_watermark
-  AI入口:   python3 remove_watermark.py --mode pro_box --dry-run --report-json report.json
+  人类入口: 达芬奇 Workspace → Scripts → remove_subtitle
+  AI入口:   python3 remove_subtitle.py --mode pro_box --dry-run --report-json report.json
 """
 import argparse
 import json
@@ -19,9 +19,8 @@ _plugin_root = os.path.dirname(os.path.abspath(__file__))
 if _plugin_root not in sys.path:
     sys.path.insert(0, _plugin_root)
 
-# 重置 OSS 用量追踪
+# OSS 用量追踪 (oss_tracker.reset() 已移至 run_pipeline 开头)
 from pricing import oss_tracker
-oss_tracker.reset()
 
 _RESOLVE_MODULES = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/Modules"
 if _RESOLVE_MODULES not in sys.path:
@@ -32,8 +31,8 @@ from config import (
     DEBUG, SCAN_ONLY, __version__,
     get_output_dir, get_log_dir, PLUGIN_DIR,
 )
-from adapters import WatermarkTask
-from watermark_state import get_clip_status, init as state_init
+from adapters import SubtitleTask
+from subtitle_state import get_clip_status, init as state_init
 from core import (
     connect_resolve, scan_io_clips, prepare_tasks,
     build_output_path, estimate_cost, query_balance, get_io,
@@ -52,6 +51,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
                  scan_only: bool = False, report_json: str = "",
                  batch: bool = False, project_root: str = "") -> dict:
     """执行完整去字幕流程 (无痕AI 2.1, sel_area ¥0.36/分钟)。"""
+    oss_tracker.reset()
 
     # ── 0. 环境自检 ──
     from config import WUHENAI_V2_API_KEY, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET
@@ -163,6 +163,14 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
 
     if prepared.cache_hits:
         step(f"📦 缓存命中 {prepared.cache_hits} 个，剩余 {len(prepared.tasks)} 个需 API")
+        # 缓存省钱 — 用实际片段时长 (无痕AI 按秒计费 1积分/秒 × ¥0.0091)
+        import math as _m
+        _cc = {c.name: c.duration for c in clips}
+        _cs = sum(_m.ceil(_cc.get(cn, 0)) for cn in prepared.cache_hit_names)
+        if _cs > 0:
+            info(f"  💰 缓存省钱: ¥{_cs * 0.0091:.2f} ({_cs}秒)")
+            report["cache_saved_secs"] = _cs
+            report["cache_saved_yuan"] = round(_cs * 0.0091, 2)
     if not prepared.tasks:
         ok(f"全部由缓存完成！({prepared.cache_hits}个)")
         ops_logger.session_end(prepared.cache_hits, 0, prepared.cache_hits)
@@ -221,6 +229,8 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     stop_file = os.path.join(PLUGIN_DIR, ".stop")
     local_stop = os.path.join("/tmp", f"ai_subtitle.stop.{os.uname().nodename}")
 
+    t_phase_prep = time.time()  # 准备阶段结束（缓存+余额+校验完成）
+
     if batch:
         step(f"🚀 批量处理 {len(prepared.tasks)} 个片段 | 并行模式")
 
@@ -233,7 +243,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         except:
             pass
 
-        api_tasks = [WatermarkTask(**t.kwargs) for t in prepared.tasks]
+        api_tasks = [SubtitleTask(**t.kwargs) for t in prepared.tasks]
         t0 = time.time()
         api_results = adapter.process_batch(api_tasks, timeout=API_TIMEOUT)
         elapsed = time.time() - t0
@@ -278,6 +288,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
             results.append((t.mp_item, t.name, t.path, result, elapsed))
 
     # ── 7. 下载 + ReplaceClip ──
+    t_phase_api = time.time()  # API 阶段结束, 下载阶段开始
     step(f"📥 下载 {len(results)} 个结果")
     success_count, fail_list, output_files = download_and_apply(
         results, output_dir, mode,
@@ -302,6 +313,25 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         "fail_details": fail_list,
         "output_files": output_files,
     }
+    # 阶段耗时
+    t_done = time.time()
+    api_secs = round(t_phase_api - t_phase_prep, 1)
+    dl_secs = round(t_done - t_phase_api, 1)
+    report["phase_timing"] = {
+        "api_secs": api_secs,
+        "download_secs": dl_secs,
+        "total_processing_secs": round(t_done - t_phase_prep, 1),
+    }
+    # Console 输出阶段耗时
+    step(f"── 阶段耗时 ──")
+    info(f"  AI处理 (上传+API): {api_secs:.0f}秒")
+    info(f"  下载替换: {dl_secs:.0f}秒")
+    # 超时检测（超过预估 2 倍报警）
+    need_secs = sum(t.duration for t in prepared.tasks)
+    expected = max(60, need_secs * 2 + 60)
+    total_proc = t_done - t_phase_prep
+    if total_proc > expected * 2:
+        warn(f"⚠ 处理超时: 实际 {total_proc:.0f}秒 > 预估 {expected:.0f}秒×2，可能网络波动")
     # OSS 费用统计
     from pricing import oss_tracker
     oss_cost = oss_tracker.snapshot()
@@ -311,6 +341,9 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     oss_tracker.reset()
 
     ok(f"{success_count}/{len(results)} 个片段完成 → {output_dir}")
+    total_elapsed = int(t_done - t_phase_prep)
+    mins, secs = divmod(total_elapsed, 60)
+    info(f"总耗时 {mins}分{secs}秒")
     ops_logger.session_end(success_count, len(results) - success_count, len(results))
     _write_report(report, report_json)
     return report
@@ -334,15 +367,15 @@ def _write_report(report: dict, path: str):
 def main():
     # 达芬奇菜单入口（无参数）→ 使用 UI，走 ui_external.py
     if len(sys.argv) == 1 and sys.argv[0].endswith(".py"):
-        print("请通过 AI去字幕 UI 使用，或传 --project-root 参数")
+        info("请通过 AI去字幕 UI 使用，或传 --project-root 参数")
         return
 
     # 命令行入口（AI 开发者）
     parser = argparse.ArgumentParser(
         description=f"AI 去字幕 v{__version__}",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="示例:\n  python3 remove_watermark.py --dry-run --report-json report.json\n"
-               "  python3 remove_watermark.py --mode basic --force"
+        epilog="示例:\n  python3 remove_subtitle.py --dry-run --report-json report.json\n"
+               "  python3 remove_subtitle.py --mode basic --force"
     )
     parser.add_argument("--mode", choices=["basic", "pro_box"], default=DEFAULT_MODE,
                         help=f"处理模式 (默认: {DEFAULT_MODE})")

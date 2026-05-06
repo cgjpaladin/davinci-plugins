@@ -4,15 +4,17 @@
 集中管理所有 API 密钥、路径设置和适配器参数。
 密钥通过环境变量或 .env 文件注入，不硬编码。
 
-.env 文件位置（按优先级）：
-  1. {PLUGIN_DIR}/.env          — 部署在 SMB，团队共享
-  2. ~/.watermark.env           — 个人覆盖
+.env 文件位置（按加载顺序，先加载的优先，后加载不覆盖已有 key）：
+  0. {PLUGIN_DIR}/.env          — 本地开发配置（仅开发机，优先于 SMB）
+  1. {PLUGIN_DIR}/.env          — SMB 团队共享（生产机与上条同路径）
+  2. ~/.subtitle.env            — 个人备用（SMB 断连时兜底，非覆盖）
+  3. ~/.watermark.env           — 个人备用（旧名，兼容）
 
 路径架构（生产模式）：
   {项目根}/04_素材/03_去字幕/
   ├── EP01/
   │   └── EP01_g1_01_v01_clean_ghostcut_probox_box_v01.mp4
-  ├── .watermark_state.json       # 片段状态
+  ├── .subtitle_state.json       # 片段状态
   ├── .ops_logs/                  # 操作日志
   └── .locks/                     # 并发锁
 """
@@ -22,10 +24,10 @@ import subprocess
 import time
 
 # 全局版本号 — 所有模块引用这一个变量
-__version__ = "0.7.5"
+__version__ = "1.0.0"
 
 # ============================================================
-# .env 加载（优先 SMB 共享，其次个人）
+# .env 加载（先加载的优先：本地 > SMB > 个人备用）
 # ============================================================
 def _load_dotenv(path: str):
     """手动解析 .env 文件（零依赖），加载到 os.environ"""
@@ -46,16 +48,28 @@ def _load_dotenv(path: str):
     except Exception:
         pass
 
-# 加载顺序：本地优先 → SMB 共享 → 个人覆盖（三层兜底，SMB 断了也能跑）
-_load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
-_load_dotenv("/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/.env")
+# 加载顺序：本地优先 → SMB 共享 → 个人备用（先加载的优先，后加载不覆盖已有 key）
+_local_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+_smb_env = "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/.env"
+_load_dotenv(_local_env)
+if os.path.realpath(_local_env) != os.path.realpath(_smb_env):  # 生产机上是同一个文件，跳过
+    _load_dotenv(_smb_env)
+_load_dotenv(os.path.expanduser("~/.subtitle.env"))
 _load_dotenv(os.path.expanduser("~/.watermark.env"))
 
 # ============================================================
 # 调试模式
 # ============================================================
-# WATERMARK_DEBUG=1 → 固定 09_Engineering 测试目录（仅开发用）
-DEBUG = os.environ.get("WATERMARK_DEBUG", "") == "1"
+# SUBTITLE_DEBUG=1 → 固定 09_Engineering 测试目录（仅开发用）
+# 兼容: WATERMARK_DEBUG=1 仍然有效
+def _env(key: str, fallback: str = ""):
+    """读环境变量，新名优先，旧名兼容"""
+    v = os.environ.get(f"SUBTITLE_{key}")
+    if v is not None:
+        return v
+    return os.environ.get(f"WATERMARK_{key}", fallback)
+
+DEBUG = _env("DEBUG") == "1"
 
 # ============================================================
 # API 密钥 — 通过环境变量或 .env 注入，不设硬编码默认值
@@ -109,7 +123,7 @@ PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 SMB_MOUNT = "/Volumes/MYJC"
 
 # ============================================================
-# 调试模式固定路径（仅 WATERMARK_DEBUG=1 时使用）
+# 调试模式固定路径（仅 SUBTITLE_DEBUG=1 时使用）
 # ============================================================
 DEBUG_MEDIA_DIR = os.path.join(SMB_MOUNT, "09_Engineering", "达芬奇AI测试")
 DEBUG_SOURCE_DIR = os.path.join(DEBUG_MEDIA_DIR, "01_素材")
@@ -123,18 +137,18 @@ for _d in (DEBUG_SOURCE_DIR, DEBUG_OUTPUT_DIR):
 # ============================================================
 
 # 手动指定项目根目录（UI 模式下由用户选择，或环境变量覆盖）
-PROJECT_ROOT = os.environ.get("WATERMARK_PROJECT", "")
+PROJECT_ROOT = _env("PROJECT")
 
 # 项目内固定子路径
 PROJECT_MATERIALS = "04_素材"
 PROJECT_VIDEOS = os.path.join(PROJECT_MATERIALS, "02_视频")
-PROJECT_WATERMARK = os.path.join(PROJECT_MATERIALS, "03_去字幕")
+PROJECT_SUBTITLE = os.path.join(PROJECT_MATERIALS, "03_去字幕")
 
 
 def get_project_root(clip_path: str = None) -> str:
     """
     获取项目根目录。
-    优先级: WATERMARK_PROJECT > 从素材路径自动推导 > 调试固定路径
+    优先级: SUBTITLE_PROJECT > 从素材路径自动推导 > 调试固定路径
     
     自动推导: 从 /Volumes/MYJC/XX_.../项目名/04_素材/02_视频/...
               向上找到 04_素材 的父目录 = 项目根
@@ -170,7 +184,7 @@ def get_output_dir(project_root: str = None, ep: str = None) -> str:
     if not root:
         raise RuntimeError("无法确定项目根目录，请先选择项目文件夹")
     
-    base = os.path.join(root, PROJECT_WATERMARK)
+    base = os.path.join(root, PROJECT_SUBTITLE)
     if ep:
         base = os.path.join(base, ep)  # EP 编号来自正则，自动适配任意位数
     os.makedirs(base, exist_ok=True)
@@ -202,14 +216,9 @@ def get_lock_dir(project_root: str = None) -> str:
 # ============================================================
 # 输出设置
 # ============================================================
-TEMP_DIR = os.path.join(PLUGIN_DIR, "temp")
-EXPORT_FORMAT = "QuickTime"
-EXPORT_CODEC = "ProRes 422 HQ"
-COLOR_SPACE = "Rec.709"
 API_TIMEOUT = 600
 MAX_SOURCE_DURATION = 30  # 短剧片段通常 15-20 秒，30 秒足够覆盖
-MAX_CONCURRENT = int(os.environ.get("WATERMARK_CONCURRENT", "5"))
-SCAN_ONLY = os.environ.get("WATERMARK_SCAN_ONLY", "") == "1"
+SCAN_ONLY = _env("SCAN_ONLY") == "1"
 
 # ============================================================
 # 额度保护
@@ -218,14 +227,14 @@ SCAN_ONLY = os.environ.get("WATERMARK_SCAN_ONLY", "") == "1"
 
 # 日志（生产模式用动态路径，这里给调试模式一个兜底）
 _LOG_TS = time.strftime("%Y%m%d_%H%M%S")
-LOG_FILE = os.path.join(DEBUG_OUTPUT_DIR, f".watermark_log_{_LOG_TS}.log")
+LOG_FILE = os.path.join(DEBUG_OUTPUT_DIR, f".subtitle_log_{_LOG_TS}.log")
 # 操作日志路径 — 生产模式由 get_log_dir() 动态计算；调试模式用固定路径
 OPS_LOG_DIR = os.path.join(DEBUG_MEDIA_DIR, ".ops_logs")
 
 # ============================================================
 # 处理模式
 # ============================================================
-DEFAULT_MODE = os.environ.get("WATERMARK_MODE", "pro_box")  # basic / pro_box
+DEFAULT_MODE = _env("MODE", "pro_box")  # basic / pro_box
 
 # 模式显示名（UI 和 Console 用）
 MODE_LABELS = {"basic": "快速预览", "pro_box": "正式出片"}
@@ -237,7 +246,7 @@ MODE_FILE_TAGS = {"basic": "快速预览", "pro_box": "正式出片", "lite": "�
 DEFAULT_MASK_REGION = [[0, 0.77], [1, 0.77], [1, 1.0], [0, 1.0]]
 
 # 片段颜色过滤
-CLIP_COLOR = os.environ.get("WATERMARK_COLOR", "Orange")  # 裁缝老师用橘黄
+CLIP_COLOR = _env("COLOR", "Orange")  # 裁缝老师用橘黄
 
 # ============================================================
 # 适配器注册表

@@ -4,6 +4,7 @@ description: 插件错误诊断专家。任何插件崩溃、测试失败、API�
 tools: Read, Edit, Bash, Grep, Glob
 model: inherit
 skills: davinci-resolve-scripting
+# 调试流程见 davinci-resolve-scripting 的"远程调试铁律"章节：先查 ops_logs → 再查 UI 日志 → 最后复现
 ---
 
 你是插件工坊的调试专家，诊断和修复达芬奇插件全系列问题。
@@ -28,7 +29,7 @@ skills: davinci-resolve-scripting
 ## 关键命令
 
 ```bash
-python3 remove_watermark.py --dry-run --report-json /tmp/diag.json
+python3 remove_subtitle.py --dry-run --report-json /tmp/diag.json
 python3 tests/test_core.py
 find .ops_logs/ -name "*.jsonl" -exec tail -1 {} \;
 ```

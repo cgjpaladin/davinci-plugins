@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""state-audit.py — 检查 .watermark_state.json 一致性：找出孤键、脏数据、无原片记录等
+"""state-audit.py — 检查 .subtitle_state.json 一致性：找出孤键、脏数据、无原片记录等
    --clean: 清理 current_path 不存在且原片也不存在的脏记录"""
 import json, os, sys
 
@@ -8,14 +8,14 @@ CLEAN = "--clean" in sys.argv
 if not SF:
     # 自动找
     for root in [
-        "/Volumes/MYJC/08_AI_Project/20260407_让你当保安你把九个女总带回家/04_素材/03_去字幕/.watermark_state.json"
+        "/Volumes/MYJC/08_AI_Project/20260407_让你当保安你把九个女总带回家/04_素材/03_去字幕/.subtitle_state.json"
     ]:
         if os.path.exists(root):
             SF = root
             break
 
 if not SF or not os.path.exists(SF):
-    print("用法: python3 state-audit.py [.watermark_state.json]")
+    print("用法: python3 state-audit.py [.subtitle_state.json]")
     sys.exit(1)
 
 data = json.load(open(SF, encoding="utf-8"))

@@ -14,7 +14,9 @@
 | README（官方 API 文档） | `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/README.txt` | 本地文件 |
 | CHANGELOG | 同上目录 `CHANGELOG.txt` | 本地文件 |
 | 官方示例（11个 Python + Lua） | 同上 `Examples/` | 本地文件 |
+| Fusion Fuse 示例（15个 Lua，含 UI 控件展示） | `Developer/Fusion Fuse/` | 本地文件 |
 | Modules（DaVinciResolveScript） | 同上 `Modules/` | import |
+| 本地文档入口 | Resolve 菜单 `Help > Documentation > Developer` | GUI |
 
 ### 社区
 
@@ -23,6 +25,26 @@
 | We Suck Less Resolve Scripting | `https://www.steakunderwater.com/wesuckless/viewforum.php?f=35` | WebFetch |
 | Blackmagic 官方论坛 | `https://forum.blackmagicdesign.com/` | WebFetch |
 | dvresolve.com wiki | `https://wiki.dvresolve.com/developer-docs/scripting-api` | WebFetch |
+| Stack Overflow (`[davinci-resolve]`标签) | ~100问题，60%已整理到WSL | WebFetch |
+| Reddit r/davinciresolve | 不推荐，API讨论<5% | — |
+
+### GitHub 开源项目
+
+| 项目 | 仓库 | 价值 |
+|------|------|------|
+| davinci-resolve-mcp | `samuelgursky/davinci-resolve-mcp` | 98.5% API覆盖,MCP协议,AI集成 |
+| pybmd | PyPI `pip install pybmd` | 版本兼容封装,自动处理v16.2.0参数变更 |
+| nobphotographr/automation | `nobphotographr/davinci-resolve-automation` | Limitations.md+Advanced_Techniques.md权威参考 |
+| Theia | `ming-qiu/theia` | VFX editorial GUI工具,仅Studio 18.6+ |
+| Reactor | `github.com/WeSuckLess/Reactor` | 社区包管理器,内含48+UI示例 |
+
+### 在线 API 文档
+
+| 资源 | 链接 |
+|------|------|
+| X-Raym Gist | `gist.github.com/X-Raym/2f2bf453fc481b9cca624d7ca0e19de8` |
+| deric 非官方文档 | `deric.github.io/DaVinciResolve-API-Docs/` |
+| resolvedevdoc (ReadTheDocs) | `resolvedevdoc.readthedocs.io` |
 
 ### 本地参考代码
 

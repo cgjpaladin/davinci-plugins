@@ -24,7 +24,7 @@ skills: davinci-resolve-scripting
 core.py          → 纯业务逻辑 (scan/prepare/build/check)
 logger.py        → 注入式日志 (PrintLogger/UILogger)
 ops_logger.py    → 结构化 JSONL 操作日志
-watermark_state.py → 状态持久化 + 原子锁
+subtitle_state.py → 状态持久化 + 原子锁
 config.py        → 全局配置 + .env 加载
 launcher.py      → 达芬奇菜单入口 (5行，永不更新)
 ui_external.py   → UI 控件 + 事件绑定 + 线程编排

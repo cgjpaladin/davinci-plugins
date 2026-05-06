@@ -2,5 +2,5 @@
 # AI 去字幕 — 本地启动器（部署后永不更新）
 import sys
 sys.path.insert(0, "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕")
-from remove_watermark import main
+from remove_subtitle import main
 main()

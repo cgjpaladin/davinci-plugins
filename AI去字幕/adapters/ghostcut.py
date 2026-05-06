@@ -21,7 +21,7 @@ import urllib.error
 from typing import Optional
 from urllib.parse import urlparse
 
-from . import BaseAdapter, WatermarkTask, WatermarkResult, TaskStatus
+from . import BaseAdapter, SubtitleTask, SubtitleResult, TaskStatus
 
 # 达芬奇内置 Python 可能缺 SSL 证书 — 全局宽松 context
 _SSL_CTX = ssl.create_default_context()
@@ -82,7 +82,7 @@ class GhostCutAdapter(BaseAdapter):
         except urllib.error.URLError as e:
             raise RuntimeError(f"网络错误: {e.reason}") from e
 
-    def submit(self, task: WatermarkTask) -> str:
+    def submit(self, task: SubtitleTask) -> str:
         """
         提交去字幕任务
         
@@ -252,7 +252,7 @@ class GhostCutAdapter(BaseAdapter):
         cdn_url = policy["urlPrefix"] + filename
         return cdn_url
 
-    def wait_for_result(self, task_id: str, timeout: int = 600) -> WatermarkResult:
+    def wait_for_result(self, task_id: str, timeout: int = 600, cancel_check=None) -> SubtitleResult:
         """
         轮询任务结果
         
@@ -260,6 +260,8 @@ class GhostCutAdapter(BaseAdapter):
           1  = 成功
           >1 = 失败
           0/-1 = 处理中
+        
+        cancel_check: 可选回调，返回 True 时取消任务并返回取消结果
         """
         start_time = time.time()
         poll_interval = 5  # 首次快速轮询
@@ -267,10 +269,22 @@ class GhostCutAdapter(BaseAdapter):
         while True:
             elapsed = time.time() - start_time
             if elapsed > timeout:
-                return WatermarkResult(
+                return SubtitleResult(
                     success=False,
                     task_id=task_id,
                     error_message=f"任务超时 ({timeout}秒)"
+                )
+
+            # 检查取消标志 (与 wuhenai_v2 对齐)
+            if cancel_check and cancel_check():
+                try:
+                    self.cancel(task_id)
+                except Exception:
+                    pass
+                return SubtitleResult(
+                    success=False,
+                    task_id=task_id,
+                    error_message="用户取消",
                 )
             
             try:
@@ -288,7 +302,7 @@ class GhostCutAdapter(BaseAdapter):
                         print(f"[GhostCut] 下载处理结果到: {download_path}")
                         urllib.request.urlretrieve(video_url, download_path)
                     
-                    return WatermarkResult(
+                    return SubtitleResult(
                         success=True,
                         task_id=task_id,
                         output_path=download_path or video_url,
@@ -300,7 +314,7 @@ class GhostCutAdapter(BaseAdapter):
                     )
                 elif status > 1:
                     # 失败
-                    return WatermarkResult(
+                    return SubtitleResult(
                         success=False,
                         task_id=task_id,
                         error_message=content.get("errorDetail", f"处理失败，状态码: {status}")
@@ -314,7 +328,8 @@ class GhostCutAdapter(BaseAdapter):
             time.sleep(poll_interval)
             poll_interval = min(poll_interval * 1.5, 30)  # 逐渐拉长到30秒
 
-    def process_batch(self, tasks: list, timeout: int = 600) -> list:
+    def process_batch(self, tasks: list, timeout: int = 600,
+                       cancel_check=None) -> list:
         """
         批量处理：上传全部 → 一次提交 → 一起轮询 → 逐个下载。
 
@@ -324,11 +339,12 @@ class GhostCutAdapter(BaseAdapter):
         总耗时 ≈ 最慢那个片段 + 上传开销（GPU 并行）。
 
         Args:
-            tasks: [WatermarkTask, ...]
+            tasks: [SubtitleTask, ...]
             timeout: 总超时（秒）
+            cancel_check: 可选回调，返回 True 时取消所有排队任务
 
         Returns:
-            与 tasks 顺序对应的 [WatermarkResult, ...]
+            与 tasks 顺序对应的 [SubtitleResult, ...]
         """
         n = len(tasks)
         print(f"[GhostCut] 批量处理 {n} 个片段")
@@ -336,12 +352,26 @@ class GhostCutAdapter(BaseAdapter):
         # ── Phase 1: 上传所有文件 → CDN URLs ──
         records = []
         for i, task in enumerate(tasks):
+            if cancel_check and cancel_check():
+                print(f"[GhostCut] 上传阶段收到停止，已上传 {i}/{n}")
+                break
             video_url = task.video_path
             parsed = urlparse(video_url)
             if not parsed.scheme.startswith("http"):
                 base = os.path.basename(video_url)
                 print(f"[GhostCut] [{i+1}/{n}] 上传: {base}")
-                video_url = self._upload_file(video_url)
+                try:
+                    video_url = self._upload_file(video_url)
+                except Exception as e:
+                    print(f"[GhostCut] ⚠ 上传失败: {base} — {e}")
+                    records.append({
+                        "video_url": "",
+                        "base_name": base,
+                        "task": task,
+                        "task_id": None,
+                        "result": SubtitleResult(success=False, error_message=f"上传失败: {e}"),
+                    })
+                    continue
             base_name = os.path.splitext(os.path.basename(task.video_path))[0] if task.video_path else f"clip_{i}"
             records.append({
                 "video_url": video_url,
@@ -353,6 +383,14 @@ class GhostCutAdapter(BaseAdapter):
         print(f"[GhostCut] 上传完成")
 
         # ── Phase 2: 一次提交所有任务 ──
+        if cancel_check and cancel_check():
+            print(f"[GhostCut] 提交阶段收到停止")
+            # 补齐未提交的结果
+            for rec in records:
+                if rec.get("result") is None:
+                    rec["result"] = SubtitleResult(success=False, error_message="用户取消（未提交）")
+            return [r.get("result", SubtitleResult(success=False)) for r in records]
+
         model_name = self.default_model
         urls = [r["video_url"] for r in records]
         names = [r["base_name"] for r in records]
@@ -403,11 +441,23 @@ class GhostCutAdapter(BaseAdapter):
         id_to_idx = {int(r["task_id"]): i for i, r in enumerate(records) if r["task_id"]}
 
         while pending_ids:
+            # 检查取消
+            if cancel_check and cancel_check():
+                print(f"[GhostCut] 停止：取消 {len(pending_ids)} 个排队任务...")
+                for tid in pending_ids:
+                    idx = id_to_idx.get(tid)
+                    if idx is not None:
+                        records[idx]["result"] = SubtitleResult(
+                            success=False, task_id=str(tid),
+                            error_message="用户取消",
+                        )
+                break
+
             elapsed = time.time() - start_time
             if elapsed > timeout:
                 for tid in pending_ids:
                     idx = id_to_idx[tid]
-                    records[idx]["result"] = WatermarkResult(
+                    records[idx]["result"] = SubtitleResult(
                         success=False, task_id=str(tid),
                         error_message=f"任务超时 ({timeout}秒)",
                     )
@@ -431,7 +481,7 @@ class GhostCutAdapter(BaseAdapter):
                         idx = id_to_idx.get(tid)
                         if idx is not None:
                             video_url = content.get("videoUrl", "")
-                            records[idx]["result"] = WatermarkResult(
+                            records[idx]["result"] = SubtitleResult(
                                 success=True, task_id=str(tid),
                                 output_path=video_url,  # 远程 URL，调用者自行下载
                                 metadata={"video_url": video_url, "name": content.get("name", "")},
@@ -440,7 +490,7 @@ class GhostCutAdapter(BaseAdapter):
                         pending_ids.discard(tid)
                         idx = id_to_idx.get(tid)
                         if idx is not None:
-                            records[idx]["result"] = WatermarkResult(
+                            records[idx]["result"] = SubtitleResult(
                                 success=False, task_id=str(tid),
                                 error_message=content.get("errorDetail", f"处理失败，状态码: {status}"),
                             )
@@ -460,7 +510,7 @@ class GhostCutAdapter(BaseAdapter):
         results = []
         for r in records:
             if r["result"] is None:
-                r["result"] = WatermarkResult(
+                r["result"] = SubtitleResult(
                     success=False, task_id=r.get("task_id", ""),
                     error_message="未知错误",
                 )
@@ -483,3 +533,10 @@ class GhostCutAdapter(BaseAdapter):
         """查询账户余额"""
         resp = self._api_post("/v-w-c/gateway/ve/point/query", {})
         return resp.get("body", {})
+
+    def cancel(self, task_id: str) -> bool:
+        """取消排队中的任务（GhostCut API 当前未提供取消接口）。
+        Returns: True（取消结果由上层 try/except 兜底）
+        """
+        print(f"[GhostCut] 取消请求已记录: {task_id}")
+        return True

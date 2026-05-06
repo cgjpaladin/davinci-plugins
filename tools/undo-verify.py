@@ -2,7 +2,7 @@
 """undo-verify.py — 验证撤销链路：给定片段名，检查是否可撤销"""
 import json, os, sys
 
-SF = "/Volumes/MYJC/08_AI_Project/20260407_让你当保安你把九个女总带回家/04_素材/03_去字幕/.watermark_state.json"
+SF = "/Volumes/MYJC/08_AI_Project/20260407_让你当保安你把九个女总带回家/04_素材/03_去字幕/.subtitle_state.json"
 if not os.path.exists(SF):
     print(f"状态文件不存在: {SF}")
     sys.exit(1)

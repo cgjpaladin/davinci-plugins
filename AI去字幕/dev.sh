@@ -3,11 +3,16 @@
 # 用法: ./dev.sh
 set -e
 
+# ── 0. pre-commit 检查 ──
+echo "═══ 0. pre-commit ═══"
+bash ../tools/pre-commit.sh
+
 # ── 1. 语法检查 ──
+echo ""
 echo "═══ 1. 语法编译 ═══"
 SMB="/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕"
 FAIL=0
-for f in ui_external.py core.py config.py pricing.py remove_watermark.py logger.py ops_logger.py watermark_state.py adapters/__init__.py adapters/wuhenai_v2.py; do
+for f in ui_external.py stable_ui.py ui_widgets.py ui_pipeline.py core.py config.py pricing.py remove_subtitle.py logger.py ops_logger.py subtitle_state.py adapters/__init__.py adapters/wuhenai_v2.py adapters/ghostcut.py; do
     if python3 -m py_compile "$f" 2>/dev/null; then
         echo "  ✅ $f"
     else
@@ -34,7 +39,7 @@ echo "  轻量: 导入链..."
 python3 -c "
 import sys, os
 sys.path.insert(0, '.')
-for m in ['config','pricing','logger','watermark_state','ops_logger','adapters']:
+for m in ['config','pricing','logger','subtitle_state','ops_logger','adapters']:
     __import__(m)
     print(f'    ✅ {m}')
 " 2>&1 || { echo "  ❌ 导入链失败，先修"; exit 1; }
@@ -59,10 +64,29 @@ echo ""
 echo "═══ 3. 同步到 SMB ═══"
 bash sync.sh
 
-# ── 4. diff 确认 ──
+# ── 4. 灰度状态 ──
 echo ""
-echo "═══ 4. diff 检查 ═══"
-for f in ui_external.py core.py config.py pricing.py adapters/wuhenai_v2.py adapters/__init__.py; do
+echo "═══ 4. 灰度发布 ═══"
+GRAY_CFG="$SMB/gray.json"
+if [ -f "$GRAY_CFG" ]; then
+    python3 -c "
+import json, os
+cfg = json.load(open('$GRAY_CFG'))
+targets = cfg.get('targets', [])
+print(f'  灰度版本: {cfg[\"version\"]}')
+print(f'  灰度机器: {targets if targets else \"(无 — 全员稳定版)\"}')
+if targets:
+    gray_dir = os.path.join(os.path.dirname('$SMB'), cfg['gray_dir'])
+    print(f'  灰度目录: {\"✅ 存在\" if os.path.isdir(gray_dir) else \"❌ 不存在: \" + gray_dir}')
+" 2>/dev/null
+else
+    echo "  gray.json 不存在"
+fi
+
+# ── 5. diff 确认 ──
+echo ""
+echo "═══ 5. diff 检查 ═══"
+for f in ui_external.py stable_ui.py ui_widgets.py ui_pipeline.py core.py config.py pricing.py adapters/wuhenai_v2.py adapters/ghostcut.py adapters/__init__.py; do
     if [ -f "$f" ] && [ -f "$SMB/$f" ]; then
         if diff "$f" "$SMB/$f" > /dev/null 2>&1; then
             echo "  ✅ $f"
@@ -72,9 +96,9 @@ for f in ui_external.py core.py config.py pricing.py adapters/wuhenai_v2.py adap
     fi
 done
 
-# ── 5. UI 日志 ──
+# ── 6. UI 日志 ──
 echo ""
-echo "═══ 5. UI 日志（最近 10 行）═══"
+echo "═══ 6. UI 日志（最近 10 行）═══"
 LOG=$(find /var/folders -name "ai_subtitle_ui.log" -mmin -30 2>/dev/null | head -1)
 if [ -n "$LOG" ]; then
     tail -10 "$LOG" 2>/dev/null | grep -v "^===" || echo "  （空或只有启动行）"
@@ -82,9 +106,9 @@ else
     echo "  （无最近日志）"
 fi
 
-# ── 6. 达芬奇状态 ──
+# ── 7. 达芬奇状态 ──
 echo ""
-echo "═══ 6. 达芬奇状态 ═══"
+echo "═══ 7. 达芬奇状态 ═══"
 python3 -c "
 import sys, os
 os.environ['RESOLVE_SCRIPT_API'] = '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting'

@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
-# AI 去字幕 — UI 启动器母版（部署后永不更新）
+# AI 去字幕 — UI 启动器母版
 # 部署时复制到: ~/Library/Application Support/.../Fusion/Scripts/Edit/
 #
 # 策略：达芬奇内嵌 Python 无法稳定运行 UI，改用外部 Python 3.13 子进程。
-# 本文件只有 10 行，部署后永不更新——总监改 SMB 上的 ui_external.py 即可全员同步。
+# 业务逻辑在 SMB 上的 ui_external.py，改 SMB 即可全员同步。
+# launcher 改动需重新推送到各机器（批量 SSH 一键完成）。
 import os
 import subprocess
 import sys
 import time
+import atexit
 
 _SMB_PLUGIN = "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕"
 _UI_SCRIPT = os.path.join(_SMB_PLUGIN, "ui_external.py")
@@ -21,16 +23,12 @@ if not os.path.exists(_PYTHON):
 import tempfile
 _log = os.path.join(tempfile.gettempdir(), "ai_subtitle_ui.log")
 
-# 从 SMB 读取版本号
+# 从 SMB 读取版本号（import config 比字符串解析更可靠）
 _version = "?.?.?"
 try:
-    _cfg = os.path.join(_SMB_PLUGIN, "config.py")
-    if os.path.exists(_cfg):
-        with open(_cfg, encoding="utf-8") as f:
-            for line in f:
-                if line.startswith("__version__"):
-                    _version = line.split("=")[1].strip().strip('"').strip("'")
-                    break
+    sys.path.insert(0, _SMB_PLUGIN)
+    import config
+    _version = config.__version__
 except Exception:
     pass
 
@@ -40,6 +38,9 @@ with open(_log, "a", encoding="utf-8") as f:
 _env = os.environ.copy()
 _env["PYTHONIOENCODING"] = "utf-8"
 _env["LC_CTYPE"] = "en_US.UTF-8"
+_stdout_fp = open(_log, "a", encoding="utf-8")
+_stderr_fp = open(_log, "a", encoding="utf-8")
+atexit.register(_stdout_fp.close)
+atexit.register(_stderr_fp.close)
 subprocess.Popen([_PYTHON, _UI_SCRIPT], env=_env,
-                 stdout=open(_log, "a", encoding="utf-8"),
-                 stderr=open(_log, "a", encoding="utf-8"))
+                 stdout=_stdout_fp, stderr=_stderr_fp)

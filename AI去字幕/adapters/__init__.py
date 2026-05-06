@@ -20,7 +20,7 @@ class TaskStatus(Enum):
 
 
 @dataclass
-class WatermarkTask:
+class SubtitleTask:
     """
     去字幕任务描述
     
@@ -30,16 +30,18 @@ class WatermarkTask:
         language: 字幕语言代码，默认 "zh"
         mask_regions: 可选，手动指定的擦除区域坐标
         model: 可选，指定擦除模型（lite/pro/full）
+        duration: 可选，视频时长（秒），用于进度加权
     """
     video_path: str
     output_path: Optional[str] = None
     language: str = "zh"
     mask_regions: Optional[list] = None
     model: Optional[str] = None
+    duration: float = 10.0
 
 
 @dataclass
-class WatermarkResult:
+class SubtitleResult:
     """
     去字幕处理结果
     
@@ -63,14 +65,20 @@ class BaseAdapter(ABC):
     
     所有服务商适配器必须实现 submit() 和 wait_for_result()。
     如果服务商是同步模式，wait_for_result() 可直接返回结果。
+
+    契约:
+      - wait_for_result() 必须接受 cancel_check 参数
+      - cancel_check 为可选回调: () -> bool, 返回 True 时取消任务
+      - 不需要取消的适配器接受参数但不使用即可
     """
 
     def __init__(self, name: str, config: dict):
         self.name = name
         self.config = config
+        self._output_path: Optional[str] = None  # process() 设置，wait_for_result() 消费
 
     @abstractmethod
-    def submit(self, task: WatermarkTask) -> str:
+    def submit(self, task: SubtitleTask) -> str:
         """
         提交去字幕任务
         
@@ -80,21 +88,23 @@ class BaseAdapter(ABC):
         ...
 
     @abstractmethod
-    def wait_for_result(self, task_id: str, timeout: int = 600) -> WatermarkResult:
+    def wait_for_result(self, task_id: str, timeout: int = 600,
+                        cancel_check=None) -> SubtitleResult:
         """
         等待任务完成并获取结果
         
         Args:
             task_id: submit() 返回的任务ID
             timeout: 最大等待时间（秒）
+            cancel_check: 可选回调 () -> bool，返回 True 时取消任务
             
         Returns:
-            WatermarkResult: 包含处理结果
+            SubtitleResult: 包含处理结果
         """
         ...
 
-    def process(self, task: WatermarkTask, timeout: int = 600,
-                output_path: str = None, cancel_check=None) -> WatermarkResult:
+    def process(self, task: SubtitleTask, timeout: int = 600,
+                output_path: str = None, cancel_check=None) -> SubtitleResult:
         """
         一键处理：提交 → 等待 → 下载
 
@@ -102,13 +112,14 @@ class BaseAdapter(ABC):
             task: 去字幕任务描述
             timeout: 最大等待时间（秒）
             output_path: 结果下载路径。None 则不下载，返回远程 URL。
+            cancel_check: 可选回调 () -> bool，传递给 wait_for_result()
         """
         self._output_path = output_path
         try:
             task_id = self.submit(task)
             return self.wait_for_result(task_id, timeout, cancel_check=cancel_check)
         except Exception as e:
-            return WatermarkResult(
+            return SubtitleResult(
                 success=False,
                 error_message=str(e)
             )

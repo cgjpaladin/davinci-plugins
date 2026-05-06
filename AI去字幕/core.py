@@ -1,10 +1,10 @@
 """
 core.py — AI去字幕共享业务逻辑
-remove_watermark.py 和 ui_external.py 的共同基础层。
+remove_subtitle.py 和 ui_external.py 的共同基础层。
 
 设计原则：
 - 纯函数：不操作 Resolve 状态（ReplaceClip/mark_processed 留给调用者）
-- 行为契约：与 watermark-plugin-rules SKILL.md 严格对齐
+- 行为契约：与 subtitle-plugin-rules SKILL.md 严格对齐
 - 零副作用：不 print/log/ui，只返回数据
 """
 
@@ -14,7 +14,7 @@ import time
 import unicodedata
 import urllib.request
 from copy import deepcopy
-from typing import Optional, NamedTuple, Callable
+from typing import Optional, NamedTuple, Callable, Any
 
 from config import (
     DEFAULT_MODE, MAX_SOURCE_DURATION,
@@ -24,9 +24,9 @@ from config import (
 )
 from pricing import estimate_cost, point_to_yuan
 from pricing import oss_tracker
-from adapters import WatermarkTask, WatermarkResult
+from adapters import SubtitleTask, SubtitleResult
 from adapters.wuhenai_v2 import WuhenAIV21Adapter
-from watermark_state import record_original, mark_processed, acquire_lock, release_lock
+from subtitle_state import record_original, mark_processed, acquire_lock, release_lock
 import ops_logger
 
 
@@ -56,7 +56,7 @@ class TaskRecord(NamedTuple):
     mp_item: object
     name: str
     path: str
-    kwargs: dict            # WatermarkTask 构造参数
+    kwargs: dict            # SubtitleTask 构造参数
     duration: float
 
 
@@ -74,7 +74,7 @@ class PreparedTasks(NamedTuple):
 
 def connect_resolve():
     """获取 Resolve/Project/Timeline。失败抛 RuntimeError。"""
-    import DaVinciResolveScript as dvr_script
+    import DaVinciResolveScript as dvr_script  # type: ignore[import-not-found]
     resolve = dvr_script.scriptapp("Resolve")
     if not resolve:
         raise RuntimeError("请先启动 DaVinci Resolve Studio")
@@ -115,7 +115,7 @@ def extract_ep(filename: str) -> str:
     return m.group(1) if m else "EP00"
 
 
-def build_output_path(file_name: str, output_dir: str, mode: str = "") -> str:
+def build_output_path(file_name: str, output_dir: str, mode: str = "") -> tuple:
     """
     构建输出版本化路径。
     返回 (full_path, ep, subdir, clean_name)
@@ -139,7 +139,7 @@ def build_output_path(file_name: str, output_dir: str, mode: str = "") -> str:
     return full, ep, subdir, clean_name
 
 
-def find_cached_output(file_name: str, output_dir: str, mode: str = None) -> Optional[str]:
+def find_cached_output(file_name: str, output_dir: str, mode: Optional[str] = None) -> Optional[str]:
     """
     扫输出目录找已处理文件。返回最高版本路径 / None。
     """
@@ -166,7 +166,7 @@ def find_cached_output(file_name: str, output_dir: str, mode: str = None) -> Opt
 # 余额查询
 # ═══════════════════════════════════════════
 
-def query_balance(adapter_config: dict = None) -> float:
+def query_balance(adapter_config: Optional[dict] = None) -> float:
     """查询无痕AI 2.1 余额（默认），返回可用点数。异常返回 0。
 
     如需查鬼手余额，传入 adapter_config=ADAPTER_CONFIGS['ghostcut']。
@@ -178,15 +178,15 @@ def query_balance(adapter_config: dict = None) -> float:
             adapter = GhostCutAdapter(adapter_config)
             bal = adapter.get_balance()
             now_ms = time.time() * 1000
-            return sum(
+            return float(sum(
                 a["pointBalance"] for a in bal.get("pointAssets", [])
                 if a["pointBalance"] > 0 and a.get("expireTime", now_ms + 1) > now_ms
-            )
+            ))
         else:
             cfg = adapter_config or deepcopy(ADAPTER_CONFIGS["wuhenai_v21"])
             adapter = WuhenAIV21Adapter(cfg)
             bal = adapter.get_balance()
-            return bal.get("balance", 0)
+            return float(bal.get("balance", 0))
     except Exception:
         return 0
 
@@ -199,7 +199,7 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
     """
     扫描 IO 区间内所有视频片段，返回 (clips, report)。
 
-    过滤链（与 watermark-plugin-rules SKILL.md 严格一致）：
+    过滤链（与 subtitle-plugin-rules SKILL.md 严格一致）：
       ❌ IO 未设 → 返回 None
       ❌ GetClipEnabled()==False → skipped_disabled
       ❌ 颜色≠目标颜色 → 静默跳过
@@ -301,7 +301,6 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
         ))
 
     # 构造报告
-    skipped_total = sum(v for k, v in stats.items() if k.startswith("skipped_"))
     report = ScanReport(
         total=stats["total"],
         valid=len(clips),
@@ -368,7 +367,7 @@ def prepare_tasks(
     # ── Step 3: 构建 TaskRecord ──
     task_records = []
     for c in remaining_clips:
-        kwargs = {"video_path": c.path, "language": "zh", "model": mode}
+        kwargs = {"video_path": c.path, "language": "zh", "model": mode, "duration": c.duration}
         if mode in ("pro_box",):
             kwargs["mask_regions"] = [{
                 "type": "remove_only_ocr",
@@ -442,16 +441,24 @@ def post_check(output_files: list) -> dict:
     Returns:
         {"total": int, "ok": int, "fail": int, "problems": [{"file": str, "issues": [str]}]}
     """
-    result = {"total": len(output_files), "ok": 0, "fail": 0, "problems": []}
+    result: dict[str, Any] = {"total": len(output_files), "ok": 0, "fail": 0, "problems": []}
 
     if not output_files:
         return result
 
     try:
         import subprocess
-        has_ffprobe = subprocess.run(["which", "ffprobe"], capture_output=True).returncode == 0
+        _ffprobe_bin: Optional[str] = None
+        if subprocess.run(["which", "ffprobe"], capture_output=True).returncode == 0:
+            _ffprobe_bin = "ffprobe"
+        else:
+            _shared = "/Volumes/MYJC/06_Software/达芬奇脚本/tools/ffprobe"
+            if os.path.exists(_shared):
+                _ffprobe_bin = _shared
+        has_ffprobe = _ffprobe_bin is not None
     except:
         has_ffprobe = False
+        _ffprobe_bin = None
 
     for f in output_files:
         name = os.path.basename(f)
@@ -468,9 +475,10 @@ def post_check(output_files: list) -> dict:
 
             # ffprobe 视频可读性 + 时长校验
             if has_ffprobe and not issues:
+                assert _ffprobe_bin is not None  # has_ffprobe 已保证
                 try:
                     r = subprocess.run(
-                        ["ffprobe", "-v", "error", "-show_entries",
+                        [_ffprobe_bin, "-v", "error", "-show_entries",
                          "format=duration", "-of", "csv=p=0", f],
                         capture_output=True, text=True, timeout=15
                     )
@@ -498,7 +506,10 @@ def post_check(output_files: list) -> dict:
 def create_wuhenai_adapter(mode: str = "pro_box") -> WuhenAIV21Adapter:
     """创建标准配置的无痕AI 2.1 适配器（sel_area 模式）。
     CLI 和 UI 都通过这个函数创建适配器，保证行为一致。
+
+    TODO: mode 参数预留，将来支持不同模式的适配器配置（如 basic→all_area）
     """
+    _ = mode  # 预留参数，暂未使用
     adapter_cfg = deepcopy(ADAPTER_CONFIGS["wuhenai_v21"])
     adapter_cfg["model"] = "video_removal_std"
     adapter_cfg["method"] = "sel_area"
@@ -509,7 +520,7 @@ def process_single_clip(
     task,
     adapter: WuhenAIV21Adapter,
     mode: str,
-    on_attempt: Callable = None,
+    on_attempt: Optional[Callable] = None,
     cancel_check=None,
 ) -> tuple:
     """
@@ -523,13 +534,13 @@ def process_single_clip(
         on_attempt: (attempt: int, name: str) -> None  每次尝试前回调
 
     Returns:
-        (WatermarkResult, elapsed_seconds)
+        (SubtitleResult, elapsed_seconds)
     """
     if not acquire_lock(task.name):
-        return (WatermarkResult(success=False, task_id="", error_message="被锁定"), 0)
+        return (SubtitleResult(success=False, task_id="", error_message="被锁定"), 0)
 
     result = None
-    elapsed = 0
+    elapsed = 0.0
     for attempt in range(3):
         if on_attempt:
             on_attempt(attempt, task.name)
@@ -537,7 +548,7 @@ def process_single_clip(
         try:
             ops_logger.task_submit(task.name, mode, task.duration, attempt)
             t0 = time.time()
-            result = adapter.process(WatermarkTask(**task.kwargs), timeout=600, cancel_check=cancel_check)
+            result = adapter.process(SubtitleTask(**task.kwargs), timeout=600, cancel_check=cancel_check)
             elapsed = time.time() - t0
             ops_logger.task_result(
                 task.name, str(getattr(result, 'task_id', '')), elapsed, result.success,
@@ -553,7 +564,7 @@ def process_single_clip(
             else:
                 ops_logger.task_error(task.name, str(e)[:100], attempt)
                 release_lock(task.name)
-                result = WatermarkResult(
+                result = SubtitleResult(
                     success=False, task_id="",
                     error_message=f"重试2次后失败: {str(e)[:100]}",
                 )
@@ -565,9 +576,9 @@ def download_and_apply(
     results: list,
     output_dir: str,
     mode: str,
-    check_stop: Callable = None,
-    on_done: Callable = None,
-    on_fail: Callable = None,
+    check_stop: Optional[Callable] = None,
+    on_done: Optional[Callable] = None,
+    on_fail: Optional[Callable] = None,
 ) -> tuple:
     """
     下载 API 处理结果 → ReplaceClip → 标记完成。
