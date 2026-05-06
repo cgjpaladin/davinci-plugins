@@ -409,6 +409,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                     if download_path:
                         t_dl_start = time.time()
                         self._download_from_oss(output_key, download_path)
+                        self._oss_delete(output_key)
                         download_sec = time.time() - t_dl_start
                         output = download_path
                     else:
@@ -607,6 +608,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                         output_path = rec["output_path"]
                         if output_path:
                             self._download_from_oss(rec["output_key"], output_path)
+                            self._oss_delete(rec["output_key"])  # 下载完即删，OSS 只当过路
                             rec["result"] = WatermarkResult(
                                 success=True,
                                 task_id=rec["task_id"],
