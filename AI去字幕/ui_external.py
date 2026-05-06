@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import DaVinciResolveScript as bmd
 from config import (
-    DEBUG, get_project_root, get_output_dir, get_log_dir, __version__,
+    DEBUG, get_output_dir, get_log_dir, __version__,
 )
 from watermark_state import init as state_init, is_locked as state_is_locked, acquire_lock, release_lock, get_original_path
 import ops_logger
@@ -138,7 +138,7 @@ window_layout = [
                      "StyleSheet": "color:rgb(200,200,200);background-color:rgb(30,30,30);"
                                    "border:1px solid rgb(50,50,50);border-radius:4px;"
                                    "padding:6px;min-height:100px",
-                     "TextInteractionFlags": 13, "Weight": 1}),
+                     "ReadOnly": True, "Weight": 1}),
 
         # 下半区：状态信息
         ui.VGroup({"ID": "bottom_bar", "Spacing": 2, "Weight": 0}, [
@@ -473,7 +473,7 @@ def _refresh_scan_display():
     cache_hits = 0; need_secs = 0; need_pts = 0
 
     itm[LOG_LB].Text = ""
-    info("── ① 扫描选区 ──")
+    info("\n\n── ① 扫描选区 ──")
     for c in clips:
         f = c.start_frame
         total_sec = int(f / fps)
@@ -606,7 +606,7 @@ def process(*_):
                 info(f"  ⚠ {body}")
         wuhenai_set_logger(_adapter_log)
 
-        info("── ② 缓存复用 ──")
+        info("\n\n── ② 缓存复用 ──")
         # 检查是否被停止中断
         if _state["stop"]:
             info("  ⏹ 已停止")
@@ -624,7 +624,7 @@ def process(*_):
             info("  无可复用缓存")
         if not prepared.tasks:
             if prepared.cache_hits:
-                info("── ⑤ 最终报告 ──")
+                info("\n\n── ⑤ 最终报告 ──")
                 log_ok("🎉 全部完成！")
                 t_elapsed = int(time.time() - t_start)
                 mins, secs = divmod(t_elapsed, 60)
@@ -638,7 +638,7 @@ def process(*_):
             itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
             return
 
-        info("── ③ AI去字幕中 ──")
+        info("\n\n── ③ AI去字幕中 ──")
 
         # 余额
         from pricing import point_to_yuan, ACTIVE_PROVIDER
@@ -714,7 +714,7 @@ def process(*_):
         # 因停止而未处理的
         unprocessed = total - len(locked_tasks) - intercepted
         if not locked_tasks:
-            info("── ⑤ 最终报告 ──")
+            info("\n\n── ⑤ 最终报告 ──")
             msg = f"🎉 处理完成: {prepared.cache_hits} 个处理完成（缓存）"
             if intercepted > 0:
                 msg += f"，{intercepted} 个被跳过"
@@ -753,7 +753,7 @@ def process(*_):
             results.append((t.mp_item, t.name, t.path, r, elapsed / len(locked_tasks)))
 
         # 下载并替换
-        info("── ④ 替换回时间线 ──")
+        info("\n\n── ④ 替换回时间线 ──")
         _pg(0.9)
         _state["stop"] = False
         _replaced = 0
@@ -778,7 +778,7 @@ def process(*_):
 
         fail_count = len(results) - ok_count
         _pg(1.0); _st(f"完成 {ok_count}/{len(results)}")
-        info("── ⑤ 最终报告 ──")
+        info("\n\n── ⑤ 最终报告 ──")
         total_done = ok_count + prepared.cache_hits
         msg = f"🎉 处理完成: {total_done} 个处理完成"
         if prepared.cache_hits > 0:
@@ -806,6 +806,7 @@ def process(*_):
     finally:
         _state["stop"] = False
         itm[COLOR_CB].Enabled = True
+        itm[BTN_UNDO].Enabled = True
         _set_btn(scan=True, pick=True, stop=False, warn=False)
         itm[BTN_START].Enabled = False
         itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
@@ -833,7 +834,7 @@ def undo(*_):
         if io_out <= io_in:
             warn("请设置 IO 入出点"); return
 
-        info("── 撤销替换 ──")
+        info("\n\n── 撤销替换 ──")
         found = 0; undone = 0; seen = set()
         for t in range(1, timeline.GetTrackCount("video") + 1):
             for item in timeline.GetItemListInTrack("video", t) or []:
@@ -845,35 +846,25 @@ def undo(*_):
                 if nm in seen:
                     continue
                 seen.add(nm)
+                found += 1
                 mp = item.GetMediaPoolItem()
                 if not mp:
                     continue
                 file_name = mp.GetClipProperty("File Name") or nm
-                # File Name 可能带 _去字幕_ 后缀，提取干净键查状态
-                clean_key = file_name.split("_去字幕_")[0] + ".mp4" if "_去字幕_" in file_name else file_name
-                clip_path = mp.GetClipProperty("File Path") or ""
-                original = get_original_path(clean_key, clip_path)
+                # File Name 去 _去字幕_ 后缀 → 状态键
+                key = file_name.split("_去字幕_")[0] + ".mp4" if "_去字幕_" in file_name else file_name
+                original = get_original_path(key)
                 if original and os.path.exists(original):
-                    try:
-                        mp.ReplaceClipPreserveSubClip(original)
-                    except Exception as e:
-                        info(f"  ⚠ {nm}: 替换失败 ({e})，跳过")
-                        found += 1
-                        continue
+                    mp.ReplaceClipPreserveSubClip(original)
                     log_ok(f"  ↩ {nm}")
                     undone += 1
                     _smb_log(f"撤销: {nm} → 原片")
-                else:
-                    info(f"  ⚠ {nm}: 无状态记录，跳过")
-                found += 1
         if found == 0:
             info("  IO 内无去字幕片段")
         else:
             info(f"  撤销 {undone}/{found} 个片段")
     except Exception as e:
-        import traceback
         fail(f"撤销失败: {e}")
-        info(traceback.format_exc())  # 仅调试用，后续可移除
 
 # ── 事件 ──
 dlg.On[WIN_ID].Close = lambda ev: disp.ExitLoop()

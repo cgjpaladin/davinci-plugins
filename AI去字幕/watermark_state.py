@@ -51,38 +51,7 @@ def init(project_root: str = None):
     hide_path(_state_file)
 
 
-def _auto_init(clip_path: str = None):
-    """从未 init() 时自动探测项目根目录并初始化状态系统。
-    1. clip_path 推导 → 2. get_project_root() → 3. DaVinci API → 4. 首个含04_素材的项目"""
-    global _state_file, _lock_dir
-    try:
-        from config import get_state_dir, get_lock_dir, get_project_root, hide_path, SMB_MOUNT, PROJECT_MATERIALS
-        root = ""
-        if clip_path:
-            root = get_project_root(clip_path)
-        if not root:
-            root = get_project_root()
-        if not root:
-            # 兜底：找首个 04_素材 目录的项目
-            base = os.path.join(SMB_MOUNT, '08_AI_Project')
-            if os.path.isdir(base):
-                for d in sorted(os.listdir(base)):
-                    full = os.path.join(base, d)
-                    if os.path.isdir(full) and os.path.isdir(os.path.join(full, PROJECT_MATERIALS)):
-                        root = full
-                        break
-        if root:
-            state_dir = get_state_dir(root)
-            _state_file = os.path.join(state_dir, ".watermark_state.json")
-            _lock_dir = get_lock_dir(root)
-            hide_path(_state_file)
-    except Exception:
-        pass
-
-
-def _load_state(clip_path: str = None) -> dict:
-    if not _state_file:
-        _auto_init(clip_path)
+def _load_state() -> dict:
     if not _state_file or not os.path.exists(_state_file):
         return {}
     try:
@@ -93,8 +62,6 @@ def _load_state(clip_path: str = None) -> dict:
 
 
 def _save_state(state: dict):
-    if not _state_file:
-        _auto_init()
     if not _state_file:
         return
     sdir = os.path.dirname(_state_file)
@@ -242,14 +209,12 @@ def mark_processed(clip_name: str, processed_path: str, mode: str):
     _save_state(state)
 
 
-def get_original_path(clip_name: str, clip_path: str = None) -> Optional[str]:
-    state = _load_state(clip_path)
-    # 双向匹配：干净键 + 原键（_去字幕_ 后缀可能不一致）
-    clean = clip_name.split("_去字幕_")[0] + ".mp4" if "_去字幕_" in clip_name else clip_name
-    for key in (clean, clip_name):
-        entry = state.get(key)
-        if entry and entry.get("status", "").endswith("_done"):
-            return entry.get("original_path")
+def get_original_path(file_name: str) -> Optional[str]:
+    """根据 File Name 查找处理前的原始路径。"""
+    state = _load_state()
+    entry = state.get(file_name)
+    if entry and entry.get("status", "").endswith("_done"):
+        return entry.get("original_path")
     return None
 
 

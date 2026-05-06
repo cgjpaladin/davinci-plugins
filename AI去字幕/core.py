@@ -20,7 +20,7 @@ from config import (
     DEFAULT_MODE, MAX_SOURCE_DURATION,
     CLIP_COLOR, DEFAULT_MASK_REGION,
     ADAPTER_CONFIGS, DEBUG,
-    get_project_root, get_output_dir, get_log_dir,
+    get_output_dir, get_log_dir,
 )
 from pricing import estimate_cost, point_to_yuan
 from pricing import oss_tracker
@@ -627,8 +627,8 @@ def download_and_apply(
             release_lock(name)
             continue
 
+        fn = mp_item.GetClipProperty("File Name") or file_name  # 替换前取，避免拿到 _去字幕_ 后缀
         if mp_item.ReplaceClipPreserveSubClip(dl):
-            fn = mp_item.GetClipProperty("File Name") or file_name
             mark_processed(fn, dl, mode)
             success_count += 1
             output_files.append(dl)

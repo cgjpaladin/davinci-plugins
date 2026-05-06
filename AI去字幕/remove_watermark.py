@@ -30,7 +30,7 @@ if _RESOLVE_MODULES not in sys.path:
 from config import (
     API_TIMEOUT, DEFAULT_MODE, MODE_LABELS,
     DEBUG, SCAN_ONLY, __version__,
-    get_project_root, get_output_dir, get_log_dir, PLUGIN_DIR,
+    get_output_dir, get_log_dir, PLUGIN_DIR,
 )
 from adapters import WatermarkTask
 from watermark_state import get_clip_status, init as state_init
@@ -50,7 +50,7 @@ import ops_logger
 
 def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
                  scan_only: bool = False, report_json: str = "",
-                 batch: bool = False) -> dict:
+                 batch: bool = False, project_root: str = "") -> dict:
     """执行完整去字幕流程 (无痕AI 2.1, sel_area ¥0.36/分钟)。"""
 
     # ── 0. 环境自检 ──
@@ -140,14 +140,13 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     step(f"共 {len(clips)} 个片段", "📋")
 
     # ── 3. 项目路径 ──
-    project_root = get_project_root(clips[0].path if clips else None)
-    if not DEBUG and not project_root:
-        report["error"] = "无法识别项目目录"
+    if not project_root or not os.path.isdir(project_root):
+        report["error"] = "请通过 --project-root 指定项目根目录"
         _write_report(report, report_json)
         return report
 
     output_dir = get_output_dir(project_root)
-    report["project_root"] = project_root or "(调试模式)"
+    report["project_root"] = project_root
     report["output_dir"] = output_dir
     info(f"项目路径: {report['project_root']}")
     info(f"输出目录: {output_dir}")
@@ -333,9 +332,9 @@ def _write_report(report: dict, path: str):
 # ═══════════════════════════════════════════
 
 def main():
-    # 达芬奇菜单入口（无参数）→ 走环境变量默认
+    # 达芬奇菜单入口（无参数）→ 使用 UI，走 ui_external.py
     if len(sys.argv) == 1 and sys.argv[0].endswith(".py"):
-        run_pipeline(mode=DEFAULT_MODE, scan_only=SCAN_ONLY)
+        print("请通过 AI去字幕 UI 使用，或传 --project-root 参数")
         return
 
     # 命令行入口（AI 开发者）
@@ -359,6 +358,8 @@ def main():
                         help="批量并行处理（上传全部→一次提交→一起等）")
     parser.add_argument("--check", action="store_true",
                         help="仅环境自检 (SMB/API/OSS/DVR)，不处理")
+    parser.add_argument("--project-root", default="",
+                        help="项目根目录（含04_素材的文件夹），AI 传入，不推断")
     args = parser.parse_args()
 
     if args.check:
@@ -389,6 +390,7 @@ def main():
             scan_only=args.scan_only,
             report_json=args.report_json,
             batch=args.batch,
+            project_root=args.project_root,
         )
     except Exception as e:
         fail(str(e))
