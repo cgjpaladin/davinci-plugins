@@ -588,6 +588,20 @@ def download_and_apply(
     fail_list = []
     output_files = []
 
+    # 磁盘空间预检（粗略估算：每个结果约 30MB）
+    try:
+        st = os.statvfs(output_dir or ".")
+        free_mb = (st.f_frsize * st.f_bavail) // (1024 * 1024)
+        need_mb = len(results) * 30
+        if free_mb < need_mb and free_mb < 1024:  # < 1GB 才报警
+            msg = f"磁盘空间不足: 可用{free_mb}MB < 约需{need_mb}MB"
+            if on_fail:
+                for _, name, _, _, _ in results:
+                    on_fail(name, msg)
+            return 0, [{"name": "磁盘", "error": msg}], []
+    except:
+        pass  # 检查失败不阻塞
+
     for mp_item, name, path, result, elapsed in results:
         if check_stop and check_stop():
             break

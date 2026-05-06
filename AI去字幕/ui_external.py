@@ -719,6 +719,18 @@ def process(*_):
         # 批量处理
         info(f"  批量处理 {len(locked_tasks)} 个片段（并行模式）")
         info(f"  上传并提交中...")
+
+        # 二次余额校验（防多机器同时提交超支）
+        try:
+            pts_now = adapter.get_balance().get("balance", 0)
+            if pts_now < total_est:
+                fail(f"余额不足: {pts_now} < {total_est}（可能有其他机器正在处理）")
+                _smb_log(f"二次余额拦截: {pts_now}pt < 需{total_est}pt")
+                for t in locked_tasks:
+                    release_lock(t.name)
+                return
+        except:
+            pass
         api_tasks = [WatermarkTask(**t.kwargs) for t in locked_tasks]
 
         t_batch = time.time()
@@ -751,6 +763,9 @@ def process(*_):
             on_done=_on_replaced,
             on_fail=lambda name, err: fail(f"  {name}: {err}"),
         )
+        # SMB 记录下载失败
+        for fe in fail_list:
+            _smb_log(f"下载失败: {fe['name']} — {fe['error']}")
 
         pc = post_check(output_files)
         if pc["fail"] > 0:
@@ -814,6 +829,10 @@ def start_process(*_):
         return
     if not _state["clips_scanned"]:
         warn("请先扫描 IO")
+        return
+    if not os.path.exists("/Volumes/MYJC"):
+        warn("SMB 未挂载，请检查网络连接")
+        _smb_log("拦截: SMB 未挂载")
         return
 
     # 校验 IO 和时间线是否变动

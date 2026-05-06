@@ -224,6 +224,16 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
 
     if batch:
         step(f"🚀 批量处理 {len(prepared.tasks)} 个片段 | 并行模式")
+
+        # 二次余额校验（防多机器同时提交超支）
+        try:
+            pts_now = adapter.get_balance().get("balance", 0)
+            if pts_now < total_est:
+                fail(f"余额不足: {pts_now} < 需{total_est}（可能有其他机器正在处理）")
+                return report
+        except:
+            pass
+
         api_tasks = [WatermarkTask(**t.kwargs) for t in prepared.tasks]
         t0 = time.time()
         api_results = adapter.process_batch(api_tasks, timeout=API_TIMEOUT)
