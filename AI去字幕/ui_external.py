@@ -23,7 +23,7 @@ import DaVinciResolveScript as bmd
 from config import (
     DEBUG, get_project_root, get_output_dir, get_log_dir, __version__,
 )
-from watermark_state import init as state_init, is_locked as state_is_locked, acquire_lock, release_lock
+from watermark_state import init as state_init, is_locked as state_is_locked, acquire_lock, release_lock, get_original_path
 import ops_logger
 from core import (
     connect_resolve, scan_io_clips, prepare_tasks,
@@ -50,6 +50,7 @@ PROJ_LB = "proj_lb"
 PATH_LB = "path_lb"
 BTN_SCAN, BTN_START, BTN_STOP = "btn_scan", "btn_start", "btn_stop"
 BTN_PICK = "btn_pick"
+BTN_UNDO = "btn_undo"
 COLOR_CB = "color_cb"
 LOG_LB, ST_LB = "log_lb", "st_lb"
 PG_BG, PG_BAR = "pg_bg", "pg_bar"
@@ -128,6 +129,7 @@ window_layout = [
                 ui.Button({"ID": BTN_SCAN, "Text": "扫描当前选区", "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Button({"ID": BTN_START, "Text": "开始处理", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
                 ui.Button({"ID": BTN_STOP, "Text": "停止", "StyleSheet": BTN_DANGER, "Weight": 0}),
+                ui.Button({"ID": BTN_UNDO, "Text": "撤销替换", "StyleSheet": BTN_STYLE, "Weight": 0}),
             ]),
         ]),
 
@@ -167,6 +169,7 @@ itm[COLOR_CB].Enabled = False
 itm[BTN_SCAN].Enabled = False
 itm[BTN_START].Enabled = False
 itm[BTN_STOP].Enabled = False
+itm[BTN_UNDO].Enabled = False
 itm["warn_lb"].Visible = False
 itm[BTN_STOP].Enabled = False
 itm["warn_lb"].Visible = False
@@ -353,6 +356,7 @@ def pick_project(*_):
             # 解锁筛选和扫描
             itm[COLOR_CB].Enabled = True
             itm[BTN_SCAN].Enabled = True
+            itm[BTN_UNDO].Enabled = True
             itm[BTN_START].Enabled = _state["clips_scanned"] and bool(_state["project_root"])
             # 更新左下角引导
             itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区" if not _state["clips_scanned"] else "③ 请点击开始处理"
@@ -629,6 +633,7 @@ def process(*_):
                 log_ok("没有有效任务")
             _set_btn(scan=True, pick=True, stop=False, warn=False)
             itm[COLOR_CB].Enabled = True
+            itm[BTN_UNDO].Enabled = True
             itm[BTN_START].Enabled = False
             itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
             return
@@ -814,10 +819,54 @@ def stop(*_):
         _state["stop"] = True; warn("停止中...")
 
 
+# ── 撤销替换 ──
+def undo(*_):
+    """将 IO 内的去字幕片段换回原片"""
+    _log_action("撤销替换")
+    if _state["processing"]:
+        warn("处理中，无法撤销"); return
+    try:
+        _, project, timeline = connect_resolve()
+        io = timeline.GetMarkInOut()
+        io_in = io.get("video", {}).get("in", 0) if io else 0
+        io_out = io.get("video", {}).get("out", 0) if io else 0
+        if io_out <= io_in:
+            warn("请设置 IO 入出点"); return
+
+        info("── 撤销替换 ──")
+        found = 0; undone = 0
+        for t in range(1, timeline.GetTrackCount("video") + 1):
+            for item in timeline.GetItemListInTrack("video", t) or []:
+                if item.GetStart() < io_in or item.GetStart() > io_out:
+                    continue
+                nm = item.GetName()
+                if "_去字幕_" not in nm:
+                    continue
+                mp = item.GetMediaPoolItem()
+                if not mp:
+                    continue
+                file_name = mp.GetClipProperty("File Name") or nm
+                original = get_original_path(file_name)
+                if original and os.path.exists(original):
+                    item.ReplaceClipPreserveSubClip(original)
+                    log_ok(f"  ↩ {nm}")
+                    undone += 1
+                    _smb_log(f"撤销: {nm} → 原片")
+                else:
+                    info(f"  ⚠ {nm}: 无原始路径记录，跳过")
+                found += 1
+        if found == 0:
+            info("  IO 内无去字幕片段")
+        else:
+            info(f"  撤销 {undone}/{found} 个片段")
+    except Exception as e:
+        fail(f"撤销失败: {e}")
+
 # ── 事件 ──
 dlg.On[WIN_ID].Close = lambda ev: disp.ExitLoop()
 dlg.On[BTN_SCAN].Clicked = scan_io
 dlg.On[BTN_PICK].Clicked = pick_project
+dlg.On[BTN_UNDO].Clicked = undo
 
 def start_process(*_):
     """主线程校验 + StepLoop 轮询（子线程处理，主线程刷 UI）"""
@@ -863,6 +912,7 @@ def start_process(*_):
     _state["processing"] = True  # 主线程立即锁定，防重入
     itm[COLOR_CB].Enabled = False
     itm[BTN_SCAN].Enabled = False
+    itm[BTN_UNDO].Enabled = False
     itm[BTN_PICK].Enabled = False
     itm[PROJ_LB].Text = "处理中，请勿操作..."
 

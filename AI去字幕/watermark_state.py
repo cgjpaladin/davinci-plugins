@@ -209,6 +209,18 @@ def mark_processed(clip_name: str, processed_path: str, mode: str):
     _save_state(state)
 
 
+def get_original_path(clip_name: str) -> Optional[str]:
+    """获取片段处理前的原始路径，用于撤销操作。返回 None 表示未处理或无法还原。"""
+    state = _load_state()
+    entry = state.get(clip_name)
+    if not entry:
+        return None
+    # 任何已处理状态（*_done）都可以还原
+    if entry.get("status", "").endswith("_done"):
+        return entry.get("original_path")
+    return None
+
+
 def need_restore(clip_name: str, target_mode: str) -> Optional[str]:
     """
     仅返回原片路径（如需升级），不做跳过判断。
