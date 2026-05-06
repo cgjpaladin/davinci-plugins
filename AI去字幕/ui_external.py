@@ -851,7 +851,8 @@ def undo(*_):
                 file_name = mp.GetClipProperty("File Name") or nm
                 # File Name 可能带 _去字幕_ 后缀，提取干净键查状态
                 clean_key = file_name.split("_去字幕_")[0] + ".mp4" if "_去字幕_" in file_name else file_name
-                original = get_original_path(clean_key)
+                clip_path = mp.GetClipProperty("File Path") or ""
+                original = get_original_path(clean_key, clip_path)
                 if original and os.path.exists(original):
                     try:
                         mp.ReplaceClipPreserveSubClip(original)
