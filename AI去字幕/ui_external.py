@@ -932,9 +932,16 @@ def start_process(*_):
     dlg.On[WIN_ID].Close = _busy_close
 
     # 主线程轮询：刷日志 + 状态 + 保持 UI 响应
+    _smb_lost_shown = False
     while thr.is_alive():
         _flush_log()
         _apply_ui_state()
+        # SMB 断连检测
+        if not os.path.exists("/Volumes/MYJC") and not _smb_lost_shown:
+            _smb_lost_shown = True
+            _state["stop"] = True
+            warn("⚠ SMB 已断开，已停止处理")
+            _smb_log("SMB 断连检测: 处理已停止")
         try: disp.StepLoop()
         except: pass
         time.sleep(0.05)
