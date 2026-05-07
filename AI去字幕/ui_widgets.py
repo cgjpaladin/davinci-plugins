@@ -112,8 +112,8 @@ window_layout = [
         ui.VGroup({"Spacing": 4, "Weight": 0}, [
             # Row 1: 项目路径 + 余额（FixedSize 硬锁，防溢出）
             ui.HGroup({"Spacing": 8, "Weight": 0}, [
-                ui.Button({"ID": BTN_CONFIRM, "Text": "✓ 确认", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
-                ui.Button({"ID": BTN_PICK, "Text": "选路径", "StyleSheet": BTN_STYLE, "Weight": 0}),
+                ui.Button({"ID": BTN_CONFIRM, "Text": "✓ 确认此路径", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
+                ui.Button({"ID": BTN_PICK, "Text": "选择项目路径", "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Label({"ID": PATH_LB, "Text": "未指定项目路径",
                           "StyleSheet": "color:rgb(180,180,180);font-size:11px", "Weight": 1}),
                 ui.VGroup({"Spacing": 2, "Weight": 0}, [
@@ -519,7 +519,7 @@ def auto_detect_project():
         _suggested_path = path
         _set_proj(path)  # 显示路径，但尚未确认
         itm[BTN_CONFIRM].Visible = True
-        itm[BTN_PICK].Text = "手动选"
+        itm[BTN_PICK].Text = "手动选择"
         itm[PROJ_LB].Text = "① 请确认或手动选择项目路径"
         return True
     except Exception:
@@ -545,7 +545,7 @@ def confirm_project(*_):
     itm[BTN_START].Enabled = False
     itm[BTN_CONFIRM].Enabled = False
     itm[BTN_CONFIRM].Text = "已确认"
-    itm[BTN_PICK].Text = "改路径"
+    itm[BTN_PICK].Text = "更改路径"
     itm[PATH_LB].StyleSheet = "color:rgb(102,221,39);font-size:11px"  # 绿色确认态
     itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
     _suggested_path = ""
@@ -574,7 +574,7 @@ def pick_project(*_):
             ledger.init(path)
             itm[BTN_CONFIRM].Enabled = False
             itm[BTN_CONFIRM].Text = "已确认"
-            itm[BTN_PICK].Text = "改路径"
+            itm[BTN_PICK].Text = "更改路径"
             itm[PATH_LB].StyleSheet = "color:rgb(102,221,39);font-size:11px"
             itm[COLOR_CB].Enabled = True
             itm[BTN_SCAN].Enabled = True
