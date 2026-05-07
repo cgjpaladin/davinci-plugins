@@ -17,6 +17,8 @@ while IFS= read -r f; do
 done < <(find . -maxdepth 2 \( -name '*.py' -o -name 'gray.sh' \) \
     -not -path './tests/*' -not -name 'dev.sh' -not -name 'deploy.sh' -not -name 'sync.sh' \
     | sed 's|^\./||' | sort)
+# 手动追加 .md 等非代码文件
+FILES+=(CHANGELOG.md)
 
 echo "同步到 SMB..."
 for f in "${FILES[@]}"; do
