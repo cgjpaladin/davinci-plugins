@@ -4,7 +4,9 @@ ui_pipeline.py — AI去字幕 UI 业务逻辑
 扫描 / 处理 / 停止 / 撤销 / 余额查询
 依赖 ui_widgets.py 提供的 itm, _state, 控件操作函数
 """
+import traceback
 import os
+import json
 import subprocess
 import threading
 import time
@@ -18,10 +20,11 @@ import urllib.parse
 from config import (
     DEBUG, get_output_dir, get_log_dir, __version__,
 )
-from subtitle_state import init as state_init, is_locked as state_is_locked, acquire_lock, release_lock, get_original_path
+from subtitle_state import init as state_init, acquire_lock, release_lock, is_locked as state_is_locked
+import ledger
 import ops_logger
 from core import (
-    connect_resolve, scan_io_clips, prepare_tasks, find_cached_output,
+    connect_resolve, scan_io_clips, prepare_tasks,
     estimate_cost, query_balance, post_check, CLIP_COLOR as _CLIP_COLOR,
     create_wuhenai_adapter, download_and_apply,
 )
@@ -44,15 +47,50 @@ from ui_widgets import (
     BTN_SCAN, BTN_START, BTN_STOP, BTN_PICK, BTN_UNDO,
     COLOR_CB, LOG_LB, ST_LB, PG_BG, PG_BAR,
 )
+import ui_widgets as _uw  # 用于跨模块写全局变量 _t_start/_t_estimated/_task_count
+
+# ── 媒体池自动导航 ──
+def discover_folders():
+    """列出 SMB 上的所有项目目录。
+    Returns: [(项目名, 完整路径), ...] 或 []"""
+    results = []
+    project_base = "/Volumes/MYJC/08_AI_Project"
+    if not os.path.isdir(project_base):
+        return results
+    try:
+        for name in sorted(os.listdir(project_base)):
+            full = os.path.join(project_base, name)
+            if os.path.isdir(full) and not name.startswith("."):
+                results.append((name, full))
+    except Exception:
+        pass
+    return results
 
 # ── 扫描 ──
+_version_checked = False
+
 def scan_io(*_):
+    """扫描时间线 IO 范围内标橙色的片段，显示缓存/预估信息。每次点击扫描按钮触发。"""
+    global _version_checked
     if not _check_smb(): return
+    # 首次扫描时检查 SMB 上的版本是否已更新
+    if not _version_checked:
+        _version_checked = True
+        try:
+            import re
+            smb_cfg = "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/config.py"
+            if os.path.exists(smb_cfg):
+                with open(smb_cfg) as f:
+                    m = re.search(r'__version__\s*=\s*"([^"]+)"', f.read())
+                if m and m.group(1) != __version__:
+                    warn(f"⚠ 版本已更新（{__version__} → {m.group(1)}），请重启达芬奇以生效")
+        except Exception:
+            pass
     _log_action("扫描当前选区")
     _st("扫描中...")
     _state["clips_scanned"] = False
     try: itm[LOG_LB].Text = ""
-    except: pass
+    except Exception: _smb_log("[ui_pipeline] 清空 LOG_LB 失败")
     try:
         _, project, timeline = connect_resolve()
         clips, report = scan_io_clips(timeline, _SELECTED_COLOR)
@@ -94,12 +132,12 @@ def scan_io(*_):
             m2, s = divmod(m, 60)
             rem_f = int(f - total_sec * fps)
             pos_str = f"{h:02d}:{m2:02d}:{s:02d}:{rem_f:02d}"
-            is_cached = od and find_cached_output(c.file_name, od)
+            is_cached = od and ledger.find_output(c.file_name)
             if not od:
                 label, emoji = "未知", "🟠"  # 无项目路径，无法查缓存
             else:
                 label, emoji = ("可复用", "🟢") if is_cached else ("需处理", "🟡")
-            info(f"  {emoji} {c.name}	位置：{pos_str}	长度：{c.duration:.0f}秒	{label}")
+            info(f"  {emoji} {c.name} | 位置：{pos_str} | 长度：{c.duration:.0f}秒 | {label}")
             if is_cached:
                 cache_hits += 1
             else:
@@ -155,9 +193,9 @@ def _refresh_scan_display():
         m2, s = divmod(m, 60)
         rem_f = int(f - total_sec * fps)
         pos_str = f"{h:02d}:{m2:02d}:{s:02d}:{rem_f:02d}"
-        is_cached = od and find_cached_output(c.file_name, od)
+        is_cached = od and ledger.find_output(c.file_name)
         label, emoji = ("可复用", "🟢") if is_cached else ("需处理", "🟡")
-        info(f"  {emoji} {c.name}	位置：{pos_str}	长度：{c.duration:.0f}秒	{label}")
+        info(f"  {emoji} {c.name} | 位置：{pos_str} | 长度：{c.duration:.0f}秒 | {label}")
         if is_cached:
             cache_hits += 1
         else:
@@ -180,8 +218,13 @@ def _refresh_scan_display():
 
 
 # ── 余额 ──
+_cached_balance = 0  # 启动时刷新一次，处理期间复用，避免重复HTTP
+
 def refresh_bal():
+    """刷新余额显示（主线程调用，UI 按钮绑定）"""
+    global _cached_balance
     pts = query_balance()
+    _cached_balance = pts
     if pts > 0:
         name = "无痕AI 2.1" if "wuhenai" in ACTIVE_PROVIDER else ACTIVE_PROVIDER
         _bal(f"{name} | ¥{point_to_yuan(pts):.2f}")
@@ -197,19 +240,21 @@ def refresh_oss_bal():
         if not OSS_ACCESS_KEY_ID:
             itm[OSS_LB].Text = "阿里云 | 未配置凭证"
             return
+        # 阿里云签名要求所有非[0-9a-zA-Z]字符编码，包括 /
+        _enc = lambda s: urllib.parse.quote(str(s), safe="")
         params = {
             'Action': 'QueryAccountBalance', 'Format': 'JSON', 'Version': '2017-12-14',
             'AccessKeyId': OSS_ACCESS_KEY_ID, 'SignatureMethod': 'HMAC-SHA1',
-            'Timestamp': _time.strftime('%Y-%m-%dT%H:%M:%SZ', _time.gmtime()),
-            'SignatureVersion': '1.0', 'SignatureNonce': str(int(_time.time()*1000)),
+            'Timestamp': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            'SignatureVersion': '1.0', 'SignatureNonce': str(int(time.time()*1000)),
         }
-        sorted_p = sorted(params.items())
-        canonical = '&'.join(f'{urllib.parse.quote(k)}={urllib.parse.quote(str(v))}' for k,v in sorted_p)
-        string_to_sign = f'GET&{urllib.parse.quote("/")}&{urllib.parse.quote(canonical)}'
+        sorted_keys = sorted(params.keys())
+        canonical = '&'.join(f'{_enc(k)}={_enc(params[k])}' for k in sorted_keys)
+        string_to_sign = f'GET&{_enc("/")}&{_enc(canonical)}'
         sig = base64.b64encode(hmac.new((OSS_ACCESS_KEY_SECRET+'&').encode(), string_to_sign.encode(), hashlib.sha1).digest()).decode()
         params['Signature'] = sig
         url = 'https://business.aliyuncs.com/?' + '&'.join(
-            f'{urllib.parse.quote(k)}={urllib.parse.quote(str(v))}' for k,v in params.items())
+            f'{_enc(k)}={_enc(params[k])}' for k in sorted_keys + ['Signature'])
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read())
@@ -217,6 +262,7 @@ def refresh_oss_bal():
             cash = data['Data']['AvailableCashAmount']
             itm[OSS_LB].Text = f"阿里云 | ¥{cash}"
     except Exception as e:
+        warn(f"阿里云余额查询异常: {e}")
         itm[OSS_LB].Text = "阿里云 | 查询失败"
 
 
@@ -224,6 +270,7 @@ def refresh_oss_bal():
 def process(*_):
     """跑在子线程，只做业务逻辑，不碰 UI"""
     _state["stop"] = False
+    _state["processing"] = True
     _set_btn(scan=False, start=False, pick=False, stop=True, warn=True)
     oss_tracker.reset()
 
@@ -233,7 +280,7 @@ def process(*_):
         fail("请先选择项目路径"); return
 
     # 记录处理前余额 + 开始时间 + 阶段计时
-    pts_before = query_balance()
+    pts_before = _cached_balance
     t_start = time.time()
     t_prep_end = t_start  # 初始化
     od = get_output_dir(pr)
@@ -250,12 +297,21 @@ def process(*_):
 
         # 适配器
         adapter = create_wuhenai_adapter()
-        # 适配器日志：只做错误告警，进度由 progress_callback 驱动
+        # 适配器日志：关键信息入 SMB 日志便于排查，错误同时推送 UI
         def _adapter_log(msg: str):
             if "[无痕AI 2.1]" not in msg:
                 return
             body = msg.split("[无痕AI 2.1] ")[-1] if "[无痕AI 2.1] " in msg else ""
+            # 框选/提交/完成 等关键信息
+            if any(kw in body for kw in ("框选", "全屏自动", "已提交", "全部完成")):
+                _smb_log(f"[适配器] {body}")
+            # 已提交/完成 → 推送到 UI（不显示 task_id）
+            if any(kw in body for kw in ("已提交", "全部完成")):
+                clean = body.split(" → ")[0] if " → " in body else body
+                info(f"  {clean}")
+            # 错误 → SMB + UI
             if any(kw in body for kw in ("失败", "超时", "网络错误")):
+                _smb_log(f"[适配器] {body}")
                 info(f"  ⚠ {body}")
         wuhenai_set_logger(_adapter_log)
 
@@ -311,7 +367,6 @@ def process(*_):
         # 余额
         name = "无痕AI 2.1" if "wuhenai" in ACTIVE_PROVIDER else ACTIVE_PROVIDER
         _, total_est, _, yuan = estimate_cost(prepared.tasks, MODE)
-        info(f"待处理 {len(prepared.tasks)} 个片段  预估 ¥{yuan}  ({total_est} 积分)")
         _smb_log(f"处理开始 — {project.GetName()}/{timeline.GetName()} 待处理{len(prepared.tasks)}片段 预估¥{yuan}")
         try:
             bal = adapter.get_balance()
@@ -374,10 +429,6 @@ def process(*_):
             log_ok(msg)
             return
 
-        # 批量处理
-        info(f"  批量处理 {len(locked_tasks)} 个片段（并行模式）")
-        info(f"  上传并提交中...")
-
         # 二次余额校验（防多机器同时提交超支）
         try:
             pts_now = adapter.get_balance().get("balance", 0)
@@ -403,21 +454,37 @@ def process(*_):
             _phase_text = phase_names.get(phase, "处理中...")
 
         t_batch = time.time()
-        api_results = adapter.process_batch(api_tasks, timeout=600,
-                                            cancel_check=lambda: _state["stop"],
-                                            progress_callback=_on_progress)
+        # 设置倒计时全局变量（_update_countdown 在稳定版轮询中消费）
+        _uw._t_start = t_batch
+        _uw._t_estimated = sum(math.ceil(t.duration) for t in api_tasks) * 2 + 60  # 实测公式：秒数×2+60
+        _uw._task_count = len(api_tasks)
+        if len(api_tasks) == 1:
+            # 单片段：单任务模式（更快，无批量开销）
+            info("    AI 处理中...")
+            result = adapter.process(api_tasks[0], timeout=600,
+                                     cancel_check=lambda: _state["stop"])
+            api_results = [result]
+        else:
+            # 多片段：批量并行模式
+            info(f"    AI 处理中...")
+            api_results = adapter.process_batch(api_tasks, timeout=600,
+                                                cancel_check=lambda: _state["stop"],
+                                                progress_callback=_on_progress)
         elapsed = time.time() - t_batch
         info(f"  全部完成，耗时 {elapsed:.0f}秒")
         _pg(0.7); _st(f"下载替换中...")
 
         for t, r in zip(locked_tasks, api_results):
             if r and r.success:
+                release_lock(t.name)
                 _smb_log(f"  ✅ {t.name} ({elapsed:.0f}s batch)")
             else:
                 msg = getattr(r, 'error_message', '未知错误') if r else '处理失败'
                 release_lock(t.name)
+                fail(f"  ❌ {t.name}: {msg}")
                 _smb_log(f"  ❌ {t.name}: {msg}")
-            results.append((t.mp_item, t.name, t.path, r, elapsed / len(locked_tasks)))
+            results.append((t.mp_item, t.name, t.path, r, elapsed / len(locked_tasks),
+                           t.tl_item, t.tl_color or "", t.mp_color or ""))
 
         # 下载并替换
         info("\n\n── ④ 替换回时间线 ──")
@@ -432,6 +499,7 @@ def process(*_):
         ok_count, fail_list, output_files = download_and_apply(
             results, od, MODE,
             check_stop=lambda: _state["stop"],
+            on_start=lambda name: _st(f"下载中... {name}"),
             on_done=_on_replaced,
             on_fail=lambda name, err: fail(f"  {name}: {err}"),
         )
@@ -439,14 +507,18 @@ def process(*_):
         for fe in fail_list:
             _smb_log(f"下载失败: {fe['name']} — {fe['error']}")
 
-        pc = post_check(output_files)
-        if pc["fail"] > 0:
-            warn(f"校验异常: {pc['ok']}/{pc['total']} 通过, {pc['fail']} 失败")
-
         fail_count = len(results) - ok_count
         _pg(1.0); _st(f"完成 {ok_count}/{len(results)}")
         info("\n\n── ⑤ 最终报告 ──")
         t_api_end = time.time()
+
+        # post_check 放这里（用户已看到"完成"，后台静默校验）
+        pc = post_check(output_files)
+        if pc["fail"] > 0:
+            warn(f"校验异常: {pc['ok']}/{pc['total']} 通过, {pc['fail']} 失败")
+            for p in pc["problems"]:
+                warn(f"  ❌ {p['file']}: {', '.join(p['issues'])}")
+            warn("  💡 建议撤销后重新处理")
 
         # 阶段耗时
         t_prep_elapsed = int(t_prep_end - t_start)
@@ -465,42 +537,50 @@ def process(*_):
             msg += f"，{unprocessed} 个未处理（已停止）"
         log_ok(msg)
 
-        # 阶段耗时明细
-        info(f"  ── 阶段耗时 ──")
-        info(f"  准备阶段 (缓存+校验+抢锁): {t_prep_elapsed}秒")
-        info(f"  AI处理阶段 (上传+API): {t_api_elapsed}秒")
-        info(f"  下载替换阶段: {t_replace_elapsed}秒")
-
         t_elapsed = int(time.time() - t_start)
+        mins, secs = divmod(t_elapsed, 60)
+        # 先显示耗时，余额稍后（query_balance 是网络调用，不用阻塞用户视线）
+        info(f"  总耗时 {mins}分{secs}秒  ·  余额查询中...")
+
+        # ── 后台收尾（网络 + SMB 写入，不阻塞用户看到"完成"）──
         pts_after = query_balance()
         pts_used = pts_before - pts_after if pts_before > 0 and pts_after > 0 else 0
-        mins, secs = divmod(t_elapsed, 60)
+
+        # 补充余额信息
         info(f"  总耗时 {mins}分{secs}秒  ·  ¥{point_to_yuan(pts_used):.2f}  ·  余额 ¥{point_to_yuan(pts_after):.2f}")
 
-        # OSS 流量
+        # OSS 流量（内部记录，不展示给用户）
         oss = oss_tracker.snapshot()
         if oss["traffic_gb"] > 0.001:
-            info(f"  📦 OSS: {oss['traffic_gb']:.3f}GB  ·  ¥{oss['total_cost']:.4f}")
+            _smb_log(f"OSS: {oss['traffic_gb']:.3f}GB ¥{oss['total_cost']:.4f}")
 
         oss_tracker.reset()
         _smb_log(f"完成 — {ok_count}/{len(results)} 耗时{mins}分{secs}秒 花费¥{point_to_yuan(pts_used):.2f} 余额¥{point_to_yuan(pts_after):.2f} 阶段:{t_prep_elapsed}/{t_api_elapsed}/{t_replace_elapsed}s")
-        refresh_bal()
+        # 用已查过的 pts_after 更新UI
+        name = "无痕AI 2.1" if "wuhenai" in ACTIVE_PROVIDER else ACTIVE_PROVIDER
+        _bal(f"{name} | ¥{point_to_yuan(pts_after):.2f}")
         ops_logger.session_end(ok_count, len(results) - ok_count, len(results), pts_after, pts_used, int(t_elapsed), point_to_yuan(pts_used))
 
-        # macOS 系统通知
+        # 阶段耗时明细（内部记录）
+        _smb_log(f"阶段耗时 — 准备:{t_prep_elapsed}s AI:{t_api_elapsed}s 替换:{t_replace_elapsed}s")
+
+        # macOS 系统通知（子线程也可发出，不需要主线程）
         try:
             note = f"{total_done}个片段处理完成（耗时{mins}分{secs}秒）"
-            subprocess.run(["osascript", "-e",
+            result = subprocess.run(["osascript", "-e",
                 f'display notification "{note}" with title "AI 去字幕" subtitle "处理完成"'],
-                timeout=5, capture_output=True)
-        except Exception:
-            pass
+                timeout=5, capture_output=True, text=True)
+            if result.returncode != 0:
+                _smb_log(f"macOS 通知失败: {result.stderr.strip()}")
+        except Exception as e:
+            _smb_log(f"macOS 通知异常: {e}")
     except Exception as e:
         fail(f"{e}")
         _smb_log(f"处理异常: {e}")
         traceback.print_exc()
     finally:
         _state["stop"] = False
+        _state["processing"] = False
         itm[COLOR_CB].Enabled = True
         itm[BTN_UNDO].Enabled = True
         _set_btn(scan=True, pick=True, stop=False, warn=False)
@@ -508,7 +588,7 @@ def process(*_):
         itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
         _pg(0.0)
         try: itm[ST_LB].Text = ""
-        except: pass
+        except Exception: _smb_log("[ui_pipeline] 清空 ST_LB 失败")
 
 
 # ── 停止 ──
@@ -539,7 +619,7 @@ def undo(*_):
                 if item.GetStart() < io_in or item.GetStart() > io_out:
                     continue
                 nm = item.GetName()
-                if "_去字幕_" not in nm:
+                if "_去字幕" not in nm:
                     continue
                 if nm in seen:
                     continue
@@ -549,9 +629,9 @@ def undo(*_):
                 if not mp:
                     continue
                 file_name = mp.GetClipProperty("File Name") or nm
-                # File Name 去 _去字幕_ 后缀 → 状态键
-                key = file_name.split("_去字幕_")[0] + ".mp4" if "_去字幕_" in file_name else file_name
-                original = get_original_path(key)
+                # File Name 去 _去字幕 后缀 → 状态键
+                key = file_name.replace("_去字幕.mp4", ".mp4") if "_去字幕" in file_name else file_name
+                original = ledger.get_original_path(key)
                 if original and os.path.exists(original):
                     mp.ReplaceClipPreserveSubClip(original)
                     log_ok(f"  ↩ {nm}")

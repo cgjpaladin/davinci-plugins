@@ -23,6 +23,7 @@ import time
 from typing import Optional
 
 from config import get_state_dir, get_lock_dir, get_output_dir, hide_path
+from ops_logger import _smb_log
 
 # 本机局域网 IP — 锁和状态里记录，方便排查
 def _get_lan_ip():
@@ -43,21 +44,11 @@ _lock_dir = None
 
 
 def init(project_root: str = None):
-    """初始化状态系统，必须传入项目根目录。
-    自动迁移旧的 .watermark_state.json → .subtitle_state.json。"""
+    """初始化状态系统，必须传入项目根目录。"""
     global _state_file, _lock_dir
     state_dir = get_state_dir(project_root)
     _state_file = os.path.join(state_dir, ".subtitle_state.json")
     _lock_dir = get_lock_dir(project_root)
-
-    # 迁移旧状态文件（只做一次）
-    _old_file = os.path.join(state_dir, ".watermark_state.json")
-    if os.path.exists(_old_file) and not os.path.exists(_state_file):
-        try:
-            shutil.copy2(_old_file, _state_file)
-        except Exception:
-            pass
-
     hide_path(_state_file)
 
 
@@ -71,25 +62,22 @@ def _load_state() -> dict:
         return {}
 
 
-def _save_state(state: dict):
+def _save_state(state: dict, _locked: bool = False):
+    """写入状态文件。
+    
+    Args:
+        state: 要写入的完整状态字典
+        _locked: True=调用者已持有写锁，跳过自获取
+    """
     if not _state_file:
         return
     sdir = os.path.dirname(_state_file)
     os.makedirs(sdir, exist_ok=True)
 
-    # 原子写锁 — os.mkdir 在 SMB 上原子，防多机同时写覆盖
-    lock_path = _state_file + ".writelock"
+    # 如果调用者已持锁，跳过自获取；否则自己获取
     acquired = False
-    for attempt in range(5):
-        try:
-            os.mkdir(lock_path)
-            acquired = True
-            break
-        except FileExistsError:
-            time.sleep(0.2 * (attempt + 1))  # 退避: 0.2s, 0.4s, 0.6s...
-    if not acquired:
-        # 5 次都失败，最后尝试一次裸写（宁写不丢）
-        pass
+    if not _locked:
+        acquired = _acquire_state_lock()
 
     try:
         # 轮转备份：保留最近 N 份
@@ -115,10 +103,7 @@ def _save_state(state: dict):
         hide_path(_state_file)
     finally:
         if acquired:
-            try:
-                os.rmdir(lock_path)
-            except OSError:
-                pass
+            _release_state_lock()
 
 
 # ============================================================
@@ -128,6 +113,28 @@ def _save_state(state: dict):
 
 _LOCK_TTL = 600  # 锁 TTL（秒）
 _BAK_KEEP = 7      # 备份保留天数
+
+
+def _acquire_state_lock() -> bool:
+    """获取状态文件的写锁（os.mkdir 原子，5 次退避重试）。
+    返回 True=成功，False=5 次都失败。"""
+    lock_path = _state_file + ".writelock"
+    for attempt in range(5):
+        try:
+            os.mkdir(lock_path)
+            return True
+        except FileExistsError:
+            time.sleep(0.2 * (attempt + 1))
+    return False
+
+
+def _release_state_lock():
+    """释放状态文件的写锁"""
+    lock_path = _state_file + ".writelock"
+    try:
+        os.rmdir(lock_path)
+    except OSError:
+        pass
 
 
 def _safe_lock_path(clip_name: str) -> str:
@@ -145,27 +152,39 @@ def acquire_lock(clip_name: str) -> bool:
     """
     尝试获取片段的处理锁。
     SMB 上 os.mkdir() 是原子操作。
-    如果锁已过期（>10分钟），自动抢占。
-    Returns: True=抢到锁, "reclaimed"=过期锁被回收, False=别人正在处理
+    回收条件：同机（IP 匹配）→ 立即回收；超时 > 10 分钟 → 自动回收。
+    Returns: True=抢到锁, "reclaimed"=旧锁被回收, False=别人正在处理
     """
     lock_path = _safe_lock_path(clip_name)
     if not lock_path:
         return True  # 无锁目录 = 不需要锁
 
-    # 如果锁存在但已过期 → 删除旧锁，重新抢
+    # 如果锁存在，判断是否可回收
     reclaimed = False
     if os.path.isdir(lock_path):
         try:
+            can_reclaim = False
+            # 同机锁：自己的残留锁立即回收
+            info_file = os.path.join(lock_path, ".info")
+            if os.path.isfile(info_file):
+                with open(info_file) as f:
+                    owner_ip = json.load(f).get("ip", "")
+                if owner_ip == _HOST_IP:
+                    can_reclaim = True
+            # 超时锁
             mtime = os.path.getmtime(lock_path)
             if time.time() - mtime > _LOCK_TTL:
-                os.rmdir(lock_path)
+                can_reclaim = True
+
+            if can_reclaim:
+                # os.rmdir 只能删空目录，锁目录含 .info，用 rmtree
+                shutil.rmtree(lock_path)
                 reclaimed = True
         except OSError:
             return False  # 删不掉 = 别人正在用
 
     try:
         os.mkdir(lock_path)
-        # 写锁信息：谁锁的，什么时候
         try:
             with open(os.path.join(lock_path, ".info"), "w") as f:
                 json.dump({"ip": _HOST_IP, "user": _HOST_NICK, "time": time.strftime("%Y-%m-%d %H:%M:%S")}, f)
@@ -199,7 +218,8 @@ def is_locked(clip_name: str) -> Optional[str]:
                 data = json.load(f)
             ip = data.get("ip", "")
             return f"{ip}的同事" if ip else "未知同事"
-    except: pass
+    except Exception:
+        _smb_log(f"[subtitle_state] is_locked 读锁信息失败: {clip_name}")
     return "未知同事"
 
 
@@ -208,36 +228,48 @@ def is_locked(clip_name: str) -> Optional[str]:
 # ============================================================
 
 def record_original(clip_name: str, original_path: str):
-    """记录原片路径（处理前调用）"""
-    state = _load_state()
-    entry = state.get(clip_name)
-    
-    if entry and entry.get("status") == "original":
+    """记录原片路径（处理前调用）。持写锁完成，防止多机竞态。"""
+    if not _acquire_state_lock():
+        _smb_log(f"[subtitle_state] record_original 获取写锁失败: {clip_name}")
         return
-    
-    state[clip_name] = {
-        "original_path": original_path,
-        "current_path": original_path,
-        "status": "original",
-        "ip": _HOST_IP,
-        "last_updated": time.strftime("%Y-%m-%d %H:%M:%S"),
-    }
-    _save_state(state)
+    try:
+        state = _load_state()
+        entry = state.get(clip_name)
+        
+        if entry and entry.get("status") == "original":
+            return
+        
+        state[clip_name] = {
+            "original_path": original_path,
+            "current_path": original_path,
+            "status": "original",
+            "ip": _HOST_IP,
+            "last_updated": time.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        _save_state(state, _locked=True)
+    finally:
+        _release_state_lock()
 
 
 def mark_processed(clip_name: str, processed_path: str, mode: str):
-    """标记处理完成"""
-    state = _load_state()
-    entry = state.get(clip_name, {})
-    
-    state[clip_name] = {
-        "original_path": entry.get("original_path", processed_path),
-        "current_path": processed_path,
-        "status": f"{mode}_done",
-        "ip": _HOST_IP,
-        "last_updated": time.strftime("%Y-%m-%d %H:%M:%S"),
-    }
-    _save_state(state)
+    """标记处理完成。持写锁完成，防止多机竞态。"""
+    if not _acquire_state_lock():
+        _smb_log(f"[subtitle_state] mark_processed 获取写锁失败: {clip_name}")
+        return
+    try:
+        state = _load_state()
+        entry = state.get(clip_name, {})
+        
+        state[clip_name] = {
+            "original_path": entry.get("original_path", processed_path),
+            "current_path": processed_path,
+            "status": f"{mode}_done",
+            "ip": _HOST_IP,
+            "last_updated": time.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        _save_state(state, _locked=True)
+    finally:
+        _release_state_lock()
 
 
 def get_original_path(file_name: str) -> Optional[str]:
@@ -270,10 +302,12 @@ def need_restore(clip_name: str, target_mode: str) -> Optional[str]:
 
 
 def get_clip_status(clip_name: str) -> Optional[str]:
+    """查询片段当前处理状态（original / basic_done / lite_done / pro_done）"""
     state = _load_state()
     entry = state.get(clip_name)
     return entry.get("status") if entry else None
 
 
 def get_all_entries() -> dict:
+    """返回完整状态字典（调试/审计用）"""
     return _load_state()

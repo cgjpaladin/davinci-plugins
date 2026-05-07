@@ -38,6 +38,7 @@ class SubtitleTask:
     mask_regions: Optional[list] = None
     model: Optional[str] = None
     duration: float = 10.0
+    resolution: Optional[str] = None  # "720x1280" 等，扫描时从达芬奇API获取
 
 
 @dataclass

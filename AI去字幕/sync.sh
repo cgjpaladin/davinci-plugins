@@ -10,25 +10,13 @@ if [ ! -d "$SMB" ]; then
     exit 1
 fi
 
-FILES=(
-    "ui_external.py"
-    "stable_ui.py"
-    "ui_widgets.py"
-    "ui_pipeline.py"
-    "core.py"
-    "remove_subtitle.py"
-    "config.py"
-    "pricing.py"
-    "logger.py"
-    "ops_logger.py"
-    "subtitle_state.py"
-    "launcher.py"
-    "launcher_ui.py"
-    "adapters/__init__.py"
-    "adapters/wuhenai_v2.py"
-    "adapters/ghostcut.py"
-    "gray.sh"
-)
+# 自动发现所有 .py + gray.sh（排除 tests/ 和 dev 工具脚本）
+FILES=()
+while IFS= read -r f; do
+    FILES+=("$f")
+done < <(find . -maxdepth 2 \( -name '*.py' -o -name 'gray.sh' \) \
+    -not -path './tests/*' -not -name 'dev.sh' -not -name 'deploy.sh' -not -name 'sync.sh' \
+    | sed 's|^\./||' | sort)
 
 echo "同步到 SMB..."
 for f in "${FILES[@]}"; do

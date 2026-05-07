@@ -22,6 +22,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from . import BaseAdapter, SubtitleTask, SubtitleResult, TaskStatus
+from config import DEFAULT_MASK_REGION as _MASK_REGION
 
 # 达芬奇内置 Python 可能缺 SSL 证书 — 全局宽松 context
 _SSL_CTX = ssl.create_default_context()
@@ -133,7 +134,7 @@ class GhostCutAdapter(BaseAdapter):
                 masks = [{
                     "type": "remove_only_ocr",
                     "start": 0, "end": 99999,
-                    "region": [[0, 0.62], [1, 0.62], [1, 0.88], [0, 0.88]]
+                    "region": _MASK_REGION
                 }]
             
             if model_name == "lite":

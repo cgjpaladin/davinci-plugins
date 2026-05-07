@@ -9,6 +9,7 @@ remove_subtitle.py 和 ui_external.py 的共同基础层。
 """
 
 import os
+import math
 import re
 import time
 import unicodedata
@@ -22,11 +23,13 @@ from config import (
     ADAPTER_CONFIGS, DEBUG,
     get_output_dir, get_log_dir,
 )
+from ops_logger import _smb_log
 from pricing import estimate_cost, point_to_yuan
 from pricing import oss_tracker
 from adapters import SubtitleTask, SubtitleResult
 from adapters.wuhenai_v2 import WuhenAIV21Adapter
-from subtitle_state import record_original, mark_processed, acquire_lock, release_lock
+from subtitle_state import acquire_lock, release_lock
+import ledger
 import ops_logger
 
 
@@ -42,6 +45,10 @@ class ClipEntry(NamedTuple):
     file_name: str           # File Name（最稳定标识）
     duration: float          # 秒
     start_frame: int         # 时间线起始帧
+    tl_item: object = None   # TimelineItem 引用（替换后恢复颜色用）
+    resolution: str = "1920x1080"  # 达芬奇API获取，fallback
+    tl_color: str = ""       # TimelineItem 颜色
+    mp_color: str = ""       # MediaPoolItem 颜色
 
 
 class ScanReport(NamedTuple):
@@ -58,6 +65,9 @@ class TaskRecord(NamedTuple):
     path: str
     kwargs: dict            # SubtitleTask 构造参数
     duration: float
+    tl_item: object = None  # TimelineItem 引用
+    tl_color: str = ""      # TimelineItem 原始颜色
+    mp_color: str = ""      # MediaPoolItem 原始颜色
 
 
 class PreparedTasks(NamedTuple):
@@ -74,7 +84,7 @@ class PreparedTasks(NamedTuple):
 
 def connect_resolve():
     """获取 Resolve/Project/Timeline。失败抛 RuntimeError。"""
-    import DaVinciResolveScript as dvr_script  # type: ignore[import-not-found]
+    import DaVinciResolveScript as dvr_script
     resolve = dvr_script.scriptapp("Resolve")
     if not resolve:
         raise RuntimeError("请先启动 DaVinci Resolve Studio")
@@ -117,49 +127,21 @@ def extract_ep(filename: str) -> str:
 
 def build_output_path(file_name: str, output_dir: str, mode: str = "") -> tuple:
     """
-    构建输出版本化路径。
+    构建输出路径。
     返回 (full_path, ep, subdir, clean_name)
 
-    目录结构: {output_dir}/{EP}/{base}_去字幕_v{XX}.mp4
+    目录结构: {output_dir}/{EP}/{base}_去字幕.mp4
     """
-    base_name = re.sub(r'_去字幕_.*$', '', os.path.splitext(file_name)[0])
+    base_name = re.sub(r'_去字幕.*$', '', os.path.splitext(file_name)[0])
     subdir = ""
     ep = extract_ep(file_name)
     ep_dir = os.path.join(output_dir, ep)
     os.makedirs(ep_dir, exist_ok=True)
 
-    version = 1
-    while True:
-        clean_name = f"{base_name}_去字幕_v{version:02d}.mp4"
-        full = os.path.join(ep_dir, clean_name)
-        if not os.path.exists(full):
-            break
-        version += 1
+    clean_name = f"{base_name}_去字幕.mp4"
+    full = os.path.join(ep_dir, clean_name)
 
     return full, ep, subdir, clean_name
-
-
-def find_cached_output(file_name: str, output_dir: str, mode: Optional[str] = None) -> Optional[str]:
-    """
-    扫输出目录找已处理文件。返回最高版本路径 / None。
-    """
-    base = os.path.splitext(file_name)[0]
-    cached = None
-    cached_ver = -1
-
-    try:
-        for root_dir, _, files in os.walk(output_dir):
-            for f in files:
-                if f.startswith(f"{base}_去字幕_v") and f.endswith(".mp4"):
-                    ver_match = re.search(r'_v(\d+)\.mp4$', f)
-                    ver = int(ver_match.group(1)) if ver_match else 0
-                    if ver > cached_ver:
-                        cached_ver = ver
-                        cached = os.path.join(root_dir, f)
-    except Exception:
-        pass
-
-    return cached
 
 
 # ═══════════════════════════════════════════
@@ -204,6 +186,7 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
       ❌ GetClipEnabled()==False → skipped_disabled
       ❌ 颜色≠目标颜色 → 静默跳过
       ❌ MediaPoolItem==None → skipped_nomp + 警告
+      ❌ 摄影机元数据（ISO/Lens/Gamma等）→ skipped_camera
       ❌ Type in (复合,Fusion,VFX连接) → skipped_compound + 警告
       ❌ Type 不含"视频" → skipped_nonvideo + 警告
       ❌ File Path 空/不存在 → skipped_nopath + 警告
@@ -217,7 +200,8 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
         return None, None
 
     stats = {"total": 0, "skipped_nomp": 0, "skipped_nopath": 0,
-             "skipped_disabled": 0, "skipped_nonvideo": 0, "skipped_compound": 0}
+             "skipped_disabled": 0, "skipped_nonvideo": 0, "skipped_compound": 0,
+             "skipped_camera": 0}
     candidates = []  # (item, track#)  → 第二轮用 File Name 去重
     clips = []
 
@@ -257,6 +241,12 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
                 pass  # 警告由调用者处理
             continue
 
+        # 摄影机素材过滤：有摄影机元数据的跳过（不可能带字幕）
+        _cam_fields = ("ISO", "Camera Model", "Lens", "Gamma", "Color Space")
+        if any(mp.GetClipProperty(f) for f in _cam_fields):
+            stats["skipped_camera"] = stats.get("skipped_camera", 0) + 1
+            continue
+
         # 虚拟容器片段
         mp_type = mp.GetClipProperty("Type") or ""
         if mp_type in ("复合", "Fusion", "VFX连接"):
@@ -282,9 +272,8 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
         file_name = mp.GetClipProperty("File Name") or item.GetName() or f"clip_{item.GetStart()}"
         display_name = item.GetName() or file_name  # 用于离线产物过滤
 
-        # 跳过所有"去字幕"产物（_去字幕_快速预览_ / _去字幕_正式出片_ 等）
-        # 这类片段不是原片，不应出现在扫描结果中
-        if "_去字幕_" in display_name:
+        # 跳过所有"去字幕"产物
+        if "_去字幕" in display_name:
             continue
         
         # 用 File Name 去重
@@ -293,11 +282,13 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
         seen_fnames.add(file_name)
         
         duration = get_video_duration(mp)
+        resolution = mp.GetClipProperty("Resolution") or "1920x1080"
 
         clips.append(ClipEntry(
             mp_item=mp, name=file_name, path=path,
-            file_name=file_name, duration=duration,
-            start_frame=item.GetStart(),
+            file_name=file_name, duration=duration, start_frame=item.GetStart(),
+            tl_item=item, resolution=resolution,
+            tl_color=color or "", mp_color=mp.GetClipColor() or "",
         ))
 
     # 构造报告
@@ -339,7 +330,7 @@ def prepare_tasks(
     # ── Step 1: 前置校验 ──
     valid_clips = []
     for c in clips:
-        record_original(c.file_name, c.path)
+        ledger.record_original(c.file_name, c.path)
 
         if c.duration <= 0:
             continue  # 时长异常，跳过
@@ -354,12 +345,22 @@ def prepare_tasks(
         for c in valid_clips:
             if stop_check and stop_check():
                 break  # 用户点了停止
-            cached = find_cached_output(c.file_name, output_dir, mode)
+            cached = ledger.find_output(c.file_name)
             if cached:
-                if c.mp_item.ReplaceClipPreserveSubClip(cached):
-                    mark_processed(c.file_name, cached, mode)
-                    cache_hit_names.append(c.name)
-                    continue
+                try:
+                    if c.mp_item.ReplaceClipPreserveSubClip(cached):
+                        if c.mp_color:
+                            c.mp_item.SetClipColor(c.mp_color)
+                        if c.tl_color and c.tl_item and c.tl_color != c.mp_color:
+                            try: c.tl_item.SetClipColor(c.tl_color)
+                            except Exception:
+                                _smb_log(f"[core] 缓存命中恢复 tl 颜色失败: {c.name}")
+                        ledger.record_completed(c.file_name, cached, strategy="cached", points=0)
+                        cache_hit_names.append(c.name)
+                        continue
+                except Exception:
+                    _smb_log(f"[core] 缓存命中 ReplaceClip 失败（片段可能已删除）: {c.name}")
+                    # 降级为普通处理
             remaining_clips.append(c)
     else:
         remaining_clips = valid_clips
@@ -367,7 +368,7 @@ def prepare_tasks(
     # ── Step 3: 构建 TaskRecord ──
     task_records = []
     for c in remaining_clips:
-        kwargs = {"video_path": c.path, "language": "zh", "model": mode, "duration": c.duration}
+        kwargs = {"video_path": c.path, "language": "zh", "model": mode, "duration": c.duration, "resolution": c.resolution}
         if mode in ("pro_box",):
             kwargs["mask_regions"] = [{
                 "type": "remove_only_ocr",
@@ -377,6 +378,7 @@ def prepare_tasks(
         task_records.append(TaskRecord(
             mp_item=c.mp_item, name=c.name, path=c.path,
             kwargs=kwargs, duration=c.duration,
+            tl_item=c.tl_item, tl_color=c.tl_color, mp_color=c.mp_color,
         ))
 
     return PreparedTasks(
@@ -433,7 +435,7 @@ def normalize_for_match(s: str) -> str:
 
 def post_check(output_files: list) -> dict:
     """验证输出文件完整性（纯函数，不输出）。
-    检查: 文件存在→大小正常→ffprobe 可读
+    检查: 文件存在→大小正常
 
     Args:
         output_files: 已生成的文件路径列表
@@ -445,20 +447,6 @@ def post_check(output_files: list) -> dict:
 
     if not output_files:
         return result
-
-    try:
-        import subprocess
-        _ffprobe_bin: Optional[str] = None
-        if subprocess.run(["which", "ffprobe"], capture_output=True).returncode == 0:
-            _ffprobe_bin = "ffprobe"
-        else:
-            _shared = "/Volumes/MYJC/06_Software/达芬奇脚本/tools/ffprobe"
-            if os.path.exists(_shared):
-                _ffprobe_bin = _shared
-        has_ffprobe = _ffprobe_bin is not None
-    except:
-        has_ffprobe = False
-        _ffprobe_bin = None
 
     for f in output_files:
         name = os.path.basename(f)
@@ -472,23 +460,6 @@ def post_check(output_files: list) -> dict:
                 issues.append("零字节文件")
             elif size < 1024 * 100:  # < 100KB
                 issues.append(f"文件过小 ({size} bytes)")
-
-            # ffprobe 视频可读性 + 时长校验
-            if has_ffprobe and not issues:
-                assert _ffprobe_bin is not None  # has_ffprobe 已保证
-                try:
-                    r = subprocess.run(
-                        [_ffprobe_bin, "-v", "error", "-show_entries",
-                         "format=duration", "-of", "csv=p=0", f],
-                        capture_output=True, text=True, timeout=15
-                    )
-                    dur = float(r.stdout.strip()) if r.stdout.strip() else 0
-                    if dur <= 0:
-                        issues.append("视频时长异常或无法解析")
-                    elif dur < 3:
-                        issues.append(f"视频过短 ({dur:.1f}秒)")
-                except (subprocess.TimeoutExpired, ValueError):
-                    issues.append("ffprobe 解析超时，文件可能损坏")
 
         if issues:
             result["problems"].append({"file": name, "issues": issues})
@@ -579,6 +550,7 @@ def download_and_apply(
     check_stop: Optional[Callable] = None,
     on_done: Optional[Callable] = None,
     on_fail: Optional[Callable] = None,
+    on_start: Optional[Callable] = None,
 ) -> tuple:
     """
     下载 API 处理结果 → ReplaceClip → 标记完成。
@@ -613,7 +585,10 @@ def download_and_apply(
     except:
         pass  # 检查失败不阻塞
 
-    for mp_item, name, path, result, elapsed in results:
+    for mp_item, name, path, result, elapsed, *rest in results:
+        tl_item = rest[0] if rest else None          # TimelineItem
+        tl_color = rest[1] if len(rest) > 1 else ""  # TimelineItem 原色
+        mp_color = rest[2] if len(rest) > 2 else ""  # MediaPoolItem 原色
         if check_stop and check_stop():
             break
         if not result or not result.success:
@@ -625,6 +600,9 @@ def download_and_apply(
 
         file_name = os.path.basename(path)
         dl, ep, subdir, clean_name = build_output_path(file_name, output_dir, mode)
+
+        if on_start:
+            on_start(clean_name)
 
         try:
             is_remote = result.output_path.startswith("http")
@@ -638,9 +616,47 @@ def download_and_apply(
             release_lock(name)
             continue
 
-        fn = mp_item.GetClipProperty("File Name") or file_name  # 替换前取，避免拿到 _去字幕_ 后缀
-        if mp_item.ReplaceClipPreserveSubClip(dl):
-            mark_processed(fn, dl, mode)
+        # 下载后快速校验（文件存在 + 大小正常），不合格不替换
+        if not os.path.exists(dl) or os.path.getsize(dl) == 0:
+            fail_list.append({"name": name, "error": "下载文件为空或不存在"})
+            if on_fail:
+                on_fail(clean_name, "下载文件为空或不存在")
+            release_lock(name)
+            continue
+
+        fn = mp_item.GetClipProperty("File Name") or file_name
+        try:
+            replaced = mp_item.ReplaceClipPreserveSubClip(dl)
+        except Exception:
+            _smb_log(f"[core] ReplaceClip 异常（片段可能已删除）: {name}")
+            fail_list.append({"name": name, "error": "ReplaceClip 失败（片段可能已删除）"})
+            if on_fail:
+                on_fail(clean_name, "ReplaceClip 失败（片段可能已删除）")
+            release_lock(name)
+            continue
+        if replaced:
+            # 恢复原色：分别恢复 TimelineItem 和 MediaPoolItem
+            if mp_color:
+                mp_item.SetClipColor(mp_color)
+            if tl_color and tl_item and tl_color != mp_color:
+                try: tl_item.SetClipColor(tl_color)
+                except Exception:
+                    _smb_log(f"[core] ReplaceClip 后恢复 tl 颜色失败: {name}")
+            # 从适配器 metadata 提取 strategy/resolution/duration → 计费
+            meta = getattr(result, 'metadata', {}) or {}
+            strategy = meta.get("strategy", "")
+            resolution = meta.get("resolution", "")
+            meta_dur = meta.get("duration", 0)
+            if meta_dur > 0 and strategy:
+                unit_cost = 1.5 if strategy == "all_area" else 1
+                points = math.ceil(meta_dur * unit_cost)
+                cost_yuan = point_to_yuan(points)
+            else:
+                points = 0
+                cost_yuan = 0.0
+            ledger.record_completed(fn, dl, original_path=path,
+                                    strategy=strategy, resolution=resolution,
+                                    points=points, cost_yuan=cost_yuan)
             success_count += 1
             output_files.append(dl)
             if on_done:

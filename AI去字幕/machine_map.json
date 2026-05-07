@@ -1,0 +1,142 @@
+{
+  "200": {
+    "name": "陈冠杰",
+    "short": "bryan",
+    "full": "Bryan",
+    "status": "在职",
+    "ip": "192.168.1.200"
+  },
+  "103": {
+    "name": "李娜",
+    "short": "macmini02",
+    "full": "Mac mini 02",
+    "status": "在职",
+    "ip": "192.168.1.103"
+  },
+  "102": {
+    "name": "张江涛",
+    "short": "macmini01",
+    "full": "Mac mini 01",
+    "status": "在职",
+    "ip": "192.168.1.102"
+  },
+  "109": {
+    "name": "王译茉",
+    "short": "macmini05",
+    "full": "Mac mini 05",
+    "status": "在职",
+    "ip": "192.168.1.109"
+  },
+  "108": {
+    "name": "白岳",
+    "short": "macmini06",
+    "full": "Mac mini 06",
+    "status": "在职",
+    "ip": "192.168.1.108"
+  },
+  "106": {
+    "name": "王平波",
+    "short": "macmini07",
+    "full": "Mac mini 07",
+    "status": "在职",
+    "ip": "192.168.1.106"
+  },
+  "107": {
+    "name": "张瑞珈",
+    "short": "macmini08",
+    "full": "Mac mini 08",
+    "status": "在职",
+    "ip": "192.168.1.107"
+  },
+  "140": {
+    "name": "张冀恒",
+    "short": "macmini09",
+    "full": "Mac mini 09",
+    "status": "在职",
+    "ip": "192.168.1.140"
+  },
+  "110": {
+    "name": "陈佳馨",
+    "short": "macmini04",
+    "full": "Mac mini 04",
+    "status": "在职",
+    "ip": "192.168.1.110"
+  },
+  "104": {
+    "name": "惠洋",
+    "short": "macmini11",
+    "full": "Mac mini 11",
+    "status": "在职",
+    "ip": "192.168.1.104"
+  },
+  "131": {
+    "name": "张国庆",
+    "short": "macmini00",
+    "full": "Mac mini 00",
+    "status": "在职",
+    "ip": "192.168.1.131"
+  },
+  "138": {
+    "name": "葛晨阳",
+    "short": "macmini138",
+    "full": "Mac mini 138",
+    "status": "在职",
+    "ip": "192.168.1.138"
+  },
+  "137": {
+    "name": "黄霈",
+    "short": "pei",
+    "full": "Trickerypei",
+    "status": "在职",
+    "ip": "192.168.1.137"
+  },
+  "136": {
+    "name": "赵梓言",
+    "short": "macmini12",
+    "full": "Mac mini 12",
+    "status": "在职",
+    "ip": "192.168.1.136"
+  },
+  "132": {
+    "name": "张婧怡",
+    "short": "macmini03",
+    "full": "Mac mini 03",
+    "status": "在职",
+    "ip": "192.168.1.132"
+  },
+  "133": {
+    "name": "杨惠雯",
+    "short": "macmini10",
+    "full": "Mac mini 10",
+    "status": "None",
+    "ip": "192.168.1.133"
+  },
+  "105": {
+    "name": "袁宁",
+    "short": "macmini13",
+    "full": "Mac mini 005",
+    "status": "None",
+    "ip": "192.168.1.105"
+  },
+  "101": {
+    "name": "王家政",
+    "short": "macmini03",
+    "full": "Mac mini 03",
+    "status": "None",
+    "ip": "192.168.1.101"
+  },
+  "134": {
+    "name": "刘双静",
+    "short": "xiaolvhua",
+    "full": "小绿花",
+    "status": "None",
+    "ip": "192.168.1.134"
+  },
+  "135": {
+    "name": "高怡洁",
+    "short": "g",
+    "full": "高",
+    "status": "None",
+    "ip": "192.168.1.135"
+  }
+}

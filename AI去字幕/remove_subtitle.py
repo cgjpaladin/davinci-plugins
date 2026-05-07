@@ -21,6 +21,7 @@ if _plugin_root not in sys.path:
 
 # OSS 用量追踪 (oss_tracker.reset() 已移至 run_pipeline 开头)
 from pricing import oss_tracker
+from ops_logger import _smb_log
 
 _RESOLVE_MODULES = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/Modules"
 if _RESOLVE_MODULES not in sys.path:
@@ -152,6 +153,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     info(f"输出目录: {output_dir}")
 
     state_init(project_root)
+    import ledger; ledger.init(project_root)
     ops_logger.init(get_log_dir(project_root))
     ops_logger.session_start(report["project"], report["timeline"], mode, 0)
     ops_logger.clip_scan(len(clips), 0, [c.name for c in clips])
@@ -240,8 +242,8 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
             if pts_now < total_est:
                 fail(f"余额不足: {pts_now} < 需{total_est}（可能有其他机器正在处理）")
                 return report
-        except:
-            pass
+        except Exception:
+            _smb_log("[remove_subtitle] 额度保护查询失败，跳过")
 
         api_tasks = [SubtitleTask(**t.kwargs) for t in prepared.tasks]
         t0 = time.time()
@@ -365,6 +367,7 @@ def _write_report(report: dict, path: str):
 # ═══════════════════════════════════════════
 
 def main():
+    """双入口：无参数=达芬奇菜单入口（引导用UI）；有参数=CLI 开发者模式。"""
     # 达芬奇菜单入口（无参数）→ 使用 UI，走 ui_external.py
     if len(sys.argv) == 1 and sys.argv[0].endswith(".py"):
         info("请通过 AI去字幕 UI 使用，或传 --project-root 参数")

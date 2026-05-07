@@ -227,3 +227,20 @@ def cost_estimate(points: int, yuan: float, estimated_min: int, need: int, cache
         "need_process": need,
         "cache_hits": cache,
     })
+
+
+# ── 通用 SMB 日志（按主机名分文件，供运维排查）──
+
+_SMB_LOG = os.path.join(os.path.dirname(__file__), "logs", f"{socket.gethostname()}.log")
+
+
+def _smb_log(msg: str):
+    """写一行文本到 SMB 日志（非 JSONL，供人类排查）"""
+    try:
+        ts = time.strftime("%m-%d %H:%M:%S")
+        os.makedirs(os.path.dirname(_SMB_LOG), exist_ok=True)
+        with open(_SMB_LOG, "a", encoding="utf-8") as f:
+            f.write(f"[{ts}] {msg}\n")
+    except Exception:
+        import sys as _sys
+        print(f"[_smb_log FAIL] {msg}", file=_sys.stderr)

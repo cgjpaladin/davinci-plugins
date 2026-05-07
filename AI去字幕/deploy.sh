@@ -41,3 +41,46 @@ else
     echo "❌ 部署失败"
     exit 1
 fi
+
+# ── SSL 证书检查 ──
+echo ""
+echo "═══ SSL 证书检查 ═══"
+PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null)
+echo "  Python 版本: $PY_VER"
+
+# 只检查 Python 3.13+（老版本系统自带证书 OK）
+MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+MINOR=$(echo "$PY_VER" | cut -d. -f2)
+if [ "$MAJOR" -ge 3 ] && [ "$MINOR" -ge 13 ] 2>/dev/null; then
+    echo "  检测 Python 3.13+ → 验证 SSL 证书..."
+    SSL_OK=$(python3 -c '
+import urllib.request, ssl
+try:
+    ctx = ssl.create_default_context()
+    urllib.request.urlopen("https://api.wuhenai.com/v2/", timeout=10, context=ctx)
+    print("OK")
+except Exception as e:
+    if "CERT" in str(e).upper():
+        print("FAIL")
+    else:
+        print("OK")  # 404 等非证书错误 = SSL 正常
+' 2>/dev/null)
+
+    if [ "$SSL_OK" = "FAIL" ]; then
+        echo "  ⚠️  SSL 证书缺失 → 尝试修复..."
+        # 按版本找 Install Certificates.command
+        CERT_CMD=$(ls -d "/Applications/Python ${MAJOR}.${MINOR}/Install Certificates.command" 2>/dev/null || \
+                    ls -d "/Applications/Python ${MAJOR}.${MINOR}"*/Install* 2>/dev/null | head -1)
+        if [ -f "$CERT_CMD" ]; then
+            "$CERT_CMD" 2>&1 | tail -1
+            echo "  ✅ SSL 证书已修复"
+        else
+            echo "  ❌ 未找到 Install Certificates.command"
+            echo "  💡 请手动运行 Python ${MAJOR}.${MINOR} 安装目录下的 Install Certificates.command"
+        fi
+    else
+        echo "  ✅ SSL 证书正常"
+    fi
+else
+    echo "  ✅ Python < 3.13，系统证书 OK（无需额外操作）"
+fi

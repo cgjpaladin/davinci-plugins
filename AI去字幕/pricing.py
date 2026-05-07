@@ -64,6 +64,7 @@ class OSSCostTracker:
         self.reset()
 
     def reset(self):
+        """清空本轮使用量（每次处理开始时调用）"""
         with self._lock:
             self.bytes_uploaded = 0
             self.bytes_downloaded = 0
@@ -71,11 +72,13 @@ class OSSCostTracker:
             self.get_count = 0
 
     def track_upload(self, size_bytes: int):
+        """记录一次 OSS 上传"""
         with self._lock:
             self.bytes_uploaded += size_bytes
             self.put_count += 1
 
     def track_download(self, size_bytes: int):
+        """记录一次 OSS 下载"""
         with self._lock:
             self.bytes_downloaded += size_bytes
             self.get_count += 1

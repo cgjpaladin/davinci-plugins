@@ -24,6 +24,7 @@ from ui_widgets import (
     BAL_LB, OSS_LB, PROJ_LB, PATH_LB,
     BTN_SCAN, BTN_START, BTN_STOP, BTN_PICK, BTN_UNDO,
     COLOR_CB, LOG_LB, ST_LB, PG_BG, PG_BAR,
+    pick_project,
 )
 from ui_pipeline import (
     scan_io, refresh_bal, refresh_oss_bal, process, stop, undo,
@@ -42,9 +43,14 @@ def on_show(ev):
         return
     try:
         refresh_bal()
+    except Exception as e:
+        warn(f"余额刷新失败: {e}")
+        _smb_log(f"余额刷新失败: {e}")
+    try:
         refresh_oss_bal()
-    except Exception:
-        pass
+    except Exception as e:
+        warn(f"阿里云余额刷新失败: {e}")
+        _smb_log(f"阿里云余额刷新失败: {e}")
 
 def on_close(ev):
     """关闭窗口清理"""
@@ -126,6 +132,7 @@ def start_process(*_):
 # 事件绑定（必须在所有函数定义之后）
 # ═══════════════════════════════════════════
 
+dlg.On[BTN_PICK].Clicked = pick_project
 dlg.On[BTN_SCAN].Clicked = scan_io
 dlg.On[BTN_START].Clicked = start_process
 dlg.On[BTN_STOP].Clicked = stop
@@ -135,8 +142,21 @@ dlg.On[WIN_ID].Close = on_close
 
 
 def main():
+    """显示 UI 窗口并进入事件循环（阻塞直到用户关闭）。窗口打开后刷余额。"""
     try:
         dlg.Show()
+        # Show 事件在达芬奇 UIDispatcher 中可能异步触发，余额刷新放这里更可靠
+        if _check_smb():
+            try:
+                refresh_bal()
+            except Exception as e:
+                warn(f"余额刷新失败: {e}")
+                _smb_log(f"余额刷新失败: {e}")
+            try:
+                refresh_oss_bal()
+            except Exception as e:
+                warn(f"阿里云余额刷新失败: {e}")
+                _smb_log(f"阿里云余额刷新失败: {e}")
         disp.RunLoop()
     except Exception as e:
         fail(f"UI 错误: {e}")

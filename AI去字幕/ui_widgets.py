@@ -25,6 +25,7 @@ from config import (
     DEBUG, get_output_dir, get_log_dir, __version__,
 )
 from subtitle_state import init as state_init, is_locked as state_is_locked, acquire_lock, release_lock, get_original_path
+import ledger
 import ops_logger
 from core import (
     connect_resolve, scan_io_clips, prepare_tasks,
@@ -156,7 +157,7 @@ window_layout = [
             ui.HGroup({"Spacing": 8}, [
                 ui.Label({"ID": PROJ_LB, "Text": "① 请先选择项目路径",
                           "StyleSheet": "color:rgb(200,200,200);font-size:13px", "Weight": 2}),
-                ui.Label({"ID": "warn_lb", "Text": "⚠ 请勿删除待处理片段或切换项目",
+                ui.Label({"ID": "warn_lb", "Text": "⚠ 请勿切换至其他项目",
                           "StyleSheet": "color:rgb(255,80,80);font-size:12px;font-weight:bold", "Weight": 0}),
                 ui.Label({"Text": " ", "Weight": 1}),
                 ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | v{__version__}",
@@ -226,14 +227,16 @@ def _ui_write_direct(msg: str):
                 _log_line_count = _LOG_MAX_LINES
             else:
                 te.Append(msg + "\n")
-        except: pass
+        except Exception:
+            import sys; print(f"[ui_write] UI 刷新失败", file=sys.stderr)
     else:
         _log_queue.put(msg)
     # 文件持久化（本地 + SMB 双写，方便查同事日志）
     try:
         with open(_UI_LOG_FILE, "a", encoding="utf-8") as f:
             f.write(msg + "\n")
-    except: pass
+    except Exception:
+        import sys; print(f"[ui_write] 本地日志写入失败", file=sys.stderr)
 
 def _ui_write(msg: str):
     _ui_write_direct(msg)
@@ -248,7 +251,9 @@ def _smb_log(msg: str):
         os.makedirs(os.path.dirname(_SMB_LOG), exist_ok=True)
         with open(_SMB_LOG, "a", encoding="utf-8") as f:
             f.write(f"[{ts}] {msg}\n")
-    except: pass
+    except Exception:
+        import sys
+        print(f"[_smb_log FAIL] {msg}", file=sys.stderr)
 
 def _check_smb():
     """全局 SMB 健康检查 + 自动重挂。返回 True=在线"""
@@ -277,7 +282,9 @@ def _flush_log():
         while not _log_queue.empty():
             msg = _log_queue.get_nowait()
             te.Append(msg + "\n")
-    except: pass
+    except Exception:
+        # UI 未就绪时静默（初始化时序），真实错误由 _smb_log 覆盖
+        pass
 
 # 注入日志器（所有 info/warn/fail/ok 都走 _ui_write → 入队）
 set_logger(UILogger(_ui_write))
@@ -343,7 +350,7 @@ def _update_countdown():
         if actual > 0:
             _pg(actual)
     except:
-        pass
+        pass  # 倒计时更新失败（UI未就绪），下次轮询重试
 
 def _pg(r):
     """更新进度条（0.0 = 开始, 1.0 = 完成）"""
@@ -356,25 +363,27 @@ def _pg(r):
         itm[PG_BAR].Resize([bar_w, 2])
         itm[PG_BAR].Visible = ratio > 0
     except:
-        pass
+        pass  # 进度条更新失败（UI未就绪），下次轮询重试
 
 def _log_file(msg: str):
     """写本地 + SMB 双日志（操作和状态，方便远程 debug）"""
     try:
         with open(_UI_LOG_FILE, "a", encoding="utf-8") as f:
             f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
-    except: pass
+    except Exception:
+        import sys; print(f"[_log_file] 本地日志写入失败", file=sys.stderr)
     try:
         with open(_SMB_LOG, "a", encoding="utf-8") as f:
             f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
-    except: pass
+    except Exception:
+        import sys; print(f"[_log_file] SMB日志写入失败", file=sys.stderr)
 
 def _log_action(action: str):
     """记录用户操作到日志"""
     _log_file(f"[操作] {action}")
 def _bal(t):
     try: itm[BAL_LB].Text = t
-    except: pass
+    except Exception: _smb_log(f"[ui_widgets] BAL_LB 赋值失败")
     with _ui_lock: _ui_pending["balance"] = t
 
 def _set_btn(scan=None, start=None, pick=None, stop=None, warn=None):
@@ -385,7 +394,7 @@ def _set_btn(scan=None, start=None, pick=None, stop=None, warn=None):
         if pick is not None: itm[BTN_PICK].Enabled = pick
         if stop is not None: itm[BTN_STOP].Enabled = stop
         if warn is not None: itm["warn_lb"].Visible = warn
-    except: pass
+    except Exception: _smb_log("[ui_widgets] _set_btn 失败")
     with _ui_lock:
         if scan is not None: _ui_pending["btn_scan"] = scan
         if start is not None: _ui_pending["btn_start"] = start
@@ -409,7 +418,7 @@ def _apply_ui_state():
         if b2 is not None: itm[BTN_STOP].Enabled = b2
         if wl is not None: itm["warn_lb"].Visible = wl
         if pg >= 0: _pg(pg)
-    except: pass
+    except Exception: _smb_log("[ui_widgets] _apply_ui_state 失败")
 
 def _set_proj(path):
     try:
@@ -418,15 +427,71 @@ def _set_proj(path):
         if len(label) > 80:
             label = "..." + label[-77:]
         itm[PATH_LB].Text = label
-    except: pass
+    except Exception: _smb_log("[ui_widgets] _set_proj 失败")
+
+def _guess_project_root():
+    """从媒体池 01_素材 片段路径推测项目根目录（众数投票）。零 SMB 搜索，零磁盘 IO。"""
+    try:
+        r = connect_resolve()
+        if not r:
+            return None
+        proj = r.GetProjectManager().GetCurrentProject()
+        if not proj:
+            return None
+        mp = proj.GetMediaPool()
+        root = mp.GetRootFolder()
+        # 定位 01_素材 文件夹
+        material = None
+        for sub in root.GetSubFolderList():
+            if sub.GetName() == "01_素材":
+                material = sub
+                break
+        if not material:
+            return None
+        # 遍历所有片段，统计项目根目录出现次数
+        from collections import Counter
+        counter = Counter()
+        _SAMPLE_MAX = 500  # 采样上限，足够统计显著且不卡
+
+        def _collect(folder, depth=0):
+            if depth > 8 or counter.total() >= _SAMPLE_MAX:
+                return
+            for c in (folder.GetClipList() or []):
+                p = c.GetClipProperty("File Path")
+                if p and "04_素材" in p:
+                    idx = p.find("/04_素材")
+                    if idx != -1:
+                        counter[p[:idx]] += 1
+                    if counter.total() >= _SAMPLE_MAX:
+                        return
+            for sub in (folder.GetSubFolderList() or []):
+                _collect(sub, depth + 1)
+                if counter.total() >= _SAMPLE_MAX:
+                    return
+
+        _collect(material)
+        if not counter:
+            return None
+        # 取出现最多的项目根目录
+        proj_root, count = counter.most_common(1)[0]
+        return proj_root if os.path.isdir(proj_root) else None
+    except Exception:
+        return None
 
 def pick_project(*_):
-    """打开 macOS 原生文件夹选择器"""
+    """打开 macOS 原生文件夹选择器，默认位置推测为当前媒体池项目目录"""
+    if not _check_smb():
+        return
     _log_action("选择项目路径")
     try:
+        default_dir = _guess_project_root()
+        prompt = "选择项目根目录（包含04_素材的文件夹）"
+        if default_dir:
+            cmd = f'POSIX path of (choose folder with prompt "{prompt}" default location "{default_dir}")'
+        else:
+            cmd = f'POSIX path of (choose folder with prompt "{prompt}")'
         r = subprocess.run(
-            ['osascript', '-e',
-             'POSIX path of (choose folder with prompt "选择项目根目录（包含04_素材的文件夹）")'],
+            ['osascript', '-e', cmd],
             capture_output=True, encoding="utf-8", timeout=60
         )
         path = r.stdout.strip()
@@ -434,15 +499,15 @@ def pick_project(*_):
             _state["project_root"] = path
             _set_proj(path)
             state_init(path)
-            # 解锁筛选和扫描
+            ledger.init(path)
             itm[COLOR_CB].Enabled = True
             itm[BTN_SCAN].Enabled = True
             itm[BTN_UNDO].Enabled = True
             itm[BTN_START].Enabled = _state["clips_scanned"] and bool(_state["project_root"])
-            # 更新左下角引导
             itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区" if not _state["clips_scanned"] else "③ 请点击开始处理"
             if _state["clips_scanned"]:
-                _refresh_scan_display()  # 重新查缓存，🟠→🟢
+                from ui_pipeline import _refresh_scan_display
+                _refresh_scan_display()
         elif path:
             warn("所选路径不存在")
     except Exception as e:

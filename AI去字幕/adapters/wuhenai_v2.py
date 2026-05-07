@@ -85,19 +85,24 @@ class WuhenAIV21Adapter(BaseAdapter):
         if not all([self.access_key_id, self.access_key_secret, self.bucket]):
             raise ValueError("需要 OSS 凭证: oss_access_key_id, oss_access_key_secret, oss_bucket")
 
-    @staticmethod
-    def _get_video_resolution(video_path: str) -> tuple[int, int]:
+
+    def _get_video_resolution(self, video_path: str) -> tuple[int, int]:
         """用 ffprobe 获取视频宽高，返回 (width, height)"""
+        # 插件子进程可能没有 Homebrew PATH，用完整路径
+        _FFPROBE = "/opt/homebrew/bin/ffprobe"
+        if not os.path.exists(_FFPROBE):
+            _FFPROBE = "ffprobe"  # fallback 到 PATH
         try:
             result = subprocess.run(
-                ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
+                [_FFPROBE, "-v", "quiet", "-select_streams", "v:0",
                  "-show_entries", "stream=width,height",
                  "-of", "csv=p=0", video_path],
                 capture_output=True, text=True, timeout=10,
             )
             w, h = result.stdout.strip().split(",")
             return int(w), int(h)
-        except Exception:
+        except Exception as e:
+            _log(f"[无痕AI 2.1] ffprobe 失败({video_path}): {e}，fallback 1920×1080")
             return 1920, 1080  # fallback
 
     # ── 通用请求 ──────────────────────────────────────────────
@@ -288,6 +293,44 @@ class WuhenAIV21Adapter(BaseAdapter):
 
     # ── 核心接口 ──────────────────────────────────────────────
 
+    def _compute_detection_params(self, task: SubtitleTask, vid_w: int, vid_h: int) -> tuple:
+        """
+        根据视频方向自动选择处理策略。
+
+        优先级：task.mask_regions（精确区域）> 分辨率自适应
+        - 竖屏 (vid_h > vid_w): sel_area + 一刀切下半块；面积超 480K 则降级 all_area
+        - 横屏 (vid_w >= vid_h): all_area + 全屏自动检测（无 rect）
+
+        Returns:
+            (method: str, rect: dict | None)
+        """
+        regions = task.mask_regions
+        # 精确区域优先
+        if regions and isinstance(regions[0], dict) and "x" in regions[0]:
+            r = regions[0]
+            return "sel_area", {
+                "x1": int(r["x"] * vid_w),
+                "y1": int(r["y"] * vid_h),
+                "x2": int((r["x"] + r["w"]) * vid_w),
+                "y2": int((r["y"] + r["h"]) * vid_h),
+            }
+
+        # 分辨率自适应
+        if vid_h > vid_w:
+            # 竖屏：一刀切下半块
+            y1 = int(vid_h * 0.50)
+            area = vid_w * (vid_h - y1)
+            if area <= 480000:
+                return "sel_area", {
+                    "x1": 0, "y1": y1,
+                    "x2": vid_w, "y2": vid_h,
+                }
+            # 面积超标（如 1080×1920）→ 降级 all_area
+            return "all_area", None
+        else:
+            # 横屏：all_area 全屏自动检测
+            return "all_area", None
+
     def submit(self, task: SubtitleTask) -> str:
         """
         提交去字幕任务 (V2.1 一步式)
@@ -329,31 +372,26 @@ class WuhenAIV21Adapter(BaseAdapter):
             "method": self.default_method,
         }
 
-        # 如果指定了框选区域（sel_area 模式必须传 rect）
-        if self.default_method == "sel_area":
-            regions = task.mask_regions
+        # 分辨率自适应：竖屏 sel_area+半块，横屏 all_area 全屏自动
+        # 优先从任务拿（扫描时达芬奇API获取），fallback ffprobe
+        if getattr(task, "resolution", None):
+            parts = task.resolution.split("x")
+            vid_w, vid_h = int(parts[0]), int(parts[1])
+        else:
             vid_w, vid_h = self._get_video_resolution(video_path)
-            if regions and isinstance(regions[0], dict) and "x" in regions[0]:
-                r = regions[0]
-                body["rect"] = {
-                    "x1": int(r["x"] * vid_w),
-                    "y1": int(r["y"] * vid_h),
-                    "x2": int((r["x"] + r["w"]) * vid_w),
-                    "y2": int((r["y"] + r["h"]) * vid_h),
-                }
-            else:
-                # 无指定区域 → 默认底部 23%（≤480000px rect限制，Seedance 字幕区域）
-                body["rect"] = {
-                    "x1": 0, "y1": int(vid_h * 0.77),
-                    "x2": vid_w, "y2": vid_h,
-                }
+        method, rect = self._compute_detection_params(task, vid_w, vid_h)
+        body["method"] = method
+        if rect:
+            body["rect"] = rect
             _log(f"[无痕AI 2.1] sel_area 框选: {vid_w}x{vid_h} → "
-                  f"({body['rect']['x1']},{body['rect']['y1']})-({body['rect']['x2']},{body['rect']['y2']})")
+                  f"({rect['x1']},{rect['y1']})-({rect['x2']},{rect['y2']})")
+        elif method == "all_area":
+            _log(f"[无痕AI 2.1] all_area 全屏自动: {vid_w}x{vid_h}")
 
         # Step 4: 提交
         data = self._api_post("video_removal", body)
         task_id = data["task_id"]
-        _log(f"[无痕AI 2.1] 任务已提交: {task_id}")
+        _log(f"[无痕AI 2.1] 任务已提交: {os.path.basename(video_path)} → {task_id}")
 
         # 保存映射关系（轮询和下载用）
         if not hasattr(self, "_task_map"):
@@ -365,6 +403,8 @@ class WuhenAIV21Adapter(BaseAdapter):
             "upload_sec": upload_sec,
             "upload_mb": upload_mb,
             "clip_name": os.path.basename(video_path),
+            "method": method,
+            "resolution": f"{vid_w}x{vid_h}",
         }
 
         return task_id
@@ -437,7 +477,8 @@ class WuhenAIV21Adapter(BaseAdapter):
                             upload_mb=task_info.get("upload_mb", 0),
                             download_mb=dl_mb,
                         )
-                    except: pass
+                    except Exception as e:
+                        _log(f"[无痕AI 2.1] 操作日志写入失败: {e}")
 
                     # 清理 OSS 上的输入文件（输出保留供 pipeline 下载）
                     try:
@@ -452,7 +493,9 @@ class WuhenAIV21Adapter(BaseAdapter):
                         success=True,
                         task_id=task_id,
                         output_path=output,
-                        metadata={"status": status, "progress": progress},
+                        metadata={"status": status, "progress": progress,
+                                  "strategy": task_info.get("method", ""),
+                                  "resolution": task_info.get("resolution", "")},
                     )
 
                 elif status == "failed":
@@ -477,6 +520,7 @@ class WuhenAIV21Adapter(BaseAdapter):
             poll_interval = min(poll_interval * 1.5, 30)
 
     def check_health(self) -> bool:
+        """无痕AI 健康检查：验 token + 查余额。返回 True/False。"""
         try:
             self._ensure_token()
             data = self._api_get("user/me")
@@ -540,13 +584,13 @@ class WuhenAIV21Adapter(BaseAdapter):
             try:
                 fsize = os.path.getsize(video_path)
                 if fsize == 0:
-                    records.append({"result": SubtitleResult(success=False, error_message="零字节文件")})
+                    records.append({"result": SubtitleResult(success=False, error_message="零字节文件"), "video_path": video_path})
                     continue
                 if fsize > 100 * 1024 * 1024:
-                    records.append({"result": SubtitleResult(success=False, error_message=f"文件过大 ({fsize/1024/1024:.0f}MB > 100MB)")})
+                    records.append({"result": SubtitleResult(success=False, error_message=f"文件过大 ({fsize/1024/1024:.0f}MB > 100MB)"), "video_path": video_path})
                     continue
             except OSError as e:
-                records.append({"result": SubtitleResult(success=False, error_message=f"无法访问: {e}")})
+                records.append({"result": SubtitleResult(success=False, error_message=f"无法访问: {e}"), "video_path": video_path})
                 continue
             filename = os.path.basename(video_path)
             base, ext = os.path.splitext(filename)
@@ -554,7 +598,12 @@ class WuhenAIV21Adapter(BaseAdapter):
             input_key = f"input/{fhash}_{i}_{base}{ext}"
             output_key = f"output/{fhash}_{i}_{base}_clean{ext}"
 
-            self._upload_to_oss(video_path, input_key)
+            try:
+                self._upload_to_oss(video_path, input_key)
+            except Exception as e:
+                _log(f"[无痕AI 2.1] [{i+1}/{n}] 上传失败: {filename} — {e}")
+                records.append({"result": SubtitleResult(success=False, error_message=f"上传失败: {e}"), "video_path": video_path})
+                continue
             records.append({
                 "input_key": input_key,
                 "output_key": output_key,
@@ -574,13 +623,23 @@ class WuhenAIV21Adapter(BaseAdapter):
             if cancel_check and cancel_check():
                 _log(f"[无痕AI 2.1] 提交阶段收到停止，已提交 {i}/{len(records)}")
                 break
+            # 跳过 Phase 1 已标记失败的上传/预检
+            if rec.get("result") is not None:
+                continue
             video_path = rec["video_path"]
             task = tasks[i]
 
-            # 获取分辨率（缓存）
-            if video_path not in video_dims:
-                video_dims[video_path] = self._get_video_resolution(video_path)
-            vid_w, vid_h = video_dims[video_path]
+            # 获取分辨率（优先任务字段 → 缓存 → ffprobe fallback）
+            res_key = getattr(task, "resolution", None)
+            if not res_key or res_key not in video_dims:
+                if res_key:
+                    parts = res_key.split("x")
+                    video_dims[res_key] = (int(parts[0]), int(parts[1]))
+                else:
+                    if video_path not in video_dims:
+                        video_dims[video_path] = self._get_video_resolution(video_path)
+                    video_dims[res_key] = video_dims[video_path]
+            vid_w, vid_h = video_dims.get(res_key) or video_dims.get(video_path, (1920, 1080))
 
             input_key = rec["input_key"]
             output_key = rec["output_key"]
@@ -597,26 +656,29 @@ class WuhenAIV21Adapter(BaseAdapter):
                 "method": self.default_method,
             }
 
-            if self.default_method == "sel_area":
-                regions = task.mask_regions
-                # 使用缓存的视频分辨率，避免重复 ffprobe 子进程调用
-                if regions and isinstance(regions[0], dict) and "x" in regions[0]:
-                    r = regions[0]
-                    body["rect"] = {
-                        "x1": int(r["x"] * vid_w),
-                        "y1": int(r["y"] * vid_h),
-                        "x2": int((r["x"] + r["w"]) * vid_w),
-                        "y2": int((r["y"] + r["h"]) * vid_h),
-                    }
-                else:
-                    body["rect"] = {
-                        "x1": 0, "y1": int(vid_h * 0.77),
-                        "x2": vid_w, "y2": vid_h,
-                    }
+            method, rect = self._compute_detection_params(task, vid_w, vid_h)
+            body["method"] = method
+            rec["method"] = method
+            rec["resolution"] = f"{vid_w}x{vid_h}"
+            if rect:
+                body["rect"] = rect
+                _log(f"[无痕AI 2.1] [{i+1}/{n}] sel_area 框选: {vid_w}x{vid_h} → "
+                      f"({rect['x1']},{rect['y1']})-({rect['x2']},{rect['y2']})")
+            elif method == "all_area":
+                _log(f"[无痕AI 2.1] [{i+1}/{n}] all_area 全屏自动: {vid_w}x{vid_h}")
 
-            data = self._api_post("video_removal", body)
-            rec["task_id"] = data["task_id"]
-            _log(f"[无痕AI 2.1] [{i+1}/{n}] 已提交: {rec['task_id']}")
+            try:
+                data = self._api_post("video_removal", body)
+                rec["task_id"] = data["task_id"]
+                _log(f"[无痕AI 2.1] [{i+1}/{n}] 已提交: {os.path.basename(rec['video_path'])} → {rec['task_id']}")
+            except Exception as e:
+                _log(f"[无痕AI 2.1] [{i+1}/{n}] 提交失败: {os.path.basename(rec['video_path'])} — {e}")
+                rec["result"] = SubtitleResult(success=False, error_message=f"提交失败: {e}")
+                # 清理 OSS 上传的输入（已上传但提交失败的）
+                try:
+                    self._oss_delete(rec["input_key"])
+                except Exception:
+                    pass
             # 提交进度
             if progress_callback:
                 progress_callback("submit", 0.2 + (i + 1) / n * 0.1)
@@ -676,7 +738,10 @@ class WuhenAIV21Adapter(BaseAdapter):
                                 success=True,
                                 task_id=rec["task_id"],
                                 output_path=output_path,
-                                metadata={"status": status, "progress": progress},
+                                metadata={"status": status, "progress": progress,
+                                          "strategy": rec.get("method", ""),
+                                          "resolution": rec.get("resolution", ""),
+                                          "duration": rec.get("duration", 0)},
                             )
                         else:
                             download_url = self._oss_presigned_url(rec["output_key"], "GET", 3600)
@@ -684,7 +749,10 @@ class WuhenAIV21Adapter(BaseAdapter):
                                 success=True,
                                 task_id=rec["task_id"],
                                 output_path=download_url,
-                                metadata={"status": status, "progress": progress},
+                                metadata={"status": status, "progress": progress,
+                                          "strategy": rec.get("method", ""),
+                                          "resolution": rec.get("resolution", ""),
+                                          "duration": rec.get("duration", 0)},
                             )
                         # 清理 OSS 输入（输出保留供 pipeline 下载）
                         try:
@@ -711,6 +779,13 @@ class WuhenAIV21Adapter(BaseAdapter):
 
                 except (urllib.error.URLError, OSError) as e:
                     still_pending.append(rec)
+                except Exception as e:
+                    _log(f"[无痕AI 2.1] 轮询异常 {rec['task_id'][-8:]}: {e}")
+                    rec["result"] = SubtitleResult(
+                        success=False,
+                        task_id=rec["task_id"],
+                        error_message=f"轮询失败: {e}",
+                    )
 
             pending = still_pending
             if pending:
