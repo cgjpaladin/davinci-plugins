@@ -22,9 +22,9 @@ from ui_widgets import (
     _t_start, _t_estimated, _task_count,
     _update_countdown,
     BAL_LB, OSS_LB, PROJ_LB, PATH_LB,
-    BTN_SCAN, BTN_START, BTN_STOP, BTN_PICK, BTN_UNDO,
-    COLOR_CB, LOG_LB, ST_LB, PG_BG, PG_BAR,
-    pick_project,
+    BTN_SCAN, BTN_START, BTN_STOP, BTN_PICK, BTN_CONFIRM, BTN_UNDO,
+    COLOR_CB, LOG_LB, ST_LB, PG_BAR,
+    pick_project, confirm_project, auto_detect_project,
 )
 from ui_pipeline import (
     scan_io, refresh_bal, refresh_oss_bal, process, stop, undo,
@@ -133,6 +133,7 @@ def start_process(*_):
 # ═══════════════════════════════════════════
 
 dlg.On[BTN_PICK].Clicked = pick_project
+dlg.On[BTN_CONFIRM].Clicked = confirm_project
 dlg.On[BTN_SCAN].Clicked = scan_io
 dlg.On[BTN_START].Clicked = start_process
 dlg.On[BTN_STOP].Clicked = stop
@@ -145,6 +146,8 @@ def main():
     """显示 UI 窗口并进入事件循环（阻塞直到用户关闭）。窗口打开后刷余额。"""
     try:
         dlg.Show()
+        # 自动推测项目路径（零 SMB IO，毫秒级）
+        auto_detect_project()
         # Show 事件在达芬奇 UIDispatcher 中可能异步触发，余额刷新放这里更可靠
         if _check_smb():
             try:

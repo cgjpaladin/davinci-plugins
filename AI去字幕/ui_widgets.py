@@ -52,10 +52,11 @@ PROJ_LB = "proj_lb"
 PATH_LB = "path_lb"
 BTN_SCAN, BTN_START, BTN_STOP = "btn_scan", "btn_start", "btn_stop"
 BTN_PICK = "btn_pick"
+BTN_CONFIRM = "btn_confirm"
 BTN_UNDO = "btn_undo"
 COLOR_CB = "color_cb"
 LOG_LB, ST_LB = "log_lb", "st_lb"
-PG_BG, PG_BAR = "pg_bg", "pg_bar"
+PG_BAR = "pg_bar"
 
 # ── 片段颜色（达芬奇 API 实测 16 色，中文名匹配 20.x 官方翻译）──
 _CLIP_COLORS = [
@@ -111,6 +112,7 @@ window_layout = [
         ui.VGroup({"Spacing": 4, "Weight": 0}, [
             # Row 1: 项目路径 + 余额
             ui.HGroup({"Spacing": 8, "Weight": 0}, [
+                ui.Button({"ID": BTN_CONFIRM, "Text": "✓ 确认此路径", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
                 ui.Button({"ID": BTN_PICK, "Text": "选择项目路径", "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Label({"ID": PATH_LB, "Text": "未指定项目路径",
                           "StyleSheet": "color:rgb(180,180,180);font-size:11px", "Weight": 1}),
@@ -135,14 +137,12 @@ window_layout = [
             ]),
         ]),
 
-        # 进度条
+        # 进度条（单条绿线，从左往右填充）
         ui.VGroup({"Spacing": 2, "Weight": 0}, [
             ui.Label({"ID": ST_LB, "Text": "",
                       "StyleSheet": "color:rgb(180,180,180);font-size:11px;min-height:16px"}),
-            ui.Label({"ID": PG_BG, "Text": "",
-                      "StyleSheet": "max-height:4px;background-color:rgb(45,45,45);border-radius:2px"}),
             ui.Label({"ID": PG_BAR, "Text": "",
-                      "StyleSheet": "max-height:2px;background-color:rgb(102,221,39);border-radius:1px"}),
+                      "StyleSheet": "max-height:8px;background-color:rgb(102,221,39);border-radius:3px"}),
         ]),
 
         # 日志区（唯一可缩放）
@@ -177,6 +177,7 @@ dlg = disp.AddWindow({
 itm = dlg.GetItems()
 
 # 初始状态 — 未选项目路径前，筛选和扫描不可用
+itm[BTN_CONFIRM].Visible = False
 itm[COLOR_CB].Enabled = False
 itm[BTN_SCAN].Enabled = False
 itm[BTN_START].Enabled = False
@@ -304,10 +305,9 @@ _sys.stderr = _UIStderr()
 _ui_lock = threading.Lock()
 _ui_pending = {"status": "", "balance": "", "progress": -1.0, "btn_scan": None, "btn_start": None, "btn_pick": None, "btn_stop": None, "warn": None}
 
-# ── 时间估算常量（实测数据 2026-05-06）──
-# 批量处理（2-3片段）：~60秒/片 (含上传+API+下载)
-# 单片段：~100秒/片 (固定开销占比大)
-# 公式：单片段用 100s，2+片段用 MAX(15, 总秒数/片段数×2+30) 秒/片
+# ── 时间估算常量（实测数据 2026-05-08）──
+# 公式：sum(片段秒数)×2.3 + 60 秒（含上传+API+下载固定开销）
+# 单片段网络波动大（±30%），批量 3+ 片段偏差稳定在 ±10% 内
 import time as _time_module
 # 以下全局变量由子线程写入、主线程轮询读取。CPython GIL 保证单值赋值原子性，
 # 且使用模式为"一写多读"无竞态条件，无需额外锁。
@@ -342,7 +342,8 @@ def _update_countdown():
             time_str = _phase_text or "处理中..."  # 超时了还在跑，不显示 0 秒
 
         phase = _phase_text or "AI 处理中..."
-        itm[PROJ_LB].Text = f"⏳ {phase}  ·  {time_str}"
+        pct_str = f" {int(ratio*100)}%" if ratio > 0 else ""
+        itm[PROJ_LB].Text = f"⏳ {phase}{pct_str}  ·  {time_str}"
 
         # 时间驱动进度条（不超 95%，真实进度优先）
         est_ratio = min(0.95, elapsed / _t_estimated)
@@ -352,18 +353,30 @@ def _update_countdown():
     except:
         pass  # 倒计时更新失败（UI未就绪），下次轮询重试
 
+_pg_last_milestone = 0  # 上次记录的进度里程碑
+
 def _pg(r):
-    """更新进度条（0.0 = 开始, 1.0 = 完成）"""
+    """更新进度条（0.0 = 开始, 1.0 = 完成），里程碑时写 SMB 日志"""
+    global _pg_last_milestone
     try:
         _st._last_ratio = r
         ratio = max(0.0, min(r, 1.0))
-        bg_w = itm[PG_BG].Width if hasattr(itm[PG_BG], 'Width') else 400
-        if bg_w < 10: bg_w = 400
-        bar_w = max(2, int(bg_w * ratio))
-        itm[PG_BAR].Resize([bar_w, 2])
+        if ratio == 0:
+            _pg_last_milestone = 0
+        bar_w = itm[PG_BAR].Width if hasattr(itm[PG_BAR], 'Width') else 400
+        if bar_w < 10: bar_w = 400
+        bar_w = max(2, int(bar_w * ratio))
+        itm[PG_BAR].Resize([bar_w, 8])  # 8px 高绿条
         itm[PG_BAR].Visible = ratio > 0
+        # 里程碑记录
+        for m in (0.10, 0.25, 0.50, 0.75, 0.90, 1.0):
+            if ratio >= m > _pg_last_milestone:
+                _pg_last_milestone = m
+                elapsed = int(_time_module.time() - _t_start) if _t_start > 0 else 0
+                _smb_log(f"进度 {int(m*100)}%  |  已过 {elapsed}秒  |  预估 {_t_estimated:.0f}秒")
+                break
     except:
-        pass  # 进度条更新失败（UI未就绪），下次轮询重试
+        pass
 
 def _log_file(msg: str):
     """写本地 + SMB 双日志（操作和状态，方便远程 debug）"""
@@ -423,24 +436,23 @@ def _apply_ui_state():
 def _set_proj(path):
     try:
         label = path if path else "未指定项目路径"
-        # 太长截断显示
-        if len(label) > 80:
-            label = "..." + label[-77:]
+        # 去掉固定前缀 /Volumes/MYJC/
+        if label.startswith("/Volumes/MYJC/"):
+            label = label[14:]
+        # 太长从右边截断
+        if len(label) > 65:
+            label = label[:62] + "..."
         itm[PATH_LB].Text = label
     except Exception: _smb_log("[ui_widgets] _set_proj 失败")
 
 def _guess_project_root():
-    """从媒体池 01_素材 片段路径推测项目根目录（众数投票）。零 SMB 搜索，零磁盘 IO。"""
+    """从媒体池 01_素材 片段路径推测项目根目录（众数投票）。零磁盘 IO，纯字符串。"""
     try:
-        r = connect_resolve()
-        if not r:
-            return None
-        proj = r.GetProjectManager().GetCurrentProject()
-        if not proj:
+        r, proj, _ = connect_resolve()
+        if not r or not proj:
             return None
         mp = proj.GetMediaPool()
         root = mp.GetRootFolder()
-        # 定位 01_素材 文件夹
         material = None
         for sub in root.GetSubFolderList():
             if sub.GetName() == "01_素材":
@@ -448,20 +460,32 @@ def _guess_project_root():
                 break
         if not material:
             return None
-        # 遍历所有片段，统计项目根目录出现次数
+
         from collections import Counter
         counter = Counter()
-        _SAMPLE_MAX = 500  # 采样上限，足够统计显著且不卡
+        _SAMPLE_MAX = 500
+
+        def _extract_root(file_path):
+            """从 File Path 中截取项目根目录：找 /04_素材/ 或 /04_素材 的位置"""
+            for sep in ("/04_素材/", "/04_素材"):
+                idx = file_path.find(sep)
+                if idx != -1:
+                    return file_path[:idx]
+            return None
 
         def _collect(folder, depth=0):
             if depth > 8 or counter.total() >= _SAMPLE_MAX:
                 return
+            if counter.total() >= 20:
+                top, cnt = counter.most_common(1)[0]
+                if cnt >= 10 and cnt >= counter.total() * 0.7:
+                    return
             for c in (folder.GetClipList() or []):
                 p = c.GetClipProperty("File Path")
-                if p and "04_素材" in p:
-                    idx = p.find("/04_素材")
-                    if idx != -1:
-                        counter[p[:idx]] += 1
+                if p:
+                    root_path = _extract_root(p)
+                    if root_path:
+                        counter[root_path] += 1
                     if counter.total() >= _SAMPLE_MAX:
                         return
             for sub in (folder.GetSubFolderList() or []):
@@ -472,11 +496,53 @@ def _guess_project_root():
         _collect(material)
         if not counter:
             return None
-        # 取出现最多的项目根目录
-        proj_root, count = counter.most_common(1)[0]
+        proj_root, _count = counter.most_common(1)[0]
         return proj_root if os.path.isdir(proj_root) else None
     except Exception:
         return None
+
+def auto_detect_project():
+    """插件启动时推测项目根目录，显示建议等待用户确认。推测成功返回 True，失败返回 False。"""
+    global _suggested_path
+    if not _check_smb():
+        return False
+    try:
+        path = _guess_project_root()
+        if not path:
+            return False
+        _suggested_path = path
+        _set_proj(path)  # 显示路径，但尚未确认
+        itm[BTN_CONFIRM].Visible = True
+        itm[BTN_PICK].Text = "手动选择"
+        itm[PROJ_LB].Text = "① 请确认或手动选择项目路径"
+        return True
+    except Exception:
+        return False
+
+_suggested_path = ""  # 推测但尚未确认的路径
+
+
+def confirm_project(*_):
+    """用户点击确认按钮，正式接受推测的路径"""
+    global _suggested_path
+    path = _suggested_path
+    if not path or not os.path.isdir(path):
+        warn("路径无效，请手动选择")
+        return
+    _log_action("确认项目路径")
+    _state["project_root"] = path
+    state_init(path)
+    ledger.init(path)
+    itm[COLOR_CB].Enabled = True
+    itm[BTN_SCAN].Enabled = True
+    itm[BTN_UNDO].Enabled = True
+    itm[BTN_START].Enabled = False
+    itm[BTN_CONFIRM].Enabled = False
+    itm[BTN_CONFIRM].Text = "已确认"
+    itm[BTN_PICK].Text = "更改路径"
+    itm[PATH_LB].StyleSheet = "color:rgb(102,221,39);font-size:11px"  # 绿色确认态
+    itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
+    _suggested_path = ""
 
 def pick_project(*_):
     """打开 macOS 原生文件夹选择器，默认位置推测为当前媒体池项目目录"""
@@ -500,6 +566,10 @@ def pick_project(*_):
             _set_proj(path)
             state_init(path)
             ledger.init(path)
+            itm[BTN_CONFIRM].Enabled = False
+            itm[BTN_CONFIRM].Text = "已确认"
+            itm[BTN_PICK].Text = "更改路径"
+            itm[PATH_LB].StyleSheet = "color:rgb(102,221,39);font-size:11px"
             itm[COLOR_CB].Enabled = True
             itm[BTN_SCAN].Enabled = True
             itm[BTN_UNDO].Enabled = True

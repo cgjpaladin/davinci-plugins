@@ -45,7 +45,7 @@ from ui_widgets import (
     _update_countdown,
     BAL_LB, OSS_LB, PROJ_LB, PATH_LB,
     BTN_SCAN, BTN_START, BTN_STOP, BTN_PICK, BTN_UNDO,
-    COLOR_CB, LOG_LB, ST_LB, PG_BG, PG_BAR,
+    COLOR_CB, LOG_LB, ST_LB, PG_BAR,
 )
 import ui_widgets as _uw  # 用于跨模块写全局变量 _t_start/_t_estimated/_task_count
 
@@ -150,7 +150,7 @@ def scan_io(*_):
         yuan = point_to_yuan(pts)
         avg = max(60, min(120, need_secs / max(1, need) * 3)) if need > 0 else 0
         # 批量并行：同时处理，总时间 ≈ 上传+处理+下载，约 2x素材时长 + 60s 基础开销
-        total_time = max(1, math.ceil((need_secs * 2 + 60) / 60)) if need > 0 else 0
+        total_time = max(1, math.ceil((need_secs * 2.3 + 60) / 60)) if need > 0 else 0
         summary = f"扫描结果：当前选区内，共 {len(clips)} 个符合筛选条件的片段"
         if od:
             if cache_hits > 0:
@@ -168,7 +168,7 @@ def scan_io(*_):
         if _state["project_root"]:
             itm[PROJ_LB].Text = "③ 请点击开始处理"
         _st(f"待处理: {report.valid} 个片段")
-        _smb_log(f"扫描 — 项目: {project.GetName()} 时间线: {timeline.GetName()} IO={io_in}→{io_out} 内{report.valid}片段 需处理{need} 预估¥{yuan}")
+        _smb_log(f"扫描 — 项目: {project.GetName()} 时间线: {timeline.GetName()} IO={io_in}→{io_out} 内{report.valid}片段 需处理{need} 约{total_time}分钟 预估¥{yuan}")
         refresh_bal()
     except Exception as e:
         fail(f"扫描失败: {e}")
@@ -456,8 +456,9 @@ def process(*_):
         t_batch = time.time()
         # 设置倒计时全局变量（_update_countdown 在稳定版轮询中消费）
         _uw._t_start = t_batch
-        _uw._t_estimated = sum(math.ceil(t.duration) for t in api_tasks) * 2 + 60  # 实测公式：秒数×2+60
+        _uw._t_estimated = sum(math.ceil(t.duration) for t in api_tasks) * 2.3 + 60  # 实测公式：秒数×2.3+60
         _uw._task_count = len(api_tasks)
+        _smb_log(f"预估时间 — 片段总{sum(math.ceil(t.duration) for t in api_tasks)}秒 ({len(api_tasks)}个) 公式={_uw._t_estimated:.0f}秒 (sum×2.3+60)")
         if len(api_tasks) == 1:
             # 单片段：单任务模式（更快，无批量开销）
             info("    AI 处理中...")
@@ -539,15 +540,8 @@ def process(*_):
 
         t_elapsed = int(time.time() - t_start)
         mins, secs = divmod(t_elapsed, 60)
-        # 先显示耗时，余额稍后（query_balance 是网络调用，不用阻塞用户视线）
-        info(f"  总耗时 {mins}分{secs}秒  ·  余额查询中...")
-
-        # ── 后台收尾（网络 + SMB 写入，不阻塞用户看到"完成"）──
-        pts_after = query_balance()
-        pts_used = pts_before - pts_after if pts_before > 0 and pts_after > 0 else 0
-
-        # 补充余额信息
-        info(f"  总耗时 {mins}分{secs}秒  ·  ¥{point_to_yuan(pts_used):.2f}  ·  余额 ¥{point_to_yuan(pts_after):.2f}")
+        # 直接显示耗时和费用（不调API查余额，省2-6秒，用户可秒关）
+        info(f"  总耗时 {mins}分{secs}秒  ·  ¥{yuan:.2f}")
 
         # OSS 流量（内部记录，不展示给用户）
         oss = oss_tracker.snapshot()
@@ -555,11 +549,11 @@ def process(*_):
             _smb_log(f"OSS: {oss['traffic_gb']:.3f}GB ¥{oss['total_cost']:.4f}")
 
         oss_tracker.reset()
-        _smb_log(f"完成 — {ok_count}/{len(results)} 耗时{mins}分{secs}秒 花费¥{point_to_yuan(pts_used):.2f} 余额¥{point_to_yuan(pts_after):.2f} 阶段:{t_prep_elapsed}/{t_api_elapsed}/{t_replace_elapsed}s")
-        # 用已查过的 pts_after 更新UI
+        _smb_log(f"完成 — {ok_count}/{len(results)} 耗时{mins}分{secs}秒 预估¥{yuan:.2f} 余额(处理前)¥{point_to_yuan(pts_before):.2f} 阶段:{t_prep_elapsed}/{t_api_elapsed}/{t_replace_elapsed}s")
+        # 用缓存余额更新UI（不调API，不阻塞）
         name = "无痕AI 2.1" if "wuhenai" in ACTIVE_PROVIDER else ACTIVE_PROVIDER
-        _bal(f"{name} | ¥{point_to_yuan(pts_after):.2f}")
-        ops_logger.session_end(ok_count, len(results) - ok_count, len(results), pts_after, pts_used, int(t_elapsed), point_to_yuan(pts_used))
+        _bal(f"{name} | ¥{point_to_yuan(pts_before):.2f}")
+        ops_logger.session_end(ok_count, len(results) - ok_count, len(results), pts_before, total_est, int(t_elapsed), yuan)
 
         # 阶段耗时明细（内部记录）
         _smb_log(f"阶段耗时 — 准备:{t_prep_elapsed}s AI:{t_api_elapsed}s 替换:{t_replace_elapsed}s")
