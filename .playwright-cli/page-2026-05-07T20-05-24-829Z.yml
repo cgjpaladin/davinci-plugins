@@ -1,0 +1,124 @@
+- generic [ref=e1]:
+  - text: 
+  - textbox [active] [ref=e3]: UIManager HGroup label overflow right edge
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - banner [ref=e7]:
+        - generic [ref=e8]:
+          - generic [ref=e9]:
+            - link "We Suck Less Subway" [ref=e10] [cursor=pointer]:
+              - /url: ./index.php
+              - img "We Suck Less" [ref=e11]
+              - text: Subway
+            - paragraph [ref=e12]:
+              - link "Skip to content" [ref=e13] [cursor=pointer]:
+                - /url: "#start_here"
+          - navigation [ref=e14]:
+            - generic [ref=e15]:
+              - menubar:
+                - listitem [ref=e16]:
+                  - list:
+                    - listitem [ref=e17]:
+                      - menuitem "" [ref=e18] [cursor=pointer]:
+                        - generic [ref=e19]: 
+                    - listitem [ref=e20]:
+                      - menuitem "" [ref=e21] [cursor=pointer]:
+                        - generic [ref=e22]: 
+                    - listitem [ref=e23]:
+                      - link "" [ref=e24] [cursor=pointer]:
+                        - /url: "#"
+                        - generic [ref=e25]: 
+                    - listitem [ref=e26]:
+                      - menuitem "" [ref=e27] [cursor=pointer]:
+                        - generic [ref=e28]: 
+          - text:  
+      - menubar [ref=e30]:
+        - listitem [ref=e31]:
+          - link " Home" [ref=e33] [cursor=pointer]:
+            - /url: ./index.php
+            - generic [ref=e34]: 
+            - text: Home
+    - main [ref=e35]:
+      - generic [ref=e36]:
+        - link "" [ref=e37] [cursor=pointer]:
+          - /url: /wesuckless/boardannouncements/close/6?hash=1bc3805c
+          - generic [ref=e38]: 
+        - generic [ref=e39]:
+          - heading "A choice about the future of We Suck Less" [level=2] [ref=e40]
+          - paragraph [ref=e41]:
+            - generic [ref=e43]:
+              - text: The internet is changing, and not in a way that benefits you.
+              - text: Right now, every piece of knowledge you share and every script you download is being scraped, packaged, and sold back to you by companies that didn't build any of it. Most "free" resources today are just traps designed to mine your data or bury you in ads.
+              - text: I’ve spent over a decade building We Suck Less to be the exact opposite of that.
+              - text: It’s independent. It’s ad-free. It’s privacy-focused. And it’s arguably the best Fusion and Resolve resource on the planet. I’m proud of that. I’m proud that we’ve kept it clean while the rest of the industry is selling out.
+              - text: "But here’s the reality we have to face: Independence isn't free."
+              - text: You’re probably thinking, "
+              - emphasis [ref=e44]: If it’s a labor of love, why does it need a Patreon?
+              - text: "\" You might even feel like asking for support compromises the very independence I’m talking about."
+              - text: That’s a fair point.
+              - text: But staying independent means we don't have corporate "data partners" to fund the development of our community. It means the weight of keeping this resource alive - and keeping it out of the hands of the scrapers - falls entirely on me.
+              - text: How are we supposed to keep this a private and independent space if we don't have the resources to defend it?
+              - text: What happens to this community if the only way to keep the lights on is to start playing the same "data-mining" game as everyone else?
+              - text: We aren't looking for donations. We’re looking for people who believe that a high-end, professional resource is worth protecting from the Big Tech model.
+              - strong [ref=e45]: Is it a totally ridiculous idea to chip in a few bucks a month to make sure this resource stays alive for you?
+              - text: If you’re fine with the way the rest of the internet works these days, then this Patreon isn't for you. But if you want to make sure We Suck Less remains the best resource in the industry, we could use your help.
+          - paragraph [ref=e46]:
+            - link "https://www.patreon.com/wesuckless" [ref=e49] [cursor=pointer]:
+              - /url: "%5Bb%5Dhttps%3A//www.patreon.com/wesuckless%5B/color%5D%5B/b%5D"
+              - strong [ref=e50]: https://www.patreon.com/wesuckless
+      - generic [ref=e52]:
+        - heading " Information" [level=2] [ref=e53]
+        - paragraph [ref=e54]: Sorry but you are not permitted to use the search system.
+      - link "Support the forum" [ref=e56] [cursor=pointer]:
+        - /url: /wesuckless/paypal-donate
+        - img "Support the forum" [ref=e57]
+    - contentinfo [ref=e58]:
+      - navigation [ref=e59]:
+        - menubar [ref=e61]:
+          - listitem [ref=e62]: All times are UTC-07:00
+          - listitem [ref=e63]:
+            - text: 
+            - link "Top" [ref=e64] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e65]:
+            - text: 
+            - menuitem "Delete cookies" [ref=e66] [cursor=pointer]
+          - listitem [ref=e67]:
+            - text: 
+            - menuitem "Contact us" [ref=e68] [cursor=pointer]
+      - generic [ref=e69]:
+        - generic [ref=e70]:
+          - paragraph [ref=e71]: Copyright © We Suck Less® 2014 - 2026
+          - paragraph [ref=e72]:
+            - generic [ref=e73]:
+              - text: Powered by
+              - link "phpBB" [ref=e74] [cursor=pointer]:
+                - /url: https://www.phpbb.com/
+              - text: ® Forum Software © phpBB Limited
+          - paragraph [ref=e75]: "Total page hits: 30,222,473"
+          - paragraph [ref=e76]:
+            - menuitem "Privacy" [ref=e77] [cursor=pointer]
+            - text: "|"
+            - menuitem "Terms" [ref=e78] [cursor=pointer]
+        - generic [ref=e79]:
+          - list:
+            - listitem [ref=e80]:
+              - link "" [ref=e81] [cursor=pointer]:
+                - /url: https://www.youtube.com/@wesuckless
+                - generic [ref=e82]: 
+            - listitem [ref=e83]:
+              - link "" [ref=e84] [cursor=pointer]:
+                - /url: https://www.steakunderwater.com/wesuckless/feed.php
+                - generic [ref=e85]: 
+            - listitem [ref=e86]:
+              - link "" [ref=e87] [cursor=pointer]:
+                - /url: https://www.linkedin.com/company/wesuckless/
+                - generic [ref=e88]: 
+            - listitem [ref=e89]:
+              - link "Zulip is an organized team chat app designed for efficient communication." [ref=e90] [cursor=pointer]:
+                - /url: https://zulip.com/
+            - listitem [ref=e91]:
+              - link "Pirates of Confusion on Discord" [ref=e92] [cursor=pointer]:
+                - /url: https://discord.gg/DMThhv8TCd
+                - img [ref=e93]
+      - text:  

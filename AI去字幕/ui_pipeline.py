@@ -237,7 +237,7 @@ def refresh_oss_bal():
     try:
         from config import OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET
         if not OSS_ACCESS_KEY_ID:
-            itm[OSS_LB].Text = "阿里云 | 未配置凭证"
+            itm[OSS_LB].Text = "<div align='right'>阿里云 | 未配置凭证</div>"
             return
         # 阿里云签名要求所有非[0-9a-zA-Z]字符编码，包括 /
         _enc = lambda s: urllib.parse.quote(str(s), safe="")
@@ -259,10 +259,10 @@ def refresh_oss_bal():
             data = json.loads(resp.read())
         if data.get('Success'):
             cash = data['Data']['AvailableCashAmount']
-            itm[OSS_LB].Text = f"阿里云 | ¥{cash}"
+            itm[OSS_LB].Text = f"<div align='right'>阿里云 | ¥{cash}</div>"
     except Exception as e:
         warn(f"阿里云余额查询异常: {e}")
-        itm[OSS_LB].Text = "阿里云 | 查询失败"
+        itm[OSS_LB].Text = "<div align='right'>阿里云 | 查询失败</div>"
 
 
 # ── 处理 ──

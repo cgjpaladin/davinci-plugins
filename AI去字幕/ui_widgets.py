@@ -110,17 +110,16 @@ window_layout = [
 
         # 上半区：固定高度
         ui.VGroup({"Spacing": 4, "Weight": 0}, [
-            # Row 1: 项目路径 + 余额（FixedSize 防止溢出）
+            # Row 1: 项目路径 + 余额（FixedSize 硬锁，防溢出）
             ui.HGroup({"Spacing": 8, "Weight": 0}, [
                 ui.Button({"ID": BTN_CONFIRM, "Text": "✓ 确认", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
                 ui.Button({"ID": BTN_PICK, "Text": "选路径", "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Label({"ID": PATH_LB, "Text": "未指定项目路径",
-                          "StyleSheet": "color:rgb(180,180,180);font-size:11px", "Weight": 1,
-                          "WordWrap": True, "MaximumSize": [600, 40]}),
-                ui.VGroup({"Spacing": 2, "Weight": 0, "MaximumSize": [140, 40]}, [
-                    ui.Label({"ID": BAL_LB, "Text": "查询中...",
+                          "StyleSheet": "color:rgb(180,180,180);font-size:11px", "Weight": 1}),
+                ui.VGroup({"Spacing": 2, "Weight": 0}, [
+                    ui.Label({"ID": BAL_LB,                                 "Text": "<div align='right'>查询中...</div>", "FixedSize": [170, 16],
                               "StyleSheet": "color:rgb(220,220,220);font-size:11px"}),
-                    ui.Label({"ID": OSS_LB, "Text": "查询中...",
+                    ui.Label({"ID": OSS_LB, "Text": "<div align='right'>查询中...</div>", "FixedSize": [170, 16],
                               "StyleSheet": "color:rgb(200,200,200);font-size:11px"}),
                 ]),
             ]),
@@ -171,7 +170,7 @@ window_layout = [
 dlg = disp.AddWindow({
     "WindowTitle": f"AI 去字幕",
     "ID": WIN_ID,
-    "Geometry": [800, 100, 1020, 560],  # Geometry: [x, y, w, h]
+    "Geometry": [800, 100, 880, 560],  # Geometry: [x, y, w, h]
     "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
 }, window_layout)
 
@@ -186,7 +185,7 @@ itm[BTN_STOP].Enabled = False
 itm[BTN_UNDO].Enabled = False
 itm["warn_lb"].Visible = False
 itm[PG_BAR].FixedSize = [650, 8]
-itm[PG_BAR].Visible = True  # 测试用，检查进度条能看到
+itm[PG_BAR].Visible = True  # 测试
 itm[ST_LB].Text = ""
 
 # 强制刷新布局，防止初始化时控件溢出窗口
@@ -403,7 +402,7 @@ def _log_action(action: str):
     """记录用户操作到日志"""
     _log_file(f"[操作] {action}")
 def _bal(t):
-    try: itm[BAL_LB].Text = t
+    try: itm[BAL_LB].Text = f"<div align='right'>{t}</div>"
     except Exception: _smb_log(f"[ui_widgets] BAL_LB 赋值失败")
     with _ui_lock: _ui_pending["balance"] = t
 
