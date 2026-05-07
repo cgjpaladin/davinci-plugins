@@ -1,0 +1,1233 @@
+- generic [active] [ref=e1]:
+  - text: 
+  - textbox [ref=e3]
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - banner [ref=e7]:
+        - generic [ref=e8]:
+          - generic [ref=e9]:
+            - link "We Suck Less Subway" [ref=e10] [cursor=pointer]:
+              - /url: ./index.php?sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - img "We Suck Less" [ref=e11]
+              - text: Subway
+            - paragraph [ref=e12]:
+              - link "Skip to content" [ref=e13] [cursor=pointer]:
+                - /url: "#start_here"
+          - navigation [ref=e14]:
+            - generic [ref=e15]:
+              - menubar:
+                - listitem [ref=e16]:
+                  - list:
+                    - listitem [ref=e17]:
+                      - menuitem "" [ref=e18] [cursor=pointer]:
+                        - generic [ref=e19]: 
+                    - listitem [ref=e20]:
+                      - menuitem "" [ref=e21] [cursor=pointer]:
+                        - generic [ref=e22]: 
+                    - listitem [ref=e23]:
+                      - link "" [ref=e24] [cursor=pointer]:
+                        - /url: "#"
+                        - generic [ref=e25]: 
+                    - listitem [ref=e26]:
+                      - menuitem "" [ref=e27] [cursor=pointer]:
+                        - generic [ref=e28]: 
+          - text:  
+      - menubar [ref=e30]:
+        - listitem [ref=e31]:
+          - link " Home" [ref=e33] [cursor=pointer]:
+            - /url: ./index.php?sid=3efa8bc699c37fa4ca7d08521377d9bc
+            - generic [ref=e34]: 
+            - text: Home
+    - main [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - link [ref=e38] [cursor=pointer]:
+            - /url: http://bmd.link/4Ybx3t
+          - img [ref=e39]
+        - generic [ref=e40]:
+          - generic [ref=e41] [cursor=pointer]: "1"
+          - generic [ref=e42] [cursor=pointer]: "2"
+          - generic [ref=e43] [cursor=pointer]: "3"
+          - generic [ref=e44] [cursor=pointer]: "4"
+          - generic [ref=e45] [cursor=pointer]: "5"
+          - generic [ref=e46] [cursor=pointer]: "6"
+          - generic [ref=e47] [cursor=pointer]: "7"
+          - generic [ref=e48] [cursor=pointer]: "8"
+      - generic [ref=e49]:
+        - link "" [ref=e50] [cursor=pointer]:
+          - /url: /wesuckless/boardannouncements/close/6?hash=1bc3805c&sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - generic [ref=e51]: 
+        - generic [ref=e52]:
+          - heading "A choice about the future of We Suck Less" [level=2] [ref=e53]
+          - paragraph [ref=e54]:
+            - generic [ref=e56]:
+              - text: The internet is changing, and not in a way that benefits you.
+              - text: Right now, every piece of knowledge you share and every script you download is being scraped, packaged, and sold back to you by companies that didn't build any of it. Most "free" resources today are just traps designed to mine your data or bury you in ads.
+              - text: I’ve spent over a decade building We Suck Less to be the exact opposite of that.
+              - text: It’s independent. It’s ad-free. It’s privacy-focused. And it’s arguably the best Fusion and Resolve resource on the planet. I’m proud of that. I’m proud that we’ve kept it clean while the rest of the industry is selling out.
+              - text: "But here’s the reality we have to face: Independence isn't free."
+              - text: You’re probably thinking, "
+              - emphasis [ref=e57]: If it’s a labor of love, why does it need a Patreon?
+              - text: "\" You might even feel like asking for support compromises the very independence I’m talking about."
+              - text: That’s a fair point.
+              - text: But staying independent means we don't have corporate "data partners" to fund the development of our community. It means the weight of keeping this resource alive - and keeping it out of the hands of the scrapers - falls entirely on me.
+              - text: How are we supposed to keep this a private and independent space if we don't have the resources to defend it?
+              - text: What happens to this community if the only way to keep the lights on is to start playing the same "data-mining" game as everyone else?
+              - text: We aren't looking for donations. We’re looking for people who believe that a high-end, professional resource is worth protecting from the Big Tech model.
+              - strong [ref=e58]: Is it a totally ridiculous idea to chip in a few bucks a month to make sure this resource stays alive for you?
+              - text: If you’re fine with the way the rest of the internet works these days, then this Patreon isn't for you. But if you want to make sure We Suck Less remains the best resource in the industry, we could use your help.
+          - paragraph [ref=e59]:
+            - link "https://www.patreon.com/wesuckless" [ref=e62] [cursor=pointer]:
+              - /url: "%5Bb%5Dhttps%3A//www.patreon.com/wesuckless%5B/color%5D%5B/b%5D"
+              - strong [ref=e63]: https://www.patreon.com/wesuckless
+      - generic [ref=e65]:
+        - list [ref=e66]:
+          - listitem [ref=e67]:
+            - term [ref=e69]:
+              - text: 
+              - generic [ref=e72]: NAB 2026 SHOUT BOX (MESSAGES SELF-DESTRUCT DAILY!)
+        - list [ref=e73]:
+          - listitem [ref=e74]:
+            - generic [ref=e75]: You must register or log in to use the Tag Board.
+            - generic [ref=e78]: 
+      - generic [ref=e79]:
+        - generic [ref=e81]:
+          - text: 15 Topics
+          - list [ref=e82]:
+            - listitem [ref=e83]:
+              - generic [ref=e84]: "1"
+            - listitem [ref=e85]:
+              - button "2" [ref=e86] [cursor=pointer]
+            - listitem [ref=e87]:
+              - button "3" [ref=e88] [cursor=pointer]
+            - listitem [ref=e89]:
+              - button " Next" [ref=e90] [cursor=pointer]:
+                - text:  
+                - generic [ref=e91]: Next
+        - generic [ref=e93]:
+          - list [ref=e94]:
+            - listitem [ref=e95]:
+              - generic [ref=e96]:
+                - term [ref=e97]:
+                  - text: 
+                  - link "Recent Topics" [ref=e99] [cursor=pointer]:
+                    - /url: /wesuckless/rtng/separate?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - definition [ref=e100]: Replies
+                - definition [ref=e101]: Views
+                - definition [ref=e102]:
+                  - generic [ref=e103]: Last post
+          - list [ref=e104]:
+            - listitem [ref=e105]:
+              - generic [ref=e106]:
+                - text: 
+                - term [ref=e107]:
+                  - link:
+                    - /url: ./viewtopic.php?t=8741&sid=3efa8bc699c37fa4ca7d08521377d9bc&view=unread#unread
+                  - generic [ref=e108]:
+                    - link [ref=e109] [cursor=pointer]:
+                      - /url: ./viewtopic.php?t=8741&sid=3efa8bc699c37fa4ca7d08521377d9bc&view=unread#unread
+                      - generic [ref=e110]: 
+                    - link "[DEV] [Fuse] Qwen-Image-Edit Node - ComfyUI For Fusion" [ref=e112] [cursor=pointer]:
+                      - /url: "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t./viewtopic.php?t=8741&sid=3efa8bc699c37fa4ca7d08521377d9bc\n\t\t\t\t\t\t\t\t\t\t\t\t\t"
+                    - generic [ref=e113]:
+                      - text: by
+                      - link "Tangenten" [ref=e114] [cursor=pointer]:
+                        - /url: /wesuckless/member/tangenten.8383?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                      - text: » 23 hours ago » in
+                      - link "Projects and Development" [ref=e115] [cursor=pointer]:
+                        - /url: ./viewforum.php?f=29&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                      - text: »
+                      - link "We Suck Less Lab" [ref=e116] [cursor=pointer]:
+                        - /url: ./viewforum.php?f=45&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - definition [ref=e117]: "4"
+                - definition [ref=e118]: "89"
+                - definition [ref=e119]:
+                  - generic [ref=e120]:
+                    - text: by
+                    - link "Chad" [ref=e121] [cursor=pointer]:
+                      - /url: /wesuckless/member/chad.94?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - link "Go to last post" [ref=e122] [cursor=pointer]:
+                      - /url: ./viewtopic.php?p=65100&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65100
+                      - generic [ref=e123]: 
+                    - text: 5 hours ago
+            - listitem [ref=e125]:
+              - generic [ref=e126]:
+                - text: 
+                - term [ref=e127]:
+                  - link:
+                    - /url: ./viewtopic.php?t=8739&sid=3efa8bc699c37fa4ca7d08521377d9bc&view=unread#unread
+                  - generic [ref=e128]:
+                    - link [ref=e129] [cursor=pointer]:
+                      - /url: ./viewtopic.php?t=8739&sid=3efa8bc699c37fa4ca7d08521377d9bc&view=unread#unread
+                      - generic [ref=e130]: 
+                    - link "Testing OGrafLoader in Resolve 21 Beta ( with Lottie, Rive and Custom Controls)" [ref=e132] [cursor=pointer]:
+                      - /url: "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t./viewtopic.php?t=8739&sid=3efa8bc699c37fa4ca7d08521377d9bc\n\t\t\t\t\t\t\t\t\t\t\t\t\t"
+                    - generic [ref=e133]:
+                      - text: by
+                      - link "Dunn" [ref=e134] [cursor=pointer]:
+                        - /url: /wesuckless/member/dunn.51?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                      - text: » 1 day ago » in
+                      - link "Blackmagic Design" [ref=e135] [cursor=pointer]:
+                        - /url: ./viewforum.php?f=4&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                      - text: »
+                      - link "Fusion Scripting, Fuses and Macros" [ref=e136] [cursor=pointer]:
+                        - /url: ./viewforum.php?f=6&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - definition [ref=e137]: "6"
+                - definition [ref=e138]: "497"
+                - definition [ref=e139]:
+                  - generic [ref=e140]:
+                    - text: by
+                    - link "Chad" [ref=e141] [cursor=pointer]:
+                      - /url: /wesuckless/member/chad.94?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - link "Go to last post" [ref=e142] [cursor=pointer]:
+                      - /url: ./viewtopic.php?p=65099&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65099
+                      - generic [ref=e143]: 
+                    - text: 5 hours ago
+            - listitem [ref=e145]:
+              - generic [ref=e146]:
+                - text: 
+                - term [ref=e147]:
+                  - link:
+                    - /url: ./viewtopic.php?t=8742&sid=3efa8bc699c37fa4ca7d08521377d9bc&view=unread#unread
+                  - generic [ref=e148]:
+                    - link [ref=e149] [cursor=pointer]:
+                      - /url: ./viewtopic.php?t=8742&sid=3efa8bc699c37fa4ca7d08521377d9bc&view=unread#unread
+                      - generic [ref=e150]: 
+                    - link "[BETA] Gradient It macro - The missing gradient mask?" [ref=e152] [cursor=pointer]:
+                      - /url: "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t./viewtopic.php?t=8742&sid=3efa8bc699c37fa4ca7d08521377d9bc\n\t\t\t\t\t\t\t\t\t\t\t\t\t"
+                    - generic [ref=e153]:
+                      - text: by
+                      - link "JustCropIt" [ref=e154] [cursor=pointer]:
+                        - /url: /wesuckless/member/justcropit.12015?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                      - text: » 19 hours ago » in
+                      - link "Projects and Development" [ref=e155] [cursor=pointer]:
+                        - /url: ./viewforum.php?f=29&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                      - text: »
+                      - link "We Suck Less Lab" [ref=e156] [cursor=pointer]:
+                        - /url: ./viewforum.php?f=45&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - definition [ref=e157]: "3"
+                - definition [ref=e158]: "62"
+                - definition [ref=e159]:
+                  - generic [ref=e160]:
+                    - text: by
+                    - link "Midgardsormr" [ref=e161] [cursor=pointer]:
+                      - /url: /wesuckless/member/midgardsormr.382?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - link "Go to last post" [ref=e162] [cursor=pointer]:
+                      - /url: ./viewtopic.php?p=65097&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65097
+                      - generic [ref=e163]: 
+                    - text: 5 hours ago
+            - listitem [ref=e165]:
+              - generic [ref=e166]:
+                - text: 
+                - term [ref=e167]:
+                  - link:
+                    - /url: ./viewtopic.php?t=8740&sid=3efa8bc699c37fa4ca7d08521377d9bc&view=unread#unread
+                  - generic [ref=e168]:
+                    - link [ref=e169] [cursor=pointer]:
+                      - /url: ./viewtopic.php?t=8740&sid=3efa8bc699c37fa4ca7d08521377d9bc&view=unread#unread
+                      - generic [ref=e170]: 
+                    - link "[Fuse] Path Blur - Spline Blur & Stretch" [ref=e172] [cursor=pointer]:
+                      - /url: "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t./viewtopic.php?t=8740&sid=3efa8bc699c37fa4ca7d08521377d9bc\n\t\t\t\t\t\t\t\t\t\t\t\t\t"
+                    - generic [ref=e173]:
+                      - text: by
+                      - link "Tangenten" [ref=e174] [cursor=pointer]:
+                        - /url: /wesuckless/member/tangenten.8383?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                      - text: » 1 day ago » in
+                      - link "Showtime!" [ref=e175] [cursor=pointer]:
+                        - /url: ./viewforum.php?f=11&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                      - text: »
+                      - link "Theatre" [ref=e176] [cursor=pointer]:
+                        - /url: ./viewforum.php?f=7&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - definition [ref=e177]: "3"
+                - definition [ref=e178]: "110"
+                - definition [ref=e179]:
+                  - generic [ref=e180]:
+                    - text: by
+                    - link "Tangenten" [ref=e181] [cursor=pointer]:
+                      - /url: /wesuckless/member/tangenten.8383?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - link "Go to last post" [ref=e182] [cursor=pointer]:
+                      - /url: ./viewtopic.php?p=65077&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65077
+                      - generic [ref=e183]: 
+                    - text: 10 hours ago
+            - listitem [ref=e185]:
+              - generic [ref=e186]:
+                - text: 
+                - term [ref=e187]:
+                  - link:
+                    - /url: ./viewtopic.php?t=8660&sid=3efa8bc699c37fa4ca7d08521377d9bc&view=unread#unread
+                  - generic [ref=e188]:
+                    - link [ref=e189] [cursor=pointer]:
+                      - /url: ./viewtopic.php?t=8660&sid=3efa8bc699c37fa4ca7d08521377d9bc&view=unread#unread
+                      - generic [ref=e190]: 
+                    - link "Channel Processing inside Fusion (Comparison with Nuke)" [ref=e192] [cursor=pointer]:
+                      - /url: "\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t./viewtopic.php?t=8660&sid=3efa8bc699c37fa4ca7d08521377d9bc\n\t\t\t\t\t\t\t\t\t\t\t\t\t"
+                    - generic [ref=e193]:
+                      - text: by
+                      - link "kermitfromthefuture" [ref=e194] [cursor=pointer]:
+                        - /url: /wesuckless/member/kermitfromthefuture.15640?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                      - text: » 2 weeks ago » in
+                      - link "Blackmagic Design" [ref=e195] [cursor=pointer]:
+                        - /url: ./viewforum.php?f=4&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                      - text: »
+                      - link "Fusion Studio" [ref=e196] [cursor=pointer]:
+                        - /url: ./viewforum.php?f=16&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - definition [ref=e197]: "1"
+                - definition [ref=e198]: "281"
+                - definition [ref=e199]:
+                  - generic [ref=e200]:
+                    - text: by
+                    - link "Chad" [ref=e201] [cursor=pointer]:
+                      - /url: /wesuckless/member/chad.94?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - link "Go to last post" [ref=e202] [cursor=pointer]:
+                      - /url: ./viewtopic.php?p=65072&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65072
+                      - generic [ref=e203]: 
+                    - text: 16 hours ago
+      - generic [ref=e206]:
+        - list [ref=e207]:
+          - listitem [ref=e208]:
+            - term [ref=e210]:
+              - text: 
+              - link "WSL Live - coming in 2026?" [ref=e212] [cursor=pointer]:
+                - /url: ./viewtopic.php?f=2&t=7730&sid=3efa8bc699c37fa4ca7d08521377d9bc
+        - generic [ref=e216]:
+          - heading " Would you like to see WSL live events?" [level=2] [ref=e217]:
+            - text: 
+            - paragraph [ref=e218]: Would you like to see WSL live events?
+          - paragraph [ref=e219]
+          - group [ref=e220]:
+            - generic [ref=e221]:
+              - term [ref=e222]:
+                - paragraph [ref=e223]: "Yes"
+              - definition [ref=e224]:
+                - generic [ref=e225]: "66"
+              - definition [ref=e226]: 88%
+            - generic [ref=e227]:
+              - term [ref=e228]:
+                - paragraph [ref=e229]: "No"
+              - definition [ref=e230]:
+                - generic [ref=e231]: "9"
+              - definition [ref=e232]: 12%
+            - generic [ref=e233]:
+              - term [ref=e234]
+              - definition [ref=e235]: "Total votes: 75"
+      - generic [ref=e237]:
+        - list [ref=e238]:
+          - listitem [ref=e239]:
+            - generic [ref=e240]:
+              - term [ref=e241]:
+                - text: 
+                - link "Welcome To We Suck Less!" [ref=e243] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=1&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e244]: Topics
+              - definition [ref=e245]: Posts
+              - definition [ref=e246]:
+                - generic [ref=e247]: Last post
+        - list [ref=e248]:
+          - listitem [ref=e249]:
+            - generic [ref=e250]:
+              - text: 
+              - term [ref=e251]:
+                - link:
+                  - /url: ./viewforum.php?f=3&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "Join the Fusion User Community! [3 users]" [ref=e253] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=3&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e254]: "2"
+              - definition [ref=e255]: "2"
+              - definition [ref=e256]:
+                - generic [ref=e257]:
+                  - link "Registration help" [ref=e258] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=242&sid=3efa8bc699c37fa4ca7d08521377d9bc#p242
+                  - text: by
+                  - link "SecondMan" [ref=e259] [cursor=pointer]:
+                    - /url: /wesuckless/member/secondman.2?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e260] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=242&sid=3efa8bc699c37fa4ca7d08521377d9bc#p242
+                    - generic [ref=e261]: 
+                    - generic [ref=e262]: View the latest post
+                  - time [ref=e263]: 11 years ago
+          - listitem [ref=e264]:
+            - generic [ref=e265]:
+              - text: 
+              - term [ref=e266]:
+                - link:
+                  - /url: ./viewforum.php?f=2&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "About the Forum [8 users]" [ref=e268] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=2&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e269]: "192"
+              - definition [ref=e270]: "1895"
+              - definition [ref=e271]:
+                - generic [ref=e272]:
+                  - 'link "Re: The WSL NAB 2026 Guessing…" [ref=e273] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=64141&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64141
+                  - text: by
+                  - link "SecondMan" [ref=e274] [cursor=pointer]:
+                    - /url: /wesuckless/member/secondman.2?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e275] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=64141&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64141
+                    - generic [ref=e276]: 
+                    - generic [ref=e277]: View the latest post
+                  - time [ref=e278]: 2 weeks ago
+          - listitem [ref=e279]:
+            - generic [ref=e280]:
+              - text: 
+              - term [ref=e281]:
+                - link "Looking for Reactor? It's right here..." [ref=e283] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=40&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e284]:
+                - generic [ref=e285]: "Total redirects: 464710"
+      - generic [ref=e287]:
+        - list [ref=e288]:
+          - listitem [ref=e289]:
+            - generic [ref=e290]:
+              - term [ref=e291]:
+                - text: 
+                - link "Blackmagic Design" [ref=e293] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=4&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e294]: Topics
+              - definition [ref=e295]: Posts
+              - definition [ref=e296]:
+                - generic [ref=e297]: Last post
+        - list [ref=e298]:
+          - listitem [ref=e299]:
+            - generic [ref=e300]:
+              - text: 
+              - term [ref=e301]:
+                - link:
+                  - /url: ./viewforum.php?f=16&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "Fusion Studio [4 users]" [ref=e303] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=16&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e304]: "3019"
+              - definition [ref=e305]: "21778"
+              - definition [ref=e306]:
+                - generic [ref=e307]:
+                  - 'link "Re: Channel Processing inside…" [ref=e308] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=65072&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65072
+                  - text: by
+                  - link "Chad" [ref=e309] [cursor=pointer]:
+                    - /url: /wesuckless/member/chad.94?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e310] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=65072&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65072
+                    - generic [ref=e311]: 
+                    - generic [ref=e312]: View the latest post
+                  - time [ref=e313]: 16 hours ago
+          - listitem [ref=e314]:
+            - generic [ref=e315]:
+              - text: 
+              - term [ref=e316]:
+                - link:
+                  - /url: ./viewforum.php?f=6&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - generic [ref=e317]:
+                  - link "Fusion Scripting, Fuses and Macros [8 users]" [ref=e318] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=6&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - strong [ref=e319]: "Subforum:"
+                  - link " Fuse Box" [ref=e320] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=17&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - text:   Fuse Box
+              - definition [ref=e321]: "1442"
+              - definition [ref=e322]: "10459"
+              - definition [ref=e323]:
+                - generic [ref=e324]:
+                  - 'link "Re: Testing OGrafLoader in Re…" [ref=e325] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=65099&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65099
+                  - text: by
+                  - link "Chad" [ref=e326] [cursor=pointer]:
+                    - /url: /wesuckless/member/chad.94?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e327] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=65099&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65099
+                    - generic [ref=e328]: 
+                    - generic [ref=e329]: View the latest post
+                  - time [ref=e330]: 5 hours ago
+          - listitem [ref=e331]:
+            - generic [ref=e332]:
+              - text: 
+              - term [ref=e333]:
+                - link:
+                  - /url: ./viewforum.php?f=35&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - generic [ref=e334]:
+                  - link "DaVinci Resolve [4 users]" [ref=e335] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=35&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - strong [ref=e336]: "Subforums:"
+                  - link " Media" [ref=e337] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=63&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - text:   Media
+                  - text: ","
+                  - link " Cut" [ref=e338] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=64&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - text:   Cut
+                  - text: ","
+                  - link " Edit" [ref=e339] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=65&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - text:   Edit
+                  - text: ","
+                  - link " Fusion" [ref=e340] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=66&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - text:   Fusion
+                  - text: ","
+                  - link " Color" [ref=e341] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=67&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - text:   Color
+                  - text: ","
+                  - link " Fairlight" [ref=e342] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=68&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - text:   Fairlight
+                  - text: ","
+                  - link " Deliver" [ref=e343] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=69&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - text:   Deliver
+              - definition [ref=e344]: "430"
+              - definition [ref=e345]: "1951"
+              - definition [ref=e346]:
+                - generic [ref=e347]:
+                  - 'link "Re: Some industry standard wo…" [ref=e348] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=63796&sid=3efa8bc699c37fa4ca7d08521377d9bc#p63796
+                  - text: by
+                  - link "JustCropIt" [ref=e349] [cursor=pointer]:
+                    - /url: /wesuckless/member/justcropit.12015?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e350] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=63796&sid=3efa8bc699c37fa4ca7d08521377d9bc#p63796
+                    - generic [ref=e351]: 
+                    - generic [ref=e352]: View the latest post
+                  - time [ref=e353]: 2 weeks ago
+          - listitem [ref=e354]:
+            - generic [ref=e355]:
+              - text: 
+              - term [ref=e356]:
+                - link:
+                  - /url: ./viewforum.php?f=46&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "DaVinci Resolve Scripting [6 users]" [ref=e358] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=46&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e359]: "230"
+              - definition [ref=e360]: "1040"
+              - definition [ref=e361]:
+                - generic [ref=e362]:
+                  - 'link "Re: comp.Paste doesn''t update…" [ref=e363] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=65033&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65033
+                  - text: by
+                  - link "AndrewHazelden" [ref=e364] [cursor=pointer]:
+                    - /url: /wesuckless/member/andrewhazelden.592?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e365] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=65033&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65033
+                    - generic [ref=e366]: 
+                    - generic [ref=e367]: View the latest post
+                  - time [ref=e368]: 1 day ago
+          - listitem [ref=e369]:
+            - generic [ref=e370]:
+              - text: 
+              - term [ref=e371]:
+                - link:
+                  - /url: ./viewforum.php?f=15&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "Generation [3 users]" [ref=e373] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=15&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e374]: "24"
+              - definition [ref=e375]: "170"
+              - definition [ref=e376]:
+                - generic [ref=e377]:
+                  - 'link "Re: Formation (prototype)" [ref=e378] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=64368&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64368
+                  - text: by
+                  - link "theotheo" [ref=e379] [cursor=pointer]:
+                    - /url: /wesuckless/member/theotheo.85?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e380] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=64368&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64368
+                    - generic [ref=e381]: 
+                    - generic [ref=e382]: View the latest post
+                  - time [ref=e383]: 1 week ago
+          - listitem [ref=e384]:
+            - generic [ref=e385]:
+              - text: 
+              - term [ref=e386]:
+                - link:
+                  - /url: ./viewforum.php?f=19&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "Bug Tracker [5 users]" [ref=e388] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=19&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e389]: "364"
+              - definition [ref=e390]: "1553"
+              - definition [ref=e391]:
+                - generic [ref=e392]:
+                  - 'link "Re: Bug Report: OFX Host Alia…" [ref=e393] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=64268&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64268
+                  - text: by
+                  - link "tobkum" [ref=e394] [cursor=pointer]:
+                    - /url: /wesuckless/member/tobkum.6192?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e395] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=64268&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64268
+                    - generic [ref=e396]: 
+                    - generic [ref=e397]: View the latest post
+                  - time [ref=e398]: 1 week ago
+          - listitem [ref=e399]:
+            - generic [ref=e400]:
+              - text: 
+              - term [ref=e401]:
+                - link:
+                  - /url: ./viewforum.php?f=20&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "Wish List [4 users]" [ref=e403] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=20&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e404]: "205"
+              - definition [ref=e405]: "1068"
+              - definition [ref=e406]:
+                - generic [ref=e407]:
+                  - 'link "Re: Req- RGB to CMYK fuse" [ref=e408] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=58653&sid=3efa8bc699c37fa4ca7d08521377d9bc#p58653
+                  - text: by
+                  - link "gez" [ref=e409] [cursor=pointer]:
+                    - /url: /wesuckless/member/gez.2898?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e410] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=58653&sid=3efa8bc699c37fa4ca7d08521377d9bc#p58653
+                    - generic [ref=e411]: 
+                    - generic [ref=e412]: View the latest post
+                  - time [ref=e413]: 5 months ago
+      - generic [ref=e415]:
+        - list [ref=e416]:
+          - listitem [ref=e417]:
+            - generic [ref=e418]:
+              - term [ref=e419]:
+                - text: 
+                - link "Showtime!" [ref=e421] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=11&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e422]: Topics
+              - definition [ref=e423]: Posts
+              - definition [ref=e424]:
+                - generic [ref=e425]: Last post
+        - list [ref=e426]:
+          - listitem [ref=e427]:
+            - generic [ref=e428]:
+              - text: 
+              - term [ref=e429]:
+                - link:
+                  - /url: ./viewforum.php?f=7&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - generic [ref=e430]:
+                  - link "Theatre [3 users]" [ref=e431] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=7&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - text: Show us your bits!
+              - definition [ref=e432]: "322"
+              - definition [ref=e433]: "2239"
+              - definition [ref=e434]:
+                - generic [ref=e435]:
+                  - 'link "Re: [RELEASED] [Fuse] Path Bl…" [ref=e436] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=65077&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65077
+                  - text: by
+                  - link "Tangenten" [ref=e437] [cursor=pointer]:
+                    - /url: /wesuckless/member/tangenten.8383?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e438] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=65077&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65077
+                    - generic [ref=e439]: 
+                    - generic [ref=e440]: View the latest post
+                  - time [ref=e441]: 10 hours ago
+          - listitem [ref=e442]:
+            - generic [ref=e443]:
+              - text: 
+              - term [ref=e444]:
+                - link:
+                  - /url: ./viewforum.php?f=62&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - generic [ref=e445]:
+                  - link "Classroom [2 users]" [ref=e446] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=62&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - paragraph [ref=e447]: Tutorials and how-to's!
+                  - strong [ref=e448]: "Subforum:"
+                  - link " QI" [ref=e449] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=70&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - text:   QI
+              - definition [ref=e450]: "34"
+              - definition [ref=e451]: "333"
+              - definition [ref=e452]:
+                - generic [ref=e453]:
+                  - 'link "Re: How I worked around the l…" [ref=e454] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=64726&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64726
+                  - text: by
+                  - link "aelineau" [ref=e455] [cursor=pointer]:
+                    - /url: /wesuckless/member/aelineau.11244?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e456] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=64726&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64726
+                    - generic [ref=e457]: 
+                    - generic [ref=e458]: View the latest post
+                  - time [ref=e459]: 5 days ago
+          - listitem [ref=e460]:
+            - generic [ref=e461]:
+              - text: 
+              - term [ref=e462]:
+                - link:
+                  - /url: ./viewforum.php?f=14&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - generic [ref=e463]:
+                  - link "Sweatbox [2 users]" [ref=e464] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=14&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - text: Work In Progress...
+              - definition [ref=e465]: "46"
+              - definition [ref=e466]: "745"
+              - definition [ref=e467]:
+                - generic [ref=e468]:
+                  - text: by
+                  - link "Tomiebeer2" [ref=e469] [cursor=pointer]:
+                    - /url: /wesuckless/member/tomiebeer2.39307?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e470] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=63101&sid=3efa8bc699c37fa4ca7d08521377d9bc#p63101
+                    - generic [ref=e471]: 
+                    - generic [ref=e472]: View the latest post
+                  - time [ref=e473]: 2 months ago
+      - generic [ref=e475]:
+        - list [ref=e476]:
+          - listitem [ref=e477]:
+            - generic [ref=e478]:
+              - term [ref=e479]:
+                - text: 
+                - link "Projects and Development" [ref=e481] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=29&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e482]: Topics
+              - definition [ref=e483]: Posts
+              - definition [ref=e484]:
+                - generic [ref=e485]: Last post
+        - list [ref=e486]:
+          - listitem [ref=e487]:
+            - generic [ref=e488]:
+              - text: 
+              - term [ref=e489]:
+                - link:
+                  - /url: ./viewforum.php?f=42&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "WSL Ideas [2 users]" [ref=e491] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=42&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e492]: "25"
+              - definition [ref=e493]: "224"
+              - definition [ref=e494]:
+                - generic [ref=e495]:
+                  - 'link "Re: posting of comp presets- …" [ref=e496] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=57405&sid=3efa8bc699c37fa4ca7d08521377d9bc#p57405
+                  - text: by
+                  - link "SecondMan" [ref=e497] [cursor=pointer]:
+                    - /url: /wesuckless/member/secondman.2?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e498] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=57405&sid=3efa8bc699c37fa4ca7d08521377d9bc#p57405
+                    - generic [ref=e499]: 
+                    - generic [ref=e500]: View the latest post
+                  - time [ref=e501]: 8 months ago
+          - listitem [ref=e502]:
+            - generic [ref=e503]:
+              - text: 
+              - term [ref=e504]:
+                - link:
+                  - /url: ./viewforum.php?f=45&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - generic [ref=e505]:
+                  - link "We Suck Less Lab [3 users]" [ref=e506] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=45&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - text: Where the future is being made, today.
+              - definition [ref=e507]: "337"
+              - definition [ref=e508]: "4905"
+              - definition [ref=e509]:
+                - generic [ref=e510]:
+                  - 'link "Re: [DEV] [Fuse] Qwen-Image-E…" [ref=e511] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=65100&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65100
+                  - text: by
+                  - link "Chad" [ref=e512] [cursor=pointer]:
+                    - /url: /wesuckless/member/chad.94?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e513] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=65100&sid=3efa8bc699c37fa4ca7d08521377d9bc#p65100
+                    - generic [ref=e514]: 
+                    - generic [ref=e515]: View the latest post
+                  - time [ref=e516]: 5 hours ago
+          - listitem [ref=e517]:
+            - generic [ref=e518]:
+              - text: 
+              - term [ref=e519]:
+                - link:
+                  - /url: ./viewforum.php?f=74&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "LightWave Lab [5 users]" [ref=e521] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=74&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e522]: "3"
+              - definition [ref=e523]: "10"
+              - definition [ref=e524]:
+                - generic [ref=e525]:
+                  - 'link "Re: Building Tools With the L…" [ref=e526] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=63514&sid=3efa8bc699c37fa4ca7d08521377d9bc#p63514
+                  - text: by
+                  - link "AndrewHazelden" [ref=e527] [cursor=pointer]:
+                    - /url: /wesuckless/member/andrewhazelden.592?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e528] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=63514&sid=3efa8bc699c37fa4ca7d08521377d9bc#p63514
+                    - generic [ref=e529]: 
+                    - generic [ref=e530]: View the latest post
+                  - time [ref=e531]: 3 weeks ago
+          - listitem [ref=e532]:
+            - generic [ref=e533]:
+              - text: 
+              - term [ref=e534]:
+                - link:
+                  - /url: ./viewforum.php?f=32&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "Reactor [9 users]" [ref=e536] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=32&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e537]: "149"
+              - definition [ref=e538]: "1444"
+              - definition [ref=e539]:
+                - generic [ref=e540]:
+                  - 'link "Re: Reactor lua \"token\" error…" [ref=e541] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=63976&sid=3efa8bc699c37fa4ca7d08521377d9bc#p63976
+                  - text: by
+                  - link "JPDoc" [ref=e542] [cursor=pointer]:
+                    - /url: /wesuckless/member/jpdoc.126?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e543] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=63976&sid=3efa8bc699c37fa4ca7d08521377d9bc#p63976
+                    - generic [ref=e544]: 
+                    - generic [ref=e545]: View the latest post
+                  - time [ref=e546]: 2 weeks ago
+          - listitem [ref=e547]:
+            - generic [ref=e548]:
+              - text: 
+              - term [ref=e549]:
+                - link:
+                  - /url: ./viewforum.php?f=33&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "Reactor Submissions [4 users]" [ref=e551] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=33&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e552]: "161"
+              - definition [ref=e553]: "2065"
+              - definition [ref=e554]:
+                - generic [ref=e555]:
+                  - 'link "Re: [UPDATED] Mug Advanced Ha…" [ref=e556] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=64932&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64932
+                  - text: by
+                  - link "SecondMan" [ref=e557] [cursor=pointer]:
+                    - /url: /wesuckless/member/secondman.2?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e558] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=64932&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64932
+                    - generic [ref=e559]: 
+                    - generic [ref=e560]: View the latest post
+                  - time [ref=e561]: 3 days ago
+      - generic [ref=e563]:
+        - list [ref=e564]:
+          - listitem [ref=e565]:
+            - generic [ref=e566]:
+              - term [ref=e567]:
+                - text: 
+                - link "By Popular Demand" [ref=e569] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=10&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e570]: Topics
+              - definition [ref=e571]: Posts
+              - definition [ref=e572]:
+                - generic [ref=e573]: Last post
+        - list [ref=e574]:
+          - listitem [ref=e575]:
+            - generic [ref=e576]:
+              - text: 
+              - term [ref=e577]:
+                - link:
+                  - /url: ./viewforum.php?f=8&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - generic [ref=e578]:
+                  - link "Off Topic" [ref=e579] [cursor=pointer]:
+                    - /url: ./viewforum.php?f=8&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                    - text: Off Topic
+                  - text: General discussion...
+              - definition [ref=e580]: "282"
+              - definition [ref=e581]: "2161"
+              - definition [ref=e582]:
+                - generic [ref=e583]:
+                  - text: by
+                  - link "Davy Alves" [ref=e584] [cursor=pointer]:
+                    - /url: /wesuckless/member/davy-alves.11855?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e585] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=64198&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64198
+                    - generic [ref=e586]: 
+                    - generic [ref=e587]: View the latest post
+                  - time [ref=e588]: 1 week ago
+      - generic [ref=e590]:
+        - list [ref=e591]:
+          - listitem [ref=e592]:
+            - generic [ref=e593]:
+              - term [ref=e594]:
+                - text: 
+                - link "Open Source VFX" [ref=e596] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=48&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e597]: Topics
+              - definition [ref=e598]: Posts
+              - definition [ref=e599]:
+                - generic [ref=e600]: Last post
+        - list [ref=e601]:
+          - listitem [ref=e602]:
+            - generic [ref=e603]:
+              - text: 
+              - term [ref=e604]:
+                - link:
+                  - /url: ./viewforum.php?f=49&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "Blender [4 users]" [ref=e606] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=49&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e607]: "3"
+              - definition [ref=e608]: "33"
+              - definition [ref=e609]:
+                - generic [ref=e610]:
+                  - 'link "Re: awesome open source CG / …" [ref=e611] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=60969&sid=3efa8bc699c37fa4ca7d08521377d9bc#p60969
+                  - text: by
+                  - link "SecondMan" [ref=e612] [cursor=pointer]:
+                    - /url: /wesuckless/member/secondman.2?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e613] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=60969&sid=3efa8bc699c37fa4ca7d08521377d9bc#p60969
+                    - generic [ref=e614]: 
+                    - generic [ref=e615]: View the latest post
+                  - time [ref=e616]: 3 months ago
+          - listitem [ref=e617]:
+            - generic [ref=e618]:
+              - text: 
+              - term [ref=e619]:
+                - link:
+                  - /url: ./viewforum.php?f=55&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "Gaffer [4 users]" [ref=e621] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=55&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e622]: "9"
+              - definition [ref=e623]: "34"
+              - definition [ref=e624]:
+                - generic [ref=e625]:
+                  - 'link "Re: Intro to Gaffer" [ref=e626] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=55455&sid=3efa8bc699c37fa4ca7d08521377d9bc#p55455
+                  - text: by
+                  - link "Maui" [ref=e627] [cursor=pointer]:
+                    - /url: /wesuckless/member/maui.493?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e628] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=55455&sid=3efa8bc699c37fa4ca7d08521377d9bc#p55455
+                    - generic [ref=e629]: 
+                    - generic [ref=e630]: View the latest post
+                  - time [ref=e631]: 1 year ago
+          - listitem [ref=e632]:
+            - generic [ref=e633]:
+              - text: 
+              - term [ref=e634]:
+                - link:
+                  - /url: ./viewforum.php?f=73&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "Linux [3 users]" [ref=e636] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=73&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e637]: "13"
+              - definition [ref=e638]: "57"
+              - definition [ref=e639]:
+                - generic [ref=e640]:
+                  - 'link "Re: universal install script …" [ref=e641] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=64410&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64410
+                  - text: by
+                  - link "stib" [ref=e642] [cursor=pointer]:
+                    - /url: /wesuckless/member/stib.2656?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e643] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=64410&sid=3efa8bc699c37fa4ca7d08521377d9bc#p64410
+                    - generic [ref=e644]: 
+                    - generic [ref=e645]: View the latest post
+                  - time [ref=e646]: 1 week ago
+      - generic [ref=e648]:
+        - list [ref=e649]:
+          - listitem [ref=e650]:
+            - generic [ref=e651]:
+              - term [ref=e652]:
+                - text: 
+                - link "AI/ML" [ref=e654] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=52&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e655]: Topics
+              - definition [ref=e656]: Posts
+              - definition [ref=e657]:
+                - generic [ref=e658]: Last post
+        - list [ref=e659]:
+          - listitem [ref=e660]:
+            - generic [ref=e661]:
+              - text: 
+              - term [ref=e662]:
+                - link:
+                  - /url: ./viewforum.php?f=53&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "Machine Learning for VFX and Compositing [4 users]" [ref=e664] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=53&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e665]: "24"
+              - definition [ref=e666]: "222"
+              - definition [ref=e667]:
+                - generic [ref=e668]:
+                  - 'link "Re: iNodes.ai : 800 AI models…" [ref=e669] [cursor=pointer]':
+                    - /url: ./viewtopic.php?p=63215&sid=3efa8bc699c37fa4ca7d08521377d9bc#p63215
+                  - text: by
+                  - link "Benj1" [ref=e670] [cursor=pointer]:
+                    - /url: /wesuckless/member/benj1.4046?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e671] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=63215&sid=3efa8bc699c37fa4ca7d08521377d9bc#p63215
+                    - generic [ref=e672]: 
+                    - generic [ref=e673]: View the latest post
+                  - time [ref=e674]: 1 month ago
+          - listitem [ref=e675]:
+            - generic [ref=e676]:
+              - text: 
+              - term [ref=e677]:
+                - link:
+                  - /url: ./viewforum.php?f=56&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "The Botanical Garden 💀🪦 [1 user]" [ref=e679] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=56&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e680]: "34"
+              - definition [ref=e681]: "1194"
+              - definition [ref=e682]:
+                - generic [ref=e683]:
+                  - text: by
+                  - link "SecondMan" [ref=e684] [cursor=pointer]:
+                    - /url: /wesuckless/member/secondman.2?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e685] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=63386&sid=3efa8bc699c37fa4ca7d08521377d9bc#p63386
+                    - generic [ref=e686]: 
+                    - generic [ref=e687]: View the latest post
+                  - time [ref=e688]: 4 weeks ago
+      - generic [ref=e690]:
+        - list [ref=e691]:
+          - listitem [ref=e692]:
+            - generic [ref=e693]:
+              - term [ref=e694]:
+                - text: 
+                - link "Suck Less Audio (opening soon)" [ref=e696] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=57&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e697]: Topics
+              - definition [ref=e698]: Posts
+              - definition [ref=e699]:
+                - generic [ref=e700]: Last post
+        - list [ref=e701]:
+          - listitem [ref=e702]:
+            - generic [ref=e703]:
+              - text: 
+              - term [ref=e704]:
+                - link "Works [2 users]" [ref=e706] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=58&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e707]: "0"
+              - definition [ref=e708]: "0"
+              - definition [ref=e709]:
+                - generic [ref=e710]: No posts
+          - listitem [ref=e711]:
+            - generic [ref=e712]:
+              - text: 
+              - term [ref=e713]:
+                - link:
+                  - /url: ./viewforum.php?f=59&sid=3efa8bc699c37fa4ca7d08521377d9bc
+                - link "Tools [9 users]" [ref=e715] [cursor=pointer]:
+                  - /url: ./viewforum.php?f=59&sid=3efa8bc699c37fa4ca7d08521377d9bc
+              - definition [ref=e716]: "1"
+              - definition [ref=e717]: "1"
+              - definition [ref=e718]:
+                - generic [ref=e719]:
+                  - text: by
+                  - link "SecondMan" [ref=e720] [cursor=pointer]:
+                    - /url: /wesuckless/member/secondman.2?sid=3efa8bc699c37fa4ca7d08521377d9bc
+                  - link "View the latest post" [ref=e721] [cursor=pointer]:
+                    - /url: ./viewtopic.php?p=60938&sid=3efa8bc699c37fa4ca7d08521377d9bc#p60938
+                    - generic [ref=e722]: 
+                    - generic [ref=e723]: View the latest post
+                  - time [ref=e724]: 3 months ago
+      - generic [ref=e725]:
+        - heading " Who is online" [level=3] [ref=e726]
+        - paragraph [ref=e727]:
+          - text: In total there are
+          - strong [ref=e728]: "3409"
+          - text: "users online :: 5 registered, 2 hidden and 3402 guests (based on users active over the past 60 minutes)"
+          - text: Most users ever online was
+          - strong [ref=e729]: "47186"
+          - text: on Tue Jul 15, 2025 3:06 pm
+      - text: 
+      - generic [ref=e730]:
+        - heading " Statistics" [level=3] [ref=e731]
+        - paragraph [ref=e732]:
+          - text: Total posts
+          - strong [ref=e733]: "56232"
+          - text: • Total topics
+          - strong [ref=e734]: "7416"
+          - text: • Total members
+          - strong [ref=e735]: "36127"
+          - text: • Our
+          - strong [ref=e736]: "10"
+          - text: "newest members:"
+          - strong [ref=e737]:
+            - link "Hannas" [ref=e738] [cursor=pointer]:
+              - /url: /wesuckless/member/hannas.42885?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: ","
+          - strong [ref=e739]:
+            - link "westprod" [ref=e740] [cursor=pointer]:
+              - /url: /wesuckless/member/westprod.42884?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: ","
+          - strong [ref=e741]:
+            - link "Alex323242343" [ref=e742] [cursor=pointer]:
+              - /url: /wesuckless/member/alex323242343.42883?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: ","
+          - strong [ref=e743]:
+            - link "mudling" [ref=e744] [cursor=pointer]:
+              - /url: /wesuckless/member/mudling.42882?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: ","
+          - strong [ref=e745]:
+            - link "Apache" [ref=e746] [cursor=pointer]:
+              - /url: /wesuckless/member/apache.42881?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: ","
+          - strong [ref=e747]:
+            - link "ratquitue" [ref=e748] [cursor=pointer]:
+              - /url: /wesuckless/member/ratquitue.42880?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: ","
+          - strong [ref=e749]:
+            - link "EGA_2" [ref=e750] [cursor=pointer]:
+              - /url: /wesuckless/member/ega_2.42878?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: ","
+          - strong [ref=e751]:
+            - link "Boreko75" [ref=e752] [cursor=pointer]:
+              - /url: /wesuckless/member/boreko75.42877?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: ","
+          - strong [ref=e753]:
+            - link "RebeccaEFThompson" [ref=e754] [cursor=pointer]:
+              - /url: /wesuckless/member/rebeccaefthompson.42876?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: ","
+          - strong [ref=e755]:
+            - link "pengato" [ref=e756] [cursor=pointer]:
+              - /url: /wesuckless/member/pengato.42874?sid=3efa8bc699c37fa4ca7d08521377d9bc
+      - generic [ref=e757]:
+        - heading " Thanks Toplist — 25" [level=3] [ref=e758]:
+          - text: 
+          - link "Thanks Toplist — 25" [ref=e759] [cursor=pointer]:
+            - /url: /wesuckless/thankslist?sid=3efa8bc699c37fa4ca7d08521377d9bc
+        - paragraph [ref=e760]:
+          - link "SecondMan" [ref=e761] [cursor=pointer]:
+            - /url: /wesuckless/member/secondman.2?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (290),
+          - link "JustCropIt" [ref=e762] [cursor=pointer]:
+            - /url: /wesuckless/member/justcropit.12015?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (278),
+          - link "AndrewHazelden" [ref=e763] [cursor=pointer]:
+            - /url: /wesuckless/member/andrewhazelden.592?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (167),
+          - link "Millolab" [ref=e764] [cursor=pointer]:
+            - /url: /wesuckless/member/millolab.3211?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (118),
+          - link "eklektyczny" [ref=e765] [cursor=pointer]:
+            - /url: /wesuckless/member/eklektyczny.3848?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (98),
+          - link "Midgardsormr" [ref=e766] [cursor=pointer]:
+            - /url: /wesuckless/member/midgardsormr.382?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (72),
+          - link "ShadowMaker SdR" [ref=e767] [cursor=pointer]:
+            - /url: /wesuckless/member/shadowmaker-sdr.189?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (64),
+          - link "Tangenten" [ref=e768] [cursor=pointer]:
+            - /url: /wesuckless/member/tangenten.8383?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (58),
+          - link "Dunn" [ref=e769] [cursor=pointer]:
+            - /url: /wesuckless/member/dunn.51?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (48),
+          - link "danell" [ref=e770] [cursor=pointer]:
+            - /url: /wesuckless/member/danell.1359?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (48),
+          - link "theotheo" [ref=e771] [cursor=pointer]:
+            - /url: /wesuckless/member/theotheo.85?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (46),
+          - link "Kristianthu" [ref=e772] [cursor=pointer]:
+            - /url: /wesuckless/member/kristianthu.4482?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (43),
+          - link "Maui" [ref=e773] [cursor=pointer]:
+            - /url: /wesuckless/member/maui.493?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (40),
+          - link "Tolosa Films" [ref=e774] [cursor=pointer]:
+            - /url: /wesuckless/member/tolosa-films.2628?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (40),
+          - link "mseredkin" [ref=e775] [cursor=pointer]:
+            - /url: /wesuckless/member/mseredkin.170?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (29),
+          - link "Chad" [ref=e776] [cursor=pointer]:
+            - /url: /wesuckless/member/chad.94?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (28),
+          - link "tida" [ref=e777] [cursor=pointer]:
+            - /url: /wesuckless/member/tida.4591?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (25),
+          - link "Milansmithy" [ref=e778] [cursor=pointer]:
+            - /url: /wesuckless/member/milansmithy.9781?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (22),
+          - link "JUNE" [ref=e779] [cursor=pointer]:
+            - /url: /wesuckless/member/june.76?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (17),
+          - link "stib" [ref=e780] [cursor=pointer]:
+            - /url: /wesuckless/member/stib.2656?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (17),
+          - link "JPDoc" [ref=e781] [cursor=pointer]:
+            - /url: /wesuckless/member/jpdoc.126?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (13),
+          - link "Sampsonite" [ref=e782] [cursor=pointer]:
+            - /url: /wesuckless/member/sampsonite.1337?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (12),
+          - link "bryanfordney" [ref=e783] [cursor=pointer]:
+            - /url: /wesuckless/member/bryanfordney.3551?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (11),
+          - link "SirEdric" [ref=e784] [cursor=pointer]:
+            - /url: /wesuckless/member/siredric.62?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (10),
+          - link "CesarVisuals" [ref=e785] [cursor=pointer]:
+            - /url: /wesuckless/member/cesarvisuals.8551?sid=3efa8bc699c37fa4ca7d08521377d9bc
+          - text: (10)
+      - generic [ref=e787]:
+        - list [ref=e788]:
+          - listitem [ref=e789]:
+            - term [ref=e791]:
+              - text: 
+              - generic [ref=e792]: Topics created on 7 may through the years
+        - generic [ref=e793]: This section lists the main topics created on the current date in any past year, with phrases like "In YYYY...".
+        - list [ref=e794]:
+          - listitem [ref=e795]:
+            - generic [ref=e796]:
+              - text: 
+              - term [ref=e797]:
+                - generic [ref=e798]:
+                  - link "Thanks" [ref=e799] [cursor=pointer]:
+                    - /url: https://www.steakunderwater.com/wesuckless/viewtopic.php?t=5479
+                  - generic [ref=e800]: In 2022, the user Timmy076 created the topic
+                  - text: with 6 replies and 1915 views
+          - listitem [ref=e801]:
+            - generic [ref=e802]:
+              - text: 
+              - term [ref=e803]:
+                - generic [ref=e804]:
+                  - link "fusion studio nvidia 3dvision 2 support" [ref=e805] [cursor=pointer]:
+                    - /url: https://www.steakunderwater.com/wesuckless/viewtopic.php?t=762
+                  - generic [ref=e806]: In 2016, the user JPDoc created the topic
+                  - text: with 15 replies and 4611 views
+          - listitem [ref=e807]:
+            - generic [ref=e808]:
+              - text: 
+              - term [ref=e809]:
+                - generic [ref=e810]:
+                  - link "Create animated statistics" [ref=e811] [cursor=pointer]:
+                    - /url: https://www.steakunderwater.com/wesuckless/viewtopic.php?t=6023
+                  - generic [ref=e812]: In 2023, the user Kosmonavt created the topic
+                  - text: with 1 reply and 425 views
+      - link "Support the forum" [ref=e814] [cursor=pointer]:
+        - /url: /wesuckless/paypal-donate?sid=3efa8bc699c37fa4ca7d08521377d9bc
+        - img "Support the forum" [ref=e815]
+    - contentinfo [ref=e816]:
+      - navigation [ref=e817]:
+        - menubar [ref=e819]:
+          - listitem [ref=e820]: All times are UTC-07:00
+          - listitem [ref=e821]:
+            - text: 
+            - link "Top" [ref=e822] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e823]:
+            - text: 
+            - menuitem "Delete cookies" [ref=e824] [cursor=pointer]
+          - listitem [ref=e825]:
+            - text: 
+            - menuitem "Contact us" [ref=e826] [cursor=pointer]
+      - generic [ref=e827]:
+        - generic [ref=e828]:
+          - paragraph [ref=e829]: Copyright © We Suck Less® 2014 - 2026
+          - paragraph [ref=e830]:
+            - generic [ref=e831]:
+              - text: Powered by
+              - link "phpBB" [ref=e832] [cursor=pointer]:
+                - /url: https://www.phpbb.com/
+              - text: ® Forum Software © phpBB Limited
+          - paragraph [ref=e833]: "Total page hits: 30,221,906"
+          - paragraph [ref=e834]:
+            - menuitem "Privacy" [ref=e835] [cursor=pointer]
+            - text: "|"
+            - menuitem "Terms" [ref=e836] [cursor=pointer]
+        - generic [ref=e837]:
+          - list:
+            - listitem [ref=e838]:
+              - link "" [ref=e839] [cursor=pointer]:
+                - /url: https://www.youtube.com/@wesuckless
+                - generic [ref=e840]: 
+            - listitem [ref=e841]:
+              - link "" [ref=e842] [cursor=pointer]:
+                - /url: https://www.steakunderwater.com/wesuckless/feed.php
+                - generic [ref=e843]: 
+            - listitem [ref=e844]:
+              - link "" [ref=e845] [cursor=pointer]:
+                - /url: https://www.linkedin.com/company/wesuckless/
+                - generic [ref=e846]: 
+            - listitem [ref=e847]:
+              - link "Zulip is an organized team chat app designed for efficient communication." [ref=e848] [cursor=pointer]:
+                - /url: https://zulip.com/
+            - listitem [ref=e849]:
+              - link "Pirates of Confusion on Discord" [ref=e850] [cursor=pointer]:
+                - /url: https://discord.gg/DMThhv8TCd
+                - img [ref=e851]
+      - text:  

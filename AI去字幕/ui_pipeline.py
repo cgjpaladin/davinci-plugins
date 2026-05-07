@@ -226,8 +226,7 @@ def refresh_bal():
     pts = query_balance()
     _cached_balance = pts
     if pts > 0:
-        name = "无痕AI 2.1" if "wuhenai" in ACTIVE_PROVIDER else ACTIVE_PROVIDER
-        _bal(f"{name} | ¥{point_to_yuan(pts):.2f}")
+        _bal(f"无痕 ¥{point_to_yuan(pts):.2f}")
     else:
         _bal("余额: 查询失败")
 
@@ -371,7 +370,7 @@ def process(*_):
         try:
             bal = adapter.get_balance()
             pts = bal.get("balance", 0)
-            _bal(f"{name} | ¥{point_to_yuan(pts):.2f}")
+            _bal(f"无痕 ¥{point_to_yuan(pts):.2f}")
             if pts < total_est:
                 fail(f"余额不足: {pts} < {total_est}")
                 _smb_log(f"余额不足拦截: 余额{pts}pt < 需{total_est}pt")
@@ -462,6 +461,7 @@ def process(*_):
         if len(api_tasks) == 1:
             # 单片段：单任务模式（更快，无批量开销）
             info("    AI 处理中...")
+            _st("AI 处理中...")
             result = adapter.process(api_tasks[0], timeout=600,
                                      cancel_check=lambda: _state["stop"])
             api_results = [result]
@@ -552,7 +552,7 @@ def process(*_):
         _smb_log(f"完成 — {ok_count}/{len(results)} 耗时{mins}分{secs}秒 预估¥{yuan:.2f} 余额(处理前)¥{point_to_yuan(pts_before):.2f} 阶段:{t_prep_elapsed}/{t_api_elapsed}/{t_replace_elapsed}s")
         # 用缓存余额更新UI（不调API，不阻塞）
         name = "无痕AI 2.1" if "wuhenai" in ACTIVE_PROVIDER else ACTIVE_PROVIDER
-        _bal(f"{name} | ¥{point_to_yuan(pts_before):.2f}")
+        _bal(f"¥{point_to_yuan(pts_before):.2f}")
         ops_logger.session_end(ok_count, len(results) - ok_count, len(results), pts_before, total_est, int(t_elapsed), yuan)
 
         # 阶段耗时明细（内部记录）

@@ -90,7 +90,6 @@ def start_process(*_):
     _set_btn(scan=False, start=False, pick=False, stop=True, warn=True)
     _st("准备中...")
     _pg(0)
-    itm[PROJ_LB].Text = "③ 处理中，请勿操作！"
 
     thr = threading.Thread(target=process, daemon=True)
     thr.start()
@@ -146,6 +145,7 @@ def main():
     """显示 UI 窗口并进入事件循环（阻塞直到用户关闭）。窗口打开后刷余额。"""
     try:
         dlg.Show()
+        dlg.RecalcLayout()
         # 自动推测项目路径（零 SMB IO，毫秒级）
         auto_detect_project()
         # Show 事件在达芬奇 UIDispatcher 中可能异步触发，余额刷新放这里更可靠

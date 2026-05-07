@@ -110,17 +110,18 @@ window_layout = [
 
         # 上半区：固定高度
         ui.VGroup({"Spacing": 4, "Weight": 0}, [
-            # Row 1: 项目路径 + 余额
+            # Row 1: 项目路径 + 余额（FixedSize 防止溢出）
             ui.HGroup({"Spacing": 8, "Weight": 0}, [
-                ui.Button({"ID": BTN_CONFIRM, "Text": "✓ 确认此路径", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
-                ui.Button({"ID": BTN_PICK, "Text": "选择项目路径", "StyleSheet": BTN_STYLE, "Weight": 0}),
+                ui.Button({"ID": BTN_CONFIRM, "Text": "✓ 确认", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
+                ui.Button({"ID": BTN_PICK, "Text": "选路径", "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Label({"ID": PATH_LB, "Text": "未指定项目路径",
-                          "StyleSheet": "color:rgb(180,180,180);font-size:11px", "Weight": 1}),
-                ui.VGroup({"Spacing": 2, "Weight": 0}, [
+                          "StyleSheet": "color:rgb(180,180,180);font-size:11px", "Weight": 1,
+                          "WordWrap": True, "MaximumSize": [600, 40]}),
+                ui.VGroup({"Spacing": 2, "Weight": 0, "MaximumSize": [140, 40]}, [
                     ui.Label({"ID": BAL_LB, "Text": "查询中...",
-                              "StyleSheet": "color:rgb(220,220,220);font-size:11px;min-width:180px;qproperty-alignment:AlignRight"}),
+                              "StyleSheet": "color:rgb(220,220,220);font-size:11px"}),
                     ui.Label({"ID": OSS_LB, "Text": "查询中...",
-                              "StyleSheet": "color:rgb(200,200,200);font-size:11px;min-width:180px;qproperty-alignment:AlignRight"}),
+                              "StyleSheet": "color:rgb(200,200,200);font-size:11px"}),
                 ]),
             ]),
             # Row 2: 筛选 + 扫描 + 处理
@@ -137,7 +138,7 @@ window_layout = [
             ]),
         ]),
 
-        # 进度条（单条绿线，从左往右填充）
+        # 进度条（简单 Label，处理时动态 Resize）
         ui.VGroup({"Spacing": 2, "Weight": 0}, [
             ui.Label({"ID": ST_LB, "Text": "",
                       "StyleSheet": "color:rgb(180,180,180);font-size:11px;min-height:16px"}),
@@ -170,7 +171,7 @@ window_layout = [
 dlg = disp.AddWindow({
     "WindowTitle": f"AI 去字幕",
     "ID": WIN_ID,
-    "Geometry": [800, 100, 700, 560],  # Geometry: [x, y, w, h]
+    "Geometry": [800, 100, 1020, 560],  # Geometry: [x, y, w, h]
     "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
 }, window_layout)
 
@@ -184,8 +185,12 @@ itm[BTN_START].Enabled = False
 itm[BTN_STOP].Enabled = False
 itm[BTN_UNDO].Enabled = False
 itm["warn_lb"].Visible = False
-itm[PG_BAR].Visible = False
+itm[PG_BAR].FixedSize = [650, 8]
+itm[PG_BAR].Visible = True  # 测试用，检查进度条能看到
 itm[ST_LB].Text = ""
+
+# 强制刷新布局，防止初始化时控件溢出窗口
+dlg.RecalcLayout()
 
 # 颜色下拉框
 for ename, cname, _ in _CLIP_COLORS:
@@ -342,40 +347,43 @@ def _update_countdown():
             time_str = _phase_text or "处理中..."  # 超时了还在跑，不显示 0 秒
 
         phase = _phase_text or "AI 处理中..."
-        pct_str = f" {int(ratio*100)}%" if ratio > 0 else ""
+        # 时间驱动进度 + 百分比（单/多片段通用）
+        est_ratio = min(0.95, elapsed / _t_estimated)
+        display_ratio = max(ratio, est_ratio)
+        pct_str = f"  {int(display_ratio*100)}%" if display_ratio > 0.02 else ""
         itm[PROJ_LB].Text = f"⏳ {phase}{pct_str}  ·  {time_str}"
 
-        # 时间驱动进度条（不超 95%，真实进度优先）
-        est_ratio = min(0.95, elapsed / _t_estimated)
+        # 进度条
         actual = max(ratio, est_ratio)
         if actual > 0:
             _pg(actual)
-    except:
-        pass  # 倒计时更新失败（UI未就绪），下次轮询重试
+    except Exception as e:
+        _smb_log(f"_update_countdown 异常: {e}")
 
 _pg_last_milestone = 0  # 上次记录的进度里程碑
 
+_PG_MAX_W = 650
+
 def _pg(r):
-    """更新进度条（0.0 = 开始, 1.0 = 完成），里程碑时写 SMB 日志"""
+    """更新进度条（0.0=开始, 1.0=完成），里程碑时写 SMB 日志"""
     global _pg_last_milestone
+    ratio = max(0.0, min(r, 1.0))
+    for m in (0.10, 0.25, 0.50, 0.75, 0.90, 1.0):
+        if ratio >= m > _pg_last_milestone:
+            _pg_last_milestone = m
+            elapsed = int(_time_module.time() - _t_start) if _t_start > 0 else 0
+            _smb_log(f"进度 {int(m*100)}%  |  已过 {elapsed}秒  |  预估 {_t_estimated:.0f}秒")
+            break
+    if ratio == 0:
+        _pg_last_milestone = 0
     try:
-        _st._last_ratio = r
-        ratio = max(0.0, min(r, 1.0))
+        _st._last_ratio = ratio
+        bar_w = max(2, int(_PG_MAX_W * ratio))
         if ratio == 0:
-            _pg_last_milestone = 0
-        bar_w = itm[PG_BAR].Width if hasattr(itm[PG_BAR], 'Width') else 400
-        if bar_w < 10: bar_w = 400
-        bar_w = max(2, int(bar_w * ratio))
-        itm[PG_BAR].Resize([bar_w, 8])  # 8px 高绿条
-        itm[PG_BAR].Visible = ratio > 0
-        # 里程碑记录
-        for m in (0.10, 0.25, 0.50, 0.75, 0.90, 1.0):
-            if ratio >= m > _pg_last_milestone:
-                _pg_last_milestone = m
-                elapsed = int(_time_module.time() - _t_start) if _t_start > 0 else 0
-                _smb_log(f"进度 {int(m*100)}%  |  已过 {elapsed}秒  |  预估 {_t_estimated:.0f}秒")
-                break
-    except:
+            itm[PG_BAR].FixedSize = [_PG_MAX_W, 8]
+        itm[PG_BAR].FixedSize = [bar_w, 8]
+        itm[PG_BAR].Visible = ratio > 0.005
+    except Exception:
         pass
 
 def _log_file(msg: str):
@@ -513,7 +521,7 @@ def auto_detect_project():
         _suggested_path = path
         _set_proj(path)  # 显示路径，但尚未确认
         itm[BTN_CONFIRM].Visible = True
-        itm[BTN_PICK].Text = "手动选择"
+        itm[BTN_PICK].Text = "手动选"
         itm[PROJ_LB].Text = "① 请确认或手动选择项目路径"
         return True
     except Exception:
@@ -539,7 +547,7 @@ def confirm_project(*_):
     itm[BTN_START].Enabled = False
     itm[BTN_CONFIRM].Enabled = False
     itm[BTN_CONFIRM].Text = "已确认"
-    itm[BTN_PICK].Text = "更改路径"
+    itm[BTN_PICK].Text = "改路径"
     itm[PATH_LB].StyleSheet = "color:rgb(102,221,39);font-size:11px"  # 绿色确认态
     itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
     _suggested_path = ""
@@ -568,7 +576,7 @@ def pick_project(*_):
             ledger.init(path)
             itm[BTN_CONFIRM].Enabled = False
             itm[BTN_CONFIRM].Text = "已确认"
-            itm[BTN_PICK].Text = "更改路径"
+            itm[BTN_PICK].Text = "改路径"
             itm[PATH_LB].StyleSheet = "color:rgb(102,221,39);font-size:11px"
             itm[COLOR_CB].Enabled = True
             itm[BTN_SCAN].Enabled = True

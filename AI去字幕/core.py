@@ -84,7 +84,7 @@ class PreparedTasks(NamedTuple):
 
 def connect_resolve():
     """获取 Resolve/Project/Timeline。失败抛 RuntimeError。"""
-    import DaVinciResolveScript as dvr_script
+    import DaVinciResolveScript as dvr_script  # type: ignore[import-not-found]
     resolve = dvr_script.scriptapp("Resolve")
     if not resolve:
         raise RuntimeError("请先启动 DaVinci Resolve Studio")
