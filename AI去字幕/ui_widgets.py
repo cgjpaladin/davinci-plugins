@@ -142,7 +142,8 @@ window_layout = [
             ui.Label({"ID": ST_LB, "Text": "",
                       "StyleSheet": "color:rgb(180,180,180);font-size:11px;min-height:16px"}),
             ui.Label({"ID": PG_BAR, "Text": "",
-                      "StyleSheet": "max-height:8px;background-color:rgb(102,221,39);border-radius:3px"}),
+                      "StyleSheet": "min-height:8px;max-height:8px;background-color:rgb(102,221,39);border-radius:3px",
+                      "MinimumSize": [0, 8]}),
         ]),
 
         # 日志区（唯一可缩放）
@@ -229,10 +230,21 @@ def _ui_write_direct(msg: str):
                 lines = (current + msg).split("\n")
                 te.PlainText = "\n".join(lines[-_LOG_MAX_LINES:])
                 _log_line_count = _LOG_MAX_LINES
+                try:
+                    te.MoveCursor("End", "MoveAnchor")
+                    te.EnsureCursorVisible()
+                except Exception:
+                    pass
             else:
                 te.Append(msg + "\n")
         except Exception:
             import sys; print(f"[ui_write] UI 刷新失败", file=sys.stderr)
+        # 追加后自动滚到底部
+        try:
+            te.MoveCursor("End", "MoveAnchor")
+            te.EnsureCursorVisible()
+        except Exception:
+            pass
     else:
         _log_queue.put(msg)
     # 文件持久化（本地 + SMB 双写，方便查同事日志）
@@ -345,13 +357,12 @@ def _update_countdown():
             time_str = _phase_text or "处理中..."  # 超时了还在跑，不显示 0 秒
 
         phase = _phase_text or "AI 处理中..."
-        # 时间驱动进度 + 百分比（单/多片段通用）
-        est_ratio = min(0.95, elapsed / _t_estimated)
-        display_ratio = max(ratio, est_ratio)
-        pct_str = f"  {int(display_ratio*100)}%" if display_ratio > 0.02 else ""
+        # 百分比：只在 adapter 报了真实进度时显示（批量模式），不造假的
+        pct_str = f"  {int(ratio*100)}%" if ratio > 0.05 else ""
         itm[PROJ_LB].Text = f"⏳ {phase}{pct_str}  ·  {time_str}"
 
-        # 进度条
+        # 进度条：时间驱动也行，比没有好
+        est_ratio = min(0.95, elapsed / _t_estimated)
         actual = max(ratio, est_ratio)
         if actual > 0:
             _pg(actual)
@@ -377,10 +388,10 @@ def _pg(r):
     try:
         _st._last_ratio = ratio
         bar_w = max(2, int(_PG_MAX_W * ratio))
-        if ratio == 0:
-            itm[PG_BAR].FixedSize = [_PG_MAX_W, 8]
-        itm[PG_BAR].FixedSize = [bar_w, 8]
+        itm[PG_BAR].Resize([bar_w, 8])
         itm[PG_BAR].Visible = ratio > 0.005
+        try: itm[PG_BAR].Update()
+        except: pass
     except Exception:
         pass
 
@@ -403,7 +414,7 @@ def _log_action(action: str):
 def _bal(t):
     try: itm[BAL_LB].Text = f"<div align='right'>{t}</div>"
     except Exception: _smb_log(f"[ui_widgets] BAL_LB 赋值失败")
-    with _ui_lock: _ui_pending["balance"] = t
+    with _ui_lock: _ui_pending["balance"] = f"<div align='right'>{t}</div>"  # HTML 包装也在挂起数据里
 
 def _set_btn(scan=None, start=None, pick=None, stop=None, warn=None):
     """设置按钮状态（主线程直写 + 子线程挂起）"""
