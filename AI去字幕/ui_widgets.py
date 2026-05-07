@@ -184,8 +184,7 @@ itm[BTN_START].Enabled = False
 itm[BTN_STOP].Enabled = False
 itm[BTN_UNDO].Enabled = False
 itm["warn_lb"].Visible = False
-itm[PG_BAR].FixedSize = [650, 8]
-itm[PG_BAR].Visible = True  # 测试
+itm[PG_BAR].Visible = False  # 处理时由 _pg() 控制显示
 itm[ST_LB].Text = ""
 
 # 强制刷新布局，防止初始化时控件溢出窗口
