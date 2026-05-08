@@ -78,7 +78,7 @@ echo "  🔍 检查: mypy 类型..."
 if command -v mypy &>/dev/null; then
     CORE_FILE="$PLUGIN_DIR/core.py"
     [ ! -f "$CORE_FILE" ] && CORE_FILE="$PLUGIN_DIR/../shared/core.py"
-    if [ -f "$CORE_FILE" ] && mypy --no-implicit-optional --follow-imports=skip "$CORE_FILE" 2>/dev/null; then
+    if [ -f "$CORE_FILE" ] && MYPYPATH="$PLUGIN_DIR:$PLUGIN_DIR/../shared" mypy --no-implicit-optional --follow-imports=skip "$CORE_FILE" 2>/dev/null; then
         echo "  ✅ mypy 通过"
     else
         echo "  ❌ mypy 类型错误"
