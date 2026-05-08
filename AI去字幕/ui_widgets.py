@@ -406,13 +406,17 @@ def _pg(r):
         itm[PG_BAR].Resize([bar_w, 8])
         itm[PG_BAR].Visible = ratio > 0.005
         try: itm[PG_BAR].Update()
-        except: pass
+        except Exception:
+            #达芬奇 UIManager 控件未完全渲染时 Update 可能失败
+            pass
         # 100% 时强制父容器重算布局（单靠子控件 RecalcLayout 不够，父容器不重算就不生效）
         if ratio >= 1.0:
             try: itm["pg_group"].RecalcLayout()
-            except: pass
+            except Exception:
+                pass  # 同上：控件未渲染
             try: itm[PG_BAR].RecalcLayout()
-            except: pass
+            except Exception:
+                pass  # 同上：控件未渲染
     except Exception:
         pass
 

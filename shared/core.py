@@ -5,7 +5,7 @@ remove_subtitle.py 和 ui_external.py 的共同基础层。
 设计原则：
 - 纯函数：不操作 Resolve 状态（ReplaceClip/mark_processed 留给调用者）
 - 行为契约：与 subtitle-plugin-rules SKILL.md 严格对齐
-- 零副作用：不 print/log/ui，只返回数据
+- 零用户可见输出：不 print/ui，只返回数据或写 SMB 运维日志
 """
 
 import os
@@ -31,6 +31,8 @@ from adapters.wuhenai_v2 import WuhenAIV21Adapter
 from subtitle_state import acquire_lock, release_lock
 import ledger
 import ops_logger
+# 注：ledger/ops_logger 用模块级 import 是因为它们的方法名
+# (record_original, find_output, session_start 等) 不加前缀容易与本地函数混淆
 
 
 # ═══════════════════════════════════════════
@@ -118,6 +120,8 @@ def get_video_duration(mp_item) -> float:
         fps = float(mp_item.GetClipProperty("FPS") or 24)
         return frames / fps if fps > 0 else 0
     except Exception:
+        # 达芬奇 GetClipProperty 可能抛非预期异常（SWIG类型转换失败），
+        # 且视频时长获取不应阻塞扫描流程，降级返回0
         return 0
 
 
@@ -172,6 +176,8 @@ def query_balance(adapter_config: Optional[dict] = None) -> float:
             bal = adapter.get_balance()
             return float(bal.get("balance", 0))
     except Exception:
+        # 余额查询是前置检查，API可能网络波动/认证过期/返回格式变化，
+        # 失败不阻塞主流程，上层会用0余额触发保护逻辑
         return 0
 
 
@@ -502,7 +508,8 @@ def create_wuhenai_adapter(mode: str = "pro_box") -> WuhenAIV21Adapter:
     """创建标准配置的无痕AI 2.1 适配器（sel_area 模式）。
     CLI 和 UI 都通过这个函数创建适配器，保证行为一致。
 
-    TODO: mode 参数预留，将来支持不同模式的适配器配置（如 basic→all_area）
+    TODO(2026-05): mode 参数预留，将来支持不同模式的适配器配置（如 basic→all_area）。
+    目前所有调用方均传入 mode 参数但函数未使用，待有实际需求时实现。
     """
     _ = mode  # 预留参数，暂未使用
     adapter_cfg = deepcopy(ADAPTER_CONFIGS["wuhenai_v21"])
@@ -615,8 +622,9 @@ def download_and_apply(
                 for _, name, _, _, _ in results:
                     on_fail(name, msg)
             return 0, [{"name": "磁盘", "error": msg}], []
-    except:
-        pass  # 检查失败不阻塞
+    except OSError:
+        # os.statvfs 在 SMB 断连时可能失败，磁盘检查不是关键路径，失败不阻塞处理
+        _smb_log("[core] 磁盘空间预检跳过（SMB可能不可用）")
 
     for mp_item, name, path, result, elapsed, *rest in results:
         tl_item = rest[0] if rest else None          # TimelineItem

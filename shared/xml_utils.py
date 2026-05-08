@@ -40,6 +40,7 @@ def get_aspect_ratio(timeline):
             "mismatch": image != canvas,
         }
     except Exception:
+        # XML导出/解析/元素缺失/达芬奇导出失败 → 降级返回None
         return None
     finally:
         if tmp_file:

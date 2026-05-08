@@ -31,6 +31,7 @@ import subprocess
 import time
 import urllib.request
 import urllib.error
+import base64
 from typing import Optional, Any
 from urllib.parse import urlparse, quote
 from email.utils import formatdate
@@ -189,7 +190,6 @@ class WuhenAIV21Adapter(BaseAdapter):
             string_to_sign.encode(),
             hashlib.sha1,
         ).digest()
-        import base64
         signature = base64.b64encode(signing_key).decode()
         return f"OSS {self.access_key_id}:{signature}"
 
@@ -247,7 +247,6 @@ class WuhenAIV21Adapter(BaseAdapter):
             string_to_sign.encode(),
             hashlib.sha1,
         ).digest()
-        import base64
         signature = quote(base64.b64encode(signing_key).decode(), safe="")
 
         return (
@@ -344,6 +343,8 @@ class WuhenAIV21Adapter(BaseAdapter):
         4. 返回 task_id
         """
         video_path = task.video_path
+        if not video_path or not os.path.exists(video_path):
+            raise ValueError(f"视频文件不存在或路径为空: {video_path}")
 
         # 生成唯一文件名（路径哈希 → 同文件同 key，支持 OSS 去重）
         filename = os.path.basename(video_path)
@@ -488,6 +489,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                             self._oss_delete(input_key)
                         # 输出不删，OSS 生命周期 1 天自动清理
                     except Exception:
+                        # 清理失败不阻塞主流程：OSS对象可能已自动过期/网络波动
                         pass
 
                     # 打印分段耗时（帮助诊断 API 慢的原因）
@@ -682,6 +684,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                 try:
                     self._oss_delete(rec["input_key"])
                 except Exception:
+                    # 清理失败不阻塞：OSS可能已自动过期
                     pass
             # 提交进度
             if progress_callback:
@@ -703,6 +706,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                         try:
                             self.cancel(tid)
                         except Exception:
+                            # cancel 在批量取消场景下可能因任务已完成而失败
                             pass
                     rec["result"] = SubtitleResult(
                         success=False,
@@ -762,6 +766,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                         try:
                             self._oss_delete(rec["input_key"])
                         except Exception:
+                            # 清理失败不阻塞：OSS对象可能已自动过期
                             pass
 
                     elif status == "failed":

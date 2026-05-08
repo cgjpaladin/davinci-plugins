@@ -2,6 +2,10 @@ __pycache__/
 *.pyc
 .DS_Store
 tests/
+# 纯函数单元测试（不依赖达芬奇，应追踪）
+!AI去字幕/tests/
+AI去字幕/tests/*
+!AI去字幕/tests/test_core.py
 .workbuddy/
 tools/_wsl.py
 .env

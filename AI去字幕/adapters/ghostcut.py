@@ -528,6 +528,8 @@ class GhostCutAdapter(BaseAdapter):
             resp = self._api_post("/v-w-c/gateway/ve/point/query", {})
             return "body" in resp
         except Exception:
+            # 健康检查失败（网络不通/认证过期/API变更），
+            # 返回 False 由上层决定是否继续或切换适配器
             return False
 
     def get_balance(self) -> dict:

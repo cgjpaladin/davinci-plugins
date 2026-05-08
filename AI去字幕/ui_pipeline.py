@@ -73,6 +73,7 @@ def discover_folders():
             if os.path.isdir(full) and not name.startswith("."):
                 results.append((name, full))
     except Exception:
+        # SMB断连时 os.listdir 失败，降级返回空列表（非关键路径）
         pass
     return results
 
@@ -102,6 +103,7 @@ def scan_io(*_):
                 if m and m.group(1) != __version__:
                     warn(f"⚠ 版本已更新（{__version__} → {m.group(1)}），请重启达芬奇以生效")
         except Exception:
+            # 版本检查是非关键路径：SMB不可用/config格式变化时静默跳过
             pass
     _log_action("扫描当前选区")
     ui.set_status("扫描中...")
@@ -377,7 +379,8 @@ def process(*_):
                 fail(f"余额不足: {pts} < {total_est}")
                 _smb_log(f"余额不足拦截: 余额{pts}pt < 需{total_est}pt")
                 return
-        except:
+        except Exception:
+            # 余额查询是前置检查，API可能网络波动，失败不阻塞处理
             warn("余额查询失败，跳过保护")
 
         results = []; total = len(prepared.tasks)
@@ -423,7 +426,8 @@ def process(*_):
                 for t in locked_tasks:
                     release_lock(t.name)
                 return
-        except:
+        except Exception:
+            # 二次余额校验失败不阻塞（网络波动），主流程已有首次余额检查
             pass
         api_tasks = [SubtitleTask(**t.kwargs) for t in locked_tasks]
 
@@ -606,7 +610,9 @@ def undo(*_):
                         mp.SetClipColor(save_mp_color)
                     if save_tl_color and save_tl_color != save_mp_color:
                         try: item.SetClipColor(save_tl_color)
-                        except: pass
+                        except Exception:
+                            # 颜色恢复失败不阻塞撤销（达芬奇协作模式偶发异常）
+                            pass
                     log_ok(f"  ↩ {item.GetName()}")
                     undone += 1
                     found += 1

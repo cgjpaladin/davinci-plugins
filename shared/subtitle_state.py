@@ -33,7 +33,8 @@ def _get_lan_ip():
         ip = s.getsockname()[0]
         s.close()
         return ip
-    except:
+    except OSError:
+        # socket.connect 在无网络/SMB不通时抛 OSError，降级用主机名
         return socket.gethostname()
 _HOST_IP = _get_lan_ip()
 _HOST_NICK = f"{_HOST_IP}的同事"  # 192.168.1.200 → 192.168.1.200的同事（模块加载时固定，会话期间IP不变）
@@ -96,6 +97,7 @@ def _save_state(state: dict, _locked: bool = False):
                 for old in backups[_BAK_KEEP:]:
                     os.remove(os.path.join(sdir, old))
             except Exception:
+                # 旧备份删除失败不阻塞状态写入（SMB权限变化/文件被占用）
                 pass
 
         with open(_state_file, "w", encoding="utf-8") as f:
@@ -134,6 +136,7 @@ def _release_state_lock():
     try:
         os.rmdir(lock_path)
     except OSError:
+        # 锁目录可能已被其他人清理，或从未创建，删不掉是正常情况
         pass
 
 
@@ -189,8 +192,9 @@ def acquire_lock(clip_name: str) -> bool:
             with open(os.path.join(lock_path, ".info"), "w") as f:
                 json.dump({"ip": _HOST_IP, "user": _HOST_NICK, "time": time.strftime("%Y-%m-%d %H:%M:%S")}, f)
         except OSError:
+            # 锁 .info 文件写入失败不阻塞锁获取（SMB瞬时不可用），
+            # 缺少 .info 仅影响 is_locked() 显示用户名，不影响并发正确性
             pass
-        return "reclaimed" if reclaimed else True
     except FileExistsError:
         return False
 
@@ -203,6 +207,7 @@ def release_lock(clip_name: str):
     try:
         os.rmdir(lock_path)
     except OSError:
+        # 锁可能已被其他人/超时回收清理，删不掉是正常情况
         pass
 
 
@@ -219,6 +224,8 @@ def is_locked(clip_name: str) -> Optional[str]:
             ip = data.get("ip", "")
             return f"{ip}的同事" if ip else "未知同事"
     except Exception:
+        # 锁 .info 文件损坏或 SMB 瞬时不可读，降级返回"未知同事"
+        # 不影响并发正确性，仅影响UI上锁提示的用户名显示
         _smb_log(f"[subtitle_state] is_locked 读锁信息失败: {clip_name}")
     return "未知同事"
 

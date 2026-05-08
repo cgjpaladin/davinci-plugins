@@ -9,10 +9,8 @@ remove_subtitle.py — 达芬奇 AI 去字幕插件
 import argparse
 import json
 import os
-import re
 import sys
 import time
-import traceback
 
 # 路径初始化
 _plugin_root = os.path.dirname(os.path.abspath(__file__))
@@ -44,7 +42,7 @@ from core import (
     create_wuhenai_adapter, process_single_clip, download_and_apply,
 )
 from pipeline_utils import validate_task, calc_cache_savings, estimate_processing_time, format_duration
-from logger import title, step, ok, warn, fail, info, set_logger, PrintLogger
+from logger import title, step, ok, warn, fail, info
 from interface import PipelineUI, CLIPipelineUI
 import ops_logger
 
@@ -211,6 +209,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         bal = adapter.get_balance()
         pts = bal.get("balance", 0)
     except Exception:
+        # 余额查询失败不阻塞主流程（网络波动/认证过期），上层用0余额触发保护
         pts = 0
 
     report["cost"] = {"seconds": total_units, "points": total_est, "unit_cost": unit_cost,
@@ -269,6 +268,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
                 fail(f"余额不足: {pts_now} < 需{total_est}（可能有其他机器正在处理）")
                 return report
         except Exception:
+            # 二次余额校验失败不阻塞处理（网络波动），主流程已有首次余额检查
             _smb_log("[remove_subtitle] 额度保护查询失败，跳过")
 
         api_tasks = [SubtitleTask(**t.kwargs) for t in prepared.tasks]
@@ -302,7 +302,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
                 if not resolve.GetProjectManager().GetCurrentProject():
                     fail("达芬奇已断开，停止处理")
                     break
-            except:
+            except Exception:
                 fail("达芬奇已断开，停止处理")
                 break
 

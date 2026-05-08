@@ -1,0 +1,38 @@
+[flake8]
+# 达芬奇插件工坊 — flake8 配置
+# 仅在开发机运行（需要 pip install flake8），生产机不依赖
+
+max-line-length = 120
+max-complexity = 15
+
+# 排除目录
+exclude =
+    .git,
+    .mypy_cache,
+    .workbuddy,
+    __pycache__,
+    # 达芬奇官方脚本目录
+    tools/达芬奇脚本,
+
+# 忽略的规则
+ignore =
+    # E203: 冒号前空格（与 Black 格式化器冲突）
+    E203,
+    # E266: 太多 # 注释
+    E266,
+    # E402: 模块级导入不在文件顶部（达芬奇插件需要运行时 sys.path 注入）
+    E402,
+    # E501: 行过长（由 max-line-length 控制）
+    # E722: 裸 except（由 pre-commit.sh 独立检查）
+    E722,
+    # W503: 二元操作符前换行（与 Black 冲突）
+    W503,
+
+# 每个文件允许的复杂度
+per-file-ignores =
+    # remove_subtitle.py 的 run_pipeline 是编排函数，复杂度偏高合理
+    AI去字幕/remove_subtitle.py:C901,
+    # 适配器文件包含完整的协议实现
+    AI去字幕/adapters/wuhenai_v2.py:C901,
+    # 配置加载逻辑分散但合理
+    AI去字幕/config.py:C901,

@@ -120,6 +120,8 @@ class BaseAdapter(ABC):
             task_id = self.submit(task)
             return self.wait_for_result(task_id, timeout, cancel_check=cancel_check)
         except Exception as e:
+            # 把任何适配器错误封装成 SubtitleResult，不向上抛异常
+            # 调用者检查 result.success 即可判断成功/失败
             return SubtitleResult(
                 success=False,
                 error_message=str(e)

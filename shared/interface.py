@@ -126,7 +126,8 @@ class DaVinciPipelineUI(PipelineUI):
                 capture_output=True, text=True, timeout=30)
             return "确认" in r.stdout
         except Exception:
-            return True  # 出错默认通过
+            # osascript 失败时默认通过，不阻塞用户操作（非关键路径）
+            return True
 
     def notify(self, title: str, body: str):
         try:
@@ -135,4 +136,5 @@ class DaVinciPipelineUI(PipelineUI):
                 f'display notification "{body}" with title "{title}"'],
                 timeout=5, capture_output=True)
         except Exception:
+            # macOS 通知发送失败不阻塞主流程（非关键路径）
             pass

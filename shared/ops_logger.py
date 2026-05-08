@@ -45,9 +45,13 @@ def _get_ip() -> str:
         _host_ip = s.getsockname()[0]
         s.close()
     except Exception:
+        # 无法通过socket获取局域网IP（无网络/非局域网环境），
+        # 降级尝试 gethostbyname(gethostname())
         try:
             _host_ip = socket.gethostbyname(socket.gethostname())
         except Exception:
+            # 所有方式都失败，使用 "unknown" 标识。
+            # 日志按IP分文件的设计在此场景下降级为单文件，不影响功能
             _host_ip = "unknown"
     return _host_ip
 
@@ -77,6 +81,8 @@ def _write(entry: dict):
         try:
             os.makedirs(log_dir, exist_ok=True)
         except Exception:
+            # 连 SMB 兜底日志目录都创建不了（SMB完全断开/权限丢失），
+            # 无路可写，静默放弃本条日志
             return
     with _lock:
         import random as _random

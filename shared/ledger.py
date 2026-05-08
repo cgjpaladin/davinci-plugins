@@ -52,6 +52,8 @@ def _append(action: str, file_name: str, **extra) -> None:
         with open(_ledger_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception:
+        # 账本写入失败不阻塞主流程：SMB断连/磁盘满/权限不足时，
+        # 宁可不记也不能让剪辑师的处理中断。丢失的记录下次可通过扫描产出目录恢复缓存
         pass
 
 
@@ -68,8 +70,10 @@ def _scan() -> list[dict[str, Any]]:
                     try:
                         records.append(json.loads(line))
                     except json.JSONDecodeError:
+                        # 账本某行损坏（写入中断/磁盘错误），跳过该行继续读其余记录
                         pass
     except Exception:
+        # 账本文件不存在或不可读（SMB断连/权限变化），降级返回空列表
         pass
     return records
 
@@ -219,4 +223,6 @@ def maybe_cleanup() -> None:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
         os.replace(tmp, _ledger_file)
     except Exception:
-        pass  # 清理失败不阻塞主流程
+        # 账本清理失败不阻塞主流程：SMB断连/磁盘满时跳过清理，
+        # 下次 maybe_cleanup() 会再次尝试
+        pass
