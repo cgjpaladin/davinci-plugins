@@ -17,11 +17,10 @@ import queue
 os.environ["RESOLVE_SCRIPT_API"] = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting"
 os.environ["RESOLVE_SCRIPT_LIB"] = "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so"
 
-_RESOLVE_MODULES = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/Modules"
-sys.path.append(_RESOLVE_MODULES)
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-import DaVinciResolveScript as bmd
+from fusionscript_loader import bmd
+fu = bmd.scriptapp("Fusion")
+ui = fu.UIManager
+disp = bmd.UIDispatcher(ui)
 from config import (
     DEBUG, get_output_dir, get_log_dir, __version__,
 )
@@ -39,10 +38,6 @@ from logger import UILogger, set_logger, info, warn, fail, ok as log_ok
 
 WIN_ID = "com.myjc.ai_subtitle_ui"
 MODE = "pro_box"  # 固定：正式出片，后续不切模式
-
-fu = bmd.scriptapp('Fusion')
-ui = fu.UIManager
-disp = bmd.UIDispatcher(ui)
 
 _state = {"processing": False, "stop": False, "project_root": "", "clips": [], "clips_scanned": False}
 

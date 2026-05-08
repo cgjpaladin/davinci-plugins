@@ -22,7 +22,8 @@ def get_aspect_ratio(timeline):
     """
     tmp_file = None
     try:
-        import DaVinciResolveScript as dvr
+        import fusionscript_loader
+        dvr = fusionscript_loader.bmd
         tmp_file = tempfile.NamedTemporaryFile(suffix=".xml", delete=False)
         tmp_file.close()
 

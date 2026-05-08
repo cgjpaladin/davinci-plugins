@@ -19,9 +19,10 @@ for LAUNCHER_DIR in "$COMPANY_DIR"; do
     fi
 done
 
-# ── 0. pre-commit 检查 ──
-echo "═══ 0. pre-commit ═══"
-bash ../tools/pre-commit.sh
+# ── 0. 快速验证（pre-commit + 语法 + 导入链，与 dev_local.sh 共享）──
+bash ../tools/quick_verify.sh
+
+SMB="/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕"
 
 # ── 0.5 SMB 安全提醒 ──
 echo ""
@@ -52,21 +53,6 @@ ALL_PY=()
 while IFS= read -r f; do
     ALL_PY+=("$f")
 done < <(find . -maxdepth 2 -name '*.py' -not -path './tests/*' | sed 's|^\./||' | sort)
-
-# ── 1. 语法检查 ──
-echo ""
-echo "═══ 1. 语法编译 ═══"
-SMB="/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕"
-FAIL=0
-for f in "${ALL_PY[@]}"; do
-    if python3 -m py_compile "$f" 2>/dev/null; then
-        echo "  ✅ $f"
-    else
-        echo "  ❌ $f"
-        FAIL=1
-    fi
-done
-[ $FAIL -ne 0 ] && echo "❌ 语法错误，先修" && exit 1
 
 # ── 1.5 高危硬编码扫描 ──
 echo ""

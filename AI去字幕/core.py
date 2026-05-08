@@ -86,8 +86,8 @@ class PreparedTasks(NamedTuple):
 
 def connect_resolve():
     """获取 Resolve/Project/Timeline。失败抛 RuntimeError。"""
-    import DaVinciResolveScript as dvr_script  # type: ignore[import-not-found]
-    resolve = dvr_script.scriptapp("Resolve")
+    import fusionscript_loader  # noqa: F811 — 确保加载
+    resolve = fusionscript_loader.bmd.scriptapp("Resolve")
     if not resolve:
         raise RuntimeError("请先启动 DaVinci Resolve Studio")
 
@@ -357,18 +357,18 @@ def prepare_tasks(
                 break  # 用户点了停止
             cached = ledger.find_output(c.file_name)
             if cached:
+                replaced = False
                 try:
                     old_path = c.mp_item.GetClipProperty("File Path") or c.path
-                    if c.mp_item.ReplaceClipPreserveSubClip(cached):
+                    replaced = c.mp_item.ReplaceClipPreserveSubClip(cached)
+                    if replaced:
                         actual_out = c.mp_item.GetClipProperty("File Path") or cached
-                        # old_path 是替换前的原始路径（用于撤销）
                         if c.mp_color:
                             c.mp_item.SetClipColor(c.mp_color)
                         if c.tl_color and c.tl_item and c.tl_color != c.mp_color:
                             try: c.tl_item.SetClipColor(c.tl_color)
                             except Exception:
                                 _smb_log(f"[core] 缓存命中恢复 tl 颜色失败: {c.name}")
-                        # 恢复同文件其他片段颜色（ReplaceClip 会重置所有引用）
                         for alt_tl, alt_color in (c.alt_tl_items or ()):
                             if alt_color:
                                 try: alt_tl.SetClipColor(alt_color)
@@ -380,8 +380,10 @@ def prepare_tasks(
                         cache_hit_names.append(c.name)
                         continue
                 except Exception:
-                    _smb_log(f"[core] 缓存命中 ReplaceClip 失败（片段可能已删除）: {c.name}")
-                    # 降级为普通处理
+                    _smb_log(f"[core] 缓存命中 ReplaceClip 异常（可能被其他用户锁定媒体池）: {c.name}")
+                # ReplaceClip 失败（返回 False 或异常）— 不降级，直接跳过
+                _smb_log(f"[core] 跳过 {c.name}: ReplaceClip 失败，媒体池可能被其他用户锁定")
+                continue
             remaining_clips.append(c)
     else:
         remaining_clips = valid_clips
@@ -651,52 +653,51 @@ def download_and_apply(
         try:
             replaced = mp_item.ReplaceClipPreserveSubClip(dl)
         except Exception:
-            _smb_log(f"[core] ReplaceClip 异常（片段可能已删除）: {name}")
-            fail_list.append({"name": name, "error": "ReplaceClip 失败（片段可能已删除）"})
-            if on_fail:
-                on_fail(clean_name, "ReplaceClip 失败（片段可能已删除）")
-            release_lock(name)
-            continue
+            replaced = False
+            _smb_log(f"[core] ReplaceClip 异常（可能被其他用户锁定媒体池）: {name}")
+
+        # 无论 ReplaceClip 是否成功，下载已完成，记录到账本（下次可直接复用缓存）
+        # 元数据从 adapter result 提取
+        meta = getattr(result, 'metadata', {}) or {}
+        strategy = meta.get("strategy", "")
+        resolution = meta.get("resolution", "")
+        meta_dur = meta.get("duration", 0)
+        if meta_dur > 0 and strategy:
+            unit_cost = 1.5 if strategy == "all_area" else 1
+            points = math.ceil(meta_dur * unit_cost)
+            cost_yuan = point_to_yuan(points)
+        else:
+            points = 0
+            cost_yuan = 0.0
+
+        output_path_for_ledger = dl  # 下载路径，即使 ReplaceClip 失败也可缓存
+        ledger.record_completed(fn, output_path_for_ledger, original_path=path,
+                                strategy=strategy, resolution=resolution,
+                                points=points, cost_yuan=cost_yuan,
+                                tl_color=tl_color, mp_color=mp_color)
+
         if replaced:
-            # 恢复原色：分别恢复 TimelineItem 和 MediaPoolItem
+            # 恢复原色
             if mp_color:
                 mp_item.SetClipColor(mp_color)
             if tl_color and tl_item and tl_color != mp_color:
                 try: tl_item.SetClipColor(tl_color)
                 except Exception:
                     _smb_log(f"[core] ReplaceClip 后恢复 tl 颜色失败: {name}")
-            # 恢复同文件其他片段颜色（ReplaceClip 会重置同一 mp_item 的所有引用）
             for alt_tl, alt_color in alt_tl_items:
                 if alt_color:
                     try: alt_tl.SetClipColor(alt_color)
                     except Exception:
                         _smb_log(f"[core] 恢复 alt tl 颜色失败: {name}")
-            # 从适配器 metadata 提取 strategy/resolution/duration → 计费
-            meta = getattr(result, 'metadata', {}) or {}
-            strategy = meta.get("strategy", "")
-            resolution = meta.get("resolution", "")
-            meta_dur = meta.get("duration", 0)
-            if meta_dur > 0 and strategy:
-                unit_cost = 1.5 if strategy == "all_area" else 1
-                points = math.ceil(meta_dur * unit_cost)
-                cost_yuan = point_to_yuan(points)
-            else:
-                points = 0
-                cost_yuan = 0.0
-            # 读取 ReplaceClip 后实际的文件路径（达芬奇可能加 _v01）
             actual_path = mp_item.GetClipProperty("File Path") or dl
-            ledger.record_completed(fn, actual_path, original_path=path,
-                                    strategy=strategy, resolution=resolution,
-                                    points=points, cost_yuan=cost_yuan,
-                                    tl_color=tl_color, mp_color=mp_color)
             success_count += 1
             output_files.append(actual_path)
             if on_done:
                 on_done(ep, subdir, clean_name)
         else:
-            fail_list.append({"name": name, "error": "ReplaceClip 失败"})
+            fail_list.append({"name": name, "error": "替换失败（可能被其他用户锁定媒体池）"})
             if on_fail:
-                on_fail(clean_name, "ReplaceClip 失败")
+                on_fail(clean_name, "替换失败（可能被其他用户锁定媒体池）")
         release_lock(name)
 
     return success_count, fail_list, output_files
