@@ -6,6 +6,7 @@ ui_pipeline.py — AI去字幕 UI 业务逻辑
 """
 import traceback
 import os
+import sys
 import json
 import subprocess
 import threading
@@ -16,6 +17,9 @@ import hashlib
 import base64
 import urllib.request
 import urllib.parse
+
+# shared/ 模块路径
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
 
 from config import (
     DEBUG, get_output_dir, get_log_dir, __version__,

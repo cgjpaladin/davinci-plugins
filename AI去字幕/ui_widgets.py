@@ -17,6 +17,9 @@ import queue
 os.environ["RESOLVE_SCRIPT_API"] = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting"
 os.environ["RESOLVE_SCRIPT_LIB"] = "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so"
 
+# shared/ 模块路径（放在产品目录之前，确保 shared 模块优先）
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
+
 from fusionscript_loader import bmd
 fu = bmd.scriptapp("Fusion")
 ui = fu.UIManager

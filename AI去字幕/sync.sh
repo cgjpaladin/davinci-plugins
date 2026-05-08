@@ -20,6 +20,15 @@ done < <(find . -maxdepth 2 \( -name '*.py' -o -name 'gray.sh' \) \
 # 手动追加 .md 等非代码文件
 FILES+=(CHANGELOG.md)
 
+# 追加 shared/ 目录
+SHARED_DIR="$(cd "$(dirname "$0")/../shared" && pwd)"
+if [ -d "$SHARED_DIR" ]; then
+    SMB_SHARED="/Volumes/MYJC/06_Software/达芬奇脚本/shared"
+    echo "同步 shared/..."
+    rsync -av --delete "$SHARED_DIR/" "$SMB_SHARED/" 2>/dev/null
+    echo "  ✅ shared/ 同步完成"
+fi
+
 echo "同步到 SMB..."
 for f in "${FILES[@]}"; do
     src="$PWD/$f"

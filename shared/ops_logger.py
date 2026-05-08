@@ -60,20 +60,28 @@ def init(log_dir: str):
     hide_path(_log_dir)
 
 
-def _file_path():
+def _file_path(log_dir=None):
     """按 IP + 日期分文件，20 台机器互不冲突"""
+    if log_dir is None:
+        log_dir = _log_dir
     ip = _get_ip()
     date = datetime.now().strftime("%Y-%m-%d")
-    return os.path.join(_log_dir, f"op_{ip}_{date}.jsonl")
+    return os.path.join(log_dir, f"op_{ip}_{date}.jsonl")
 
 
 def _write(entry: dict):
-    if not _log_dir:
-        return
+    log_dir = _log_dir
+    if not log_dir:
+        # fallback：没确认项目路径时写到 SMB 插件日志目录
+        log_dir = "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/logs"
+        try:
+            os.makedirs(log_dir, exist_ok=True)
+        except Exception:
+            return
     with _lock:
         import random as _random
         line = json.dumps(entry, ensure_ascii=False) + "\n"
-        path = _file_path()
+        path = _file_path(log_dir)
 
         # SMB 多机并发写入加固：随机抖动 + 重试
         for attempt in range(3):

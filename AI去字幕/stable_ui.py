@@ -11,6 +11,10 @@ import subprocess
 import threading
 import time
 import traceback
+import sys
+
+# shared/ 模块路径
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
 
 from ui_widgets import (
     itm, dlg, disp, _state, WIN_ID, MODE,

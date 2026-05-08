@@ -13,7 +13,7 @@ bash ../tools/pre-commit.sh 2>&1 | grep -v "^$"
 echo ""
 echo "═══ 语法编译 ═══"
 FAIL=0
-for f in *.py adapters/*.py; do
+for f in *.py adapters/*.py ../shared/*.py; do
     [ -f "$f" ] || continue
     python3 -m py_compile "$f" 2>&1 && echo "  ✅ $f" || { echo "  ❌ $f"; FAIL=1; }
 done
@@ -23,7 +23,7 @@ done
 echo ""
 echo "═══ 导入链 ═══"
 python3 -c "
-import sys; sys.path.insert(0, '.')
+import sys; sys.path.insert(0, '.'); sys.path.insert(0, '../shared')
 import config, pricing, logger, mappings
 print('  ✅ config/pricing/logger/mappings')
 from timecode import SMPTE

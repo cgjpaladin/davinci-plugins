@@ -564,6 +564,15 @@ def process_single_clip(
                     error_message=f"重试2次后失败: {str(e)[:100]}",
                 )
 
+
+    # 严重超时警告（实际 > 预估 × 2）
+    if elapsed > 0 and task.duration > 0:
+        from pipeline_utils import estimate_processing_time
+        est = estimate_processing_time([task])
+        if elapsed > est * 2:
+            factor = elapsed / est
+            _smb_log(f"[core] ⚠️ 严重超时: {task.name} 预估{est:.0f}s 实际{elapsed:.0f}s ({factor:.1f}倍)")
+            ops_logger.task_error(task.name, f"超时 {factor:.1f}倍 (预估{est:.0f}s)", 99)
     return (result, elapsed)
 
 

@@ -490,6 +490,10 @@ class WuhenAIV21Adapter(BaseAdapter):
                     except Exception:
                         pass
 
+                    # 打印分段耗时（帮助诊断 API 慢的原因）
+                    upload_sec = task_info.get("upload_sec", 0)
+                    _log(f"[无痕AI 2.1] 分段耗时: 上传{upload_sec:.1f}s + API{api_sec:.1f}s + 下载{download_sec:.1f}s = {upload_sec+api_sec+download_sec:.0f}s")
+
                     return SubtitleResult(
                         success=True,
                         task_id=task_id,

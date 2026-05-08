@@ -18,6 +18,9 @@ import traceback
 _plugin_root = os.path.dirname(os.path.abspath(__file__))
 if _plugin_root not in sys.path:
     sys.path.insert(0, _plugin_root)
+_shared_root = os.path.join(os.path.dirname(_plugin_root), 'shared')
+if _shared_root not in sys.path:
+    sys.path.insert(0, _shared_root)
 
 # OSS 用量追踪 (oss_tracker.reset() 已移至 run_pipeline 开头)
 from pricing import oss_tracker

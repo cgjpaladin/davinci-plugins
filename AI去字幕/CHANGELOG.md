@@ -2,6 +2,21 @@
 
 > AI去字幕 — DaVinci Resolve Studio 20.3.2 / Python 3.13
 
+## v1.5.0 (2026-05-08)
+
+### 🔧 修复
+- ReplaceClip 失败信息改为「可能被其他用户锁定媒体池」
+- 缓存命中 ReplaceClip 失败不降级（避免白烧积分）
+- 下载即记账（ledger.record_completed 移到 ReplaceClip 之前）
+
+### 🔨 内部
+- #46 load_dynamic 切换：fusionscript_loader.py 替代 import DaVinciResolveScript
+- 骨架抽取：shared/ 目录存放纯逻辑层，产品目录只留 UI + config + adapter
+- dev.sh / dev_local.sh 去重：quick_verify.sh
+- 铁律 #15-18
+
+---
+
 ## v1.4.0 (2026-05-08)
 
 ### 🆕 新功能

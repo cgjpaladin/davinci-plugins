@@ -82,12 +82,14 @@ done
 echo ""
 echo "═══ 2. pre_flight ═══"
 
-# 检测 core.py 是否有改动（本地 vs SMB）
+# 检测 shared/core.py 是否有改动（本地 vs SMB）
 CORE_CHANGED=0
-if [ -f "$SMB/core.py" ] && ! diff core.py "$SMB/core.py" > /dev/null 2>&1; then
+if [ -f "../shared/core.py" ] && [ -f "$SMB/../shared/core.py" ]; then
+    if ! diff "../shared/core.py" "$SMB/../shared/core.py" > /dev/null 2>&1; then
+        CORE_CHANGED=1
+    fi
+else
     CORE_CHANGED=1
-elif [ ! -f "$SMB/core.py" ]; then
-    CORE_CHANGED=1  # 首次部署也算改动
 fi
 
 # 2a. 轻量检查（永远跑，零 API 消耗）
@@ -95,6 +97,7 @@ echo "  轻量: 导入链..."
 python3 -c "
 import sys, os
 sys.path.insert(0, '.')
+sys.path.insert(0, '../shared')
 for m in ['config','pricing','logger','subtitle_state','ledger','ops_logger','adapters']:
     __import__(m)
     print(f'    ✅ {m}')
