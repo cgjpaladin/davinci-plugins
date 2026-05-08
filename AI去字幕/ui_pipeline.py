@@ -22,6 +22,8 @@ from config import (
 )
 from subtitle_state import init as state_init, acquire_lock, release_lock, is_locked as state_is_locked
 import ledger
+from timecode import SMPTE
+from pipeline_utils import validate_task, calc_cache_savings, estimate_processing_time, format_duration
 import ops_logger
 from core import (
     connect_resolve, scan_io_clips, prepare_tasks,
@@ -32,6 +34,7 @@ from adapters.wuhenai_v2 import wuhenai_set_logger
 from adapters import SubtitleTask
 from logger import UILogger, set_logger, info, warn, fail, ok as log_ok
 from pricing import point_to_yuan, oss_tracker, ACTIVE_PROVIDER
+from interface import DaVinciPipelineUI
 
 # 从 ui_widgets 导入所有 UI 表面元素
 from ui_widgets import (
@@ -48,6 +51,9 @@ from ui_widgets import (
     COLOR_CB, LOG_LB, ST_LB, PG_BAR,
 )
 import ui_widgets as _uw  # 用于跨模块写全局变量 _t_start/_t_estimated/_task_count
+
+# ── UI 抽象层 ──
+ui = DaVinciPipelineUI(itm, _st, _pg, _bal, dlg, _smb_log)
 
 # ── 媒体池自动导航 ──
 def discover_folders():
@@ -69,6 +75,13 @@ def discover_folders():
 # ── 扫描 ──
 _version_checked = False
 
+def _format_tc(frame: int, fps: float, df: bool = False) -> str:
+    """帧数 → SMPTE 时码字符串（支持丢帧时码）"""
+    tc = SMPTE()
+    tc.fps = fps
+    tc.df = df
+    return tc.gettc(frame)
+
 def scan_io(*_):
     """扫描时间线 IO 范围内标橙色的片段，显示缓存/预估信息。每次点击扫描按钮触发。"""
     global _version_checked
@@ -87,7 +100,7 @@ def scan_io(*_):
         except Exception:
             pass
     _log_action("扫描当前选区")
-    _st("扫描中...")
+    ui.set_status("扫描中...")
     _state["clips_scanned"] = False
     try: itm[LOG_LB].Text = ""
     except Exception: _smb_log("[ui_pipeline] 清空 LOG_LB 失败")
@@ -96,9 +109,9 @@ def scan_io(*_):
         clips, report = scan_io_clips(timeline, _SELECTED_COLOR)
 
         if clips is None:
-            warn("请设置 IO 入出点"); _st("就绪 — 请设置 IO 入出点"); return
+            warn("请设置 IO 入出点"); ui.set_status("就绪 — 请设置 IO 入出点"); return
         if not clips:
-            info("IO 内无符合筛选的片段"); _st("无有效片段"); return
+            info("IO 内无符合筛选的片段"); ui.set_status("无有效片段"); return
 
         _state["clips"] = clips
         _state["scanned_count"] = report.valid
@@ -113,10 +126,14 @@ def scan_io(*_):
         _state["io_out"] = io_out
         _state["timeline_name"] = timeline.GetName()
 
-        # 时间线帧率 → 帧号转分:秒
+        # 时间线帧率 + 丢帧标志 + 起始偏移
         fps_str = project.GetSetting("timelineFrameRate")
         fps = float(fps_str) if fps_str else 25.0
+        df = bool(int(timeline.GetSetting("timelineDropFrameTimecode") or 0))
+        start_frame = timeline.GetStartFrame()
         _state["fps"] = fps
+        _state["df"] = df
+        _state["start_frame"] = start_frame
 
         # 逐片段显示 + 缓存检测
         pr = _state["project_root"] or ""
@@ -125,13 +142,8 @@ def scan_io(*_):
         need_secs = 0
         need_pts = 0
         for c in clips:
-            # 帧 → 时控码 时:分:秒:帧
-            f = c.start_frame
-            total_sec = int(f / fps)
-            h, m = divmod(total_sec, 3600)
-            m2, s = divmod(m, 60)
-            rem_f = int(f - total_sec * fps)
-            pos_str = f"{h:02d}:{m2:02d}:{s:02d}:{rem_f:02d}"
+            # 帧 → 时码
+            pos_str = _format_tc(c.start_frame + start_frame, fps, df)
             is_cached = od and ledger.find_output(c.file_name)
             if not od:
                 label, emoji = "未知", "🟠"  # 无项目路径，无法查缓存
@@ -167,7 +179,7 @@ def scan_io(*_):
         itm[BTN_START].Enabled = bool(_state["project_root"])
         if _state["project_root"]:
             itm[PROJ_LB].Text = "③ 请点击开始处理"
-        _st(f"待处理: {report.valid} 个片段")
+        ui.set_status(f"待处理: {report.valid} 个片段")
         _smb_log(f"扫描 — 项目: {project.GetName()} 时间线: {timeline.GetName()} IO={io_in}→{io_out} 内{report.valid}片段 需处理{need} 约{total_time}分钟 预估¥{yuan}")
         refresh_bal()
     except Exception as e:
@@ -182,17 +194,14 @@ def _refresh_scan_display():
     pr = _state["project_root"]
     od = pr and get_output_dir(pr) or ""
     fps = _state.get("fps", 25.0)
+    df = _state.get("df", False)
+    start_frame = _state.get("start_frame", 0)
     cache_hits = 0; need_secs = 0; need_pts = 0
 
     itm[LOG_LB].Text = ""
     info("\n\n── ① 扫描选区 ──")
     for c in clips:
-        f = c.start_frame
-        total_sec = int(f / fps)
-        h, m = divmod(total_sec, 3600)
-        m2, s = divmod(m, 60)
-        rem_f = int(f - total_sec * fps)
-        pos_str = f"{h:02d}:{m2:02d}:{s:02d}:{rem_f:02d}"
+        pos_str = _format_tc(c.start_frame + start_frame, fps, df)
         is_cached = od and ledger.find_output(c.file_name)
         label, emoji = ("可复用", "🟢") if is_cached else ("需处理", "🟡")
         info(f"  {emoji} {c.name} | 位置：{pos_str} | 长度：{c.duration:.0f}秒 | {label}")
@@ -214,7 +223,7 @@ def _refresh_scan_display():
         avg = max(60, min(120, need_secs / max(1, need) * 3))
         total_time = int(need * avg / 60)
         info(f"预估: ≤¥{yuan} (≤{pts} 积分) | 约 {total_time} 分钟")
-        _st("就绪")
+        ui.set_status("就绪")
 
 
 # ── 余额 ──
@@ -321,13 +330,10 @@ def process(*_):
             return
         if prepared.cache_hits:
             info(f"📦 缓存命中 {prepared.cache_hits} 个，直接替换")
-            # 缓存省钱 — 用实际片段时长 * 无痕AI按秒计费 (1积分/秒 × ¥0.0091/积分)
-            _cache_clips = {c.name: c.duration for c in clips}
-            _cache_secs = sum(math.ceil(_cache_clips.get(cn, 0)) for cn in prepared.cache_hit_names)
-            cache_saved = _cache_secs * 0.0091
-            if cache_saved > 0.01:
-                info(f"  💰 省了约 ¥{cache_saved:.2f} ({_cache_secs}秒)")
-                _smb_log(f"缓存省钱: ¥{cache_saved:.2f} ({prepared.cache_hits}片段 {_cache_secs}秒)")
+            savings = calc_cache_savings(clips, prepared.cache_hit_names)
+            if savings["yuan"] > 0.01:
+                info(f"  💰 省了约 ¥{savings['yuan']} ({savings['secs']}秒)")
+                _smb_log(f"缓存省钱: ¥{savings['yuan']} ({prepared.cache_hits}片段 {savings['secs']}秒)")
             for cn in prepared.cache_hit_names:
                 log_ok(f"  {cn}")
         else:
@@ -337,20 +343,12 @@ def process(*_):
                 info("\n\n── ⑤ 最终报告 ──")
                 log_ok("🎉 全部完成！")
                 t_elapsed = int(time.time() - t_start)
-                mins, secs = divmod(t_elapsed, 60)
-                info(f"  耗时 {mins}分{secs}秒  ·  ¥0  ·  余额 ¥{point_to_yuan(pts_before):.2f}")
+                info(f"  耗时 {format_duration(t_elapsed)}  ·  ¥0  ·  余额 ¥{point_to_yuan(pts_before):.2f}")
                 # 缓存省钱统计
-                _cache_clips = {c.name: c.duration for c in clips}
-                _cache_secs = sum(math.ceil(_cache_clips.get(cn, 0)) for cn in prepared.cache_hit_names)
-                if _cache_secs > 0:
-                    info(f"  💰 缓存省钱: ¥{_cache_secs * 0.0091:.2f} ({_cache_secs}秒)")
-                # macOS 通知
-                try:
-                    subprocess.run(["osascript", "-e",
-                        f'display notification "全部由缓存完成（{prepared.cache_hits}个片段）" with title "AI 去字幕" subtitle "处理完成"'],
-                        timeout=5, capture_output=True)
-                except Exception:
-                    pass
+                savings = calc_cache_savings(clips, prepared.cache_hit_names)
+                if savings["secs"] > 0:
+                    info(f"  💰 缓存省钱: ¥{savings['yuan']} ({savings['secs']}秒)")
+                ui.notify("AI 去字幕", f"全部由缓存完成（{prepared.cache_hits}个片段）")
             else:
                 log_ok("没有有效任务")
             _set_btn(scan=True, pick=True, stop=False, warn=False)
@@ -361,7 +359,7 @@ def process(*_):
             return
 
         info("\n\n── ③ AI去字幕中 ──")
-        _pg(0.05); _st(f"准备处理 {len(prepared.tasks)} 个片段...")
+        ui.set_progress(0.05); ui.set_status(f"准备处理 {len(prepared.tasks)} 个片段...")
 
         # 余额
         name = "无痕AI 2.1" if "wuhenai" in ACTIVE_PROVIDER else ACTIVE_PROVIDER
@@ -390,27 +388,11 @@ def process(*_):
             if lock_result:
                 if lock_result == "reclaimed":
                     _smb_log(f"锁回收: {t.name}")
-                # 文件安全预检
-                fsize = os.path.getsize(t.path)
-                if fsize == 0:
-                    warn(f"  ⚠ {t.name}: 文件大小为0，跳过")
-                    _smb_log(f"跳过零字节: {t.name}")
-                    release_lock(t.name)
-                    intercepted += 1; continue
-                if fsize > 104857600:
-                    warn(f"  ⚠ {t.name}: 文件 {fsize/1048576:.0f}MB，超过100MB限制，跳过")
-                    _smb_log(f"超大文件跳过: {t.name} {fsize/1048576:.0f}MB")
-                    release_lock(t.name)
-                    intercepted += 1; continue
-                # 时长校验
-                if t.duration <= 0:
-                    warn(f"  ⚠ {t.name}: 时长异常 ({t.duration:.1f}秒)，跳过")
-                    _smb_log(f"跳过异常时长: {t.name} {t.duration:.1f}s")
-                    release_lock(t.name)
-                    intercepted += 1; continue
-                if t.duration > 30:
-                    warn(f"  ⚠ {t.name}: 时长 {t.duration:.0f}秒，超过30秒限制，跳过")
-                    _smb_log(f"跳过超长片段: {t.name} {t.duration:.0f}s")
+                # 文件 + 时长校验
+                ok_flag, err_msg = validate_task(t)
+                if not ok_flag:
+                    warn(f"  ⚠ {t.name}: {err_msg}，跳过")
+                    _smb_log(f"校验跳过: {t.name} — {err_msg}")
                     release_lock(t.name)
                     intercepted += 1; continue
                 locked_tasks.append(t)
@@ -446,7 +428,7 @@ def process(*_):
         # 真实进度回调：把 API 返回的进度百分比同步到 UI
         def _on_progress(phase, ratio):
             _st._last_ratio = ratio
-            _pg(ratio)
+            ui.set_progress(ratio)
             phase_names = {"upload": "上传中...", "submit": "提交中...",
                            "processing": "AI 处理中...", "download": "下载中..."}
             global _phase_text
@@ -455,13 +437,13 @@ def process(*_):
         t_batch = time.time()
         # 设置倒计时全局变量（_update_countdown 在稳定版轮询中消费）
         _uw._t_start = t_batch
-        _uw._t_estimated = sum(math.ceil(t.duration) for t in api_tasks) * 2.3 + 60  # 实测公式：秒数×2.3+60
+        _uw._t_estimated = estimate_processing_time(locked_tasks)
         _uw._task_count = len(api_tasks)
-        _smb_log(f"预估时间 — 片段总{sum(math.ceil(t.duration) for t in api_tasks)}秒 ({len(api_tasks)}个) 公式={_uw._t_estimated:.0f}秒 (sum×2.3+60)")
+        _smb_log(f"预估时间 — 片段总{sum(math.ceil(t.duration) for t in locked_tasks)}秒 ({len(api_tasks)}个) 公式={_uw._t_estimated:.0f}秒")
         if len(api_tasks) == 1:
             # 单片段：单任务模式（更快，无批量开销）
             info("    AI 处理中...")
-            _st("AI 处理中...")
+            ui.set_status("AI 处理中...")
             result = adapter.process(api_tasks[0], timeout=600,
                                      cancel_check=lambda: _state["stop"])
             api_results = [result]
@@ -473,7 +455,7 @@ def process(*_):
                                                 progress_callback=_on_progress)
         elapsed = time.time() - t_batch
         info(f"  全部完成，耗时 {elapsed:.0f}秒")
-        _pg(0.7); _st(f"下载替换中...")
+        ui.set_progress(0.7); ui.set_status(f"下载处理结果...")
 
         for t, r in zip(locked_tasks, api_results):
             if r and r.success:
@@ -485,31 +467,28 @@ def process(*_):
                 fail(f"  ❌ {t.name}: {msg}")
                 _smb_log(f"  ❌ {t.name}: {msg}")
             results.append((t.mp_item, t.name, t.path, r, elapsed / len(locked_tasks),
-                           t.tl_item, t.tl_color or "", t.mp_color or ""))
+                           t.tl_item, t.tl_color or "", t.mp_color or "", t.alt_tl_items or ()))
 
-        # 下载并替换
-        info("\n\n── ④ 替换回时间线 ──")
-        _pg(0.9); _st(f"替换中...")
+        # 下载 + 替换（下载归 ③，替换瞬间完成）
+        info("  下载处理结果...")
         _state["stop"] = False
-        _replaced = 0
-        _rpad = len(str(len(results)))
-        def _on_replaced(ep, subdir, name):
-            nonlocal _replaced
-            _replaced += 1
-            log_ok(f"[{_replaced:0{_rpad}d}/{len(results)}] 已替换  {name}")
         ok_count, fail_list, output_files = download_and_apply(
             results, od, MODE,
             check_stop=lambda: _state["stop"],
-            on_start=lambda name: _st(f"下载中... {name}"),
-            on_done=_on_replaced,
+            on_start=lambda name: ui.set_status(f"下载中... {name}"),
+            on_done=lambda ep, subdir, name: None,  # 替换结果统一在 ④ 展示
             on_fail=lambda name, err: fail(f"  {name}: {err}"),
         )
-        # SMB 记录下载失败
         for fe in fail_list:
             _smb_log(f"下载失败: {fe['name']} — {fe['error']}")
 
+        # ④ 替换回时间线 — 替换已完成，这里只展示结果
+        info("\n── ④ 替换回时间线 ──")
+        for i, of in enumerate(output_files, 1):
+            log_ok(f"[{i:0{len(str(len(results)))}d}/{len(results)}] 已替换  {os.path.basename(of)}")
+
         fail_count = len(results) - ok_count
-        _pg(1.0); _st(f"完成 {ok_count}/{len(results)}")
+        ui.set_progress(1.0); ui.set_status(f"完成 {ok_count}/{len(results)}")
         info("\n\n── ⑤ 最终报告 ──")
         t_api_end = time.time()
 
@@ -539,9 +518,8 @@ def process(*_):
         log_ok(msg)
 
         t_elapsed = int(time.time() - t_start)
-        mins, secs = divmod(t_elapsed, 60)
         # 直接显示耗时和费用（不调API查余额，省2-6秒，用户可秒关）
-        info(f"  总耗时 {mins}分{secs}秒  ·  ¥{yuan:.2f}")
+        info(f"  总耗时 {format_duration(t_elapsed)}  ·  ¥{yuan:.2f}")
 
         # OSS 流量（内部记录，不展示给用户）
         oss = oss_tracker.snapshot()
@@ -549,7 +527,7 @@ def process(*_):
             _smb_log(f"OSS: {oss['traffic_gb']:.3f}GB ¥{oss['total_cost']:.4f}")
 
         oss_tracker.reset()
-        _smb_log(f"完成 — {ok_count}/{len(results)} 耗时{mins}分{secs}秒 预估¥{yuan:.2f} 余额(处理前)¥{point_to_yuan(pts_before):.2f} 阶段:{t_prep_elapsed}/{t_api_elapsed}/{t_replace_elapsed}s")
+        _smb_log(f"完成 — {ok_count}/{len(results)} 耗时{format_duration(t_elapsed)} 预估¥{yuan:.2f} 余额(处理前)¥{point_to_yuan(pts_before):.2f} 阶段:{t_prep_elapsed}/{t_api_elapsed}/{t_replace_elapsed}s")
         # 用缓存余额更新UI（不调API，不阻塞）
         name = "无痕AI 2.1" if "wuhenai" in ACTIVE_PROVIDER else ACTIVE_PROVIDER
         _bal(f"无痕 ¥{point_to_yuan(pts_before):.2f}")
@@ -559,15 +537,7 @@ def process(*_):
         _smb_log(f"阶段耗时 — 准备:{t_prep_elapsed}s AI:{t_api_elapsed}s 替换:{t_replace_elapsed}s")
 
         # macOS 系统通知（子线程也可发出，不需要主线程）
-        try:
-            note = f"{total_done}个片段处理完成（耗时{mins}分{secs}秒）"
-            result = subprocess.run(["osascript", "-e",
-                f'display notification "{note}" with title "AI 去字幕" subtitle "处理完成"'],
-                timeout=5, capture_output=True, text=True)
-            if result.returncode != 0:
-                _smb_log(f"macOS 通知失败: {result.stderr.strip()}")
-        except Exception as e:
-            _smb_log(f"macOS 通知异常: {e}")
+        ui.notify("AI 去字幕", f"{total_done}个片段处理完成（耗时{format_duration(t_elapsed)}）")
     except Exception as e:
         fail(f"{e}")
         _smb_log(f"处理异常: {e}")
@@ -580,7 +550,7 @@ def process(*_):
         _set_btn(scan=True, pick=True, stop=False, warn=False)
         itm[BTN_START].Enabled = False
         itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
-        _pg(0.0)
+        ui.set_progress(0.0)
         try: itm[ST_LB].Text = ""
         except Exception: _smb_log("[ui_pipeline] 清空 ST_LB 失败")
 
@@ -594,7 +564,7 @@ def stop(*_):
 
 # ── 撤销替换 ──
 def undo(*_):
-    """将 IO 内的去字幕片段换回原片"""
+    """将 IO 内的去字幕片段换回原片（基于 ledger 记录，不靠文件名匹配）"""
     _log_action("撤销替换")
     if _state["processing"]:
         warn("处理中，无法撤销"); return
@@ -607,32 +577,39 @@ def undo(*_):
             warn("请设置 IO 入出点"); return
 
         info("\n\n── 撤销替换 ──")
-        found = 0; undone = 0; seen = set()
+        found = 0; undone = 0
         for t in range(1, timeline.GetTrackCount("video") + 1):
             for item in timeline.GetItemListInTrack("video", t) or []:
-                if item.GetStart() < io_in or item.GetStart() > io_out:
+                # 与 IO 有重叠才算（不只是 Start 在内）
+                if item.GetEnd() <= io_in or item.GetStart() >= io_out:
                     continue
-                nm = item.GetName()
-                if "_去字幕" not in nm:
-                    continue
-                if nm in seen:
-                    continue
-                seen.add(nm)
-                found += 1
                 mp = item.GetMediaPoolItem()
                 if not mp:
                     continue
-                file_name = mp.GetClipProperty("File Name") or nm
-                # File Name 去 _去字幕 后缀 → 状态键
-                key = file_name.replace("_去字幕.mp4", ".mp4") if "_去字幕" in file_name else file_name
-                original = ledger.get_original_path(key)
+                # 只撤销当前选中颜色的片段
+                item_color = item.GetClipColor() or ""
+                if item_color != _SELECTED_COLOR:
+                    continue
+                path = mp.GetClipProperty("File Path") or ""
+                rec = ledger.find_completed_record(path)
+                original = rec.get("original_path", "") if rec else ""
                 if original and os.path.exists(original):
+                    # 保存当前颜色（用户可能设了任意颜色），撤销后恢复
+                    save_tl_color = item.GetClipColor() or ""
+                    save_mp_color = mp.GetClipColor() or ""
                     mp.ReplaceClipPreserveSubClip(original)
-                    log_ok(f"  ↩ {nm}")
+                    if save_mp_color:
+                        mp.SetClipColor(save_mp_color)
+                    if save_tl_color and save_tl_color != save_mp_color:
+                        try: item.SetClipColor(save_tl_color)
+                        except: pass
+                    log_ok(f"  ↩ {item.GetName()}")
                     undone += 1
-                    _smb_log(f"撤销: {nm} → 原片")
+                    found += 1
+                    _smb_log(f"撤销: {item.GetName()} → 原片")
+
         if found == 0:
-            info("  IO 内无去字幕片段")
+            info("  IO 内无已处理片段")
         else:
             info(f"  撤销 {undone}/{found} 个片段")
     except Exception as e:

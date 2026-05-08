@@ -35,6 +35,8 @@ from typing import Optional, Any
 from urllib.parse import urlparse, quote
 from email.utils import formatdate
 
+from resolution import parse as parse_resolution, is_portrait
+
 from . import BaseAdapter, SubtitleTask, SubtitleResult, TaskStatus
 
 _SSL_CTX = ssl.create_default_context()
@@ -298,8 +300,8 @@ class WuhenAIV21Adapter(BaseAdapter):
         根据视频方向自动选择处理策略。
 
         优先级：task.mask_regions（精确区域）> 分辨率自适应
-        - 竖屏 (vid_h > vid_w): sel_area + 一刀切下半块；面积超 480K 则降级 all_area
-        - 横屏 (vid_w >= vid_h): all_area + 全屏自动检测（无 rect）
+        - 竖屏 (resolution.is_portrait): sel_area + 一刀切下半块；面积超 480K 则降级 all_area
+        - 横屏: all_area + 全屏自动检测（无 rect）
 
         Returns:
             (method: str, rect: dict | None)
@@ -316,7 +318,7 @@ class WuhenAIV21Adapter(BaseAdapter):
             }
 
         # 分辨率自适应
-        if vid_h > vid_w:
+        if is_portrait(vid_w, vid_h):
             # 竖屏：一刀切下半块
             y1 = int(vid_h * 0.50)
             area = vid_w * (vid_h - y1)
@@ -375,8 +377,7 @@ class WuhenAIV21Adapter(BaseAdapter):
         # 分辨率自适应：竖屏 sel_area+半块，横屏 all_area 全屏自动
         # 优先从任务拿（扫描时达芬奇API获取），fallback ffprobe
         if getattr(task, "resolution", None):
-            parts = task.resolution.split("x")
-            vid_w, vid_h = int(parts[0]), int(parts[1])
+            vid_w, vid_h = parse_resolution(task.resolution)
         else:
             vid_w, vid_h = self._get_video_resolution(video_path)
         method, rect = self._compute_detection_params(task, vid_w, vid_h)
@@ -633,8 +634,7 @@ class WuhenAIV21Adapter(BaseAdapter):
             res_key = getattr(task, "resolution", None)
             if not res_key or res_key not in video_dims:
                 if res_key:
-                    parts = res_key.split("x")
-                    video_dims[res_key] = (int(parts[0]), int(parts[1]))
+                    video_dims[res_key] = parse_resolution(res_key)
                 else:
                     if video_path not in video_dims:
                         video_dims[video_path] = self._get_video_resolution(video_path)

@@ -1,0 +1,5 @@
+[   10018ms] Uncaught NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node.
+    at c (https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2//MathJax.js?config=TeX-AMS-MML_HTMLorMML:18:11585)
+[   11493ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://www.steakunderwater.com/wesuckless/styles/Subway/theme/fonts/subway-icons.ttf:0
+[   20632ms] Uncaught NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node.
+    at c (https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2//MathJax.js?config=TeX-AMS-MML_HTMLorMML:18:11585)

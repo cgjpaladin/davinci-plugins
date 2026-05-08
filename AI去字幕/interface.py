@@ -1,0 +1,138 @@
+# -*- coding: utf-8 -*-
+"""
+UI 抽象接口 — CLI 和 GUI 各自实现同一套方法。
+
+目的：管道代码不关心输出目标是 print 还是达芬奇控件，
+     只调用 interface.info() / interface.progress() 等。
+     你可以在命令行测 90% 的逻辑，不用打开达芬奇。
+"""
+
+
+class PipelineUI:
+    """管道输出接口。子类实现具体渲染方式。"""
+
+    def log_info(self, msg: str):
+        """普通信息"""
+        raise NotImplementedError
+
+    def log_ok(self, msg: str):
+        """成功信息"""
+        raise NotImplementedError
+
+    def log_warn(self, msg: str):
+        """警告信息"""
+        raise NotImplementedError
+
+    def log_fail(self, msg: str):
+        """失败/错误信息"""
+        raise NotImplementedError
+
+    def set_progress(self, ratio: float):
+        """更新进度条 0.0 ~ 1.0"""
+        raise NotImplementedError
+
+    def set_status(self, text: str):
+        """更新状态栏文字"""
+        raise NotImplementedError
+
+    def confirm(self, question: str) -> bool:
+        """用户确认。CLI 用 input，UI 弹对话框。"""
+        raise NotImplementedError
+
+    def notify(self, title: str, body: str):
+        """系统通知。CLI 打印，UI 发 macOS 通知。"""
+        raise NotImplementedError
+
+
+# ── CLI 实现 ──
+
+class CLIPipelineUI(PipelineUI):
+    """输出到终端"""
+
+    def log_info(self, msg: str):
+        print(f"  {msg}")
+
+    def log_ok(self, msg: str):
+        print(f"  ✅ {msg}")
+
+    def log_warn(self, msg: str):
+        print(f"  ⚠ {msg}")
+
+    def log_fail(self, msg: str):
+        print(f"  ❌ {msg}")
+
+    def set_progress(self, ratio: float):
+        pct = int(ratio * 100)
+        bar = "█" * (pct // 5) + "░" * (20 - pct // 5)
+        print(f"\r  [{bar}] {pct}%", end="", flush=True)
+        if ratio >= 1.0:
+            print()
+
+    def set_status(self, text: str):
+        print(f"  [{text}]")
+
+    def confirm(self, question: str) -> bool:
+        answer = input(f"  {question} (y/N): ").strip().lower()
+        return answer == "y"
+
+    def notify(self, title: str, body: str):
+        print(f"  📢 {title}: {body}")
+
+
+# ── 达芬奇 UI 实现 ──
+
+class DaVinciPipelineUI(PipelineUI):
+    """输出到达芬奇控件（通过 ui_widgets 提供的 itm/_st/_pg 等）"""
+
+    def __init__(self, itm, _st, _pg, _bal, dlg, _smb_log):
+        from ui_widgets import LOG_LB, ST_LB, PG_BAR
+        self._itm = itm
+        self._st = _st
+        self._pg = _pg
+        self._bal = _bal
+        self._dlg = dlg
+        self._smb_log = _smb_log
+        self._LOG_LB = LOG_LB
+        self._ST_LB = ST_LB
+        self._PG_BAR = PG_BAR
+
+    def log_info(self, msg: str):
+        from ui_widgets import _ui_write
+        _ui_write("info", msg)
+
+    def log_ok(self, msg: str):
+        from ui_widgets import _ui_write
+        _ui_write("ok", msg)
+
+    def log_warn(self, msg: str):
+        from ui_widgets import _ui_write
+        _ui_write("warn", msg)
+
+    def log_fail(self, msg: str):
+        from ui_widgets import _ui_write
+        _ui_write("fail", msg)
+
+    def set_progress(self, ratio: float):
+        self._pg(ratio)
+
+    def set_status(self, text: str):
+        self._st(text)
+
+    def confirm(self, question: str) -> bool:
+        import subprocess
+        try:
+            r = subprocess.run(["osascript", "-e",
+                f'display dialog "{question}" buttons {{"取消", "确认"}} default button "确认"'],
+                capture_output=True, text=True, timeout=30)
+            return "确认" in r.stdout
+        except Exception:
+            return True  # 出错默认通过
+
+    def notify(self, title: str, body: str):
+        try:
+            import subprocess
+            subprocess.run(["osascript", "-e",
+                f'display notification "{body}" with title "{title}"'],
+                timeout=5, capture_output=True)
+        except Exception:
+            pass

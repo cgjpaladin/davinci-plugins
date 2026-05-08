@@ -5,6 +5,7 @@ AI 去字幕 UI — 外部进程版
 """
 import json
 import os
+import socket
 import subprocess
 import sys
 import threading
@@ -138,7 +139,7 @@ window_layout = [
         ]),
 
         # 进度条（简单 Label，处理时动态 Resize）
-        ui.VGroup({"Spacing": 2, "Weight": 0}, [
+        ui.VGroup({"ID": "pg_group", "Spacing": 2, "Weight": 0}, [
             ui.Label({"ID": ST_LB, "Text": "",
                       "StyleSheet": "color:rgb(180,180,180);font-size:11px;min-height:16px"}),
             ui.Label({"ID": PG_BAR, "Text": "",
@@ -212,7 +213,17 @@ dlg.On[COLOR_CB].CurrentIndexChanged = _on_color_change
 _log_queue = queue.Queue()
 _main_thread = threading.current_thread()
 import tempfile as _tempfile
-_UI_LOG_FILE = os.path.join(_tempfile.gettempdir(), "ai_subtitle_ui.log")
+# 本地日志目录：用固定路径便于排查（tempfile.gettempdir() 在 macOS 返回随机路径）
+_DEV_LOG_DIR = "/tmp/ai_subtitle_dev"
+_UI_LOG_FILE = os.path.join(_DEV_LOG_DIR, "ui.log") if __version__.endswith("-dev") else \
+               os.path.join(_tempfile.gettempdir(), "ai_subtitle_ui.log")
+
+# 日志路径：dev 版写本地固定目录，避免混入生产 SMB 目录
+if __version__.endswith("-dev"):
+    _SMB_LOG_DIR = _DEV_LOG_DIR
+else:
+    _SMB_LOG_DIR = "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/logs"
+_SMB_LOG = os.path.join(_SMB_LOG_DIR, f"{socket.gethostname()}.log")
 
 _LOG_MAX_LINES = 200
 _log_line_count = 0
@@ -258,8 +269,7 @@ def _ui_write(msg: str):
     _ui_write_direct(msg)
 
 # ── SMB 关键事件日志：一人一文件，方便远程 debug ──
-import socket
-_SMB_LOG = os.path.join(os.path.dirname(__file__), "logs", f"{socket.gethostname()}.log")
+# _SMB_LOG 已在文件顶部定义，始终指向 SMB
 def _smb_log(msg: str):
     """只记关键事件到 SMB，不记适配器噪音"""
     try:
@@ -371,7 +381,8 @@ def _update_countdown():
 
 _pg_last_milestone = 0  # 上次记录的进度里程碑
 
-_PG_MAX_W = 650
+# 进度条容器最大宽度（动态获取，非硬编码）
+_PG_MAX_W_FALLBACK = 800  # 仅当 GetGeometry 失败时兜底
 
 def _pg(r):
     """更新进度条（0.0=开始, 1.0=完成），里程碑时写 SMB 日志"""
@@ -387,11 +398,23 @@ def _pg(r):
         _pg_last_milestone = 0
     try:
         _st._last_ratio = ratio
-        bar_w = max(2, int(_PG_MAX_W * ratio))
+        # 动态获取容器宽度（GetGeometry 返回 dict {1:x,2:y,3:w,4:h}，不是 list）
+        try:
+            pg_geo = itm["pg_group"].GetGeometry()
+            max_w = pg_geo[3] if pg_geo.get(3, 0) > 0 else _PG_MAX_W_FALLBACK
+        except Exception:
+            max_w = _PG_MAX_W_FALLBACK
+        bar_w = max(2, int(max_w * ratio))
         itm[PG_BAR].Resize([bar_w, 8])
         itm[PG_BAR].Visible = ratio > 0.005
         try: itm[PG_BAR].Update()
         except: pass
+        # 100% 时强制父容器重算布局（单靠子控件 RecalcLayout 不够，父容器不重算就不生效）
+        if ratio >= 1.0:
+            try: itm["pg_group"].RecalcLayout()
+            except: pass
+            try: itm[PG_BAR].RecalcLayout()
+            except: pass
     except Exception:
         pass
 

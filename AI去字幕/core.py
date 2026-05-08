@@ -49,6 +49,7 @@ class ClipEntry(NamedTuple):
     resolution: str = "1920x1080"  # 达芬奇API获取，fallback
     tl_color: str = ""       # TimelineItem 颜色
     mp_color: str = ""       # MediaPoolItem 颜色
+    alt_tl_items: tuple = ()  # ((TimelineItem, tl_color), ...) 同文件去重跳过的额外片段
 
 
 class ScanReport(NamedTuple):
@@ -68,6 +69,7 @@ class TaskRecord(NamedTuple):
     tl_item: object = None  # TimelineItem 引用
     tl_color: str = ""      # TimelineItem 原始颜色
     mp_color: str = ""      # MediaPoolItem 原始颜色
+    alt_tl_items: tuple = ()  # ((TimelineItem, tl_color), ...) 同文件其他片段
 
 
 class PreparedTasks(NamedTuple):
@@ -226,6 +228,8 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
 
     # 第二轮：用 File Name 去重 + 过滤 + 构建 ClipEntry
     seen_fnames = set()
+    # {file_name: [(tl_item, tl_color), ...]} — 同文件去重跳过的额外片段
+    alt_tl_by_fname: dict = {}
     for item, t in candidates:
         stats["total"] += 1
         color = item.GetClipColor()
@@ -276,8 +280,9 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
         if "_去字幕" in display_name:
             continue
         
-        # 用 File Name 去重
+        # 用 File Name 去重 — 同文件多段：首段入 clips，其余记录到 alt_tl_by_fname
         if file_name in seen_fnames:
+            alt_tl_by_fname.setdefault(file_name, []).append((item, color or ""))
             continue
         seen_fnames.add(file_name)
         
@@ -290,6 +295,11 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
             tl_item=item, resolution=resolution,
             tl_color=color or "", mp_color=mp.GetClipColor() or "",
         ))
+
+    # 合并 alt_tl_items：同文件去重跳过的片段记入 ClipEntry，ReplaceClip 后恢复其颜色
+    if alt_tl_by_fname:
+        clips = [ce._replace(alt_tl_items=tuple(alt_tl_by_fname.get(ce.file_name, ())))
+                 for ce in clips]
 
     # 构造报告
     report = ScanReport(
@@ -348,14 +358,25 @@ def prepare_tasks(
             cached = ledger.find_output(c.file_name)
             if cached:
                 try:
+                    old_path = c.mp_item.GetClipProperty("File Path") or c.path
                     if c.mp_item.ReplaceClipPreserveSubClip(cached):
+                        actual_out = c.mp_item.GetClipProperty("File Path") or cached
+                        # old_path 是替换前的原始路径（用于撤销）
                         if c.mp_color:
                             c.mp_item.SetClipColor(c.mp_color)
                         if c.tl_color and c.tl_item and c.tl_color != c.mp_color:
                             try: c.tl_item.SetClipColor(c.tl_color)
                             except Exception:
                                 _smb_log(f"[core] 缓存命中恢复 tl 颜色失败: {c.name}")
-                        ledger.record_completed(c.file_name, cached, strategy="cached", points=0)
+                        # 恢复同文件其他片段颜色（ReplaceClip 会重置所有引用）
+                        for alt_tl, alt_color in (c.alt_tl_items or ()):
+                            if alt_color:
+                                try: alt_tl.SetClipColor(alt_color)
+                                except Exception:
+                                    _smb_log(f"[core] 缓存命中恢复 alt tl 颜色失败: {c.name}")
+                        ledger.record_completed(c.file_name, actual_out, original_path=old_path,
+                                                strategy="cached", points=0,
+                                                tl_color=c.tl_color, mp_color=c.mp_color)
                         cache_hit_names.append(c.name)
                         continue
                 except Exception:
@@ -379,6 +400,7 @@ def prepare_tasks(
             mp_item=c.mp_item, name=c.name, path=c.path,
             kwargs=kwargs, duration=c.duration,
             tl_item=c.tl_item, tl_color=c.tl_color, mp_color=c.mp_color,
+            alt_tl_items=c.alt_tl_items,
         ))
 
     return PreparedTasks(
@@ -589,6 +611,7 @@ def download_and_apply(
         tl_item = rest[0] if rest else None          # TimelineItem
         tl_color = rest[1] if len(rest) > 1 else ""  # TimelineItem 原色
         mp_color = rest[2] if len(rest) > 2 else ""  # MediaPoolItem 原色
+        alt_tl_items = rest[3] if len(rest) > 3 else ()  # 同文件去重跳过的额外片段
         if check_stop and check_stop():
             break
         if not result or not result.success:
@@ -642,6 +665,12 @@ def download_and_apply(
                 try: tl_item.SetClipColor(tl_color)
                 except Exception:
                     _smb_log(f"[core] ReplaceClip 后恢复 tl 颜色失败: {name}")
+            # 恢复同文件其他片段颜色（ReplaceClip 会重置同一 mp_item 的所有引用）
+            for alt_tl, alt_color in alt_tl_items:
+                if alt_color:
+                    try: alt_tl.SetClipColor(alt_color)
+                    except Exception:
+                        _smb_log(f"[core] 恢复 alt tl 颜色失败: {name}")
             # 从适配器 metadata 提取 strategy/resolution/duration → 计费
             meta = getattr(result, 'metadata', {}) or {}
             strategy = meta.get("strategy", "")
@@ -654,11 +683,14 @@ def download_and_apply(
             else:
                 points = 0
                 cost_yuan = 0.0
-            ledger.record_completed(fn, dl, original_path=path,
+            # 读取 ReplaceClip 后实际的文件路径（达芬奇可能加 _v01）
+            actual_path = mp_item.GetClipProperty("File Path") or dl
+            ledger.record_completed(fn, actual_path, original_path=path,
                                     strategy=strategy, resolution=resolution,
-                                    points=points, cost_yuan=cost_yuan)
+                                    points=points, cost_yuan=cost_yuan,
+                                    tl_color=tl_color, mp_color=mp_color)
             success_count += 1
-            output_files.append(dl)
+            output_files.append(actual_path)
             if on_done:
                 on_done(ep, subdir, clean_name)
         else:

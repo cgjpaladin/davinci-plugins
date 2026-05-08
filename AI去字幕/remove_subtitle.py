@@ -40,8 +40,18 @@ from core import (
     post_check, CLIP_COLOR as _CLIP_COLOR,
     create_wuhenai_adapter, process_single_clip, download_and_apply,
 )
+from pipeline_utils import validate_task, calc_cache_savings, estimate_processing_time, format_duration
 from logger import title, step, ok, warn, fail, info, set_logger, PrintLogger
+from interface import PipelineUI, CLIPipelineUI
 import ops_logger
+
+
+def _setup_ui(ui):
+    """返回 (info, ok, warn, fail, progress, status) 函数组。
+    有 ui 用 ui，否则 fallback 到终端 logger。"""
+    if ui:
+        return ui.log_info, ui.log_ok, ui.log_warn, ui.log_fail, ui.set_progress, ui.set_status
+    return info, ok, warn, fail, (lambda r: None), (lambda s: None)
 
 
 # ═══════════════════════════════════════════
@@ -50,8 +60,18 @@ import ops_logger
 
 def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
                  scan_only: bool = False, report_json: str = "",
-                 batch: bool = False, project_root: str = "") -> dict:
-    """执行完整去字幕流程 (无痕AI 2.1, sel_area ¥0.36/分钟)。"""
+                 batch: bool = False, project_root: str = "",
+                 ui: PipelineUI = None) -> dict:
+    """执行完整去字幕流程。
+
+    ui: 可选 PipelineUI 实例。CLI 自动创建，UI 模式从外部注入。
+    """
+    if ui is None:
+        ui = CLIPipelineUI()
+    _pg = ui.set_progress
+    _st = ui.set_status
+    _notify = ui.notify
+
     oss_tracker.reset()
 
     # ── 0. 环境自检 ──
@@ -72,6 +92,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         _write_report(report, report_json)
         return report
     step(f"✅ 环境自检通过 (SMB/API/OSS/DVR)")
+    _pg(0.05)
 
     mode = mode or DEFAULT_MODE
     report = {
@@ -115,6 +136,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     info(f"Resolve: {report['resolve']}")
     info(f"项目: {report['project']}")
     info(f"时间线: {report['timeline']}")
+    _pg(0.10)
 
     # ── 2. 扫描 IO ──
     clips, scan_report = scan_io_clips(timeline, _CLIP_COLOR)
@@ -139,6 +161,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         return report
 
     step(f"共 {len(clips)} 个片段", "📋")
+    _pg(0.20)
 
     # ── 3. 项目路径 ──
     if not project_root or not os.path.isdir(project_root):
@@ -157,6 +180,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     ops_logger.init(get_log_dir(project_root))
     ops_logger.session_start(report["project"], report["timeline"], mode, 0)
     ops_logger.clip_scan(len(clips), 0, [c.name for c in clips])
+    _pg(0.25)
 
     # ── 4. 任务准备 ──
     prepared = prepare_tasks(clips, mode, output_dir, force=force)
@@ -165,14 +189,11 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
 
     if prepared.cache_hits:
         step(f"📦 缓存命中 {prepared.cache_hits} 个，剩余 {len(prepared.tasks)} 个需 API")
-        # 缓存省钱 — 用实际片段时长 (无痕AI 按秒计费 1积分/秒 × ¥0.0091)
-        import math as _m
-        _cc = {c.name: c.duration for c in clips}
-        _cs = sum(_m.ceil(_cc.get(cn, 0)) for cn in prepared.cache_hit_names)
-        if _cs > 0:
-            info(f"  💰 缓存省钱: ¥{_cs * 0.0091:.2f} ({_cs}秒)")
-            report["cache_saved_secs"] = _cs
-            report["cache_saved_yuan"] = round(_cs * 0.0091, 2)
+        savings = calc_cache_savings(clips, prepared.cache_hit_names)
+        if savings["secs"] > 0:
+            info(f"  💰 缓存省钱: ¥{savings['yuan']} ({savings['secs']}秒)")
+            report["cache_saved_secs"] = savings["secs"]
+            report["cache_saved_yuan"] = savings["yuan"]
     if not prepared.tasks:
         ok(f"全部由缓存完成！({prepared.cache_hits}个)")
         ops_logger.session_end(prepared.cache_hits, 0, prepared.cache_hits)
@@ -206,11 +227,12 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         warn("余额查询失败，跳过保护")
 
     # ── 干跑 / 仅扫描 → 到此为止 ──
-    # 时长过滤（>30s 提示并跳过）
+    # 时长/文件大小过滤
     valid_tasks = []
     for t in prepared.tasks:
-        if t.duration > 30:
-            warn(f"  ⚠ {t.name}: 时长 {t.duration:.0f}秒，超过30秒限制，跳过")
+        ok_flag, err = validate_task(t)
+        if not ok_flag:
+            warn(f"  ⚠ {t.name}: {err}，跳过")
             continue
         valid_tasks.append(t)
     prepared.tasks[:] = valid_tasks  # 原地替换
@@ -227,6 +249,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
 
     # ── 6. 处理（串行或批量）──
     adapter = create_wuhenai_adapter()
+    _pg(0.40); _st("AI 处理中...")
     results = []
     stop_file = os.path.join(PLUGIN_DIR, ".stop")
     local_stop = os.path.join("/tmp", f"ai_subtitle.stop.{os.uname().nodename}")
@@ -290,6 +313,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
             results.append((t.mp_item, t.name, t.path, result, elapsed))
 
     # ── 7. 下载 + ReplaceClip ──
+    _pg(0.65); _st("下载替换中...")
     t_phase_api = time.time()  # API 阶段结束, 下载阶段开始
     step(f"📥 下载 {len(results)} 个结果")
     success_count, fail_list, output_files = download_and_apply(
@@ -328,14 +352,12 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     step(f"── 阶段耗时 ──")
     info(f"  AI处理 (上传+API): {api_secs:.0f}秒")
     info(f"  下载替换: {dl_secs:.0f}秒")
-    # 超时检测（超过预估 2 倍报警）
-    need_secs = sum(t.duration for t in prepared.tasks)
-    expected = max(60, need_secs * 2 + 60)
+    # 超时检测
+    expected = max(60, estimate_processing_time(prepared.tasks))
     total_proc = t_done - t_phase_prep
     if total_proc > expected * 2:
         warn(f"⚠ 处理超时: 实际 {total_proc:.0f}秒 > 预估 {expected:.0f}秒×2，可能网络波动")
     # OSS 费用统计
-    from pricing import oss_tracker
     oss_cost = oss_tracker.snapshot()
     report["oss_cost"] = oss_cost
     if oss_cost["traffic_gb"] > 0:
@@ -343,9 +365,9 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     oss_tracker.reset()
 
     ok(f"{success_count}/{len(results)} 个片段完成 → {output_dir}")
-    total_elapsed = int(t_done - t_phase_prep)
-    mins, secs = divmod(total_elapsed, 60)
-    info(f"总耗时 {mins}分{secs}秒")
+    info(f"总耗时 {format_duration(t_done - t_phase_prep)}")
+    _pg(1.0); _st("完成")
+    _notify("AI 去字幕", f"{success_count}个片段处理完成")
     ops_logger.session_end(success_count, len(results) - success_count, len(results))
     _write_report(report, report_json)
     return report

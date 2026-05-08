@@ -86,11 +86,13 @@ def record_submitted(file_name: str, strategy: str, resolution: str) -> None:
 
 def record_completed(file_name: str, output_path: str, original_path: str = "",
                      strategy: str = "", resolution: str = "",
-                     points: int = 0, cost_yuan: float = 0.0) -> None:
+                     points: int = 0, cost_yuan: float = 0.0,
+                     tl_color: str = "", mp_color: str = "") -> None:
     _append("completed", file_name,
             original_path=original_path, output_path=output_path,
             strategy=strategy, resolution=resolution,
-            points=points, cost_yuan=cost_yuan)
+            points=points, cost_yuan=cost_yuan,
+            tl_color=tl_color, mp_color=mp_color)
 
 
 def record_reverted(file_name: str) -> None:
@@ -119,6 +121,42 @@ def find_output(file_name: str) -> Optional[str]:
         path = r.get("output_path", "")
         if path and os.path.exists(path):
             return path
+    return None
+
+
+def get_restorable() -> dict[str, str]:
+    """返回 {output_path: original_path} 所有可撤销的已完成记录。"""
+    result = {}
+    for r in _scan():
+        if r.get("action") != "completed":
+            continue
+        orig = r.get("original_path", "")
+        out = r.get("output_path", "")
+        if orig and os.path.exists(orig):
+            result[out] = orig
+    return result
+
+
+def _strip_version(path: str) -> str:
+    """去掉达芬奇可能加的 _v01/_v02 等版本后缀。
+    xxx_去字幕_v01.mp4 → xxx_去字幕.mp4"""
+    import re
+    return re.sub(r'_v\d+(?=\.\w+$)', '', path)
+
+
+def find_original(output_path: str) -> Optional[str]:
+    """根据输出文件路径查找原始路径。精确匹配。"""
+    for r in _scan():
+        if r.get("action") == "completed" and r.get("output_path") == output_path:
+            return r.get("original_path")
+    return None
+
+
+def find_completed_record(output_path: str) -> Optional[dict]:
+    """根据输出文件路径查找完整 completed 记录（含颜色信息）。"""
+    for r in _scan():
+        if r.get("action") == "completed" and r.get("output_path") == output_path:
+            return r
     return None
 
 

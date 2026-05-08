@@ -1,7 +1,23 @@
 #!/bin/bash
-# dev.sh — 改完代码一键验证（本地跑，不用达芬奇菜单）
+# dev.sh — 改完代码一键验证 + 同步 SMB
 # 用法: ./dev.sh
 set -e
+
+# ── -1. 自动更新 launcher 文件名 ──
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VERSION=$(python3 -c "import sys; sys.path.insert(0,'$SCRIPT_DIR'); from config import __version__; print(__version__)")
+LOCAL_DIR="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/本地版"
+COMPANY_DIR="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/公司版"
+for LAUNCHER_DIR in "$COMPANY_DIR"; do
+    if [ -d "$LAUNCHER_DIR" ]; then
+        CURRENT=$(ls "$LAUNCHER_DIR"/AI去字幕_*.py 2>/dev/null | head -1)
+        EXPECTED="$LAUNCHER_DIR/AI去字幕_v$VERSION.py"
+        if [ "$CURRENT" != "$EXPECTED" ] && [ -n "$CURRENT" ]; then
+            mv "$CURRENT" "$EXPECTED"
+            echo "📝 launcher: $(basename "$CURRENT") → $(basename "$EXPECTED")"
+        fi
+    fi
+done
 
 # ── 0. pre-commit 检查 ──
 echo "═══ 0. pre-commit ═══"
