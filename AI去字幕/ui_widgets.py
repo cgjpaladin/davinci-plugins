@@ -25,7 +25,7 @@ fu = bmd.scriptapp("Fusion")
 ui = fu.UIManager
 disp = bmd.UIDispatcher(ui)
 from config import (
-    DEBUG, get_output_dir, get_log_dir, __version__,
+    DEBUG, get_output_dir, get_log_dir, __version__, __channel__, version_string,
 )
 from subtitle_state import init as state_init, is_locked as state_is_locked, acquire_lock, release_lock, get_original_path
 import ledger
@@ -160,7 +160,7 @@ window_layout = [
                 ui.Label({"ID": "warn_lb", "Text": "⚠ 请勿切换至其他项目",
                           "StyleSheet": "color:rgb(255,80,80);font-size:12px;font-weight:bold", "Weight": 0}),
                 ui.Label({"Text": " ", "Weight": 1}),
-                ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | v{__version__}",
+                ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | v{version_string()}",
                           "StyleSheet": "color:rgb(100,100,100);font-size:10px", "Weight": 0}),
             ]),
         ]),
@@ -213,11 +213,11 @@ _main_thread = threading.current_thread()
 import tempfile as _tempfile
 # 本地日志目录：用固定路径便于排查（tempfile.gettempdir() 在 macOS 返回随机路径）
 _DEV_LOG_DIR = "/tmp/ai_subtitle_dev"
-_UI_LOG_FILE = os.path.join(_DEV_LOG_DIR, "ui.log") if __version__.endswith("-dev") else \
+_UI_LOG_FILE = os.path.join(_DEV_LOG_DIR, "ui.log") if __channel__ == "dev" else \
                os.path.join(_tempfile.gettempdir(), "ai_subtitle_ui.log")
 
 # 日志路径：dev 版写本地固定目录，避免混入生产 SMB 目录
-if __version__.endswith("-dev"):
+if __channel__ == "dev":
     _SMB_LOG_DIR = _DEV_LOG_DIR
 else:
     _SMB_LOG_DIR = "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/logs"

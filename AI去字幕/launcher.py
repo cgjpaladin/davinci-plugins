@@ -11,7 +11,7 @@ sys.path.insert(0, _LOCAL)
 _version = "?.?.?"
 try:
     import config
-    _version = config.__version__
+    _version = config.version_string()
 except Exception:
     pass
 

@@ -16,9 +16,9 @@ import argparse
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
-from fusionscript_loader import bmd
-from timecode import SMPTE
+# 本地目录优先（避免 shared/core.py 冲突）
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
 
 from config import (
     DEFAULT_CLAMP_THRESHOLD,
@@ -28,6 +28,8 @@ from config import (
     __version__,
 )
 from core import check_track_structure, check_subtitle_clamping
+from fusionscript_loader import bmd
+from timecode import SMPTE
 
 
 def parse_args():

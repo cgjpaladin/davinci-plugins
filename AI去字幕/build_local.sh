@@ -7,17 +7,19 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # ── 自动更新 launcher 文件名 ──
-VERSION=$(python3 -c "import sys; sys.path.insert(0,'.'); from config import __version__; print(__version__)")
+VERSION=$(python3 -c "import sys; sys.path.insert(0,'.'); from config import version_string; print(version_string())")
 LAUNCHER_DIR="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/本地版"
 
 # dev 版本号检查：本地版和公司版一样 → 该升了
 COMPANY_LAUNCHER=$(ls "$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/公司版"/AI去字幕_*.py 2>/dev/null | head -1)
 if [ -n "$COMPANY_LAUNCHER" ]; then
     COMPANY_VER=$(basename "$COMPANY_LAUNCHER" | sed 's/AI去字幕_v//' | sed 's/\.py$//')
-    if [ "$VERSION" = "$COMPANY_VER" ]; then
-        echo "WARNING: local version ($VERSION) == company version ($COMPANY_VER)"
+    # 比较纯版本号（不含 channel）
+    PURE_VER=$(python3 -c "import sys; sys.path.insert(0,'.'); from config import __version__; print(__version__)")
+    if [ "$PURE_VER" = "$COMPANY_VER" ]; then
+        echo "WARNING: local version ($PURE_VER) == company version ($COMPANY_VER)"
         echo "  New dev cycle? Bump version first, e.g.:"
-        echo "    __version__ = \"1.3.0-dev\""
+        echo "    __version__ = \"1.4.0\""
         echo ""
     fi
 fi

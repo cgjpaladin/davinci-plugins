@@ -23,8 +23,14 @@ import os
 import subprocess
 import time
 
-# 全局版本号 — 所有模块引用这一个变量
-__version__ = "1.8.0-dev"
+# 版本号 — 纯数字，不含后缀
+__version__ = "1.8.0"
+# 发布通道：""=稳定版, "dev"=开发版, 未来可扩展 "alpha"/"beta"/"rc1"
+__channel__ = "dev"
+
+def version_string():
+    """完整版本字符串，如 '1.8.0-dev' 或 '1.8.0'"""
+    return f"{__version__}{'-' + __channel__ if __channel__ else ''}"
 
 # ============================================================
 # .env 加载（先加载的优先：本地 > SMB > 个人备用）

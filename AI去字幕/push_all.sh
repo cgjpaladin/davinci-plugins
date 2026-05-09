@@ -143,21 +143,20 @@ done
 echo ""
 echo "═══ 3. 同步到 SMB ═══"
 
-# 自动去 -dev：全公司的版本号不能带 -dev 后缀
-VERSION_RAW=$(grep '__version__' config.py | head -1 | sed 's/.*"\(.*\)".*/\1/')
-if [[ "$VERSION_RAW" == *-dev ]]; then
-    VERSION_CLEAN="${VERSION_RAW%-dev}"
-    echo "  去 dev: $VERSION_RAW → $VERSION_CLEAN"
-    sed -i '' "s/__version__ = \"$VERSION_RAW\"/__version__ = \"$VERSION_CLEAN\"/" config.py
-    WAS_DEV=1
+# 自动去 channel：同步到 SMB 时不带走私后缀
+CHANNEL=$(python3 -c "import sys; sys.path.insert(0,'.'); from config import __channel__; print(__channel__)")
+if [ -n "$CHANNEL" ]; then
+    echo "  去 channel: $CHANNEL → (空)"
+    sed -i '' 's/^__channel__ = ".*"/__channel__ = ""/' config.py
+    WAS_CHANNEL="$CHANNEL"
 fi
 
 bash sync.sh
 
-# 恢复 -dev 后缀
-if [ "$WAS_DEV" = "1" ]; then
-    sed -i '' "s/__version__ = \"$VERSION_CLEAN\"/__version__ = \"$VERSION_RAW\"/" config.py
-    echo "  恢复 dev: $VERSION_RAW"
+# 恢复 channel
+if [ -n "$WAS_CHANNEL" ]; then
+    sed -i '' "s/^__channel__ = \"\"/__channel__ = \"$WAS_CHANNEL\"/" config.py
+    echo "  恢复 channel: $WAS_CHANNEL"
 fi
 
 # ── 4. 灰度状态 ──

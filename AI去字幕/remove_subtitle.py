@@ -30,7 +30,7 @@ if _RESOLVE_MODULES not in sys.path:
 
 from config import (
     API_TIMEOUT, DEFAULT_MODE, MODE_LABELS,
-    DEBUG, SCAN_ONLY, __version__,
+    DEBUG, SCAN_ONLY, __version__, version_string,
     get_output_dir, get_log_dir, PLUGIN_DIR,
 )
 from adapters import SubtitleTask
@@ -104,7 +104,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
 
     mode = mode or DEFAULT_MODE
     report = {
-        "version": __version__,
+        "version": version_string(),
         "mode": mode,
         "mode_label": MODE_LABELS.get(mode, mode),
         "adapter": "wuhenai",
@@ -140,7 +140,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         _write_report(report, report_json)
         return report
 
-    title(f"AI 去字幕 v{__version__}")
+    title(f"AI 去字幕 v{version_string()}")
     _info(f"Resolve: {report['resolve']}")
     _info(f"项目: {report['project']}")
     _info(f"时间线: {report['timeline']}")
@@ -406,7 +406,7 @@ def main():
 
     # 命令行入口（AI 开发者）
     parser = argparse.ArgumentParser(
-        description=f"AI 去字幕 v{__version__}",
+        description=f"AI 去字幕 v{version_string()}",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="示例:\n  python3 remove_subtitle.py --dry-run --report-json report.json\n"
                "  python3 remove_subtitle.py --mode basic --force"

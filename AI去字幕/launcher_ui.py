@@ -28,7 +28,7 @@ _version = "?.?.?"
 try:
     sys.path.insert(0, _SMB_PLUGIN)
     import config
-    _version = config.__version__
+    _version = config.version_string()
 except Exception:
     pass
 
