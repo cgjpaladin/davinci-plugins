@@ -28,6 +28,7 @@ import os
 import secrets
 import ssl
 import subprocess
+import threading
 import time
 import urllib.request
 import urllib.error
@@ -574,7 +575,7 @@ class WuhenAIV21Adapter(BaseAdapter):
         批量处理：所有片段一起上传、一起提交、一起等、一起下载。
 
         GPU 服务器并行处理，总耗时 ≈ 最慢那个片段 + 上传/下载开销。
-        不需要 Python 多线程——全部是 HTTP I/O，顺序扔上去就行。
+        上传阶段并发 3 线程（网络 I/O 密集），多片段批量可获 2-3x 上传提速。
 
         cancel_check: 可选回调，返回 True 时取消所有排队任务并返回已完成的。
         progress_callback: 可选回调，progress_callback(phase, ratio) 
@@ -587,49 +588,72 @@ class WuhenAIV21Adapter(BaseAdapter):
         n = len(tasks)
         _log(f"[无痕AI 2.1] 批量处理 {n} 个片段")
 
-        # ── Phase 1: 上传所有 → OSS ──
+        # ── Phase 1: 上传所有 → OSS（并发）──
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         records = []  # [{input_key, output_key, video_path, output_path, task_id?, result?}]
+        upload_tasks = []  # [(idx, video_path, input_key)]
+
+        # 1a. 预检 + 计算 key（顺序，很快）
         for i, task in enumerate(tasks):
             if cancel_check and cancel_check():
-                _log(f"[无痕AI 2.1] 上传阶段收到停止，已上传 {i}/{n}，取消剩余")
+                _log(f"[无痕AI 2.1] 上传阶段收到停止，已预检 {i}/{n}，取消剩余")
                 break
             video_path = task.video_path
-            # 大小预检
             try:
                 fsize = os.path.getsize(video_path)
                 if fsize == 0:
-                    records.append({"result": SubtitleResult(success=False, error_message="零字节文件"), "video_path": video_path})
+                    records.append({"idx": i, "result": SubtitleResult(success=False, error_message="零字节文件"), "video_path": video_path})
                     continue
                 if fsize > self._MAX_FILE_SIZE:
-                    records.append({"result": SubtitleResult(success=False, error_message=f"文件过大 ({fsize/1024/1024:.0f}MB > 100MB)"), "video_path": video_path})
+                    records.append({"idx": i, "result": SubtitleResult(success=False, error_message=f"文件过大 ({fsize/1024/1024:.0f}MB > 100MB)"), "video_path": video_path})
                     continue
             except OSError as e:
-                records.append({"result": SubtitleResult(success=False, error_message=f"无法访问: {e}"), "video_path": video_path})
+                records.append({"idx": i, "result": SubtitleResult(success=False, error_message=f"无法访问: {e}"), "video_path": video_path})
                 continue
             filename = os.path.basename(video_path)
             base, ext = os.path.splitext(filename)
             fhash = hashlib.md5(video_path.encode()).hexdigest()[:8]
             input_key = f"input/{fhash}_{i}_{base}{ext}"
             output_key = f"output/{fhash}_{i}_{base}_clean{ext}"
+            upload_tasks.append((i, video_path, input_key, output_key, task))
 
+        # 1b. 并发上传（网络 I/O 密集，线程并发收益大）
+        uploaded = 0
+        _upload_lock = threading.Lock()
+        def _do_upload(idx, video_path, input_key, output_key, task):
+            nonlocal uploaded
             try:
                 self._upload_to_oss(video_path, input_key)
+                with _upload_lock:
+                    records.append({"idx": idx,
+                                    "input_key": input_key, "output_key": output_key,
+                                    "video_path": video_path, "output_path": task.output_path,
+                                    "task_id": None, "result": None, "duration": task.duration})
+                    uploaded += 1
+                    if progress_callback:
+                        progress_callback("upload", uploaded / n * 0.2)
             except Exception as e:
-                _log(f"[无痕AI 2.1] [{i+1}/{n}] 上传失败: {filename} — {e}")
-                records.append({"result": SubtitleResult(success=False, error_message=f"上传失败: {e}"), "video_path": video_path})
-                continue
-            records.append({
-                "input_key": input_key,
-                "output_key": output_key,
-                "video_path": video_path,
-                "output_path": task.output_path,
-                "task_id": None,
-                "result": None,
-                "duration": task.duration,  # 用于进度加权
-            })
-            # 上传进度
-            if progress_callback:
-                progress_callback("upload", (i + 1) / n * 0.2)
+                _log(f"[无痕AI 2.1] 上传失败: {os.path.basename(video_path)} — {e}")
+                with _upload_lock:
+                    records.append({"idx": idx,
+                                    "result": SubtitleResult(success=False, error_message=f"上传失败: {e}"),
+                                    "video_path": video_path})
+
+        if upload_tasks:
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                futures = [pool.submit(_do_upload, *ut) for ut in upload_tasks]
+                for _ in as_completed(futures):
+                    if cancel_check and cancel_check():
+                        _log(f"[无痕AI 2.1] 上传阶段收到停止")
+                        for f in futures:
+                            f.cancel()
+                        break
+
+        # 1c. 按原始顺序重排 records（Phase 2 依赖 records[i] ↔ tasks[i] 对应）
+        records.sort(key=lambda r: r.get("idx", 0))
+        # 去掉 idx 字段（不暴露给下游）
+        for r in records:
+            r.pop("idx", None)
 
         # ── Phase 2: 提交所有 → 获取 task_id ──
         video_dims = {}  # 缓存视频分辨率，避免重复 ffprobe

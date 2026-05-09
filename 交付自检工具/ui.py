@@ -29,7 +29,9 @@ from config import (
     DEFAULT_VIDEO_TRACKS,
     DEFAULT_AUDIO_TRACKS,
 )
-from check_core import check_track_structure, check_subtitle_clamping, check_disabled_items, check_black_frames
+from check_core import (check_track_structure, check_subtitle_clamping, check_disabled_items,
+                          check_black_frames, check_audio_mono, check_timeline_settings,
+                          check_subtitle_glyph, check_subtitle_linebreak, preload_timeline_items)
 
 # ═══════════════════════════════════════════
 # 常量
@@ -37,8 +39,12 @@ from check_core import check_track_structure, check_subtitle_clamping, check_dis
 WIN_ID = "com.myjc.delivery_checker"
 
 # 控件 ID
-CHK_TRACK, CHK_SUBTITLE, CHK_BLACK, CHK_DISABLED = \
-    "chk_track", "chk_subtitle", "chk_black", "chk_disabled"
+CHK_TRACK, CHK_SUB_DURATION, CHK_SUB_LINEBREAK, CHK_SUB_GLYPH = \
+    "chk_track", "chk_sub_dur", "chk_sub_br", "chk_sub_glyph"
+CHK_BLACK, CHK_BORDER, CHK_MONO, CHK_LOUDNESS, CHK_FRAGMENT, CHK_TIMELINE, CHK_COLOR = \
+    "chk_black", "chk_border", "chk_mono", "chk_loudness", "chk_fragment", "chk_timeline", "chk_color"
+CHK_CENSOR_CN, CHK_CENSOR_EN, CHK_CENSOR_AD = "chk_censor_cn", "chk_censor_en", "chk_censor_ad"
+CHK_BLACK_FRAME = CHK_BLACK  # 别名
 LBL_SUB_VAL, LBL_VID_VAL, LBL_AUD_VAL = "lbl_sub", "lbl_vid", "lbl_aud"
 EDIT_SUB, EDIT_VID, EDIT_AUD = "edit_sub", "edit_vid", "edit_aud"
 BTN_EDIT_TRACK = "btn_edit_track"
@@ -55,10 +61,11 @@ HINT_LB = "hint_lb"
 # ── 结果列定义：加/删/挪/开关列只改这里 ──
 #   enabled=False → 列暂时隐藏，不删定义
 COLUMNS = [
-    {"header": "状态", "width": 40,  "key": "icon",  "enabled": True},
-    {"header": "轨道", "width": 50,  "key": "track", "enabled": True},
-    {"header": "位置", "width": 100, "key": "tc",    "enabled": True},
-    {"header": "详情", "width": 480, "key": "msg",   "enabled": True},
+    {"header": "状态", "width": 40,  "key": "icon",   "enabled": True},
+    {"header": "轨道", "width": 50,  "key": "track",  "enabled": True},
+    {"header": "位置", "width": 100, "key": "tc",     "enabled": True},
+    {"header": "详情", "width": 280, "key": "msg",    "enabled": True},
+    {"header": "原因", "width": 200, "key": "reason", "enabled": True},
 ]
 
 # 当前启用的列（enabled=True）
@@ -98,6 +105,8 @@ def _set_row_texts(row, *texts):
 # ═══════════════════════════════════════════
 # 样式
 # ═══════════════════════════════════════════
+_CHECK_ROWS = 6
+_BTN_HEIGHT = min(_CHECK_ROWS * 22 + (_CHECK_ROWS - 1) * 2 + 5 * 16, 120)
 BTN_STYLE = (
     "QPushButton{max-height:28px;background-color:rgb(58,58,58);color:rgb(220,220,220);"
     "border:1px solid rgb(80,80,80);border-radius:4px;padding:4px 12px}"
@@ -135,26 +144,52 @@ BTN_ICON = (
 # ═══════════════════════════════════════════
 
 def _run_track_check(timeline, fps):
-    """轨道结构检查"""
+    """轨道结构"""
     return check_track_structure(timeline, *_track_values)
 
-def _run_clamp_check(timeline, fps):
-    """字幕夹帧检查"""
+def _run_sub_duration_check(timeline, fps):
+    """字幕时长（过短 + 夹帧）"""
     return check_subtitle_clamping(timeline, _clamp_value, fps)
 
-def _run_disabled_check(timeline, fps):
-    """启用/禁用检查"""
+def _run_sub_glyph_check(timeline, fps):
+    """字幕异体字"""
+    return check_subtitle_glyph(timeline, fps)
+
+def _run_sub_linebreak_check(timeline, fps):
+    """字幕换行（CPL + 硬换行）"""
+    return check_subtitle_linebreak(timeline, fps)
+
+def _run_fragment_check(timeline, fps):
+    """片段状态（启用/禁用）"""
     return check_disabled_items(timeline, fps)
 
 def _run_black_frame_check(timeline, fps):
-    """黑帧检测"""
+    """黑帧"""
     return check_black_frames(timeline, fps)
 
+def _run_mono_check(timeline, fps):
+    """声道"""
+    return check_audio_mono(timeline, fps)
+
+def _run_timeline_check(timeline, fps):
+    """时间线设置"""
+    return check_timeline_settings(timeline, fps=fps)
+
 CHECKS = [
-    {"id": "track",            "section": "轨道结构", "chk_id": CHK_TRACK,    "run_fn": _run_track_check},
-    {"id": "subtitle_clamp",   "section": "字幕长度", "chk_id": CHK_SUBTITLE, "run_fn": _run_clamp_check},
-    {"id": "subtitle_disabled","section": "启用/禁用", "chk_id": CHK_DISABLED, "run_fn": _run_disabled_check},
-    {"id": "black_border",     "section": "黑帧检测", "chk_id": CHK_BLACK,    "run_fn": _run_black_frame_check},
+    {"id": "timeline",      "section": "时间线",   "chk_id": CHK_TIMELINE,      "run_fn": _run_timeline_check},
+    {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "run_fn": _run_track_check},
+    {"id": "fragment",      "section": "片段状态", "chk_id": CHK_FRAGMENT,       "run_fn": _run_fragment_check},
+    {"id": "sub_duration",  "section": "时长",     "chk_id": CHK_SUB_DURATION,   "run_fn": _run_sub_duration_check},
+    {"id": "sub_linebreak", "section": "换行",     "chk_id": CHK_SUB_LINEBREAK,  "run_fn": _run_sub_linebreak_check},
+    {"id": "sub_glyph",     "section": "异体字",   "chk_id": CHK_SUB_GLYPH,      "run_fn": _run_sub_glyph_check},
+    {"id": "censor_cn",     "section": "中文违禁词","chk_id": CHK_CENSOR_CN,     "run_fn": None},
+    {"id": "censor_en",     "section": "英文违禁词","chk_id": CHK_CENSOR_EN,     "run_fn": None},
+    {"id": "censor_ad",     "section": "广审违禁词","chk_id": CHK_CENSOR_AD,     "run_fn": None},
+    {"id": "black_frame",   "section": "黑帧",     "chk_id": CHK_BLACK,          "run_fn": _run_black_frame_check},
+    {"id": "black_border",  "section": "黑边",     "chk_id": CHK_BORDER,         "run_fn": None},
+    {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "run_fn": _run_mono_check},
+    {"id": "audio_loudness","section": "音量",     "chk_id": CHK_LOUDNESS,       "run_fn": None},
+    {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "run_fn": None},
 ]
 # 扩展指南：
 #   - 加新检查：往 CHECKS 末尾加一行 dict，写 run_fn
@@ -216,76 +251,107 @@ def _action_log(msg: str):
 # UI 布局
 # ═══════════════════════════════════════════
 _CHECK_ROW_STYLE = "font-size:13px;color:rgb(220,220,220)"
+_SECTION_LABEL = "color:rgb(220,220,220);font-size:14px;font-weight:bold;min-height:18px"
+
+def _sec_label(text):
+    """行内分类标签"""
+    return ui.Label({"Text": text, "StyleSheet": _SECTION_LABEL, "Weight": 0, "MinimumSize": [50, 18]})
+_DISABLED_CB = {"Checked": False, "Enabled": False, "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}
+
+def _cb(id_, text, extra=None):
+    """快捷创建 CheckBox"""
+    cfg = {"ID": id_, "Text": text, "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0, "Checked": True}
+    if extra:
+        cfg.update(extra)
+    return ui.CheckBox(cfg)
+
+def _disabled_cb(id_, text):
+    """创建灰色不可点的 CheckBox，文案加 (待开发)"""
+    return _cb(id_, f"{text} (待开发)", _DISABLED_CB)
 
 window_layout = [
     ui.VGroup({"Spacing": 0}, [
 
         # ── 上半区：检查选项 + 开始按钮 ──
         ui.HGroup({"Spacing": 10, "Weight": 0}, [
-            # 左侧：三个选项 VGroup
-            ui.VGroup({"Spacing": 6, "Weight": 0}, [
+            # 左侧
+            ui.VGroup({"Spacing": 2, "Weight": 0}, [
 
-            # ① 轨道结构
+            # ═══ 工程设置 ═══
             ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                ui.CheckBox({"ID": CHK_TRACK, "Text": "轨道结构", "Checked": True,
-                             "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}),
-                ui.Label({"Text": "字幕轨", "StyleSheet": LABEL_DIM, "Weight": 0}),
+                _sec_label("工程设置"),
+                _cb(CHK_TIMELINE, "时间线"),
+                _cb(CHK_FRAGMENT, "片段状态"),
+                _cb(CHK_TRACK, "轨道结构"),
+                ui.Label({"Text": "字幕", "StyleSheet": LABEL_DIM, "Weight": 0}),
                 ui.Label({"ID": LBL_SUB_VAL, "Text": str(DEFAULT_SUBTITLE_TRACKS),
                           "StyleSheet": LABEL_GRAY, "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_SUB, "Text": str(DEFAULT_SUBTITLE_TRACKS),
-                             "MaximumSize": [24, 22], "Weight": 0}),
-                ui.Label({"Text": "视频轨", "StyleSheet": LABEL_DIM, "Weight": 0}),
+                             "MaximumSize": [20, 20], "Weight": 0}),
+                ui.Label({"Text": "视频", "StyleSheet": LABEL_DIM, "Weight": 0}),
                 ui.Label({"ID": LBL_VID_VAL, "Text": str(DEFAULT_VIDEO_TRACKS),
                           "StyleSheet": LABEL_GRAY, "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_VID, "Text": str(DEFAULT_VIDEO_TRACKS),
-                             "MaximumSize": [24, 22], "Weight": 0}),
-                ui.Label({"Text": "音频轨", "StyleSheet": LABEL_DIM, "Weight": 0}),
+                             "MaximumSize": [20, 20], "Weight": 0}),
+                ui.Label({"Text": "音频", "StyleSheet": LABEL_DIM, "Weight": 0}),
                 ui.Label({"ID": LBL_AUD_VAL, "Text": str(DEFAULT_AUDIO_TRACKS),
                           "StyleSheet": LABEL_GRAY, "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_AUD, "Text": str(DEFAULT_AUDIO_TRACKS),
-                             "MaximumSize": [24, 22], "Weight": 0}),
-                ui.Button({"ID": BTN_EDIT_TRACK, "Text": "✎",
-                           "StyleSheet": BTN_ICON, "Weight": 0}),
-                ui.Button({"ID": BTN_SAVE_TRACK, "Text": "✓",
-                           "StyleSheet": BTN_ICON, "Weight": 0}),
+                             "MaximumSize": [20, 20], "Weight": 0}),
+                ui.Button({"ID": BTN_EDIT_TRACK, "Text": "✎", "StyleSheet": BTN_ICON, "Weight": 0}),
+                ui.Button({"ID": BTN_SAVE_TRACK, "Text": "✓", "StyleSheet": BTN_ICON, "Weight": 0}),
             ]),
 
-            # ② 字幕夹帧
+            # ═══ 字幕 ═══
             ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                ui.CheckBox({"ID": CHK_SUBTITLE, "Text": "字幕长度", "Checked": True,
-                             "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}),
+                _sec_label("字幕"),
+                _cb(CHK_SUB_DURATION, "时长"),
+                _cb(CHK_SUB_LINEBREAK, "换行"),
+                _cb(CHK_SUB_GLYPH, "异体字"),
                 ui.Label({"Text": "阈值", "StyleSheet": LABEL_DIM, "Weight": 0}),
                 ui.Label({"ID": LBL_CLAMP_VAL, "Text": str(DEFAULT_CLAMP_THRESHOLD),
                           "StyleSheet": LABEL_GRAY, "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_CLAMP, "Text": str(DEFAULT_CLAMP_THRESHOLD),
-                             "MaximumSize": [24, 22], "Weight": 0}),
+                             "MaximumSize": [20, 20], "Weight": 0}),
                 ui.Label({"Text": "帧", "StyleSheet": LABEL_DIM, "Weight": 0}),
-                ui.Button({"ID": BTN_EDIT_CLAMP, "Text": "✎",
-                           "StyleSheet": BTN_ICON, "Weight": 0}),
-                ui.Button({"ID": BTN_SAVE_CLAMP, "Text": "✓",
-                           "StyleSheet": BTN_ICON, "Weight": 0}),
+                ui.Button({"ID": BTN_EDIT_CLAMP, "Text": "✎", "StyleSheet": BTN_ICON, "Weight": 0}),
+                ui.Button({"ID": BTN_SAVE_CLAMP, "Text": "✓", "StyleSheet": BTN_ICON, "Weight": 0}),
+            ]),
+            ui.HGroup({"Spacing": 6, "Weight": 0}, [
+                ui.Label({"Text": "    ", "StyleSheet": _SECTION_LABEL, "Weight": 0, "MinimumSize": [50, 18]}),
+                _disabled_cb(CHK_CENSOR_CN, "中文违禁词"),
+                _disabled_cb(CHK_CENSOR_EN, "英文违禁词"),
+                _disabled_cb(CHK_CENSOR_AD, "广审违禁词"),
             ]),
 
-            # ③ 启用/禁用检查
+            # ═══ 视频 ═══
             ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                ui.CheckBox({"ID": CHK_DISABLED, "Text": "启用/禁用", "Checked": True,
-                             "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}),
+                _sec_label("视频"),
+                _cb(CHK_BLACK, "黑帧"),
+                _disabled_cb(CHK_BORDER, "黑边"),
             ]),
 
-            # ④ 黑帧检测
+            # ═══ 音频 ═══
             ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                ui.CheckBox({"ID": CHK_BLACK, "Text": "黑帧检测", "Checked": True,
-                             "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}),
+                _sec_label("音频"),
+                _cb(CHK_MONO, "声道"),
+                _disabled_cb(CHK_LOUDNESS, "音量"),
+            ]),
+
+            # ═══ 色彩 ═══
+            ui.HGroup({"Spacing": 6, "Weight": 0}, [
+                _sec_label("色彩"),
+                _cb(CHK_COLOR, "（待开发）", _DISABLED_CB),
             ]),
 
             ]),  # 结束左侧 VGroup
 
-            ui.HGap({"Weight": 1}),  # 弹簧，把按钮推到最右
+            ui.HGap({"Weight": 1}),
 
-            # 右侧：开始检查按钮，高度匹配三行
+            # 右侧：开始检查按钮
             ui.Button({"ID": BTN_START, "Text": "开始检查",
                        "StyleSheet": BTN_PRIMARY, "Weight": 0,
-                       "MinimumSize": [120, _BTN_HEIGHT]}),
+                       "MinimumSize": [_BTN_HEIGHT, _BTN_HEIGHT]}),
         ]),
 
         # ── 状态标签 ──
@@ -314,7 +380,7 @@ window_layout = [
 dlg = disp.AddWindow({
     "WindowTitle": "交付自检",
     "ID": WIN_ID,
-    "Geometry": [800, 100, 780, 520],
+    "Geometry": [800, 100, 900, 520],
     "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
 }, window_layout)
 
@@ -349,7 +415,7 @@ def _render_sections(sections, tree):
             hdr_title += "  — 全部通过"
         elif sec["summary"]:
             hdr_title += "  —  " + sec["summary"]
-        _set_row_texts(hdr, "▶", "", "", hdr_title)
+        _set_row_texts(hdr, "▶", "", "", hdr_title, "")
         tree.AddTopLevelItem(hdr)
 
         if not sec["all_ok"]:
@@ -361,7 +427,7 @@ def _render_sections(sections, tree):
         # 区域间空行
         if i < len(sections) - 1:
             gap = tree.NewItem()
-            _set_row_texts(gap, "", "", "", "")
+            _set_row_texts(gap, "", "", "", "", "")
             tree.AddTopLevelItem(gap)
 
 
@@ -495,6 +561,7 @@ def _process_result(r, rows_list):
         "tc": r.get("timecode", ""),
         "track": r.get("track", ""),
         "msg": r.get("detail", ""),
+        "reason": r.get("reason", ""),
     })
     _action_log(r.get("detail", ""))
     return True, False
@@ -505,10 +572,11 @@ def _process_result(r, rows_list):
 # ═══════════════════════════════════════════
 
 def _start_check():
-    global _checking
+    global _checking, _start_time
     if _checking:
         return
     _checking = True
+    _start_time = time.time()
     itm[BTN_START].Enabled = False
 
     any_checked = any(
@@ -551,6 +619,9 @@ def _start_check():
         _action_log(f"项目: {project.GetName()}")
         _action_log(f"时间线: {timeline.GetName()}")
         _action_log(f"帧率: {fps} fps")
+
+        # 预加载所有轨道片段（避免每个检查重复 IPC）
+        preload_timeline_items(timeline)
 
         # 清空结果
         tree.Clear()
@@ -603,12 +674,13 @@ def _start_check():
         _render_sections(sections, tree)
 
         # 总结
+        elapsed_ms = int((time.time() - _start_time) * 1000)
         if has_failures:
             _action_log("❌ 检查未通过 — 请修复上述问题")
-            itm[ST_LB].Text += "  |  ❌ 未通过"
+            itm[ST_LB].Text += f"  |  ❌ 未通过  ({elapsed_ms}ms)"
         else:
             _action_log("✅ 所有检查通过")
-            itm[ST_LB].Text += "  |  ✅ 通过"
+            itm[ST_LB].Text += f"  |  ✅ 通过  ({elapsed_ms}ms)"
         itm[HINT_LB].Text = "💡 点击结果行可跳转到对应时间码"
 
     except Exception as e:
