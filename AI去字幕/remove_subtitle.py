@@ -43,7 +43,7 @@ from core import (
 )
 from pipeline_utils import validate_task, calc_cache_savings, estimate_processing_time, format_duration
 from logger import title, step, ok, warn, fail, info
-from interface import PipelineUI, CLIPipelineUI
+from interface import PipelineUI, CLIPipelineUI, DaVinciPipelineUI
 import ops_logger
 
 
@@ -53,6 +53,19 @@ def _setup_ui(ui):
     if ui:
         return ui.log_info, ui.log_ok, ui.log_warn, ui.log_fail, ui.set_progress, ui.set_status
     return info, ok, warn, fail, (lambda r: None), (lambda s: None)
+
+
+def _run_env_checks() -> dict:
+    """环境自检：SMB挂载/API Key/OSS凭证/达芬奇。
+    返回 {"name": bool, ...}，全部通过时所有值为 True。
+    """
+    from config import WUHENAI_V2_API_KEY, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET
+    return {
+        "SMB 挂载": os.path.exists("/Volumes/MYJC"),
+        "API Key (无痕AI 2.1)": bool(WUHENAI_V2_API_KEY),
+        "OSS 凭证 (阿里云)": bool(OSS_ACCESS_KEY_ID and OSS_ACCESS_KEY_SECRET),
+        "达芬奇运行": os.path.exists("/Applications/DaVinci Resolve"),
+    }
 
 
 # ═══════════════════════════════════════════
@@ -72,24 +85,18 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     _pg = ui.set_progress
     _st = ui.set_status
     _notify = ui.notify
+    _info, _ok, _warn, _fail = ui.log_info, ui.log_ok, ui.log_warn, ui.log_fail
 
     oss_tracker.reset()
 
     # ── 0. 环境自检 ──
-    from config import WUHENAI_V2_API_KEY, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET
-
-    checks = [
-        ("SMB 挂载", os.path.exists("/Volumes/MYJC")),
-        ("API Key", bool(WUHENAI_V2_API_KEY)),
-        ("OSS 凭证", bool(OSS_ACCESS_KEY_ID and OSS_ACCESS_KEY_SECRET)),
-        ("达芬奇运行", os.path.exists("/Applications/DaVinci Resolve")),
-    ]
-    for name, ok_flag in checks:
+    checks = _run_env_checks()
+    for name, ok_flag in checks.items():
         if not ok_flag:
-            fail(f"环境自检失败: {name} 不可用")
-    if not all(f for _, f in checks):
+            _fail(f"环境自检失败: {name} 不可用")
+    if not all(checks.values()):
         step("💡 请确保: SMB 已挂载 / .env 已配置 / 达芬奇已启动")
-        report = {"error": "环境自检失败", "checks": {n: f for n, f in checks}}
+        report = {"error": "环境自检失败", "checks": {n: f for n, f in checks.items()}}
         _write_report(report, report_json)
         return report
     step(f"✅ 环境自检通过 (SMB/API/OSS/DVR)")
@@ -107,17 +114,17 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         "started_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
 
-    # ── OSS 预检 ──
+    # ── 前置：OSS 预检 ──
     if not dry_run and not scan_only:
         try:
             probe = create_wuhenai_adapter()
             if not probe.check_oss():
-                fail("无痕AI OSS 不可用，请检查阿里云账号状态")
+                _fail("无痕AI OSS 不可用，请检查阿里云账号状态")
                 report["error"] = "OSS不可用"
                 _write_report(report, report_json)
                 return report
         except Exception as e:
-            fail(f"OSS 预检失败: {e}")
+            _fail(f"OSS 预检失败: {e}")
             report["error"] = str(e)
             _write_report(report, report_json)
             return report
@@ -134,15 +141,15 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         return report
 
     title(f"AI 去字幕 v{__version__}")
-    info(f"Resolve: {report['resolve']}")
-    info(f"项目: {report['project']}")
-    info(f"时间线: {report['timeline']}")
+    _info(f"Resolve: {report['resolve']}")
+    _info(f"项目: {report['project']}")
+    _info(f"时间线: {report['timeline']}")
     _pg(0.10)
 
     # ── 2. 扫描 IO ──
     clips, scan_report = scan_io_clips(timeline, _CLIP_COLOR)
     if clips is None:
-        fail("IO 未设置")
+        _fail("IO 未设置")
         report["error"] = "IO 未设置"
         _write_report(report, report_json)
         return report
@@ -155,9 +162,9 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         "skipped": scan_report.skipped,
     }
 
-    info(f"🎬 IO({io_in}→{io_out}): {scan_report.valid}/{scan_report.total} 符合筛选")
+    _info(f"🎬 IO({io_in}→{io_out}): {scan_report.valid}/{scan_report.total} 符合筛选")
     if not clips:
-        ok("没有需要处理的片段")
+        _ok("没有需要处理的片段")
         _write_report(report, report_json)
         return report
 
@@ -173,8 +180,8 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     output_dir = get_output_dir(project_root)
     report["project_root"] = project_root
     report["output_dir"] = output_dir
-    info(f"项目路径: {report['project_root']}")
-    info(f"输出目录: {output_dir}")
+    _info(f"项目路径: {report['project_root']}")
+    _info(f"输出目录: {output_dir}")
 
     state_init(project_root)
     import ledger; ledger.init(project_root)
@@ -192,11 +199,11 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         step(f"📦 缓存命中 {prepared.cache_hits} 个，剩余 {len(prepared.tasks)} 个需 API")
         savings = calc_cache_savings(clips, prepared.cache_hit_names)
         if savings["secs"] > 0:
-            info(f"  💰 缓存省钱: ¥{savings['yuan']} ({savings['secs']}秒)")
+            _info(f"  💰 缓存省钱: ¥{savings['yuan']} ({savings['secs']}秒)")
             report["cache_saved_secs"] = savings["secs"]
             report["cache_saved_yuan"] = savings["yuan"]
     if not prepared.tasks:
-        ok(f"全部由缓存完成！({prepared.cache_hits}个)")
+        _ok(f"全部由缓存完成！({prepared.cache_hits}个)")
         ops_logger.session_end(prepared.cache_hits, 0, prepared.cache_hits)
         report["completed"] = prepared.cache_hits
         _write_report(report, report_json)
@@ -217,16 +224,16 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
 
     step(f"💰 {report['mode_label']} — {total_est}积分(¥{report['cost']['yuan']}) | 无痕AI")
     if pts > 0:
-        info(f"余额: {pts:.1f} 积分")
+        _info(f"余额: {pts:.1f} 积分")
         if pts < total_est:
-            fail(f"余额不足: {pts:.1f} < {total_est}")
+            _fail(f"余额不足: {pts:.1f} < {total_est}")
             ops_logger.balance_check(pts, total_est, "blocked")
             report["error"] = "余额不足"
             _write_report(report, report_json)
             return report
         ops_logger.balance_check(pts, total_est, "proceed")
     else:
-        warn("余额查询失败，跳过保护")
+        _warn("余额查询失败，跳过保护")
 
     # ── 干跑 / 仅扫描 → 到此为止 ──
     # 时长/文件大小过滤
@@ -234,7 +241,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     for t in prepared.tasks:
         ok_flag, err = validate_task(t)
         if not ok_flag:
-            warn(f"  ⚠ {t.name}: {err}，跳过")
+            _warn(f"  ⚠ {t.name}: {err}，跳过")
             continue
         valid_tasks.append(t)
     prepared.tasks[:] = valid_tasks  # 原地替换
@@ -243,14 +250,13 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         tag = "🔍 仅扫描" if scan_only else "🔍 Dry-run"
         step(f"{tag} — 共 {len(prepared.tasks)} 个片段，未调 API")
         for i, t in enumerate(prepared.tasks, 1):
-            info(f"  {i}. {t.name} ({t.path})")
+            _info(f"  {i}. {t.name} ({t.path})")
         ops_logger.session_end(0, 0, len(prepared.tasks))
         report["dry_run_completed"] = True
         _write_report(report, report_json)
         return report
 
     # ── 6. 处理（串行或批量）──
-    adapter = create_wuhenai_adapter()
     _pg(0.40); _st("AI 处理中...")
     results = []
     stop_file = os.path.join(PLUGIN_DIR, ".stop")
@@ -265,7 +271,7 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
         try:
             pts_now = adapter.get_balance().get("balance", 0)
             if pts_now < total_est:
-                fail(f"余额不足: {pts_now} < 需{total_est}（可能有其他机器正在处理）")
+                _fail(f"余额不足: {pts_now} < 需{total_est}（可能有其他机器正在处理）")
                 return report
         except Exception:
             # 二次余额校验失败不阻塞处理（网络波动），主流程已有首次余额检查
@@ -280,10 +286,10 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
             ops_logger.task_submit(t.name, mode, t.duration, 0)
             ops_logger.task_result(t.name, str(getattr(r, 'task_id', '')), elapsed / len(prepared.tasks), r.success)
             if r and r.success:
-                ok(f"{t.name} | {getattr(r, 'task_id', '')}")
+                _ok(f"{t.name} | {getattr(r, 'task_id', '')}")
             else:
                 msg = getattr(r, 'error_message', '未知错误') if r else '处理失败'
-                fail(f"{t.name}: {msg}")
+                _fail(f"{t.name}: {msg}")
             results.append((t.mp_item, t.name, t.path, r, elapsed / len(prepared.tasks)))
     else:
         step(f"🚀 处理 {len(prepared.tasks)} 个片段 | 串行")
@@ -295,24 +301,24 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
             if _check_stop():
                 for sf in (stop_file, local_stop):
                     if os.path.exists(sf): os.remove(sf)
-                warn(f"⏹ 停止，跳过剩余 {len(prepared.tasks)-idx+1} 个片段")
+                _warn(f"⏹ 停止，跳过剩余 {len(prepared.tasks)-idx+1} 个片段")
                 break
             # 每处理前检查达芬奇是否还活着
             try:
                 if not resolve.GetProjectManager().GetCurrentProject():
-                    fail("达芬奇已断开，停止处理")
+                    _fail("达芬奇已断开，停止处理")
                     break
             except Exception:
-                fail("达芬奇已断开，停止处理")
+                _fail("达芬奇已断开，停止处理")
                 break
 
-            info(f"[{idx}] {t.name} → 上传中...")
+            _info(f"[{idx}] {t.name} → 上传中...")
             result, elapsed = process_single_clip(t, adapter, mode)
             if result.success:
-                ok(f"{t.name} ({elapsed:.0f}s | {getattr(result, 'task_id', '')})")
+                _ok(f"{t.name} ({elapsed:.0f}s | {getattr(result, 'task_id', '')})")
             else:
                 msg = getattr(result, 'error_message', '未知错误')
-                fail(f"{t.name}: {msg}")
+                _fail(f"{t.name}: {msg}")
             results.append((t.mp_item, t.name, t.path, result, elapsed))
 
     # ── 7. 下载 + ReplaceClip ──
@@ -322,19 +328,19 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     success_count, fail_list, output_files = download_and_apply(
         results, output_dir, mode,
         check_stop=lambda: os.path.exists(stop_file) or os.path.exists(local_stop),
-        on_done=lambda ep, subdir, name: info(f"→ {ep}/{subdir}/{name}"),
-        on_fail=lambda name, err: fail(f"{name}: {err}"),
+        on_done=lambda ep, subdir, name: _info(f"→ {ep}/{subdir}/{name}"),
+        on_fail=lambda name, err: _fail(f"{name}: {err}"),
     )
 
     # ── 8. Post-check ──
     step(f"🔍 校验输出")
     pc = post_check(output_files)
     if pc["fail"] == 0 and pc["total"] > 0:
-        ok(f"全部 {pc['total']} 个文件校验通过")
+        _ok(f"全部 {pc['total']} 个文件校验通过")
     elif pc["fail"] > 0:
-        warn(f"{pc['ok']}/{pc['total']} 通过, {pc['fail']} 个异常")
+        _warn(f"{pc['ok']}/{pc['total']} 通过, {pc['fail']} 个异常")
         for p in pc["problems"]:
-            fail(f"  {p['file']}: {', '.join(p['issues'])}")
+            _fail(f"  {p['file']}: {', '.join(p['issues'])}")
 
     report["results"] = {
         "total": len(results), "success": success_count,
@@ -353,22 +359,22 @@ def run_pipeline(mode: str = None, dry_run: bool = False, force: bool = False,
     }
     # Console 输出阶段耗时
     step(f"── 阶段耗时 ──")
-    info(f"  AI处理 (上传+API): {api_secs:.0f}秒")
-    info(f"  下载替换: {dl_secs:.0f}秒")
+    _info(f"  AI处理 (上传+API): {api_secs:.0f}秒")
+    _info(f"  下载替换: {dl_secs:.0f}秒")
     # 超时检测
     expected = max(60, estimate_processing_time(prepared.tasks))
     total_proc = t_done - t_phase_prep
     if total_proc > expected * 2:
-        warn(f"⚠ 处理超时: 实际 {total_proc:.0f}秒 > 预估 {expected:.0f}秒×2，可能网络波动")
+        _warn(f"⚠ 处理超时: 实际 {total_proc:.0f}秒 > 预估 {expected:.0f}秒×2，可能网络波动")
     # OSS 费用统计
     oss_cost = oss_tracker.snapshot()
     report["oss_cost"] = oss_cost
     if oss_cost["traffic_gb"] > 0:
-        info(f"📦 OSS 流量: {oss_cost['traffic_gb']:.2f}GB, 费用: ¥{oss_cost['total_cost']:.2f}")
+        _info(f"📦 OSS 流量: {oss_cost['traffic_gb']:.2f}GB, 费用: ¥{oss_cost['total_cost']:.2f}")
     oss_tracker.reset()
 
-    ok(f"{success_count}/{len(results)} 个片段完成 → {output_dir}")
-    info(f"总耗时 {format_duration(t_done - t_phase_prep)}")
+    _ok(f"{success_count}/{len(results)} 个片段完成 → {output_dir}")
+    _info(f"总耗时 {format_duration(t_done - t_phase_prep)}")
     _pg(1.0); _st("完成")
     _notify("AI 去字幕", f"{success_count}个片段处理完成")
     ops_logger.session_end(success_count, len(results) - success_count, len(results))
@@ -382,9 +388,9 @@ def _write_report(report: dict, path: str):
     try:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
-        info(f"📋 报告已输出: {path}")
+        _info(f"📋 报告已输出: {path}")
     except Exception as e:
-        warn(f"报告写入失败: {e}")
+        _warn(f"报告写入失败: {e}")
 
 
 # ═══════════════════════════════════════════
@@ -424,13 +430,7 @@ def main():
     args = parser.parse_args()
 
     if args.check:
-        from config import WUHENAI_V2_API_KEY, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET
-        checks = {
-            "SMB 挂载": os.path.exists("/Volumes/MYJC"),
-            "API Key (无痕AI 2.1)": bool(WUHENAI_V2_API_KEY),
-            "OSS 凭证 (阿里云)": bool(OSS_ACCESS_KEY_ID and OSS_ACCESS_KEY_SECRET),
-            "达芬奇运行": os.path.exists("/Applications/DaVinci Resolve"),
-        }
+        checks = _run_env_checks()
         title("🔍 环境自检")
         all_ok = True
         for name, ok_flag in checks.items():

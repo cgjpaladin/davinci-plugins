@@ -68,6 +68,12 @@ class WuhenAIV21Adapter(BaseAdapter):
     OSS_REGION = "cn-hangzhou"
     OSS_ENDPOINT_TEMPLATE = "{bucket}.oss-{region}.aliyuncs.com"
 
+    # 常量
+    _TOKEN_REFRESH_MARGIN = 3600    # token 提前刷新秒数（1小时）
+    _PRESIGNED_URL_TTL = 172800     # 预签名 URL 48小时有效期
+    _PRESIGNED_DOWNLOAD_TTL = 3600  # 下载用预签名 URL 1小时有效期（防泄漏）
+    _MAX_FILE_SIZE = 100 * 1024 * 1024  # 上传文件上限 100MB
+
     def __init__(self, config: dict):
         super().__init__("无痕AI 2.1", config)
         self.api_key = config.get("api_key", "")
@@ -78,6 +84,7 @@ class WuhenAIV21Adapter(BaseAdapter):
 
         self._access_token: Optional[str] = None
         self._token_expires: float = 0
+        self._task_map: dict = {}   # task_id → {submit_time, cancel_flag, ...}
 
         # 去字幕参数
         self.default_model = config.get("model", "video_removal_std")
@@ -92,7 +99,9 @@ class WuhenAIV21Adapter(BaseAdapter):
     def _get_video_resolution(self, video_path: str) -> tuple[int, int]:
         """用 ffprobe 获取视频宽高，返回 (width, height)"""
         # 插件子进程可能没有 Homebrew PATH，用完整路径
-        _FFPROBE = "/opt/homebrew/bin/ffprobe"
+        _FFPROBE = "/opt/homebrew/bin/ffprobe"   # Apple Silicon
+        if not os.path.exists(_FFPROBE):
+            _FFPROBE = "/usr/local/bin/ffprobe"   # Intel Mac Homebrew
         if not os.path.exists(_FFPROBE):
             _FFPROBE = "ffprobe"  # fallback 到 PATH
         try:
@@ -104,9 +113,9 @@ class WuhenAIV21Adapter(BaseAdapter):
             )
             w, h = result.stdout.strip().split(",")
             return int(w), int(h)
-        except Exception as e:
+        except (subprocess.SubprocessError, ValueError, OSError) as e:
             _log(f"[无痕AI 2.1] ffprobe 失败({video_path}): {e}，fallback 1920×1080")
-            return 1920, 1080  # fallback
+            return 1920, 1080  # fallback：ffprobe 不可用/文件损坏/权限问题
 
     # ── 通用请求 ──────────────────────────────────────────────
 
@@ -126,7 +135,7 @@ class WuhenAIV21Adapter(BaseAdapter):
         if data.get("code") != 0:
             raise RuntimeError(f"获取 token 失败: {data.get('message')}")
         self._access_token = data["data"]["access_token"]
-        self._token_expires = data["data"]["expired"] - 3600  # 提前1小时刷新
+        self._token_expires = data["data"]["expired"] - self._TOKEN_REFRESH_MARGIN  # 提前1小时刷新
         # token 获取是内部操作，不打扰用户
 
     def _api_post(self, path: str, body: dict) -> dict:
@@ -181,7 +190,9 @@ class WuhenAIV21Adapter(BaseAdapter):
         )
 
     def _oss_sign(self, method: str, object_key: str, headers: dict) -> str:
-        """OSS Signature V1"""
+        """OSS Signature V1 (Authorization header)
+        文档: https://help.aliyun.com/zh/oss/developer-reference/signature-v1-authorization
+        """
         content_type = headers.get("Content-Type", "")
         date = headers.get("Date", "")
         string_to_sign = f"{method}\n\n{content_type}\n{date}\n/{self.bucket}/{object_key}"
@@ -234,9 +245,11 @@ class WuhenAIV21Adapter(BaseAdapter):
         if resp.status not in (200, 204):
             raise RuntimeError(f"OSS DELETE 失败, HTTP {resp.status}")
 
-    def _oss_presigned_url(self, object_key: str, method: str, expires_sec: int = 172800,
+    def _oss_presigned_url(self, object_key: str, method: str, expires_sec: int = None,
                            content_type: str = "") -> str:
         """生成 OSS 预签名 URL，可指定 Content-Type 用于 PUT 签名"""
+        if expires_sec is None:
+            expires_sec = self._PRESIGNED_URL_TTL
         expires = int(time.time()) + expires_sec
         endpoint = self._oss_endpoint()
 
@@ -294,7 +307,7 @@ class WuhenAIV21Adapter(BaseAdapter):
 
     # ── 核心接口 ──────────────────────────────────────────────
 
-    def _compute_detection_params(self, task: SubtitleTask, vid_w: int, vid_h: int) -> tuple:
+    def _compute_detection_params(self, task: SubtitleTask, vid_w: int, vid_h: int) -> tuple[str, Optional[dict]]:
         """
         根据视频方向自动选择处理策略。
 
@@ -362,8 +375,8 @@ class WuhenAIV21Adapter(BaseAdapter):
 
         # Step 2: 生成预签名 URL（48小时有效）
         # upload_url 签名必须包含 Content-Type，与 upload_headers 一致
-        video_url = self._oss_presigned_url(input_key, "GET", 172800)
-        upload_url = self._oss_presigned_url(output_key, "PUT", 172800,
+        video_url = self._oss_presigned_url(input_key, "GET")
+        upload_url = self._oss_presigned_url(output_key, "PUT",
                                              content_type="application/octet-stream")
 
         # Step 3: 构建请求
@@ -396,8 +409,6 @@ class WuhenAIV21Adapter(BaseAdapter):
         _log(f"[无痕AI 2.1] 任务已提交: {os.path.basename(video_path)} → {task_id}")
 
         # 保存映射关系（轮询和下载用）
-        if not hasattr(self, "_task_map"):
-            self._task_map = {}
         self._task_map[task_id] = {
             "input_key": input_key,
             "output_key": output_key,
@@ -421,7 +432,7 @@ class WuhenAIV21Adapter(BaseAdapter):
         """
         start_time = time.time()
         poll_interval = 5
-        task_info = getattr(self, "_task_map", {}).get(task_id, {})
+        task_info = self._task_map.get(task_id, {})
         last_status = None  # 状态变化时才打日志
 
         while True:
@@ -465,7 +476,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                         output = download_path
                     else:
                         download_sec = 0
-                        output = self._oss_presigned_url(output_key, "GET", 3600)
+                        output = self._oss_presigned_url(output_key, "GET", self._PRESIGNED_DOWNLOAD_TTL)
 
                     # 写入操作日志
                     try:
@@ -593,7 +604,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                 if fsize == 0:
                     records.append({"result": SubtitleResult(success=False, error_message="零字节文件"), "video_path": video_path})
                     continue
-                if fsize > 100 * 1024 * 1024:
+                if fsize > self._MAX_FILE_SIZE:
                     records.append({"result": SubtitleResult(success=False, error_message=f"文件过大 ({fsize/1024/1024:.0f}MB > 100MB)"), "video_path": video_path})
                     continue
             except OSError as e:
@@ -634,6 +645,8 @@ class WuhenAIV21Adapter(BaseAdapter):
             if rec.get("result") is not None:
                 continue
             video_path = rec["video_path"]
+            # records[i] 对应 tasks[i]：Phase 1 若提前 break 则 len(records) < n，
+            # 但 Phase 2 遍历 records（i 不超过 len(records)-1），tasks[i] 始终安全。
             task = tasks[i]
 
             # 获取分辨率（优先任务字段 → 缓存 → ffprobe fallback）
@@ -650,8 +663,8 @@ class WuhenAIV21Adapter(BaseAdapter):
             input_key = rec["input_key"]
             output_key = rec["output_key"]
 
-            video_url = self._oss_presigned_url(input_key, "GET", 172800)
-            upload_url = self._oss_presigned_url(output_key, "PUT", 172800,
+            video_url = self._oss_presigned_url(input_key, "GET")
+            upload_url = self._oss_presigned_url(output_key, "PUT",
                                                  content_type="application/octet-stream")
 
             body = {
@@ -752,7 +765,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                                           "duration": rec.get("duration", 0)},
                             )
                         else:
-                            download_url = self._oss_presigned_url(rec["output_key"], "GET", 3600)
+                            download_url = self._oss_presigned_url(rec["output_key"], "GET", self._PRESIGNED_DOWNLOAD_TTL)
                             rec["result"] = SubtitleResult(
                                 success=True,
                                 task_id=rec["task_id"],

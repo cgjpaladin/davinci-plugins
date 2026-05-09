@@ -396,6 +396,12 @@ def _pg(r):
         _pg_last_milestone = 0
     try:
         _st._last_ratio = ratio
+        # 100% 时：先让父容器算出真实宽度，再据此填满进度条
+        if ratio >= 1.0:
+            try: itm["pg_group"].RecalcLayout()
+            except Exception: pass
+            try: itm[PG_BAR].RecalcLayout()
+            except Exception: pass
         # 动态获取容器宽度（GetGeometry 返回 dict {1:x,2:y,3:w,4:h}，不是 list）
         try:
             pg_geo = itm["pg_group"].GetGeometry()
@@ -409,14 +415,6 @@ def _pg(r):
         except Exception:
             #达芬奇 UIManager 控件未完全渲染时 Update 可能失败
             pass
-        # 100% 时强制父容器重算布局（单靠子控件 RecalcLayout 不够，父容器不重算就不生效）
-        if ratio >= 1.0:
-            try: itm["pg_group"].RecalcLayout()
-            except Exception:
-                pass  # 同上：控件未渲染
-            try: itm[PG_BAR].RecalcLayout()
-            except Exception:
-                pass  # 同上：控件未渲染
     except Exception:
         pass
 

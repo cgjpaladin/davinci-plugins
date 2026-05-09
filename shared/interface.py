@@ -98,19 +98,19 @@ class DaVinciPipelineUI(PipelineUI):
 
     def log_info(self, msg: str):
         from ui_widgets import _ui_write
-        _ui_write("info", msg)
+        _ui_write(f"  {msg}")
 
     def log_ok(self, msg: str):
         from ui_widgets import _ui_write
-        _ui_write("ok", msg)
+        _ui_write(f"  ✅ {msg}")
 
     def log_warn(self, msg: str):
         from ui_widgets import _ui_write
-        _ui_write("warn", msg)
+        _ui_write(f"  ⚠ {msg}")
 
     def log_fail(self, msg: str):
         from ui_widgets import _ui_write
-        _ui_write("fail", msg)
+        _ui_write(f"  ❌ {msg}")
 
     def set_progress(self, ratio: float):
         self._pg(ratio)

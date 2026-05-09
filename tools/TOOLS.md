@@ -17,7 +17,7 @@
 | collab_test.py | PostgreSQL 协作模式远程测试框架 |
 | state-audit.py | subtitle_state.json 一致性检查 |
 | undo-verify.py | 撤销链路验证 |
-| pre-commit.sh | pre-commit 检查钩子（dev.sh 调用）|
+| pre-commit.sh | pre-commit 检查钩子（push_all.sh 调用）|
 
 ## 部署/运维
 | 工具 | 用途 |

@@ -198,6 +198,8 @@ def acquire_lock(clip_name: str) -> bool:
     except FileExistsError:
         return False
 
+    return "reclaimed" if reclaimed else True
+
 
 def release_lock(clip_name: str):
     """释放片段的处理锁"""

@@ -1,7 +1,7 @@
 #!/bin/bash
 # pre-commit.sh — 提交前检查（零 pip 依赖，纯 bash + Python 标准库）
 # 用法: bash tools/pre-commit.sh
-# 集成: dev.sh 步骤1 自动调用，或 git pre-commit hook 自动触发
+# 集成: push_all.sh 步骤1 自动调用，或 git pre-commit hook 自动触发
 set -e
 
 GIT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"

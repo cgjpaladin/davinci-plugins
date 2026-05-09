@@ -30,7 +30,9 @@ __version__ = "1.7.0-dev"
 # .env 加载（先加载的优先：本地 > SMB > 个人备用）
 # ============================================================
 def _load_dotenv(path: str):
-    """手动解析 .env 文件（零依赖），加载到 os.environ"""
+    """手动解析 .env 文件（零依赖），加载到 os.environ。
+    限制：不支持引号内等号（如 KEY="val=ue"），当前 .env 中无此类值。
+    """
     if not os.path.isfile(path):
         return
     try:
@@ -55,7 +57,7 @@ _load_dotenv(_local_env)
 if os.path.realpath(_local_env) != os.path.realpath(_smb_env):  # 生产机上是同一个文件，跳过
     _load_dotenv(_smb_env)
 _load_dotenv(os.path.expanduser("~/.subtitle.env"))
-_load_dotenv(os.path.expanduser("~/.watermark.env"))
+_load_dotenv(os.path.expanduser("~/.watermark.env"))  # 旧名兼容，v2.0 后可移除
 
 # ============================================================
 # 调试模式
@@ -130,7 +132,10 @@ DEBUG_SOURCE_DIR = os.path.join(DEBUG_MEDIA_DIR, "01_素材")
 DEBUG_OUTPUT_DIR = os.path.join(DEBUG_MEDIA_DIR, "02_结果")
 
 for _d in (DEBUG_SOURCE_DIR, DEBUG_OUTPUT_DIR):
-    os.makedirs(_d, exist_ok=True)
+    try:
+        os.makedirs(_d, exist_ok=True)
+    except OSError:
+        pass  # SMB 不可用或权限问题，非致命（调试模式路径不阻塞启动）
 
 # ============================================================
 # 项目路径动态识别
@@ -138,6 +143,14 @@ for _d in (DEBUG_SOURCE_DIR, DEBUG_OUTPUT_DIR):
 
 # 手动指定项目根目录（UI 模式下由用户选择，或环境变量覆盖）
 PROJECT_ROOT = _env("PROJECT")
+
+
+def set_project_root(path: str):
+    """显式设置项目根目录（UI 模式下用户选择后调用）。
+    优先级高于 get_project_root() 的自动推导逻辑。
+    """
+    global PROJECT_ROOT
+    PROJECT_ROOT = path
 
 # 项目内固定子路径
 PROJECT_MATERIALS = "04_素材"

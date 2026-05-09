@@ -12,7 +12,7 @@
 ### 🔨 内部
 - #46 load_dynamic 切换：fusionscript_loader.py 替代 import DaVinciResolveScript
 - 骨架抽取：shared/ 目录存放纯逻辑层，产品目录只留 UI + config + adapter
-- dev.sh / dev_local.sh 去重：quick_verify.sh
+- push_all.sh / build_local.sh 去重：quick_verify.sh
 - 铁律 #15-18
 
 ---

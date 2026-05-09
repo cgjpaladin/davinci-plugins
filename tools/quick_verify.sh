@@ -1,6 +1,6 @@
 #!/bin/bash
 # quick_verify.sh — 三步快速验证：pre-commit → 语法编译 → 导入链
-# dev_local.sh 和 dev.sh 共享，避免重复代码
+# build_local.sh 和 push_all.sh 共享，避免重复代码
 set -e
 cd "$(dirname "$0")/../AI去字幕"
 

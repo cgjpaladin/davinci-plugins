@@ -1,6 +1,6 @@
 #!/bin/bash
-# dev.sh — 改完代码一键验证 + 同步 SMB
-# 用法: ./dev.sh
+# push_all.sh — 改完代码一键验证 + 同步 SMB
+# 用法: ./push_all.sh
 set -e
 
 # ── -1. 自动更新 launcher 文件名 ──
@@ -19,7 +19,7 @@ for LAUNCHER_DIR in "$COMPANY_DIR"; do
     fi
 done
 
-# ── 0. 快速验证（pre-commit + 语法 + 导入链，与 dev_local.sh 共享）──
+# ── 0. 快速验证（pre-commit + 语法 + 导入链，与 build_local.sh 共享）──
 bash ../tools/quick_verify.sh
 
 SMB="/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕"
@@ -136,7 +136,7 @@ for f in "${ALL_PY[@]}"; do
     fi
 done
 [ $DIRTY -eq 0 ] && echo "  ✅ SMB 无脏数据（本地 ≥ SMB）"
-[ $DIRTY -ne 0 ] && echo "  💡 如果 SMB 上有手工修改，先 cp 到本地再跑 dev.sh"
+[ $DIRTY -ne 0 ] && echo "  💡 如果 SMB 上有手工修改，先 cp 到本地再跑 push_all.sh"
 
 # ── 3. 同步到 SMB ──
 echo ""
@@ -222,4 +222,4 @@ if tl:
     print(f'  IO内橙色片段: {orange} 个')
 " 2>&1
 echo ""
-echo "✅ dev.sh 完成"
+echo "✅ push_all.sh 完成"

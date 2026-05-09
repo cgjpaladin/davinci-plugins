@@ -19,7 +19,13 @@ SSH_KEY="/Users/bryan/.ssh/id_ed25519_nopass"
 # 路径
 SCRIPTS_DIR="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
 COMPANY_DIR="$SCRIPTS_DIR/公司版"
-LAUNCHER_SRC="$COMPANY_DIR/AI去字幕_v1.5.0.py"
+# 自动发现公司版 launcher（避免硬编码版本号）
+LAUNCHER_SRC=$(ls "$COMPANY_DIR"/AI去字幕_v*.py 2>/dev/null | head -1)
+if [ -z "$LAUNCHER_SRC" ]; then
+    echo "❌ 未找到公司版 launcher（$COMPANY_DIR/AI去字幕_v*.py）"
+    echo "   请先跑 push_all.sh 生成公司版 launcher"
+    exit 1
+fi
 LAUNCHER_DST="$(basename "$LAUNCHER_SRC")"
 MAP_FILE="/Users/bryan/WorkBuddy/达芬奇插件工坊/AI去字幕/machine_map.json"
 

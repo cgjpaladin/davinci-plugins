@@ -1,6 +1,6 @@
 #!/bin/bash
-# dev_local.sh — 本地验证，不同步 SMB
-# 用法: ./dev_local.sh
+# build_local.sh — 本地验证，不同步 SMB
+# 用法: ./build_local.sh
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -32,10 +32,10 @@ fi
 
 echo "═══ 本地验证模式 — 仅语法+导入链，不同步 SMB ═══"
 
-# 三步快速验证（与 dev.sh 共享）
+# 三步快速验证（与 push_all.sh 共享）
 bash ../tools/quick_verify.sh
 
 echo ""
 echo "════════════════════"
 echo "✅ 本地验证完成（未同步 SMB）"
-echo "   确认没问题后运行 ./dev.sh 推送到全公司"
+echo "   确认没问题后运行 ./push_all.sh 推送到全公司"

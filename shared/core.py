@@ -76,9 +76,9 @@ class TaskRecord(NamedTuple):
 
 class PreparedTasks(NamedTuple):
     """prepare_tasks 完整结果"""
-    tasks: list             # [TaskRecord, ...]
-    cache_hits: int         # 由缓存完成的片段数
-    cache_hit_names: list   # 缓存命中的片段名
+    tasks: list[TaskRecord]   # 待处理任务列表
+    cache_hits: int           # 由缓存完成的片段数
+    cache_hit_names: list     # 缓存命中的片段名
 
 
 
@@ -137,6 +137,9 @@ def build_output_path(file_name: str, output_dir: str, mode: str = "") -> tuple:
     返回 (full_path, ep, subdir, clean_name)
 
     目录结构: {output_dir}/{EP}/{base}_去字幕.mp4
+
+    mode 参数预留：未来可能根据处理模式（如 all_area vs sel_area）选择不同输出子目录。
+    当前所有模式共用一个输出路径，mode 参数由调用方传入但函数未消费。
     """
     base_name = re.sub(r'_去字幕.*$', '', os.path.splitext(file_name)[0])
     subdir = ""
@@ -154,13 +157,16 @@ def build_output_path(file_name: str, output_dir: str, mode: str = "") -> tuple:
 # 余额查询
 # ═══════════════════════════════════════════
 
-def query_balance(adapter_config: Optional[dict] = None) -> float:
+def query_balance(adapter_config: Optional[dict] = None, provider: str = "") -> float:
     """查询无痕AI 2.1 余额（默认），返回可用点数。异常返回 0。
 
-    如需查鬼手余额，传入 adapter_config=ADAPTER_CONFIGS['ghostcut']。
+    provider='ghostcut' 时走鬼手，否则走无痕AI。
+    也兼容旧调用方式：传入 adapter_config=ADAPTER_CONFIGS['ghostcut'] 自动识别。
     """
     try:
-        if adapter_config and adapter_config.get("app_key"):
+        is_ghostcut = (provider == "ghostcut" or
+                       (adapter_config and adapter_config.get("app_key")))
+        if is_ghostcut:
             # 鬼手（备用适配器）
             from adapters.ghostcut import GhostCutAdapter
             adapter = GhostCutAdapter(adapter_config)
