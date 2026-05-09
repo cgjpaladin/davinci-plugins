@@ -122,12 +122,8 @@ def start_process(*_):
     itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
 
     # 处理完成通知
-    try:
-        subprocess.run(
-            ["osascript", "-e", f'display notification "AI 去字幕处理完成" with title "达芬奇插件工坊"'],
-            timeout=5, capture_output=True)
-    except Exception:
-        pass
+    from macos_utils import notify
+    notify("达芬奇插件工坊", "AI 去字幕处理完成")
 
 # ═══════════════════════════════════════════
 # 事件绑定（必须在所有函数定义之后）

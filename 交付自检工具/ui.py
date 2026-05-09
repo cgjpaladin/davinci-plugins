@@ -5,8 +5,8 @@
 绕过达芬奇内嵌 Python，用系统 Python 3.13 运行。
 使用 fusionscript_loader 连接 Resolve。
 """
-import json
 import os
+import re
 import socket
 import sys
 import time
@@ -30,7 +30,7 @@ from config import (
     DEFAULT_VIDEO_TRACKS,
     DEFAULT_AUDIO_TRACKS,
 )
-from check_core import check_track_structure, check_subtitle_clamping, check_disabled_subtitles
+from check_core import check_track_structure, check_subtitle_clamping, check_disabled_items, check_weather
 
 # ═══════════════════════════════════════════
 # 常量
@@ -38,7 +38,8 @@ from check_core import check_track_structure, check_subtitle_clamping, check_dis
 WIN_ID = "com.myjc.delivery_checker"
 
 # 控件 ID
-CHK_TRACK, CHK_SUBTITLE, CHK_BLACK = "chk_track", "chk_subtitle", "chk_black"
+CHK_TRACK, CHK_SUBTITLE, CHK_BLACK, CHK_WEATHER, CHK_DISABLED = \
+    "chk_track", "chk_subtitle", "chk_black", "chk_weather", "chk_disabled"
 LBL_SUB_VAL, LBL_VID_VAL, LBL_AUD_VAL = "lbl_sub", "lbl_vid", "lbl_aud"
 EDIT_SUB, EDIT_VID, EDIT_AUD = "edit_sub", "edit_vid", "edit_aud"
 BTN_EDIT_TRACK = "btn_edit_track"
@@ -49,8 +50,8 @@ BTN_EDIT_CLAMP = "btn_edit_clamp"
 BTN_SAVE_CLAMP = "btn_save_clamp"
 BTN_START = "btn_start"
 TREE_RESULT = "tree_result"
-LOG_TE = "log_te"
 ST_LB = "st_lb"
+HINT_LB = "hint_lb"
 
 # ═══════════════════════════════════════════
 # 样式
@@ -88,6 +89,39 @@ BTN_ICON = (
 )
 
 # ═══════════════════════════════════════════
+# 检查注册表（加新检查 = 这里加一行；换顺序 = 挪位置）
+# ═══════════════════════════════════════════
+
+def _run_track_check(timeline, fps):
+    """轨道结构检查"""
+    return check_track_structure(timeline, *_track_values)
+
+def _run_clamp_check(timeline, fps):
+    """字幕夹帧检查"""
+    return check_subtitle_clamping(timeline, _clamp_value, fps)
+
+def _run_disabled_check(timeline, fps):
+    """启用/禁用检查"""
+    return check_disabled_items(timeline, fps)
+
+def _run_weather_check(timeline, fps):
+    """天气检查（验证用）"""
+    return check_weather(timeline, fps)
+
+CHECKS = [
+    {"id": "track",            "section": "轨道结构", "chk_id": CHK_TRACK,    "run_fn": _run_track_check,    "has_summary": False},
+    {"id": "subtitle_clamp",   "section": "字幕夹帧", "chk_id": CHK_SUBTITLE, "run_fn": _run_clamp_check,    "has_summary": True},
+    {"id": "subtitle_disabled","section": "启用/禁用", "chk_id": CHK_DISABLED, "run_fn": _run_disabled_check,  "has_summary": True},
+    {"id": "black_border",     "section": "黑边检测", "chk_id": CHK_BLACK,    "run_fn": None,                "has_summary": False},
+    {"id": "weather",          "section": "天气检查", "chk_id": CHK_WEATHER,  "run_fn": None,                "has_summary": True},
+]
+# 扩展指南：
+#   - 加新检查：往 CHECKS 末尾加一行 dict，写 run_fn
+#   - 换位置：移动 list 中 dict 的位置
+#   - 暂时关闭：run_fn 设为 None
+#   - 如果新检查需要专属 CheckBox，在控件 ID 区和 UI 布局区加对应行
+
+# ═══════════════════════════════════════════
 # 全局状态
 # ═══════════════════════════════════════════
 _track_values = [DEFAULT_SUBTITLE_TRACKS, DEFAULT_VIDEO_TRACKS, DEFAULT_AUDIO_TRACKS]
@@ -115,8 +149,8 @@ def _ts():
     return time.strftime("%m-%d %H:%M:%S")
 
 
-def _action_log(msg: str, to_ui: bool = True):
-    """记录操作日志：SMB 文件（始终）+ UI TextEdit（可选）"""
+def _action_log(msg: str):
+    """记录操作日志：SMB + 本地文件"""
     ts = _ts()
     line = f"[{ts}] {msg}"
 
@@ -136,21 +170,6 @@ def _action_log(msg: str, to_ui: bool = True):
     except Exception:
         pass
 
-    # UI
-    if to_ui:
-        _ui_log(line)
-
-
-def _ui_log(msg: str):
-    """追加到 UI 日志区（TextEdit）"""
-    try:
-        te = itm[LOG_TE]
-        te.Append(msg + "\n")
-        te.MoveCursor("End", "MoveAnchor")
-        te.EnsureCursorVisible()
-    except Exception:
-        pass
-
 
 # ═══════════════════════════════════════════
 # UI 布局
@@ -160,28 +179,30 @@ _CHECK_ROW_STYLE = "font-size:13px;color:rgb(220,220,220)"
 window_layout = [
     ui.VGroup({"Spacing": 0}, [
 
-        # ── 上半区：检查选项 ──
-        ui.VGroup({"Spacing": 6, "Weight": 0}, [
+        # ── 上半区：检查选项 + 开始按钮 ──
+        ui.HGroup({"Spacing": 10, "Weight": 0}, [
+            # 左侧：三个选项 VGroup
+            ui.VGroup({"Spacing": 6, "Weight": 0}, [
 
             # ① 轨道结构
             ui.HGroup({"Spacing": 6, "Weight": 0}, [
                 ui.CheckBox({"ID": CHK_TRACK, "Text": "轨道结构", "Checked": True,
                              "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}),
-                ui.Label({"Text": "字幕", "StyleSheet": LABEL_DIM, "Weight": 0}),
+                ui.Label({"Text": "字幕轨", "StyleSheet": LABEL_DIM, "Weight": 0}),
                 ui.Label({"ID": LBL_SUB_VAL, "Text": str(DEFAULT_SUBTITLE_TRACKS),
                           "StyleSheet": LABEL_GRAY, "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_SUB, "Text": str(DEFAULT_SUBTITLE_TRACKS),
-                             "MaximumSize": [30, 22], "Weight": 0}),
-                ui.Label({"Text": "视频", "StyleSheet": LABEL_DIM, "Weight": 0}),
+                             "MaximumSize": [24, 22], "Weight": 0}),
+                ui.Label({"Text": "视频轨", "StyleSheet": LABEL_DIM, "Weight": 0}),
                 ui.Label({"ID": LBL_VID_VAL, "Text": str(DEFAULT_VIDEO_TRACKS),
                           "StyleSheet": LABEL_GRAY, "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_VID, "Text": str(DEFAULT_VIDEO_TRACKS),
-                             "MaximumSize": [30, 22], "Weight": 0}),
-                ui.Label({"Text": "音频", "StyleSheet": LABEL_DIM, "Weight": 0}),
+                             "MaximumSize": [24, 22], "Weight": 0}),
+                ui.Label({"Text": "音频轨", "StyleSheet": LABEL_DIM, "Weight": 0}),
                 ui.Label({"ID": LBL_AUD_VAL, "Text": str(DEFAULT_AUDIO_TRACKS),
                           "StyleSheet": LABEL_GRAY, "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_AUD, "Text": str(DEFAULT_AUDIO_TRACKS),
-                             "MaximumSize": [30, 22], "Weight": 0}),
+                             "MaximumSize": [24, 22], "Weight": 0}),
                 ui.Button({"ID": BTN_EDIT_TRACK, "Text": "✎",
                            "StyleSheet": BTN_ICON, "Weight": 0}),
                 ui.Button({"ID": BTN_SAVE_TRACK, "Text": "✓",
@@ -196,7 +217,7 @@ window_layout = [
                 ui.Label({"ID": LBL_CLAMP_VAL, "Text": str(DEFAULT_CLAMP_THRESHOLD),
                           "StyleSheet": LABEL_GRAY, "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_CLAMP, "Text": str(DEFAULT_CLAMP_THRESHOLD),
-                             "MaximumSize": [30, 22], "Weight": 0}),
+                             "MaximumSize": [24, 22], "Weight": 0}),
                 ui.Label({"Text": "帧", "StyleSheet": LABEL_DIM, "Weight": 0}),
                 ui.Button({"ID": BTN_EDIT_CLAMP, "Text": "✎",
                            "StyleSheet": BTN_ICON, "Weight": 0}),
@@ -204,20 +225,33 @@ window_layout = [
                            "StyleSheet": BTN_ICON, "Weight": 0}),
             ]),
 
-            # ③ 黑边（置灰）
+            # ③ 启用/禁用检查
+            ui.HGroup({"Spacing": 6, "Weight": 0}, [
+                ui.CheckBox({"ID": CHK_DISABLED, "Text": "启用/禁用检查", "Checked": True,
+                             "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}),
+            ]),
+
+            # ④ 黑边（置灰）
             ui.HGroup({"Spacing": 6, "Weight": 0}, [
                 ui.CheckBox({"ID": CHK_BLACK, "Text": "黑边检测 （开发中...）",
                              "Checked": False, "Enabled": False,
                              "StyleSheet": "font-size:13px;color:rgb(100,100,100)", "Weight": 0}),
             ]),
 
-            # 开始按钮
-            ui.HGroup({"Spacing": 8, "Weight": 0}, [
-                ui.HGap({"Weight": 1}),
-                ui.Button({"ID": BTN_START, "Text": "开始检查",
-                           "StyleSheet": BTN_PRIMARY, "Weight": 0, "MinimumSize": [120, 32]}),
-                ui.HGap({"Weight": 1}),
+            # ⑤ 天气检查（扩展参考案例）
+            ui.HGroup({"Spacing": 6, "Weight": 0}, [
+                ui.CheckBox({"ID": CHK_WEATHER, "Text": "天气检查", "Checked": False,
+                             "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}),
             ]),
+
+            ]),  # 结束左侧 VGroup
+
+            ui.HGap({"Weight": 1}),  # 弹簧，把按钮推到最右
+
+            # 右侧：开始检查按钮，高度匹配三行
+            ui.Button({"ID": BTN_START, "Text": "开始检查",
+                       "StyleSheet": BTN_PRIMARY, "Weight": 0,
+                       "MinimumSize": [120, 134]}),
         ]),
 
         # ── 状态标签 ──
@@ -226,21 +260,17 @@ window_layout = [
                   "Weight": 0}),
 
         # ── 结果区：Tree（可点击跳转）──
-        ui.Tree({"ID": TREE_RESULT, "Weight": 0.4,
+        ui.Tree({"ID": TREE_RESULT, "Weight": 1.0,
                  "Events": {"ItemClicked": True, "ItemDoubleClicked": True}}),
-
-        # ── 日志区：TextEdit ──
-        ui.TextEdit({"ID": LOG_TE, "Text": "",
-                     "StyleSheet": "color:rgb(200,200,200);background-color:rgb(30,30,30);"
-                                   "border:1px solid rgb(50,50,50);border-radius:4px;"
-                                   "padding:6px;min-height:80px",
-                     "ReadOnly": True, "Weight": 0.6}),
 
         # ── 底栏 ──
         ui.VGroup({"Spacing": 2, "Weight": 0}, [
             ui.HGroup({"Spacing": 8}, [
+                ui.Label({"ID": HINT_LB, "Text": "请点击「开始检查」",
+                          "StyleSheet": "color:rgb(130,130,130);font-size:10px", "Weight": 0,
+                          "MinimumSize": [260, 16]}),
                 ui.Label({"Text": " ", "Weight": 1}),
-                ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | 交付自检 v{__version__}",
+                ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | v{__version__}",
                           "StyleSheet": "color:rgb(100,100,100);font-size:10px", "Weight": 0}),
             ]),
         ]),
@@ -248,7 +278,7 @@ window_layout = [
 ]
 
 dlg = disp.AddWindow({
-    "WindowTitle": f"交付自检 v{__version__}",
+    "WindowTitle": "交付自检",
     "ID": WIN_ID,
     "Geometry": [800, 100, 780, 520],
     "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
@@ -277,6 +307,41 @@ tree.SetHeaderItem(tree_header)
 tree.ColumnWidth[0] = 50
 tree.ColumnWidth[1] = 120
 tree.ColumnWidth[2] = 500
+
+# ═══════════════════════════════════════════
+# Tree 渲染
+# ═══════════════════════════════════════════
+
+def _render_sections(sections, tree):
+    """将检查结果渲染到结果 Tree"""
+    for i, sec in enumerate(sections):
+        hdr = tree.NewItem()
+        hdr.Text[0] = "▶"
+        hdr.Text[1] = ""
+        if sec["all_ok"]:
+            hdr.Text[2] = sec["title"] + "  — 全部通过"
+        elif sec["summary"]:
+            hdr.Text[2] = sec["title"] + "  —  " + sec["summary"]
+        else:
+            hdr.Text[2] = sec["title"]
+        tree.AddTopLevelItem(hdr)
+
+        if not sec["all_ok"]:
+            for row_data in sec["rows"]:
+                row = tree.NewItem()
+                row.Text[0] = row_data["icon"]
+                row.Text[1] = row_data["tc"]
+                row.Text[2] = row_data["msg"]
+                tree.AddTopLevelItem(row)
+
+        # 区域间空行
+        if i < len(sections) - 1:
+            gap = tree.NewItem()
+            gap.Text[0] = ""
+            gap.Text[1] = ""
+            gap.Text[2] = ""
+            tree.AddTopLevelItem(gap)
+
 
 # ═══════════════════════════════════════════
 # 轨道编辑：✎ 进入编辑 / ✓ 保存
@@ -394,20 +459,6 @@ def _save_clamp_edit():
 
 
 # ═══════════════════════════════════════════
-# CheckBox 事件
-# ═══════════════════════════════════════════
-
-def _on_chk_track(ev):
-    checked = itm[CHK_TRACK].Checked
-    _action_log(f"{'☑' if checked else '☐'} 轨道结构 {'勾选' if checked else '取消'}")
-
-
-def _on_chk_subtitle(ev):
-    checked = itm[CHK_SUBTITLE].Checked
-    _action_log(f"{'☑' if checked else '☐'} 字幕夹帧 {'勾选' if checked else '取消'}")
-
-
-# ═══════════════════════════════════════════
 # 开始检查
 # ═══════════════════════════════════════════
 
@@ -418,16 +469,17 @@ def _start_check():
     _checking = True
     itm[BTN_START].Enabled = False
 
-    do_track = itm[CHK_TRACK].Checked
-    do_subtitle = itm[CHK_SUBTITLE].Checked
-    if not do_track and not do_subtitle:
+    any_checked = any(
+        itm[c["chk_id"]].Checked for c in CHECKS if c.get("run_fn")
+    )
+    if not any_checked:
         _action_log("⚠ 未选择任何检查项")
         _checking = False
         itm[BTN_START].Enabled = True
         return
 
-    _action_log(f"▶ 开始检查 (轨道={do_track}, 字幕={do_subtitle}, "
-                f"轨道模板={_track_values}, 夹帧阈值={_clamp_value})")
+    _action_log(f"▶ 开始检查 (轨道模板={_track_values}, 夹帧阈值={_clamp_value})")
+    itm[HINT_LB].Text = "检查中..."
 
     try:
         resolve = bmd.scriptapp("Resolve")
@@ -470,60 +522,66 @@ def _start_check():
         tree.ColumnWidth[2] = 500
 
         has_failures = False
+        pass_count = 0
+        fail_count = 0
+        sections = []  # [{"title": "...", "rows": [row_data, ...]}]
 
-        # ① 轨道结构
-        if do_track:
-            _action_log("── 轨道结构检查 ──")
-            results = check_track_structure(timeline, *_track_values)
-            for r in results:
-                row = tree.NewItem()
-                row.Text[0] = "✅" if r["status"] == "pass" else "❌"
-                row.Text[1] = ""
-                row.Text[2] = r["message"]
-                tree.AddTopLevelItem(row)
-                _action_log(r["message"].replace("✅ ", "").replace("❌ ", ""), to_ui=False)
-                if r["status"] == "fail":
-                    has_failures = True
+        def _add_result(r, rows_list):
+            nonlocal has_failures, pass_count, fail_count
+            tc = r.get("timecode", r.get("timecode_prev", ""))
+            if r["status"] == "pass":
+                pass_count += 1
+                return
+            elif r["status"] == "fail":
+                fail_count += 1
+                has_failures = True
+                icon = "❌"
+            else:
+                fail_count += 1
+                icon = "⚠"
 
-        # ② 字幕夹帧
-        if do_subtitle:
-            _action_log("── 字幕夹帧检查 ──")
-            results = check_subtitle_clamping(timeline, _clamp_value, fps)
-            for r in results:
-                row = tree.NewItem()
+            # 详情列去重：先剥 ❌/⚠，再只剥时码，保留轨道前缀（S1/V1/A5）
+            msg = r["message"].replace("✅ ", "", 1).replace("❌ ", "", 1).replace("⚠ ", "", 1)
+            msg = re.sub(r'\b\d{2}:\d{2}:\d{2}:\d{2}(→\d{2}:\d{2}:\d{2}:\d{2})?\s*', '', msg)
+            rows_list.append({"icon": icon, "tc": tc, "msg": msg})
+            _action_log(msg)
+
+        # 按注册表顺序执行检查
+        for check in CHECKS:
+            if not check.get("run_fn"):
+                continue
+            if not itm[check["chk_id"]].Checked:
+                continue
+
+            _action_log(f"── {check['section']}检查 ──")
+            all_results = list(check["run_fn"](timeline, fps))
+            section_rows = []
+            section_pass = 0
+            summary_text = ""
+
+            # 第一条是汇总信息，提取到标题里
+            if all_results and check.get("has_summary"):
+                summary_text = all_results[0]["message"].replace("✅ ", "").replace("❌ ", "").replace("⚠ ", "")
+                rest = all_results[1:]
+            else:
+                summary_text = ""
+                rest = all_results
+
+            for r in rest:
                 if r["status"] == "pass":
-                    row.Text[0] = "✅"
-                elif r["status"] == "fail":
-                    row.Text[0] = "❌"
-                    has_failures = True
-                else:
-                    row.Text[0] = "⚠"
+                    section_pass += 1
+                _add_result(r, section_rows)
 
-                tc = r.get("timecode", r.get("timecode_prev", ""))
-                row.Text[1] = tc
-                row.Text[2] = r["message"]
+            all_ok = not section_rows and section_pass > 0
+            sections.append({
+                "title": check["section"],
+                "summary": summary_text,
+                "rows": section_rows,
+                "all_ok": all_ok,
+            })
 
-                tree.AddTopLevelItem(row)
-                _action_log(r["message"].replace("✅ ", "").replace("❌ ", "").replace("⚠ ", ""), to_ui=False)
-
-            # 禁用字幕检查
-            results_disabled = check_disabled_subtitles(timeline, fps)
-            for r in results_disabled:
-                row = tree.NewItem()
-                if r["status"] == "pass":
-                    row.Text[0] = "✅"
-                elif r["status"] == "fail":
-                    row.Text[0] = "❌"
-                    has_failures = True
-                else:
-                    row.Text[0] = "⚠"
-
-                tc = r.get("timecode", "")
-                row.Text[1] = tc
-                row.Text[2] = r["message"]
-
-                tree.AddTopLevelItem(row)
-                _action_log(r["message"].replace("✅ ", "").replace("❌ ", "").replace("⚠ ", ""), to_ui=False)
+        # 按区域展示
+        _render_sections(sections, tree)
 
         # 总结
         if has_failures:
@@ -532,6 +590,7 @@ def _start_check():
         else:
             _action_log("✅ 所有检查通过")
             itm[ST_LB].Text += "  |  ✅ 通过"
+        itm[HINT_LB].Text = "💡 点击结果行可跳转到对应时间码"
 
     except Exception as e:
         _action_log(f"❌ 检查崩溃: {e}")
@@ -548,12 +607,12 @@ def _start_check():
 def _on_result_click(ev):
     """Tree 行点击 → 跳到对应时间码"""
     try:
-        # 尝试从事件中获取被点击的 Item
+        # ev 里可能有 Item 键，CurrentItem 是方法要加 ()
         item = ev.get("Item")
         if item is None:
-            item = tree.CurrentItem
+            item = tree.CurrentItem()
         if item is None:
-            _action_log(f"⚠ 跳转: 取不到 Item (ev keys: {list(ev.keys()) if hasattr(ev, 'keys') else type(ev)})")
+            _action_log(f"⚠ 跳转: 取不到 Item, ev={type(ev)} keys={list(ev.keys()) if hasattr(ev,'keys') else '?'}")
             return
         tc = item.Text[1]
         if not tc:
@@ -608,6 +667,7 @@ def _init_connection():
         _action_log(f"时间线: {timeline.GetName()}  |  {fps} fps")
         itm[ST_LB].Text = f"就绪 — {project.GetName()} / {timeline.GetName()}  |  {fps} fps"
         itm[BTN_START].Enabled = True
+        itm[HINT_LB].Text = "请点击「开始检查」"
 
     except Exception as e:
         _action_log(f"❌ 初始化失败: {e}")
@@ -626,8 +686,17 @@ def _on_close(ev):
 # 事件绑定
 # ═══════════════════════════════════════════
 
-dlg.On[CHK_TRACK].Clicked = _on_chk_track
-dlg.On[CHK_SUBTITLE].Clicked = _on_chk_subtitle
+# CheckBox 事件 — 从 CHECKS 自动生成
+for _c in CHECKS:
+    _cid = _c["chk_id"]
+    if _cid is None:
+        continue
+    _section = _c["section"]
+    dlg.On[_cid].Clicked = (
+        lambda ev, cid=_cid, sec=_section: _action_log(
+            f"{'☑' if itm[cid].Checked else '☐'} {sec} {'勾选' if itm[cid].Checked else '取消'}"
+        )
+    )
 dlg.On[BTN_EDIT_TRACK].Clicked = lambda ev: _enter_track_edit()
 dlg.On[BTN_SAVE_TRACK].Clicked = lambda ev: _save_track_edit()
 dlg.On[BTN_EDIT_CLAMP].Clicked = lambda ev: _enter_clamp_edit()

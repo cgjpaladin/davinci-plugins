@@ -172,7 +172,7 @@ def check_subtitle_clamping(timeline, threshold_frames=3, fps=25.0) -> list:
             parts.append(f"{len(issues_short)} 条时长≤{threshold_frames}帧")
         if issues_gap:
             parts.append(f"{len(issues_gap)} 处间距≤{threshold_frames}帧")
-        summary_msg = f'❌ 夹帧: {", ".join(parts)} / 共 {total_count} 条字幕'
+        summary_msg = f'❌ 夹帧: {", ".join(parts)}'
 
     if disabled_count:
         summary_msg += f" (跳过 {disabled_count} 条禁用)"
@@ -186,8 +186,8 @@ def check_subtitle_clamping(timeline, threshold_frames=3, fps=25.0) -> list:
     return results
 
 
-def check_disabled_subtitles(timeline, fps=25.0) -> list:
-    """检查字幕轨上被禁用的字幕片段。
+def check_disabled_items(timeline, fps=25.0) -> list:
+    """检查所有轨道上被禁用的片段（字幕/视频/音频）。
 
     轨道级别的启用/禁用在 Resolve 20.3.2 API 中不可检测，
     仅检测片段级别的 GetClipEnabled()。
@@ -202,75 +202,133 @@ def check_disabled_subtitles(timeline, fps=25.0) -> list:
     from timecode import SMPTE
 
     results = []
-    subtitle_count = timeline.GetTrackCount("subtitle")
-    if subtitle_count == 0:
-        results.append({
-            "status": "warn",
-            "type": "subtitle_disabled",
-            "message": "⚠ 无字幕轨道, 跳过禁用检查",
-        })
-        return results
-
     issues = []
     total_count = 0
 
-    for si in range(1, subtitle_count + 1):
-        items = timeline.GetItemListInTrack("subtitle", si)
-        if not items:
-            continue
+    track_types = [
+        ("subtitle", "S"),
+        ("video",     "V"),
+        ("audio",     "A"),
+    ]
 
-        for item in items:
-            total_count += 1
-            name = item.GetName()
-            start_frame = item.GetStart()
-
-            try:
-                enabled = item.GetClipEnabled()
-            except Exception:
-                enabled = True
-
-            if enabled is not False:
+    for track_type, prefix in track_types:
+        track_count = timeline.GetTrackCount(track_type)
+        for ti in range(1, track_count + 1):
+            items = timeline.GetItemListInTrack(track_type, ti)
+            if not items:
                 continue
 
-            # 获取字幕文本
-            text = name
-            try:
-                mp_item = item.GetMediaPoolItem()
-                if mp_item:
-                    mp_props = mp_item.GetClipProperty()
-                    if mp_props:
-                        clip_name = mp_props.get("Clip Name", "")
-                        if clip_name and clip_name != name:
-                            text = clip_name
-            except Exception:
-                pass
+            for item in items:
+                total_count += 1
+                name = item.GetName()
+                start_frame = item.GetStart()
 
-            smpte = SMPTE()
-            smpte.fps = fps
-            smpte.df = False
-            tc = smpte.gettc(start_frame)
+                try:
+                    enabled = item.GetClipEnabled()
+                except Exception:
+                    enabled = True
 
-            issues.append({
-                "status": "fail",
-                "type": "subtitle_disabled",
-                "track": f"S{si}",
-                "timecode": tc,
-                "name": text,
-                "message": f"❌ S{si} {tc}  {text}  (已禁用)",
-            })
+                if enabled is not False:
+                    continue
+
+                # 获取名称
+                text = name
+                try:
+                    mp_item = item.GetMediaPoolItem()
+                    if mp_item:
+                        mp_props = mp_item.GetClipProperty()
+                        if mp_props:
+                            clip_name = mp_props.get("Clip Name", "")
+                            if clip_name and clip_name != name:
+                                text = clip_name
+                except Exception:
+                    pass
+
+                smpte = SMPTE()
+                smpte.fps = fps
+                smpte.df = False
+                tc = smpte.gettc(start_frame)
+
+                issues.append({
+                    "status": "fail",
+                    "type": "disabled",
+                    "track": f"{prefix}{ti}",
+                    "timecode": tc,
+                    "name": text,
+                    "message": f"❌ {prefix}{ti} {tc}  {text}  (已禁用)",
+                })
 
     if not issues:
         results.append({
             "status": "pass",
-            "type": "subtitle_disabled",
-            "message": f"✅ 通过: {total_count} 条字幕, 无禁用",
+            "type": "disabled",
+            "message": f"✅ 通过: {total_count} 个片段, 无禁用",
         })
     else:
         results.append({
             "status": "fail",
-            "type": "subtitle_disabled",
-            "message": f"❌ 禁用字幕: {len(issues)} 条已禁用 / 共 {total_count} 条",
+            "type": "disabled",
+            "message": f"❌ 已禁用: {len(issues)} 个片段",
         })
         results.extend(issues)
 
+    return results
+
+
+def check_weather(timeline, fps=25.0) -> list:
+    """天气检查 — 扩展性验证用占位函数。
+
+    Args:
+        timeline: DaVinci Resolve Timeline 对象
+        fps: 时间线帧率
+
+    Returns:
+        list[dict]
+    """
+    import random, hashlib
+
+    results = []
+
+    # 用时间线名生成伪随机"天气"
+    name = timeline.GetName()
+    seed = sum(ord(c) for c in name)
+    rng = random.Random(seed + 42)
+    temperature = rng.randint(-5, 42)
+    humidity = rng.randint(10, 99)
+
+    if humidity > 80:
+        results.append({
+            "status": "fail",
+            "type": "weather",
+            "timecode": "",
+            "message": f"❌ 湿度过高: {humidity}% (建议除湿)",
+        })
+    if temperature > 35:
+        results.append({
+            "status": "fail",
+            "type": "weather",
+            "timecode": "",
+            "message": f"❌ 温度过高: {temperature}°C (建议开空调)",
+        })
+    if temperature < 0:
+        results.append({
+            "status": "fail",
+            "type": "weather",
+            "timecode": "",
+            "message": f"❌ 温度过低: {temperature}°C (建议取暖)",
+        })
+
+    if not results:
+        results.append({
+            "status": "pass",
+            "type": "weather",
+            "message": f"✅ 天气适宜: {temperature}°C, 湿度 {humidity}%",
+        })
+        return results
+
+    results.insert(0, {
+        "status": "fail",
+        "type": "weather",
+        "message": f"⚠ 天气异常: {temperature}°C, 湿度 {humidity}%",
+    })
     return results

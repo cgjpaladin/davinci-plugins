@@ -88,6 +88,40 @@ def _format_tc(frame: int, fps: float, df: bool = False) -> str:
     tc.df = df
     return tc.gettc(frame)
 
+def _show_clip_stats(clips, od, fps, df, start_frame, allow_unknown=False):
+    """遍历片段列表，显示缓存状态并统计。
+    scan_io() 和 _refresh_scan_display() 的共享核心。
+    Returns: {cache_hits, need_secs, need_pts, need, pts, yuan}
+    """
+    cache_hits = 0; need_secs = 0; need_pts = 0
+    for c in clips:
+        pos_str = _format_tc(c.start_frame + start_frame, fps, df)
+        is_cached = bool(od and ledger.find_output(c.file_name))
+        if allow_unknown and not od:
+            label, emoji = "未知", "🟠"
+        else:
+            label, emoji = ("可复用", "🟢") if is_cached else ("需处理", "🟡")
+        ui.log_info(f"  {emoji} {c.name} | 位置：{pos_str} | 长度：{c.duration:.0f}秒 | {label}")
+        if is_cached:
+            cache_hits += 1
+        else:
+            need_secs += c.duration
+            need_pts += int(c.duration) + (1 if c.duration % 1 > 0 else 0)
+
+    need = len(clips) - cache_hits
+    pts = max(1, need_pts)
+    yuan = point_to_yuan(pts)
+    summary = f"扫描结果：当前选区内，共 {len(clips)} 个符合筛选条件的片段"
+    if od:
+        if cache_hits > 0:
+            summary += f"（其中 {cache_hits} 个可复用）"
+        summary += f"  |  {need} 个待处理"
+    else:
+        summary += "  |  请先选择项目路径以启用缓存复用"
+    ui.log_info(summary)
+    return {"cache_hits": cache_hits, "need_secs": need_secs, "need_pts": need_pts,
+            "need": need, "pts": pts, "yuan": yuan}
+
 def scan_io(*_):
     """扫描时间线 IO 范围内标橙色的片段，显示缓存/预估信息。每次点击扫描按钮触发。
     注：片段遍历逻辑与 _refresh_scan_display() 有约50行重复，修改任一处需同步另一处。
@@ -147,42 +181,16 @@ def scan_io(*_):
         # 逐片段显示 + 缓存检测
         pr = _state["project_root"] or ""
         od = pr and get_output_dir(pr) or ""
-        cache_hits = 0
-        need_secs = 0
-        need_pts = 0
-        for c in clips:
-            # 帧 → 时码
-            pos_str = _format_tc(c.start_frame + start_frame, fps, df)
-            is_cached = od and ledger.find_output(c.file_name)
-            if not od:
-                label, emoji = "未知", "🟠"  # 无项目路径，无法查缓存
-            else:
-                label, emoji = ("可复用", "🟢") if is_cached else ("需处理", "🟡")
-            ui.log_info(f"  {emoji} {c.name} | 位置：{pos_str} | 长度：{c.duration:.0f}秒 | {label}")
-            if is_cached:
-                cache_hits += 1
-            else:
-                need_secs += c.duration
-                need_pts += int(c.duration) + (1 if c.duration % 1 > 0 else 0)  # ceil
+        stats = _show_clip_stats(clips, od, fps, df, start_frame, allow_unknown=not od)
+        need, pts, yuan = stats["need"], stats["pts"], stats["yuan"]
 
-        # 总结
-        need = len(clips) - cache_hits
-        pts = max(1, need_pts)
-        yuan = point_to_yuan(pts)
-        avg = max(60, min(120, need_secs / max(1, need) * 3)) if need > 0 else 0
         # 批量并行：同时处理，总时间 ≈ 上传+处理+下载，约 2x素材时长 + 60s 基础开销
+        need_secs = stats["need_secs"]
         total_time = max(1, math.ceil((need_secs * 2.3 + 60) / 60)) if need > 0 else 0
-        summary = f"扫描结果：当前选区内，共 {len(clips)} 个符合筛选条件的片段"
-        if od:
-            if cache_hits > 0:
-                summary += f"（其中 {cache_hits} 个可复用）"
-            summary += f"  |  {need} 个待处理"
-        else:
-            summary += "  |  请先选择项目路径以启用缓存复用"
-        ui.log_info(summary)
-        ops_logger.cost_estimate(pts, yuan, total_time, need, cache_hits)
         if need > 0 and od:
             ui.log_info(f"预估: ≤¥{yuan} (≤{pts} 积分) | 约 {total_time} 分钟")
+
+        ops_logger.cost_estimate(pts, yuan, total_time, need, stats["cache_hits"])
 
         _state["clips_scanned"] = True
         itm[BTN_START].Enabled = bool(_state["project_root"])
@@ -196,9 +204,7 @@ def scan_io(*_):
         _smb_log(f"扫描失败: {e}")
 
 def _refresh_scan_display():
-    """选完项目路径后，刷新已扫描片段的缓存状态（🟠→🟢/🟡）
-    注：片段遍历逻辑与 scan_io() 有约50行重复，修改任一处需同步另一处。
-    """
+    """选完项目路径后，刷新已扫描片段的缓存状态（🟠→🟢/🟡）"""
     clips = _state.get("clips", [])
     if not clips:
         return
@@ -207,30 +213,13 @@ def _refresh_scan_display():
     fps = _state.get("fps", 25.0)
     df = _state.get("df", False)
     start_frame = _state.get("start_frame", 0)
-    cache_hits = 0; need_secs = 0; need_pts = 0
 
     itm[LOG_LB].Text = ""
     ui.log_info("\n\n── ① 扫描选区 ──")
-    for c in clips:
-        pos_str = _format_tc(c.start_frame + start_frame, fps, df)
-        is_cached = od and ledger.find_output(c.file_name)
-        label, emoji = ("可复用", "🟢") if is_cached else ("需处理", "🟡")
-        ui.log_info(f"  {emoji} {c.name} | 位置：{pos_str} | 长度：{c.duration:.0f}秒 | {label}")
-        if is_cached:
-            cache_hits += 1
-        else:
-            need_secs += c.duration
-            need_pts += int(c.duration) + (1 if c.duration % 1 > 0 else 0)
-
-    need = len(clips) - cache_hits
-    pts = max(1, need_pts)
-    yuan = point_to_yuan(pts)
-    summary = f"扫描结果：当前选区内，共 {len(clips)} 个符合筛选条件的片段"
-    if cache_hits > 0:
-        summary += f"（其中 {cache_hits} 个可复用）"
-    summary += f"  |  {need} 个待处理"
-    ui.log_info(summary)
+    stats = _show_clip_stats(clips, od, fps, df, start_frame)
+    need, pts, yuan = stats["need"], stats["pts"], stats["yuan"]
     if need > 0:
+        need_secs = stats["need_secs"]
         avg = max(60, min(120, need_secs / max(1, need) * 3))
         total_time = int(need * avg / 60)
         ui.log_info(f"预估: ≤¥{yuan} (≤{pts} 积分) | 约 {total_time} 分钟")

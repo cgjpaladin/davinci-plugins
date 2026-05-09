@@ -119,22 +119,9 @@ class DaVinciPipelineUI(PipelineUI):
         self._st(text)
 
     def confirm(self, question: str) -> bool:
-        import subprocess
-        try:
-            r = subprocess.run(["osascript", "-e",
-                f'display dialog "{question}" buttons {{"取消", "确认"}} default button "确认"'],
-                capture_output=True, text=True, timeout=30)
-            return "确认" in r.stdout
-        except Exception:
-            # osascript 失败时默认通过，不阻塞用户操作（非关键路径）
-            return True
+        from macos_utils import confirm
+        return confirm(question)
 
     def notify(self, title: str, body: str):
-        try:
-            import subprocess
-            subprocess.run(["osascript", "-e",
-                f'display notification "{body}" with title "{title}"'],
-                timeout=5, capture_output=True)
-        except Exception:
-            # macOS 通知发送失败不阻塞主流程（非关键路径）
-            pass
+        from macos_utils import notify
+        notify(title, body)

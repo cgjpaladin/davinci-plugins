@@ -281,12 +281,10 @@ def _check_smb():
     if os.path.exists(SMB_MOUNT):
         return True
     warn("⚠ SMB 已断开，尝试重挂...")
+    from macos_utils import mount_smb
     for _ in range(3):
         try:
-            subprocess.run(["osascript", "-e", 'mount volume "smb://192.168.1.154/MYJC"'],
-                          timeout=10, capture_output=True)
-            time.sleep(2)
-            if os.path.exists(SMB_MOUNT):
+            if mount_smb():
                 info("✅ SMB 已恢复")
                 _smb_log("SMB 重挂成功")
                 return True
@@ -589,16 +587,9 @@ def pick_project(*_):
     try:
         default_dir = _guess_project_root()
         prompt = "选择项目根目录（包含04_素材的文件夹）"
-        if default_dir:
-            cmd = f'POSIX path of (choose folder with prompt "{prompt}" default location "{default_dir}")'
-        else:
-            cmd = f'POSIX path of (choose folder with prompt "{prompt}")'
-        r = subprocess.run(
-            ['osascript', '-e', cmd],
-            capture_output=True, encoding="utf-8", timeout=60
-        )
-        path = r.stdout.strip()
-        if path and os.path.isdir(path):
+        from macos_utils import pick_folder
+        path = pick_folder(prompt, default_dir)
+        if path:
             _state["project_root"] = path
             _set_proj(path)
             state_init(path)
