@@ -27,7 +27,7 @@ from config import (
     DEFAULT_AUDIO_TRACKS,
     __version__,
 )
-from check_core import check_track_structure, check_subtitle_clamping
+from check_core import check_track_structure, check_subtitle_clamping, check_disabled_subtitles
 from fusionscript_loader import bmd
 from timecode import SMPTE
 
@@ -108,6 +108,12 @@ def main():
         results = check_subtitle_clamping(timeline, args.clamp, fps)
         all_results.append({"section": "字幕夹帧", "results": results})
         for r in results:
+            if r["status"] == "fail":
+                has_failures = True
+
+        results_disabled = check_disabled_subtitles(timeline, fps)
+        all_results.append({"section": "禁用字幕", "results": results_disabled})
+        for r in results_disabled:
             if r["status"] == "fail":
                 has_failures = True
 

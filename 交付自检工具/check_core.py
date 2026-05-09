@@ -184,3 +184,93 @@ def check_subtitle_clamping(timeline, threshold_frames=3, fps=25.0) -> list:
     results.extend(issues_gap)
 
     return results
+
+
+def check_disabled_subtitles(timeline, fps=25.0) -> list:
+    """检查字幕轨上被禁用的字幕片段。
+
+    轨道级别的启用/禁用在 Resolve 20.3.2 API 中不可检测，
+    仅检测片段级别的 GetClipEnabled()。
+
+    Args:
+        timeline: DaVinci Resolve Timeline 对象
+        fps: 时间线帧率
+
+    Returns:
+        list[dict]: 第一条为汇总，后续为具体问题
+    """
+    from timecode import SMPTE
+
+    results = []
+    subtitle_count = timeline.GetTrackCount("subtitle")
+    if subtitle_count == 0:
+        results.append({
+            "status": "warn",
+            "type": "subtitle_disabled",
+            "message": "⚠ 无字幕轨道, 跳过禁用检查",
+        })
+        return results
+
+    issues = []
+    total_count = 0
+
+    for si in range(1, subtitle_count + 1):
+        items = timeline.GetItemListInTrack("subtitle", si)
+        if not items:
+            continue
+
+        for item in items:
+            total_count += 1
+            name = item.GetName()
+            start_frame = item.GetStart()
+
+            try:
+                enabled = item.GetClipEnabled()
+            except Exception:
+                enabled = True
+
+            if enabled is not False:
+                continue
+
+            # 获取字幕文本
+            text = name
+            try:
+                mp_item = item.GetMediaPoolItem()
+                if mp_item:
+                    mp_props = mp_item.GetClipProperty()
+                    if mp_props:
+                        clip_name = mp_props.get("Clip Name", "")
+                        if clip_name and clip_name != name:
+                            text = clip_name
+            except Exception:
+                pass
+
+            smpte = SMPTE()
+            smpte.fps = fps
+            smpte.df = False
+            tc = smpte.gettc(start_frame)
+
+            issues.append({
+                "status": "fail",
+                "type": "subtitle_disabled",
+                "track": f"S{si}",
+                "timecode": tc,
+                "name": text,
+                "message": f"❌ S{si} {tc}  {text}  (已禁用)",
+            })
+
+    if not issues:
+        results.append({
+            "status": "pass",
+            "type": "subtitle_disabled",
+            "message": f"✅ 通过: {total_count} 条字幕, 无禁用",
+        })
+    else:
+        results.append({
+            "status": "fail",
+            "type": "subtitle_disabled",
+            "message": f"❌ 禁用字幕: {len(issues)} 条已禁用 / 共 {total_count} 条",
+        })
+        results.extend(issues)
+
+    return results

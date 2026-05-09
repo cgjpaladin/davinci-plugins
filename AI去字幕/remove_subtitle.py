@@ -32,6 +32,7 @@ from config import (
     API_TIMEOUT, DEFAULT_MODE, MODE_LABELS,
     DEBUG, SCAN_ONLY, __version__, version_string,
     get_output_dir, get_log_dir, PLUGIN_DIR,
+    SMB_MOUNT,
 )
 from adapters import SubtitleTask, create_wuhenai_adapter
 from subtitle_state import get_clip_status, init as state_init

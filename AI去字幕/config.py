@@ -34,7 +34,7 @@ from env import load_all_env
 load_all_env(os.path.dirname(os.path.abspath(__file__)))
 
 # 版本号 — 纯数字，不含后缀
-__version__ = "1.8.0"
+__version__ = "1.9.0"
 # 发布通道：""=稳定版, "dev"=开发版, 未来可扩展 "alpha"/"beta"/"rc1"
 __channel__ = "dev"
 

@@ -159,6 +159,18 @@ if [ -n "$WAS_CHANNEL" ]; then
     echo "  恢复 channel: $WAS_CHANNEL"
 fi
 
+# ── 3.5 自动升版本号（推完就升，本地永远比公司高）──
+OLD_VER=$(grep '__version__' config.py | head -1 | sed 's/.*"\(.*\)".*/\1/')
+MAJOR=$(echo "$OLD_VER" | cut -d. -f1)
+MINOR=$(echo "$OLD_VER" | cut -d. -f2)
+NEW_MINOR=$((MINOR + 1))
+NEW_VER="$MAJOR.$NEW_MINOR.0"
+echo ""
+echo "═══ 3.5 版本升号 ═══"
+echo "  $OLD_VER → $NEW_VER-dev"
+sed -i '' "s/__version__ = \"$OLD_VER\"/__version__ = \"$NEW_VER\"/" config.py
+bash build_local.sh 2>&1 | grep "launcher"
+
 # ── 4. 灰度状态 ──
 echo ""
 echo "═══ 4. 灰度发布 ═══"

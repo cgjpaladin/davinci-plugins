@@ -30,7 +30,7 @@ from config import (
     DEFAULT_VIDEO_TRACKS,
     DEFAULT_AUDIO_TRACKS,
 )
-from check_core import check_track_structure, check_subtitle_clamping
+from check_core import check_track_structure, check_subtitle_clamping, check_disabled_subtitles
 
 # ═══════════════════════════════════════════
 # 常量
@@ -499,8 +499,26 @@ def _start_check():
                 else:
                     row.Text[0] = "⚠"
 
-                # 时间码（用于跳转）
                 tc = r.get("timecode", r.get("timecode_prev", ""))
+                row.Text[1] = tc
+                row.Text[2] = r["message"]
+
+                tree.AddTopLevelItem(row)
+                _action_log(r["message"].replace("✅ ", "").replace("❌ ", "").replace("⚠ ", ""), to_ui=False)
+
+            # 禁用字幕检查
+            results_disabled = check_disabled_subtitles(timeline, fps)
+            for r in results_disabled:
+                row = tree.NewItem()
+                if r["status"] == "pass":
+                    row.Text[0] = "✅"
+                elif r["status"] == "fail":
+                    row.Text[0] = "❌"
+                    has_failures = True
+                else:
+                    row.Text[0] = "⚠"
+
+                tc = r.get("timecode", "")
                 row.Text[1] = tc
                 row.Text[2] = r["message"]
 
@@ -530,8 +548,12 @@ def _start_check():
 def _on_result_click(ev):
     """Tree 行点击 → 跳到对应时间码"""
     try:
-        item = tree.CurrentItem
-        if not item:
+        # 尝试从事件中获取被点击的 Item
+        item = ev.get("Item")
+        if item is None:
+            item = tree.CurrentItem
+        if item is None:
+            _action_log(f"⚠ 跳转: 取不到 Item (ev keys: {list(ev.keys()) if hasattr(ev, 'keys') else type(ev)})")
             return
         tc = item.Text[1]
         if not tc:
