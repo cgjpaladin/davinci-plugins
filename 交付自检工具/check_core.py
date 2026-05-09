@@ -209,6 +209,104 @@ def check_disabled_items(timeline, fps=25.0) -> list:
     return results
 
 
+def check_black_frames(timeline, fps=25.0) -> list:
+    """检测黑帧：合并所有视频轨的有效片段后，找未被覆盖的时间段。
+
+    有效片段条件：启用 + 不透明度=100 + 有 MediaPoolItem。
+    调整片段、禁用片段、不透明度≠100 的片段不计入覆盖。
+
+    Returns:
+        list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
+    """
+    valid_intervals = []
+    video_count = timeline.GetTrackCount("video")
+
+    if video_count == 0:
+        return [_make_result("warn", detail="无视频轨道", is_summary=True)]
+
+    total_clips = 0
+
+    for vi in range(1, video_count + 1):
+        items = timeline.GetItemListInTrack("video", vi)
+        if not items:
+            continue
+
+        for it in items:
+            total_clips += 1
+
+            # 跳过禁用片段
+            try:
+                if it.GetClipEnabled() is False:
+                    continue
+            except Exception:
+                pass
+
+            # 跳过多余属性的片段（调整片段等）
+            mp = it.GetMediaPoolItem()
+            if mp is None:
+                continue
+
+            # 跳过不透明度不为 100 的片段
+            props = it.GetProperty() or {}
+            opacity = props.get("Opacity", 100)
+            if opacity != 100:
+                continue
+
+            valid_intervals.append((it.GetStart(), it.GetEnd(), f"V{vi}", it.GetName()))
+
+    if not valid_intervals:
+        tl_end = timeline.GetEndFrame()
+        return [
+            _make_result("fail", detail=f"全部 {total_clips} 个片段无效, 整条时间线为黑帧", is_summary=True),
+            _make_result("fail", track="", timecode="", detail=f"0 – {tl_end} 帧  (全域黑帧)"),
+        ]
+
+    # 合并重叠区间
+    valid_intervals.sort()
+    merged = []
+    for s, e, track, name in valid_intervals:
+        if merged and s <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], e))
+        else:
+            merged.append((s, e))
+
+    # 找空隙
+    tl_start = timeline.GetStartFrame()
+    tl_end = timeline.GetEndFrame()
+    gaps = []
+    prev = tl_start
+    for s, e in merged:
+        if s > prev:
+            gaps.append((prev, s))
+        prev = max(prev, e)
+    if prev < tl_end:
+        gaps.append((prev, tl_end))
+
+    if not gaps:
+        return [_make_result("pass",
+            detail=f"共 {total_clips} 个片段, 覆盖完整, 无黑帧",
+            is_summary=True)]
+
+    smpte = SMPTE()
+    smpte.fps = fps
+    smpte.df = False
+
+    results = [_make_result("fail",
+        detail=f"黑帧: {len(gaps)} 处空隙 / 共 {total_clips} 个片段",
+        is_summary=True)]
+
+    for s, e in gaps:
+        duration = e - s
+        tc = smpte.gettc(s)
+        if duration == 1:
+            detail = f"{tc}  1 帧"
+        else:
+            detail = f"{tc} – {smpte.gettc(e)}  ({duration} 帧)"
+        results.append(_make_result("fail", timecode=tc, detail=detail))
+
+    return results
+
+
 # ── 参考案例（已从注册表移除，保留代码作模板）──
 
 def check_weather(timeline, fps=25.0) -> list:

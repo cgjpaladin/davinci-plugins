@@ -27,7 +27,7 @@ from config import (
     DEFAULT_AUDIO_TRACKS,
     __version__,
 )
-from check_core import check_track_structure, check_subtitle_clamping, check_disabled_items
+from check_core import check_track_structure, check_subtitle_clamping, check_disabled_items, check_black_frames
 from fusionscript_loader import bmd
 
 # ── CLI 检查注册表 ──
@@ -41,10 +41,14 @@ def _cli_run_subtitle(timeline, fps, args):
 def _cli_run_disabled(timeline, fps, args):
     return check_disabled_items(timeline, fps)
 
+def _cli_run_black_frame(timeline, fps, args):
+    return check_black_frames(timeline, fps)
+
 CLI_CHECKS = [
     {"id": "track",    "section": "轨道结构", "fn": _cli_run_track},
     {"id": "subtitle", "section": "字幕长度", "fn": _cli_run_subtitle},
     {"id": "disabled", "section": "启用/禁用", "fn": _cli_run_disabled},
+    {"id": "black",    "section": "黑帧检测", "fn": _cli_run_black_frame},
 ]
 
 
@@ -54,7 +58,7 @@ def parse_args():
                    help="轨道模板: 字幕,视频,音频 (如 1,5,10)")
     p.add_argument("--clamp", type=int, default=DEFAULT_CLAMP_THRESHOLD,
                    help=f"夹帧/过短阈值 (默认 {DEFAULT_CLAMP_THRESHOLD})")
-    p.add_argument("--only", type=str, choices=["track", "subtitle"], default=None,
+    p.add_argument("--only", type=str, choices=["track", "subtitle", "black"], default=None,
                    help="仅检查指定项")
     p.add_argument("--no-track", action="store_true", help="跳过轨道检查")
     p.add_argument("--no-subtitle", action="store_true", help="跳过字幕检查")
@@ -99,6 +103,8 @@ def main():
         run_ids = {"track"}
     elif args.only == "subtitle":
         run_ids = {"subtitle", "disabled"}
+    elif args.only == "black":
+        run_ids = {"black"}
     if args.no_track:
         run_ids.discard("track")
     if args.no_subtitle:

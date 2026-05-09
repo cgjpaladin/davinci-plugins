@@ -29,7 +29,7 @@ from config import (
     DEFAULT_VIDEO_TRACKS,
     DEFAULT_AUDIO_TRACKS,
 )
-from check_core import check_track_structure, check_subtitle_clamping, check_disabled_items
+from check_core import check_track_structure, check_subtitle_clamping, check_disabled_items, check_black_frames
 
 # ═══════════════════════════════════════════
 # 常量
@@ -146,11 +146,15 @@ def _run_disabled_check(timeline, fps):
     """启用/禁用检查"""
     return check_disabled_items(timeline, fps)
 
+def _run_black_frame_check(timeline, fps):
+    """黑帧检测"""
+    return check_black_frames(timeline, fps)
+
 CHECKS = [
     {"id": "track",            "section": "轨道结构", "chk_id": CHK_TRACK,    "run_fn": _run_track_check},
     {"id": "subtitle_clamp",   "section": "字幕长度", "chk_id": CHK_SUBTITLE, "run_fn": _run_clamp_check},
     {"id": "subtitle_disabled","section": "启用/禁用", "chk_id": CHK_DISABLED, "run_fn": _run_disabled_check},
-    {"id": "black_border",     "section": "黑边检测", "chk_id": CHK_BLACK,    "run_fn": None},
+    {"id": "black_border",     "section": "黑帧检测", "chk_id": CHK_BLACK,    "run_fn": _run_black_frame_check},
 ]
 # 扩展指南：
 #   - 加新检查：往 CHECKS 末尾加一行 dict，写 run_fn
@@ -268,11 +272,10 @@ window_layout = [
                              "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}),
             ]),
 
-            # ④ 黑边（置灰）
+            # ④ 黑帧检测
             ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                ui.CheckBox({"ID": CHK_BLACK, "Text": "黑边检测 （开发中...）",
-                             "Checked": False, "Enabled": False,
-                             "StyleSheet": "font-size:13px;color:rgb(100,100,100)", "Weight": 0}),
+                ui.CheckBox({"ID": CHK_BLACK, "Text": "黑帧检测", "Checked": True,
+                             "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}),
             ]),
 
             ]),  # 结束左侧 VGroup
