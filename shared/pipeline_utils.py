@@ -66,10 +66,13 @@ def calc_cache_savings(clips, cache_hit_names: list) -> dict:
 def estimate_processing_time(tasks: list) -> float:
     """预估处理耗时（秒）。
 
-    实测公式：片段总秒数 × 2.3 + 60 基础开销
+    实测公式：片段总秒数 × 2.0 + 60 基础开销（v1.8 并发上传降低系数）。
+    单片段时无并发收益，系数保持 2.3。
     """
     total_secs = sum(math.ceil(t.duration) for t in tasks)
-    return total_secs * 2.3 + 60
+    if len(tasks) <= 1:
+        return total_secs * 2.3 + 60
+    return total_secs * 2.0 + 60
 
 
 # ── 耗时格式化 ──

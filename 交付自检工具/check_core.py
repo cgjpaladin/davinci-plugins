@@ -12,11 +12,13 @@ track / timecode / detail 均为干净独立字段，UI 端无需解析/截取�
 from timecode import SMPTE
 from config import AUDIO_TRACK_PRESET, VIDEO_TRACK_PRESET, SUBTITLE_TRACK_PRESET
 import json
+import os
 
 # ── 缓存：避免重复 IPC ──
 _items_cache = {}
 _props_cache = {}  # item_uid → {enabled, name, mp, mp_props, property, channel_mapping}
 _smpte_cache = {}  # fps → SMPTE 实例
+_censor_cache = {}  # path → [words]
 
 def preload_timeline_items(timeline):
     """预加载所有轨道的片段列表及常用属性，避免重复 IPC。"""
@@ -659,6 +661,61 @@ def check_subtitle_linebreak(timeline, fps=25.0) -> list:
         return [_make_result("pass", detail="换行正常", is_summary=True)]
 
     results = [_make_result("fail", detail=f"换行异常: {len(issues)} 处", is_summary=True)]
+    results.extend(issues)
+    return results
+
+
+def check_subtitle_censor(timeline, dict_path, fps=25.0) -> list:
+    """检测字幕含违禁词。
+
+    Args:
+        dict_path: 违禁词文件路径，一行一词
+
+    Returns:
+        list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
+    """
+    global _censor_cache
+    # 加载字典
+    if dict_path not in _censor_cache:
+        words = []
+        if os.path.isfile(dict_path):
+            with open(dict_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    w = line.strip()
+                    if w and not w.startswith("#"):
+                        words.append(w)
+        _censor_cache[dict_path] = words
+    censor_words = _censor_cache[dict_path]
+    if not censor_words:
+        return [_make_result("warn", detail="违禁词字典为空", is_summary=True)]
+
+    issues = []
+    subtitle_count = timeline.GetTrackCount("subtitle")
+    if subtitle_count == 0:
+        return [_make_result("warn", detail="无字幕轨道", is_summary=True)]
+
+    smpte = _get_smpte(fps)
+    for si in range(1, subtitle_count + 1):
+        items = _get_items(timeline, "subtitle", si)
+        if not items:
+            continue
+        track = f"ST{si}"
+        for it in items:
+            text = it.GetName()
+            start_frame = it.GetStart()
+            tc = smpte.gettc(start_frame)
+
+            for w in censor_words:
+                if w in text:
+                    issues.append(_make_result("fail", track=track, timecode=tc,
+                        detail=repr(text),
+                        reason=f"含违禁词: {w}"))
+                    break  # 一片段只报第一条
+
+    if not issues:
+        return [_make_result("pass", detail="无违禁词", is_summary=True)]
+
+    results = [_make_result("fail", detail=f"违禁词: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
     return results
 

@@ -16,6 +16,7 @@ os.environ["RESOLVE_SCRIPT_LIB"] = "/Applications/DaVinci Resolve/DaVinci Resolv
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 from fusionscript_loader import bmd
 fu = bmd.scriptapp("Fusion")
@@ -31,7 +32,8 @@ from config import (
 )
 from check_core import (check_track_structure, check_subtitle_clamping, check_disabled_items,
                           check_black_frames, check_audio_mono, check_timeline_settings,
-                          check_subtitle_glyph, check_subtitle_linebreak, preload_timeline_items)
+                          check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
+                          preload_timeline_items)
 
 # ═══════════════════════════════════════════
 # 常量
@@ -175,6 +177,18 @@ def _run_timeline_check(timeline, fps):
     """时间线设置"""
     return check_timeline_settings(timeline, fps=fps)
 
+def _run_censor_cn(timeline, fps):
+    """中文违禁词"""
+    return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "censor_cn.txt"), fps)
+
+def _run_censor_en(timeline, fps):
+    """英文违禁词"""
+    return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "censor_en.txt"), fps)
+
+def _run_censor_ad(timeline, fps):
+    """广审违禁词"""
+    return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "censor_ad.txt"), fps)
+
 CHECKS = [
     {"id": "timeline",      "section": "时间线",   "chk_id": CHK_TIMELINE,      "run_fn": _run_timeline_check},
     {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "run_fn": _run_track_check},
@@ -182,9 +196,9 @@ CHECKS = [
     {"id": "sub_duration",  "section": "时长",     "chk_id": CHK_SUB_DURATION,   "run_fn": _run_sub_duration_check},
     {"id": "sub_linebreak", "section": "换行",     "chk_id": CHK_SUB_LINEBREAK,  "run_fn": _run_sub_linebreak_check},
     {"id": "sub_glyph",     "section": "异体字",   "chk_id": CHK_SUB_GLYPH,      "run_fn": _run_sub_glyph_check},
-    {"id": "censor_cn",     "section": "中文违禁词","chk_id": CHK_CENSOR_CN,     "run_fn": None},
-    {"id": "censor_en",     "section": "英文违禁词","chk_id": CHK_CENSOR_EN,     "run_fn": None},
-    {"id": "censor_ad",     "section": "广审违禁词","chk_id": CHK_CENSOR_AD,     "run_fn": None},
+    {"id": "censor_cn",     "section": "中文违禁词","chk_id": CHK_CENSOR_CN,     "run_fn": _run_censor_cn},
+    {"id": "censor_en",     "section": "英文违禁词","chk_id": CHK_CENSOR_EN,     "run_fn": _run_censor_en},
+    {"id": "censor_ad",     "section": "广审违禁词","chk_id": CHK_CENSOR_AD,     "run_fn": _run_censor_ad},
     {"id": "black_frame",   "section": "黑帧",     "chk_id": CHK_BLACK,          "run_fn": _run_black_frame_check},
     {"id": "black_border",  "section": "黑边",     "chk_id": CHK_BORDER,         "run_fn": None},
     {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "run_fn": _run_mono_check},

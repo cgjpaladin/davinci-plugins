@@ -186,7 +186,9 @@ def scan_io(*_):
 
         # 批量并行：同时处理，总时间 ≈ 上传+处理+下载，约 2x素材时长 + 60s 基础开销
         need_secs = stats["need_secs"]
-        total_time = max(1, math.ceil((need_secs * 2.3 + 60) / 60)) if need > 0 else 0
+        # 多片段并发上传（v1.8）：系数 2.0；单片段无并发收益仍用 2.3
+        factor = 2.0 if len(clips) > 1 else 2.3
+        total_time = max(1, math.ceil((need_secs * factor + 60) / 60)) if need > 0 else 0
         if need > 0 and od:
             ui.log_info(f"预估: ≤¥{yuan} (≤{pts} 积分) | 约 {total_time} 分钟")
 
