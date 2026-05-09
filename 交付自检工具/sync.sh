@@ -3,7 +3,7 @@
 # 用法: ./sync.sh
 set -e
 
-SMB="/Volumes/MYJC/06_Software/达芬奇脚本/时间线检查"
+SMB="/Volumes/MYJC/06_Software/达芬奇脚本/交付自检工具"
 
 if [ ! -d "$SMB" ]; then
     mkdir -p "$SMB"

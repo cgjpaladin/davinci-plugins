@@ -26,6 +26,7 @@ ui = fu.UIManager
 disp = bmd.UIDispatcher(ui)
 from config import (
     DEBUG, get_output_dir, get_log_dir, __version__, __channel__, version_string,
+    SMB_SCRIPTS, SMB_MOUNT, DEV_LOG_DIR, SMB_LOG_DIR,
 )
 from subtitle_state import init as state_init, is_locked as state_is_locked, acquire_lock, release_lock, get_original_path
 import ledger
@@ -33,10 +34,10 @@ import ops_logger
 from core import (
     connect_resolve, scan_io_clips, prepare_tasks,
     estimate_cost, query_balance, post_check, CLIP_COLOR as _CLIP_COLOR,
-    create_wuhenai_adapter, download_and_apply,
+    download_and_apply,
 )
 from adapters.wuhenai_v2 import wuhenai_set_logger
-from adapters import SubtitleTask
+from adapters import SubtitleTask, create_wuhenai_adapter
 from logger import UILogger, set_logger, info, warn, fail, ok as log_ok
 
 WIN_ID = "com.myjc.ai_subtitle_ui"
@@ -211,16 +212,12 @@ dlg.On[COLOR_CB].CurrentIndexChanged = _on_color_change
 _log_queue = queue.Queue()
 _main_thread = threading.current_thread()
 import tempfile as _tempfile
-# 本地日志目录：用固定路径便于排查（tempfile.gettempdir() 在 macOS 返回随机路径）
-_DEV_LOG_DIR = "/tmp/ai_subtitle_dev"
-_UI_LOG_FILE = os.path.join(_DEV_LOG_DIR, "ui.log") if __channel__ == "dev" else \
+# 日志路径（常量来自 config.py）
+_UI_LOG_FILE = os.path.join(DEV_LOG_DIR, "ui.log") if __channel__ == "dev" else \
                os.path.join(_tempfile.gettempdir(), "ai_subtitle_ui.log")
 
-# 日志路径：dev 版写本地固定目录，避免混入生产 SMB 目录
-if __channel__ == "dev":
-    _SMB_LOG_DIR = _DEV_LOG_DIR
-else:
-    _SMB_LOG_DIR = "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/logs"
+# dev 版写本地固定目录，避免混入生产 SMB 目录
+_SMB_LOG_DIR = DEV_LOG_DIR if __channel__ == "dev" else SMB_LOG_DIR
 _SMB_LOG = os.path.join(_SMB_LOG_DIR, f"{socket.gethostname()}.log")
 
 _LOG_MAX_LINES = 200
@@ -281,7 +278,7 @@ def _smb_log(msg: str):
 
 def _check_smb():
     """全局 SMB 健康检查 + 自动重挂。返回 True=在线"""
-    if os.path.exists("/Volumes/MYJC"):
+    if os.path.exists(SMB_MOUNT):
         return True
     warn("⚠ SMB 已断开，尝试重挂...")
     for _ in range(3):
@@ -289,7 +286,7 @@ def _check_smb():
             subprocess.run(["osascript", "-e", 'mount volume "smb://192.168.1.154/MYJC"'],
                           timeout=10, capture_output=True)
             time.sleep(2)
-            if os.path.exists("/Volumes/MYJC"):
+            if os.path.exists(SMB_MOUNT):
                 info("✅ SMB 已恢复")
                 _smb_log("SMB 重挂成功")
                 return True

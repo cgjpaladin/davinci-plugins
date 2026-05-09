@@ -27,7 +27,6 @@ from ops_logger import _smb_log
 from pricing import estimate_cost, point_to_yuan
 from pricing import oss_tracker
 from adapters import SubtitleTask, SubtitleResult
-from adapters.wuhenai_v2 import WuhenAIV21Adapter
 from subtitle_state import acquire_lock, release_lock
 import ledger
 import ops_logger
@@ -178,6 +177,7 @@ def query_balance(adapter_config: Optional[dict] = None, provider: str = "") -> 
             ))
         else:
             cfg = adapter_config or deepcopy(ADAPTER_CONFIGS["wuhenai_v21"])
+            from adapters.wuhenai_v2 import WuhenAIV21Adapter  # 懒加载，避免模块级耦合
             adapter = WuhenAIV21Adapter(cfg)
             bal = adapter.get_balance()
             return float(bal.get("balance", 0))
@@ -510,23 +510,9 @@ def post_check(output_files: list) -> dict:
 # 共享流水线 — CLI 和 UI 的共同基础
 # ═══════════════════════════════════════════
 
-def create_wuhenai_adapter(mode: str = "pro_box") -> WuhenAIV21Adapter:
-    """创建标准配置的无痕AI 2.1 适配器（sel_area 模式）。
-    CLI 和 UI 都通过这个函数创建适配器，保证行为一致。
-
-    TODO(2026-05): mode 参数预留，将来支持不同模式的适配器配置（如 basic→all_area）。
-    目前所有调用方均传入 mode 参数但函数未使用，待有实际需求时实现。
-    """
-    _ = mode  # 预留参数，暂未使用
-    adapter_cfg = deepcopy(ADAPTER_CONFIGS["wuhenai_v21"])
-    adapter_cfg["model"] = "video_removal_std"
-    adapter_cfg["method"] = "sel_area"
-    return WuhenAIV21Adapter(adapter_cfg)
-
-
 def process_single_clip(
     task,
-    adapter: WuhenAIV21Adapter,
+    adapter,  # BaseAdapter 子类，由调用方注入
     mode: str,
     on_attempt: Optional[Callable] = None,
     cancel_check=None,

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-时间线检查 UI — 外部进程版
+交付自检工具 UI — 外部进程版
 
 绕过达芬奇内嵌 Python，用系统 Python 3.13 运行。
 使用 fusionscript_loader 连接 Resolve。
@@ -30,12 +30,12 @@ from config import (
     DEFAULT_VIDEO_TRACKS,
     DEFAULT_AUDIO_TRACKS,
 )
-from core import check_track_structure, check_subtitle_clamping
+from check_core import check_track_structure, check_subtitle_clamping
 
 # ═══════════════════════════════════════════
 # 常量
 # ═══════════════════════════════════════════
-WIN_ID = "com.myjc.timeline_checker"
+WIN_ID = "com.myjc.delivery_checker"
 
 # 控件 ID
 CHK_TRACK, CHK_SUBTITLE, CHK_BLACK = "chk_track", "chk_subtitle", "chk_black"
@@ -100,11 +100,11 @@ _checking = False
 # 日志系统
 # ═══════════════════════════════════════════
 _HOSTNAME = socket.gethostname()
-_LOG_DIR_SMB = "/Volumes/MYJC/06_Software/达芬奇脚本/时间线检查/logs"
+_LOG_DIR_SMB = "/Volumes/MYJC/06_Software/达芬奇脚本/交付自检工具/logs"
 _LOG_FILE_SMB = os.path.join(_LOG_DIR_SMB, f"{_HOSTNAME}.log")
 
 # 本地开发日志
-_DEV_LOG_DIR = "/tmp/timeline_checker_dev"
+_DEV_LOG_DIR = "/tmp/delivery_checker_dev"
 _LOG_FILE_LOCAL = os.path.join(_DEV_LOG_DIR,
                                f"{_HOSTNAME}.log" if not __version__.endswith("-dev")
                                else f"{_HOSTNAME}_dev.log")
@@ -240,7 +240,7 @@ window_layout = [
         ui.VGroup({"Spacing": 2, "Weight": 0}, [
             ui.HGroup({"Spacing": 8}, [
                 ui.Label({"Text": " ", "Weight": 1}),
-                ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | 时间线检查 v{__version__}",
+                ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | 交付自检 v{__version__}",
                           "StyleSheet": "color:rgb(100,100,100);font-size:10px", "Weight": 0}),
             ]),
         ]),
@@ -248,7 +248,7 @@ window_layout = [
 ]
 
 dlg = disp.AddWindow({
-    "WindowTitle": f"时间线检查 v{__version__}",
+    "WindowTitle": f"交付自检 v{__version__}",
     "ID": WIN_ID,
     "Geometry": [800, 100, 780, 520],
     "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
@@ -556,7 +556,11 @@ def _on_result_click(ev):
 # ═══════════════════════════════════════════
 
 def _on_show(ev):
-    """窗口显示时初始化连接"""
+    pass  # 初始化放在 main() 里，Show 事件在子进程模式下不可靠
+
+
+def _init_connection():
+    """初始化达芬奇连接，设置按钮状态"""
     try:
         resolve = bmd.scriptapp("Resolve")
         if not resolve:
@@ -618,9 +622,10 @@ dlg.On[WIN_ID].Close = _on_close
 # ═══════════════════════════════════════════
 
 def main():
-    _action_log("═══ 时间线检查 启动 v" + __version__ + " ═══")
+    _action_log("═══ 交付自检 启动 v" + __version__ + " ═══")
     dlg.Show()
     dlg.RecalcLayout()
+    _init_connection()
     disp.RunLoop()
     dlg.Hide()
 

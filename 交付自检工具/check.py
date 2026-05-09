@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-时间线检查 — CLI 入口
+交付自检 — CLI 入口
 
 用法（达芬奇运行时）：
     python3 check.py                        # 默认阈值
@@ -27,7 +27,7 @@ from config import (
     DEFAULT_AUDIO_TRACKS,
     __version__,
 )
-from core import check_track_structure, check_subtitle_clamping
+from check_core import check_track_structure, check_subtitle_clamping
 from fusionscript_loader import bmd
 from timecode import SMPTE
 

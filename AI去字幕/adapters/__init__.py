@@ -130,3 +130,20 @@ class BaseAdapter(ABC):
     def check_health(self) -> bool:
         """健康检查：验证 API 凭证是否有效"""
         return True  # 子类可选覆盖
+
+
+def create_wuhenai_adapter(mode: str = "pro_box") -> "WuhenAIV21Adapter":
+    """创建标准配置的无痕AI 2.1 适配器。
+    CLI 和 UI 统一入口，保证行为一致。
+
+    TODO(2026-05): mode 参数预留，将来支持不同模式（如 basic→all_area）。
+    """
+    from copy import deepcopy
+    from config import ADAPTER_CONFIGS
+    from adapters.wuhenai_v2 import WuhenAIV21Adapter
+
+    _ = mode
+    adapter_cfg = deepcopy(ADAPTER_CONFIGS["wuhenai_v21"])
+    adapter_cfg["model"] = "video_removal_std"
+    adapter_cfg["method"] = "sel_area"
+    return WuhenAIV21Adapter(adapter_cfg)

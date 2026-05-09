@@ -24,7 +24,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from config import hide_path
+from config import hide_path, SMB_LOG_DIR
 
 _lock = threading.Lock()
 _log_dir = None
@@ -77,7 +77,7 @@ def _write(entry: dict):
     log_dir = _log_dir
     if not log_dir:
         # fallback：没确认项目路径时写到 SMB 插件日志目录
-        log_dir = "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/logs"
+        log_dir = SMB_LOG_DIR
         try:
             os.makedirs(log_dir, exist_ok=True)
         except Exception:

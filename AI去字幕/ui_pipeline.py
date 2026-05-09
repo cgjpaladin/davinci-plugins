@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 
 from config import (
     DEBUG, get_output_dir, get_log_dir, __version__,
+    SMB_SCRIPTS, SMB_AI_PROJECT,
 )
 from subtitle_state import init as state_init, acquire_lock, release_lock, is_locked as state_is_locked
 import ledger
@@ -32,10 +33,10 @@ import ops_logger
 from core import (
     connect_resolve, scan_io_clips, prepare_tasks,
     estimate_cost, query_balance, post_check, CLIP_COLOR as _CLIP_COLOR,
-    create_wuhenai_adapter, download_and_apply,
+    download_and_apply,
 )
 from adapters.wuhenai_v2 import wuhenai_set_logger
-from adapters import SubtitleTask
+from adapters import SubtitleTask, create_wuhenai_adapter
 from logger import UILogger, set_logger
 from pricing import point_to_yuan, oss_tracker, ACTIVE_PROVIDER
 from interface import DaVinciPipelineUI
@@ -64,7 +65,7 @@ def discover_folders():
     """列出 SMB 上的所有项目目录。
     Returns: [(项目名, 完整路径), ...] 或 []"""
     results = []
-    project_base = "/Volumes/MYJC/08_AI_Project"
+    project_base = SMB_AI_PROJECT
     if not os.path.isdir(project_base):
         return results
     try:
@@ -98,7 +99,7 @@ def scan_io(*_):
         _version_checked = True
         try:
             import re
-            smb_cfg = "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/config.py"
+            smb_cfg = os.path.join(SMB_SCRIPTS, "AI去字幕", "config.py")
             if os.path.exists(smb_cfg):
                 with open(smb_cfg) as f:
                     m = re.search(r'__version__\s*=\s*"([^"]+)"', f.read())

@@ -6,12 +6,12 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "═══ 本地验证 — 时间线检查 ═══"
+echo "═══ 本地验证 — 交付自检工具 ═══"
 echo ""
 
 echo "语法检查..."
 FAIL=0
-for f in config.py core.py check.py ui.py; do
+for f in config.py check_core.py check.py ui.py; do
     python3 -m py_compile "$f" && echo "  ✅ $f" || { echo "  ❌ $f"; FAIL=1; }
 done
 if [ $FAIL -ne 0 ]; then

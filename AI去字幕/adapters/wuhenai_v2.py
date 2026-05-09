@@ -98,15 +98,11 @@ class WuhenAIV21Adapter(BaseAdapter):
 
     def _get_video_resolution(self, video_path: str) -> tuple[int, int]:
         """用 ffprobe 获取视频宽高，返回 (width, height)"""
-        # 插件子进程可能没有 Homebrew PATH，用完整路径
-        _FFPROBE = "/opt/homebrew/bin/ffprobe"   # Apple Silicon
-        if not os.path.exists(_FFPROBE):
-            _FFPROBE = "/usr/local/bin/ffprobe"   # Intel Mac Homebrew
-        if not os.path.exists(_FFPROBE):
-            _FFPROBE = "ffprobe"  # fallback 到 PATH
+        from platform import ffprobe_path
+        ffprobe = ffprobe_path()
         try:
             result = subprocess.run(
-                [_FFPROBE, "-v", "quiet", "-select_streams", "v:0",
+                [ffprobe, "-v", "quiet", "-select_streams", "v:0",
                  "-show_entries", "stream=width,height",
                  "-of", "csv=p=0", video_path],
                 capture_output=True, text=True, timeout=10,

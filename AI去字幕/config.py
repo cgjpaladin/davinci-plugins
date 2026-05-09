@@ -22,6 +22,16 @@
 import os
 import subprocess
 import time
+import sys
+
+# 确保 shared/ 模块可导入
+_shared = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'shared')
+if _shared not in sys.path:
+    sys.path.insert(0, _shared)
+
+from env import load_all_env
+
+load_all_env(os.path.dirname(os.path.abspath(__file__)))
 
 # 版本号 — 纯数字，不含后缀
 __version__ = "1.8.0"
@@ -31,39 +41,6 @@ __channel__ = "dev"
 def version_string():
     """完整版本字符串，如 '1.8.0-dev' 或 '1.8.0'"""
     return f"{__version__}{'-' + __channel__ if __channel__ else ''}"
-
-# ============================================================
-# .env 加载（先加载的优先：本地 > SMB > 个人备用）
-# ============================================================
-def _load_dotenv(path: str):
-    """手动解析 .env 文件（零依赖），加载到 os.environ。
-    限制：不支持引号内等号（如 KEY="val=ue"），当前 .env 中无此类值。
-    """
-    if not os.path.isfile(path):
-        return
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if "=" in line:
-                    key, _, value = line.partition("=")
-                    key = key.strip()
-                    value = value.strip().strip('"').strip("'")
-                    if key and key not in os.environ:
-                        os.environ[key] = value
-    except Exception:
-        pass
-
-# 加载顺序：本地优先 → SMB 共享 → 个人备用（先加载的优先，后加载不覆盖已有 key）
-_local_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
-_smb_env = "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/.env"
-_load_dotenv(_local_env)
-if os.path.realpath(_local_env) != os.path.realpath(_smb_env):  # 生产机上是同一个文件，跳过
-    _load_dotenv(_smb_env)
-_load_dotenv(os.path.expanduser("~/.subtitle.env"))
-_load_dotenv(os.path.expanduser("~/.watermark.env"))  # 旧名兼容，v2.0 后可移除
 
 # ============================================================
 # 调试模式
@@ -129,6 +106,13 @@ PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 # SMB 常量
 # ============================================================
 SMB_MOUNT = "/Volumes/MYJC"
+SMB_SCRIPTS = os.path.join(SMB_MOUNT, "06_Software", "达芬奇脚本")
+SMB_AI_SUBTITLE = os.path.join(SMB_SCRIPTS, "AI去字幕")
+SMB_AI_PROJECT = os.path.join(SMB_MOUNT, "08_AI_Project")
+
+# 日志路径（集中管理，避免散落在多个文件）
+DEV_LOG_DIR = "/tmp/ai_subtitle_dev"                                  # dev 版本地日志目录
+SMB_LOG_DIR = os.path.join(SMB_AI_SUBTITLE, "logs")                   # SMB 运维日志
 
 # ============================================================
 # 调试模式固定路径（仅 SUBTITLE_DEBUG=1 时使用）

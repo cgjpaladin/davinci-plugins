@@ -33,13 +33,13 @@ from config import (
     DEBUG, SCAN_ONLY, __version__, version_string,
     get_output_dir, get_log_dir, PLUGIN_DIR,
 )
-from adapters import SubtitleTask
+from adapters import SubtitleTask, create_wuhenai_adapter
 from subtitle_state import get_clip_status, init as state_init
 from core import (
     connect_resolve, scan_io_clips, prepare_tasks,
     build_output_path, estimate_cost, query_balance, get_io,
     post_check, CLIP_COLOR as _CLIP_COLOR,
-    create_wuhenai_adapter, process_single_clip, download_and_apply,
+    process_single_clip, download_and_apply,
 )
 from pipeline_utils import validate_task, calc_cache_savings, estimate_processing_time, format_duration
 from logger import title, step, ok, warn, fail, info
@@ -61,7 +61,7 @@ def _run_env_checks() -> dict:
     """
     from config import WUHENAI_V2_API_KEY, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET
     return {
-        "SMB 挂载": os.path.exists("/Volumes/MYJC"),
+        "SMB 挂载": os.path.exists(SMB_MOUNT),
         "API Key (无痕AI 2.1)": bool(WUHENAI_V2_API_KEY),
         "OSS 凭证 (阿里云)": bool(OSS_ACCESS_KEY_ID and OSS_ACCESS_KEY_SECRET),
         "达芬奇运行": os.path.exists("/Applications/DaVinci Resolve"),
