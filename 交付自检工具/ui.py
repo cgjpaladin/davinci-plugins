@@ -6,7 +6,6 @@
 使用 fusionscript_loader 连接 Resolve。
 """
 import os
-import re
 import socket
 import sys
 import time
@@ -30,7 +29,7 @@ from config import (
     DEFAULT_VIDEO_TRACKS,
     DEFAULT_AUDIO_TRACKS,
 )
-from check_core import check_track_structure, check_subtitle_clamping, check_disabled_items, check_weather
+from check_core import check_track_structure, check_subtitle_clamping, check_disabled_items
 
 # ═══════════════════════════════════════════
 # 常量
@@ -38,8 +37,8 @@ from check_core import check_track_structure, check_subtitle_clamping, check_dis
 WIN_ID = "com.myjc.delivery_checker"
 
 # 控件 ID
-CHK_TRACK, CHK_SUBTITLE, CHK_BLACK, CHK_WEATHER, CHK_DISABLED = \
-    "chk_track", "chk_subtitle", "chk_black", "chk_weather", "chk_disabled"
+CHK_TRACK, CHK_SUBTITLE, CHK_BLACK, CHK_DISABLED = \
+    "chk_track", "chk_subtitle", "chk_black", "chk_disabled"
 LBL_SUB_VAL, LBL_VID_VAL, LBL_AUD_VAL = "lbl_sub", "lbl_vid", "lbl_aud"
 EDIT_SUB, EDIT_VID, EDIT_AUD = "edit_sub", "edit_vid", "edit_aud"
 BTN_EDIT_TRACK = "btn_edit_track"
@@ -52,6 +51,49 @@ BTN_START = "btn_start"
 TREE_RESULT = "tree_result"
 ST_LB = "st_lb"
 HINT_LB = "hint_lb"
+
+# ── 结果列定义：加/删/挪/开关列只改这里 ──
+#   enabled=False → 列暂时隐藏，不删定义
+COLUMNS = [
+    {"header": "状态", "width": 40,  "key": "icon",  "enabled": True},
+    {"header": "轨道", "width": 50,  "key": "track", "enabled": True},
+    {"header": "位置", "width": 100, "key": "tc",    "enabled": True},
+    {"header": "详情", "width": 480, "key": "msg",   "enabled": True},
+]
+
+# 当前启用的列（enabled=True）
+_ENABLED_COLS = [c for c in COLUMNS if c.get("enabled", True)]
+
+
+def _col_index(key):
+    """根据 key 找在启用列中的索引（用于跳转等）"""
+    for i, c in enumerate(_ENABLED_COLS):
+        if c["key"] == key:
+            return i
+    return -1
+
+
+def _setup_tree_header(tree):
+    """根据启用的列设置树列表头"""
+    hdr = tree.NewItem()
+    for i, col in enumerate(_ENABLED_COLS):
+        hdr.Text[i] = col["header"]
+    tree.SetHeaderItem(hdr)
+    for i, col in enumerate(_ENABLED_COLS):
+        tree.ColumnWidth[i] = col["width"]
+
+
+def _set_row(row, data):
+    """根据启用的列 + data 字典填充一行"""
+    for i, col in enumerate(_ENABLED_COLS):
+        row.Text[i] = data.get(col["key"], "")
+
+
+def _set_row_texts(row, *texts):
+    """直接按列位置设文本（用于标题行等）"""
+    for i, t in enumerate(texts):
+        row.Text[i] = t
+
 
 # ═══════════════════════════════════════════
 # 样式
@@ -104,16 +146,11 @@ def _run_disabled_check(timeline, fps):
     """启用/禁用检查"""
     return check_disabled_items(timeline, fps)
 
-def _run_weather_check(timeline, fps):
-    """天气检查（验证用）"""
-    return check_weather(timeline, fps)
-
 CHECKS = [
-    {"id": "track",            "section": "轨道结构", "chk_id": CHK_TRACK,    "run_fn": _run_track_check,    "has_summary": False},
-    {"id": "subtitle_clamp",   "section": "字幕夹帧", "chk_id": CHK_SUBTITLE, "run_fn": _run_clamp_check,    "has_summary": True},
-    {"id": "subtitle_disabled","section": "启用/禁用", "chk_id": CHK_DISABLED, "run_fn": _run_disabled_check,  "has_summary": True},
-    {"id": "black_border",     "section": "黑边检测", "chk_id": CHK_BLACK,    "run_fn": None,                "has_summary": False},
-    {"id": "weather",          "section": "天气检查", "chk_id": CHK_WEATHER,  "run_fn": None,                "has_summary": True},
+    {"id": "track",            "section": "轨道结构", "chk_id": CHK_TRACK,    "run_fn": _run_track_check},
+    {"id": "subtitle_clamp",   "section": "字幕长度", "chk_id": CHK_SUBTITLE, "run_fn": _run_clamp_check},
+    {"id": "subtitle_disabled","section": "启用/禁用", "chk_id": CHK_DISABLED, "run_fn": _run_disabled_check},
+    {"id": "black_border",     "section": "黑边检测", "chk_id": CHK_BLACK,    "run_fn": None},
 ]
 # 扩展指南：
 #   - 加新检查：往 CHECKS 末尾加一行 dict，写 run_fn
@@ -211,7 +248,7 @@ window_layout = [
 
             # ② 字幕夹帧
             ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                ui.CheckBox({"ID": CHK_SUBTITLE, "Text": "字幕夹帧", "Checked": True,
+                ui.CheckBox({"ID": CHK_SUBTITLE, "Text": "字幕长度", "Checked": True,
                              "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}),
                 ui.Label({"Text": "阈值", "StyleSheet": LABEL_DIM, "Weight": 0}),
                 ui.Label({"ID": LBL_CLAMP_VAL, "Text": str(DEFAULT_CLAMP_THRESHOLD),
@@ -227,7 +264,7 @@ window_layout = [
 
             # ③ 启用/禁用检查
             ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                ui.CheckBox({"ID": CHK_DISABLED, "Text": "启用/禁用检查", "Checked": True,
+                ui.CheckBox({"ID": CHK_DISABLED, "Text": "启用/禁用", "Checked": True,
                              "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}),
             ]),
 
@@ -238,12 +275,6 @@ window_layout = [
                              "StyleSheet": "font-size:13px;color:rgb(100,100,100)", "Weight": 0}),
             ]),
 
-            # ⑤ 天气检查（扩展参考案例）
-            ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                ui.CheckBox({"ID": CHK_WEATHER, "Text": "天气检查", "Checked": False,
-                             "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}),
-            ]),
-
             ]),  # 结束左侧 VGroup
 
             ui.HGap({"Weight": 1}),  # 弹簧，把按钮推到最右
@@ -251,7 +282,7 @@ window_layout = [
             # 右侧：开始检查按钮，高度匹配三行
             ui.Button({"ID": BTN_START, "Text": "开始检查",
                        "StyleSheet": BTN_PRIMARY, "Weight": 0,
-                       "MinimumSize": [120, 134]}),
+                       "MinimumSize": [120, _BTN_HEIGHT]}),
         ]),
 
         # ── 状态标签 ──
@@ -295,18 +326,12 @@ itm[EDIT_AUD].Visible = False
 itm[BTN_SAVE_TRACK].Visible = False
 itm[EDIT_CLAMP].Visible = False
 itm[BTN_SAVE_CLAMP].Visible = False
+itm[BTN_EDIT_CLAMP].Visible = False  # 暂不可编辑，要恢复删这行即可
 itm[BTN_START].Enabled = False
 
 # Tree 表头
 tree = itm[TREE_RESULT]
-tree_header = tree.NewItem()
-tree_header.Text[0] = "状态"
-tree_header.Text[1] = "位置"
-tree_header.Text[2] = "详情"
-tree.SetHeaderItem(tree_header)
-tree.ColumnWidth[0] = 50
-tree.ColumnWidth[1] = 120
-tree.ColumnWidth[2] = 500
+_setup_tree_header(tree)
 
 # ═══════════════════════════════════════════
 # Tree 渲染
@@ -316,30 +341,24 @@ def _render_sections(sections, tree):
     """将检查结果渲染到结果 Tree"""
     for i, sec in enumerate(sections):
         hdr = tree.NewItem()
-        hdr.Text[0] = "▶"
-        hdr.Text[1] = ""
+        hdr_title = sec["title"]
         if sec["all_ok"]:
-            hdr.Text[2] = sec["title"] + "  — 全部通过"
+            hdr_title += "  — 全部通过"
         elif sec["summary"]:
-            hdr.Text[2] = sec["title"] + "  —  " + sec["summary"]
-        else:
-            hdr.Text[2] = sec["title"]
+            hdr_title += "  —  " + sec["summary"]
+        _set_row_texts(hdr, "▶", "", "", hdr_title)
         tree.AddTopLevelItem(hdr)
 
         if not sec["all_ok"]:
             for row_data in sec["rows"]:
                 row = tree.NewItem()
-                row.Text[0] = row_data["icon"]
-                row.Text[1] = row_data["tc"]
-                row.Text[2] = row_data["msg"]
+                _set_row(row, row_data)
                 tree.AddTopLevelItem(row)
 
         # 区域间空行
         if i < len(sections) - 1:
             gap = tree.NewItem()
-            gap.Text[0] = ""
-            gap.Text[1] = ""
-            gap.Text[2] = ""
+            _set_row_texts(gap, "", "", "", "")
             tree.AddTopLevelItem(gap)
 
 
@@ -459,6 +478,26 @@ def _save_clamp_edit():
 
 
 # ═══════════════════════════════════════════
+# 结果处理
+# ═══════════════════════════════════════════
+
+def _process_result(r, rows_list):
+    """处理单条检查结果。读取 track/timecode/detail 三字段，无需解析。返回 (has_fail, is_pass)"""
+    if r["status"] == "pass":
+        return False, True
+
+    icon = "❌" if r["status"] == "fail" else "⚠"
+    rows_list.append({
+        "icon": icon,
+        "tc": r.get("timecode", ""),
+        "track": r.get("track", ""),
+        "msg": r.get("detail", ""),
+    })
+    _action_log(r.get("detail", ""))
+    return True, False
+
+
+# ═══════════════════════════════════════════
 # 开始检查
 # ═══════════════════════════════════════════
 
@@ -512,39 +551,12 @@ def _start_check():
 
         # 清空结果
         tree.Clear()
-        tree_header_new = tree.NewItem()
-        tree_header_new.Text[0] = "状态"
-        tree_header_new.Text[1] = "位置"
-        tree_header_new.Text[2] = "详情"
-        tree.SetHeaderItem(tree_header_new)
-        tree.ColumnWidth[0] = 50
-        tree.ColumnWidth[1] = 120
-        tree.ColumnWidth[2] = 500
+        _setup_tree_header(tree)
 
         has_failures = False
         pass_count = 0
         fail_count = 0
-        sections = []  # [{"title": "...", "rows": [row_data, ...]}]
-
-        def _add_result(r, rows_list):
-            nonlocal has_failures, pass_count, fail_count
-            tc = r.get("timecode", r.get("timecode_prev", ""))
-            if r["status"] == "pass":
-                pass_count += 1
-                return
-            elif r["status"] == "fail":
-                fail_count += 1
-                has_failures = True
-                icon = "❌"
-            else:
-                fail_count += 1
-                icon = "⚠"
-
-            # 详情列去重：先剥 ❌/⚠，再只剥时码，保留轨道前缀（S1/V1/A5）
-            msg = r["message"].replace("✅ ", "", 1).replace("❌ ", "", 1).replace("⚠ ", "", 1)
-            msg = re.sub(r'\b\d{2}:\d{2}:\d{2}:\d{2}(→\d{2}:\d{2}:\d{2}:\d{2})?\s*', '', msg)
-            rows_list.append({"icon": icon, "tc": tc, "msg": msg})
-            _action_log(msg)
+        sections = []
 
         # 按注册表顺序执行检查
         for check in CHECKS:
@@ -559,18 +571,22 @@ def _start_check():
             section_pass = 0
             summary_text = ""
 
-            # 第一条是汇总信息，提取到标题里
-            if all_results and check.get("has_summary"):
-                summary_text = all_results[0]["message"].replace("✅ ", "").replace("❌ ", "").replace("⚠ ", "")
+            # 第一条如果是汇总行，提取到标题里
+            if all_results and all_results[0].get("is_summary"):
+                summary_text = all_results[0]["detail"]
                 rest = all_results[1:]
             else:
                 summary_text = ""
                 rest = all_results
 
             for r in rest:
-                if r["status"] == "pass":
+                has_fail, is_pass = _process_result(r, section_rows)
+                if is_pass:
+                    pass_count += 1
                     section_pass += 1
-                _add_result(r, section_rows)
+                elif has_fail:
+                    fail_count += 1
+                    has_failures = True
 
             all_ok = not section_rows and section_pass > 0
             sections.append({
@@ -614,7 +630,9 @@ def _on_result_click(ev):
         if item is None:
             _action_log(f"⚠ 跳转: 取不到 Item, ev={type(ev)} keys={list(ev.keys()) if hasattr(ev,'keys') else '?'}")
             return
-        tc = item.Text[1]
+        # 从 COLUMNS 找到 timecode 列的真实索引
+        tc_idx = _col_index("tc")
+        tc = item.Text[tc_idx] if tc_idx >= 0 else ""
         if not tc:
             return
         resolve = bmd.scriptapp("Resolve")

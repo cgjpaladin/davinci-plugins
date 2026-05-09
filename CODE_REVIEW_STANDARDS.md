@@ -108,7 +108,7 @@ for attempt in range(3):
 
 ---
 
-#### R3. ReplaceClip 三段式（下载→校验→替换）
+#### R3. ReplaceClip 三段式 + 颜色陷阱（下载→校验→替换→恢复颜色）
 
 **业务原因**：ReplaceClip 是达芬奇最不稳定的 API。静默失败（返回True但没替换）、锁冲突（其他用户占用媒体池）、路径不一致。必须三段式防御。
 
@@ -150,6 +150,17 @@ os.replace(path + ".tmp", path)  # 原子：只有写成功才替换
 ```
 
 **当前状态**：✅ `download_and_apply` 已正确实现三段式。⚠ `subtitle_state.py` 的备份轮转用 copy2 而非原子操作，低风险（备份丢失不影响主流程）。
+
+**🆕 ReplaceClip 颜色陷阱（v2.3 补充，MEMORY#16）**：
+`ReplaceClip` 会重置同一 MediaPoolItem 的**所有** TimelineItem 颜色。同文件多段时，去重跳过的片段也必须在 ReplaceClip 后恢复颜色。
+```python
+# ✅ — core.py 通过 ClipEntry.alt_tl_items 收集并批量恢复
+for alt in clip.alt_tl_items:
+    try:
+        alt.SetClipColor("Orange")
+    except Exception:
+        _smb_log(f"颜色恢复失败: {name}")
+```
 
 ---
 
@@ -434,18 +445,12 @@ _BAK_KEEP = 7              # 状态文件备份保留7天
 
 **仍需改进的硬编码**：
 ```python
-# 🟡 wuhenai_v2.py — ffprobe 路径硬编码
-_FFPROBE = "/opt/homebrew/bin/ffprobe"  # Apple Silicon 路径
-if not os.path.exists(_FFPROBE):
-    _FFPROBE = "ffprobe"  # fallback到PATH
+# ✅ 已修复（v1.8.0）— wuhenai_v2.py 改用 shared/platform.py
+from platform import ffprobe_path
+_FFPROBE = ffprobe_path()  # 自动检测 Apple Silicon / Intel / PATH
 
-# 问题：Intel Mac 的 Homebrew 在 /usr/local/bin/ffprobe
-# 建议：加一个 fallback
-_FFPROBE_CANDIDATES = [
-    "/opt/homebrew/bin/ffprobe",        # Apple Silicon Homebrew
-    "/usr/local/bin/ffprobe",           # Intel Homebrew
-    "ffprobe",                           # 系统 PATH
-]
+# D1 解耦（2026-05-09）：平台路径统一到 shared/platform.py
+# 未来新增路径只需改一处，不用扫全项目 grep
 ```
 
 **审查规则**：
@@ -488,6 +493,23 @@ launcher.py 是本地测试启动器，不在生产路径，且不会频繁修�
 - E402（import不在顶部）豁免：达芬奇需要 sys.path 注入
 - 标准库模块不要在函数内 import = 🟡（除非有明确的延迟加载理由，如避免循环导入）
 
+**🆕 懒加载解耦模式（v2.3 新增）**：
+当模块级 import 会导致循环依赖或产品耦合时，允许函数内懒加载：
+```python
+# ✅ — core.py query_balance() 避免模块级耦合适配器
+cfg = adapter_config or deepcopy(ADAPTER_CONFIGS["wuhenai_v21"])
+from adapters.wuhenai_v2 import WuhenAIV21Adapter  # 懒加载
+adapter = WuhenAIV21Adapter(cfg)
+
+# ✅ — ui_widgets.py 避免模块级 import macos_utils（非关键路径）
+from macos_utils import mount_smb
+```
+此模式适用于：
+- 适配器实例化（产品不应硬依赖具体适配器）
+- macOS 工具类（非关键路径，失败可降级）
+- 未来可能替换的模块
+不符合时应标注原因 = 🟡。
+
 ---
 
 #### S8. 适配器专项检查（v2.1 新增）
@@ -503,6 +525,23 @@ launcher.py 是本地测试启动器，不在生产路径，且不会频繁修�
 | **批量处理部分失败** | 批量模式下，一个片段失败不应影响其他片段。阶段间状态传递要健壮 |
 
 **当前状态**：⚠ `wuhenai_v2.py` 的 `submit()` 补上了 video_path 判空（v2.1审查修复）。批量处理的四阶段流水线设计合理。
+
+---
+
+#### S9. 死代码检测（v2.3 新增）
+
+**业务现实**：`DaVinciPipelineUI` 从创建到 S4 接全之前，从未被真实调用——语法/导入/单元测试全绿，但在达芬奇里一跑就炸（`_ui_write()` 参数错误）。死代码自带 bug 但永远不会被发现。
+
+**审查规则**：
+- 任何新增的 class/function 必须在至少一个调用路径中被实际使用 = 🟡
+- 代码审查时发现「看起来对但没跑过」的代码 → 🟡 加实测注释
+- 抽象接口的每个方法都必须在子类中有实现（`@abstractmethod` 确保编译期检查）
+
+**检查方式**：
+```bash
+# 检查 class 是否有实际调用方（排除定义自身）
+grep -rn "ClassName" --include="*.py" | grep -v "class ClassName"
+```
 
 ---
 
@@ -594,6 +633,23 @@ if not hasattr(self, "_task_map"):
 **审查规则**：
 - `__init__` 中声明并初始化为合理默认值（如 `{}`、`None`）= 💭 建议
 - 如果属性只在特定场景使用且体积大（如大 dict），延迟初始化可接受但需要注释说明
+
+#### N5. 数据格式 — 返回结构化字段，不做字符串拼接再拆分（v2.3 新增）
+
+**现实案例**：check_core 返回 `{"message": "❌ ST1 00:02:15  text  (1帧)"}`，UI 用 `re.sub` 剥离 ❌/时码/轨道前缀。裁缝老师：「为什么不直接拿干净的原数据？」
+
+**审查规则**：
+- 🟡 core 函数返回独立字段（`track`/`timecode`/`detail`），不拼接成 `message` 后再拆分
+- 🟡 图标不放数据字段，由 UI 按 `status` 自行选择
+- 💭 汇总行用 `is_summary: True`，不用特殊 type 值
+
+#### N6. 改完自查全量引用（v2.3 新增）
+
+**现实案例**：从 ui.py 删了 `check_weather` 但 check.py 还 import 着；改了汇总格式但旧代码残留两份。
+
+**审查规则**：
+- 🟡 删/改名后 grep 搜索全量引用，确认无遗漏
+- 🟡 改函数签名后 grep 所有调用点
 
 ---
 
@@ -709,7 +765,7 @@ pip3 install flake8 && flake8 AI去字幕/ shared/ tools/ --config=.flake8
 │  7. 🚫 没有 find/grep -r /Volumes/MYJC？      │
 │  8. 📊 ops_logger 关键节点都记录了？            │
 │  9. ⚠️  达芬奇 API 返回值检查了 None？          │
-│ 10. 🧪 跑过 dev.sh 了吗？                      │
+│ 10. 🧪 跑过 build_local.sh 了吗？                 │
 └─────────────────────────────────────────────┘
 ```
 
@@ -719,6 +775,8 @@ pip3 install flake8 && flake8 AI去字幕/ shared/ tools/ --config=.flake8
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 2.4 | 2026-05-09 | 新增 N5(数据格式规范)、N6(改完自查全量引用) |
+| 2.3 | 2026-05-09 | S6 更新 ffprobe 解耦状态；S7 新增懒加载解耦模式；R3 补充 ReplaceClip 颜色陷阱；新增 S9 死代码检测；十问 Q10 修正为 build_local.sh |
 | 2.2 | 2026-05-09 | 合并 code-review-standards skill 的「快速参考十问」；删除过时 skill，统一为本文档 |
 | 2.1 | 2026-05-09 | 实战审查 wuhenai_v2.py 后修订：新增 S8(适配器专项)、N4(实例属性初始化)、S7 扩展(标准库不在函数内import) |
 | 2.0 | 2026-05-09 | 深度结合业务重写：每项规则绑定真实场景，区分「故意设计」vs「真正问题」，增加分场景判断逻辑 |

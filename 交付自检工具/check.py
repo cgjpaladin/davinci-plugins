@@ -9,14 +9,14 @@
     python3 check.py --clamp 3               # 夹帧阈值
     python3 check.py --only track            # 只检查轨道
     python3 check.py --only subtitle         # 只检查字幕
-    python3 check.py --no-track --no-subtitle  # 跳过某项
+    python3 check.py --json                  # JSON 输出
 """
 
 import argparse
+import json
 import os
 import sys
 
-# 本地目录优先（避免 shared/core.py 冲突）
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
 
@@ -27,30 +27,39 @@ from config import (
     DEFAULT_AUDIO_TRACKS,
     __version__,
 )
-from check_core import check_track_structure, check_subtitle_clamping, check_disabled_items, check_weather
+from check_core import check_track_structure, check_subtitle_clamping, check_disabled_items
 from fusionscript_loader import bmd
-from timecode import SMPTE
+
+# ── CLI 检查注册表 ──
+# run_fn(timeline, fps, args) — 统一签名
+def _cli_run_track(timeline, fps, args):
+    return check_track_structure(timeline, args.track_sub, args.track_vid, args.track_aud)
+
+def _cli_run_subtitle(timeline, fps, args):
+    return check_subtitle_clamping(timeline, args.clamp, fps)
+
+def _cli_run_disabled(timeline, fps, args):
+    return check_disabled_items(timeline, fps)
+
+CLI_CHECKS = [
+    {"id": "track",    "section": "轨道结构", "fn": _cli_run_track},
+    {"id": "subtitle", "section": "字幕长度", "fn": _cli_run_subtitle},
+    {"id": "disabled", "section": "启用/禁用", "fn": _cli_run_disabled},
+]
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="时间线检查工具")
+    p = argparse.ArgumentParser(description="交付自检工具")
     p.add_argument("--track", type=str, default=None,
                    help="轨道模板: 字幕,视频,音频 (如 1,5,10)")
     p.add_argument("--clamp", type=int, default=DEFAULT_CLAMP_THRESHOLD,
-                   help=f"夹帧阈值 (默认 {DEFAULT_CLAMP_THRESHOLD})")
+                   help=f"夹帧/过短阈值 (默认 {DEFAULT_CLAMP_THRESHOLD})")
     p.add_argument("--only", type=str, choices=["track", "subtitle"], default=None,
                    help="仅检查指定项")
     p.add_argument("--no-track", action="store_true", help="跳过轨道检查")
     p.add_argument("--no-subtitle", action="store_true", help="跳过字幕检查")
     p.add_argument("--json", action="store_true", help="JSON 输出")
     return p.parse_args()
-
-
-def _frame_to_tc(frames, fps):
-    smpte = SMPTE()
-    smpte.fps = fps
-    smpte.df = False
-    return smpte.gettc(frames)
 
 
 def main():
@@ -73,53 +82,45 @@ def main():
 
     fps = float(project.GetSetting("timelineFrameRate"))
 
-    # 解析轨道模板
+    # 轨道模板 — 挂在 args 上，统一传给 run_fn
     if args.track:
         parts = args.track.split(",")
         if len(parts) != 3:
             print("❌ --track 格式: 字幕,视频,音频 (如 1,5,10)", file=sys.stderr)
             return 1
-        exp_sub, exp_vid, exp_aud = map(int, parts)
+        args.track_sub, args.track_vid, args.track_aud = map(int, parts)
     else:
-        exp_sub, exp_vid, exp_aud = DEFAULT_SUBTITLE_TRACKS, DEFAULT_VIDEO_TRACKS, DEFAULT_AUDIO_TRACKS
+        args.track_sub, args.track_vid, args.track_aud = \
+            DEFAULT_SUBTITLE_TRACKS, DEFAULT_VIDEO_TRACKS, DEFAULT_AUDIO_TRACKS
 
-    # 确定检查范围
-    do_track = do_subtitle = True
+    # 确定要跑哪些检查
+    run_ids = set(c["id"] for c in CLI_CHECKS)
     if args.only == "track":
-        do_subtitle = False
+        run_ids = {"track"}
     elif args.only == "subtitle":
-        do_track = False
+        run_ids = {"subtitle", "disabled"}
     if args.no_track:
-        do_track = False
+        run_ids.discard("track")
     if args.no_subtitle:
-        do_subtitle = False
+        run_ids.discard("subtitle")
+        run_ids.discard("disabled")
 
     all_results = []
     has_failures = False
 
-    if do_track:
-        results = check_track_structure(timeline, exp_sub, exp_vid, exp_aud)
-        all_results.append({"section": "轨道结构", "results": results})
-        for r in results:
-            if r["status"] == "fail":
-                has_failures = True
+    for check in CLI_CHECKS:
+        if check["id"] not in run_ids:
+            continue
 
-    if do_subtitle:
-        results = check_subtitle_clamping(timeline, args.clamp, fps)
-        all_results.append({"section": "字幕夹帧", "results": results})
-        for r in results:
-            if r["status"] == "fail":
-                has_failures = True
+        results = check["fn"](timeline, fps, args)
 
-        results_disabled = check_disabled_items(timeline, fps)
-        all_results.append({"section": "启用/禁用", "results": results_disabled})
-        for r in results_disabled:
+        all_results.append({"section": check["section"], "results": results})
+        for r in results:
             if r["status"] == "fail":
                 has_failures = True
 
     # 输出
     if args.json:
-        import json
         output = {
             "project": project.GetName(),
             "timeline": timeline.GetName(),
@@ -138,7 +139,13 @@ def main():
         for section in all_results:
             print(f"── {section['section']} ──")
             for r in section["results"]:
-                print(f"  {r['message']}")
+                if r.get("is_summary"):
+                    print(f"  {r['detail']}")
+                else:
+                    track = r.get("track", "")
+                    tc = r.get("timecode", "")
+                    prefix = f"{track} {tc}  " if track or tc else ""
+                    print(f"  {prefix}{r['detail']}")
             print()
 
         if has_failures:

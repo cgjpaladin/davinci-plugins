@@ -2,23 +2,35 @@
 """
 交付自检 — 核心检查逻辑（纯函数，与 UI/CLI 无关）
 
-所有函数接受达芬奇 API 对象，返回结构化的检查结果列表。
-不 import UI 模块，不写文件，不 print。
+所有结果统一格式：
+    {"status":"pass"|"fail"|"warn", "track":"", "timecode":"", "detail":"",
+     "is_summary": True|False}
+
+track / timecode / detail 均为干净独立字段，UI 端无需解析/截取。
 """
+
+from timecode import SMPTE
+
+# 轨道类型 → UI 缩写（与达芬奇界面一致：ST/V/A）
+_TRACK_LABEL = {"subtitle": "ST", "video": "V", "audio": "A"}
+
+
+def _track_short(track_type, index):
+    """拼接轨道缩写，如 V1, A10, ST1"""
+    return _TRACK_LABEL.get(track_type, track_type[0].upper()) + str(index)
+
+
+def _make_result(status, track="", timecode="", detail="", is_summary=False):
+    """工厂函数，统一构造结果 dict"""
+    return {"status": status, "track": track, "timecode": timecode,
+            "detail": detail, "is_summary": is_summary}
 
 
 def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expected_audio=10) -> list:
     """检查字幕/视频/音频轨道数量是否符合模板。
 
-    Args:
-        timeline: DaVinci Resolve Timeline 对象
-        expected_subtitle: 预期的字幕轨数量
-        expected_video: 预期的视频轨数量
-        expected_audio: 预期的音频轨数量
-
     Returns:
-        list[dict]: 每个轨道类型一条结果
-            {"status": "pass"|"fail", "type": "track", "label": "字幕", "actual": 1, "expected": 1, "message": "..."}
+        list[dict]: 每个轨道类型一条结果（无汇总行）
     """
     results = []
     checks = [
@@ -30,62 +42,37 @@ def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expec
     for label, track_type, expected in checks:
         actual = timeline.GetTrackCount(track_type)
         if actual == expected:
-            results.append({
-                "status": "pass",
-                "type": "track",
-                "label": label,
-                "actual": actual,
-                "expected": expected,
-                "message": f"✅ {label}轨道: {actual} (通过)",
-            })
+            results.append(_make_result("pass", detail=f"{label}轨道: {actual} (通过)"))
         else:
-            results.append({
-                "status": "fail",
-                "type": "track",
-                "label": label,
-                "actual": actual,
-                "expected": expected,
-                "message": f"❌ {label}轨道: {actual} (应为 {expected})",
-            })
+            results.append(_make_result("fail", detail=f"{label}轨道: {actual} (应为 {expected})"))
 
     return results
 
 
-def check_subtitle_clamping(timeline, threshold_frames=3, fps=25.0) -> list:
-    """检查字幕夹帧：① 时长过短的字幕 ② 两个字幕间距过短。
-
-    Args:
-        timeline: DaVinci Resolve Timeline 对象
-        threshold_frames: 夹帧阈值（帧数），≤N 帧即标记
-        fps: 时间线帧率，用于时码转换
+def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0) -> list:
+    """检查字幕：① 时长过短 ② 间距夹帧。
 
     Returns:
-        list[dict]:
-            第一条为汇总，后续为具体问题
+        list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
     """
     results = []
     subtitle_count = timeline.GetTrackCount("subtitle")
     if subtitle_count == 0:
-        results.append({
-            "status": "warn",
-            "type": "subtitle",
-            "message": "⚠ 无字幕轨道, 跳过夹帧检查",
-        })
+        results.append(_make_result("warn", detail="无字幕轨道", is_summary=True))
         return results
 
-    issues_short = []   # 时长过短
-    issues_gap = []     # 间距过短
+    issues_short = []
+    issues_gap = []
     total_count = 0
     disabled_count = 0
 
     for si in range(1, subtitle_count + 1):
+        track = _track_short("subtitle", si)
         items = timeline.GetItemListInTrack("subtitle", si)
         if not items:
             continue
 
-        # 按起始帧排序
         sorted_items = sorted(items, key=lambda it: it.GetStart())
-
         prev_end = None
         prev_name = ""
 
@@ -96,7 +83,6 @@ def check_subtitle_clamping(timeline, threshold_frames=3, fps=25.0) -> list:
             end_frame = item.GetEnd()
             duration = end_frame - start_frame
 
-            # 跳过禁用字幕
             try:
                 enabled = item.GetClipEnabled()
             except Exception:
@@ -105,59 +91,37 @@ def check_subtitle_clamping(timeline, threshold_frames=3, fps=25.0) -> list:
                 disabled_count += 1
                 continue
 
-            # 尝试获取字幕文本
             text = name
             try:
                 mp_item = item.GetMediaPoolItem()
                 if mp_item:
                     mp_props = mp_item.GetClipProperty()
                     if mp_props:
-                        clip_name = mp_props.get("Clip Name", "")
-                        if clip_name and clip_name != name:
-                            text = clip_name
+                        n = mp_props.get("Clip Name", "")
+                        if n and n != name:
+                            text = n
             except Exception:
                 pass
 
             # ① 时长过短
             if duration <= threshold_frames:
-                from timecode import SMPTE
-                smpte = SMPTE()
-                smpte.fps = fps
-                smpte.df = False
+                smpte = SMPTE(); smpte.fps = fps; smpte.df = False
                 tc = smpte.gettc(start_frame)
+                issues_short.append(_make_result(
+                    "fail", track=track, timecode=tc,
+                    detail=f"过短  {text}  ({duration}帧)",
+                ))
 
-                issues_short.append({
-                    "status": "fail",
-                    "type": "subtitle_short",
-                    "track": f"S{si}",
-                    "timecode": tc,
-                    "name": text,
-                    "duration_frames": duration,
-                    "message": f"❌ S{si} {tc}  {text}  ({duration}帧)",
-                })
-
-            # ② 间距过短: 当前字幕开头 - 上一个字幕结尾 ≤ 阈值
+            # ② 间距夹帧
             if prev_end is not None:
                 gap = start_frame - prev_end
                 if 0 < gap <= threshold_frames:
-                    from timecode import SMPTE
-                    smpte = SMPTE()
-                    smpte.fps = fps
-                    smpte.df = False
-                    tc_prev = smpte.gettc(prev_end)
-                    tc_curr = smpte.gettc(start_frame)
-
-                    issues_gap.append({
-                        "status": "fail",
-                        "type": "subtitle_gap",
-                        "track": f"S{si}",
-                        "timecode_prev": tc_prev,
-                        "timecode_curr": tc_curr,
-                        "gap_frames": gap,
-                        "prev_name": prev_name,
-                        "curr_name": text,
-                        "message": f"❌ S{si} {tc_prev}→{tc_curr}  间距 {gap} 帧  ({prev_name} → {text})",
-                    })
+                    smpte = SMPTE(); smpte.fps = fps; smpte.df = False
+                    tc = smpte.gettc(start_frame)
+                    issues_gap.append(_make_result(
+                        "fail", track=track, timecode=tc,
+                        detail=f"夹帧  {gap} 帧  ({prev_name} → {text})",
+                    ))
 
             prev_end = end_frame
             prev_name = text
@@ -165,23 +129,21 @@ def check_subtitle_clamping(timeline, threshold_frames=3, fps=25.0) -> list:
     # 汇总
     total_issues = len(issues_short) + len(issues_gap)
     if total_issues == 0:
-        summary_msg = f"✅ 通过: {total_count} 条字幕, 无夹帧"
+        parts = [f"共 {total_count} 条字幕, 无异常"]
+        if disabled_count:
+            parts.append(f"跳过 {disabled_count} 条禁用")
+        results.append(_make_result("pass", detail=", ".join(parts), is_summary=True))
     else:
         parts = []
         if issues_short:
-            parts.append(f"{len(issues_short)} 条时长≤{threshold_frames}帧")
+            parts.append(f"过短: {len(issues_short)} 条")
         if issues_gap:
-            parts.append(f"{len(issues_gap)} 处间距≤{threshold_frames}帧")
-        summary_msg = f'❌ 夹帧: {", ".join(parts)}'
-
-    if disabled_count:
-        summary_msg += f" (跳过 {disabled_count} 条禁用)"
-
-    results.append({"status": "fail" if total_issues > 0 else "pass",
-                    "type": "subtitle",
-                    "message": summary_msg})
-    results.extend(issues_short)
-    results.extend(issues_gap)
+            parts.append(f"夹帧: {len(issues_gap)} 处")
+        if disabled_count:
+            parts.append(f"跳过 {disabled_count} 条禁用")
+        results.append(_make_result("fail", detail=", ".join(parts), is_summary=True))
+        results.extend(issues_short)
+        results.extend(issues_gap)
 
     return results
 
@@ -189,31 +151,17 @@ def check_subtitle_clamping(timeline, threshold_frames=3, fps=25.0) -> list:
 def check_disabled_items(timeline, fps=25.0) -> list:
     """检查所有轨道上被禁用的片段（字幕/视频/音频）。
 
-    轨道级别的启用/禁用在 Resolve 20.3.2 API 中不可检测，
-    仅检测片段级别的 GetClipEnabled()。
-
-    Args:
-        timeline: DaVinci Resolve Timeline 对象
-        fps: 时间线帧率
-
     Returns:
-        list[dict]: 第一条为汇总，后续为具体问题
+        list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
     """
-    from timecode import SMPTE
-
     results = []
     issues = []
     total_count = 0
 
-    track_types = [
-        ("subtitle", "S"),
-        ("video",     "V"),
-        ("audio",     "A"),
-    ]
-
-    for track_type, prefix in track_types:
+    for track_type in ["subtitle", "video", "audio"]:
         track_count = timeline.GetTrackCount(track_type)
         for ti in range(1, track_count + 1):
+            track = _track_short(track_type, ti)
             items = timeline.GetItemListInTrack(track_type, ti)
             if not items:
                 continue
@@ -227,108 +175,63 @@ def check_disabled_items(timeline, fps=25.0) -> list:
                     enabled = item.GetClipEnabled()
                 except Exception:
                     enabled = True
-
                 if enabled is not False:
                     continue
 
-                # 获取名称
                 text = name
                 try:
                     mp_item = item.GetMediaPoolItem()
                     if mp_item:
                         mp_props = mp_item.GetClipProperty()
                         if mp_props:
-                            clip_name = mp_props.get("Clip Name", "")
-                            if clip_name and clip_name != name:
-                                text = clip_name
+                            n = mp_props.get("Clip Name", "")
+                            if n and n != name:
+                                text = n
                 except Exception:
                     pass
 
-                smpte = SMPTE()
-                smpte.fps = fps
-                smpte.df = False
+                smpte = SMPTE(); smpte.fps = fps; smpte.df = False
                 tc = smpte.gettc(start_frame)
 
-                issues.append({
-                    "status": "fail",
-                    "type": "disabled",
-                    "track": f"{prefix}{ti}",
-                    "timecode": tc,
-                    "name": text,
-                    "message": f"❌ {prefix}{ti} {tc}  {text}  (已禁用)",
-                })
+                issues.append(_make_result(
+                    "fail", track=track, timecode=tc,
+                    detail=f"{text}  (已禁用)",
+                ))
 
     if not issues:
-        results.append({
-            "status": "pass",
-            "type": "disabled",
-            "message": f"✅ 通过: {total_count} 个片段, 无禁用",
-        })
+        results.append(_make_result("pass",
+            detail=f"共 {total_count} 个片段, 无禁用", is_summary=True))
     else:
-        results.append({
-            "status": "fail",
-            "type": "disabled",
-            "message": f"❌ 已禁用: {len(issues)} 个片段",
-        })
+        results.append(_make_result("fail",
+            detail=f"已禁用: {len(issues)} 个片段", is_summary=True))
         results.extend(issues)
 
     return results
 
 
+# ── 参考案例（已从注册表移除，保留代码作模板）──
+
 def check_weather(timeline, fps=25.0) -> list:
-    """天气检查 — 扩展性验证用占位函数。
-
-    Args:
-        timeline: DaVinci Resolve Timeline 对象
-        fps: 时间线帧率
-
-    Returns:
-        list[dict]
-    """
-    import random, hashlib
-
-    results = []
-
-    # 用时间线名生成伪随机"天气"
+    """天气检查 — 扩展性参考案例"""
+    import random
     name = timeline.GetName()
     seed = sum(ord(c) for c in name)
     rng = random.Random(seed + 42)
-    temperature = rng.randint(-5, 42)
-    humidity = rng.randint(10, 99)
+    temp = rng.randint(-5, 42)
+    hum = rng.randint(10, 99)
 
-    if humidity > 80:
-        results.append({
-            "status": "fail",
-            "type": "weather",
-            "timecode": "",
-            "message": f"❌ 湿度过高: {humidity}% (建议除湿)",
-        })
-    if temperature > 35:
-        results.append({
-            "status": "fail",
-            "type": "weather",
-            "timecode": "",
-            "message": f"❌ 温度过高: {temperature}°C (建议开空调)",
-        })
-    if temperature < 0:
-        results.append({
-            "status": "fail",
-            "type": "weather",
-            "timecode": "",
-            "message": f"❌ 温度过低: {temperature}°C (建议取暖)",
-        })
+    issues = []
+    if hum > 80:
+        issues.append(_make_result("fail", detail=f"湿度过高: {hum}% (建议除湿)"))
+    if temp > 35:
+        issues.append(_make_result("fail", detail=f"温度过高: {temp}°C (建议开空调)"))
+    if temp < 0:
+        issues.append(_make_result("fail", detail=f"温度过低: {temp}°C (建议取暖)"))
 
-    if not results:
-        results.append({
-            "status": "pass",
-            "type": "weather",
-            "message": f"✅ 天气适宜: {temperature}°C, 湿度 {humidity}%",
-        })
-        return results
+    if not issues:
+        return [_make_result("pass",
+            detail=f"天气适宜: {temp}°C, 湿度 {hum}%", is_summary=True)]
 
-    results.insert(0, {
-        "status": "fail",
-        "type": "weather",
-        "message": f"⚠ 天气异常: {temperature}°C, 湿度 {humidity}%",
-    })
-    return results
+    issues.insert(0, _make_result("fail",
+        detail=f"天气异常: {temp}°C, 湿度 {hum}%", is_summary=True))
+    return issues
