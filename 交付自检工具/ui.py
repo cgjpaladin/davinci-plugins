@@ -45,7 +45,7 @@ CHK_TRACK, CHK_SUB_DURATION, CHK_SUB_LINEBREAK, CHK_SUB_GLYPH = \
     "chk_track", "chk_sub_dur", "chk_sub_br", "chk_sub_glyph"
 CHK_BLACK, CHK_BORDER, CHK_MONO, CHK_LOUDNESS, CHK_FRAGMENT, CHK_TIMELINE, CHK_COLOR = \
     "chk_black", "chk_border", "chk_mono", "chk_loudness", "chk_fragment", "chk_timeline", "chk_color"
-CHK_CENSOR_CN, CHK_CENSOR_EN, CHK_CENSOR_AD = "chk_censor_cn", "chk_censor_en", "chk_censor_ad"
+CHK_CENSOR_CN, CHK_CENSOR_EN, CHK_CENSOR_NRTA, CHK_CENSOR_JUICY = "chk_censor_cn", "chk_censor_en", "chk_censor_nrta", "chk_censor_juicy"
 CHK_BLACK_FRAME = CHK_BLACK  # 别名
 LBL_SUB_VAL, LBL_VID_VAL, LBL_AUD_VAL = "lbl_sub", "lbl_vid", "lbl_aud"
 EDIT_SUB, EDIT_VID, EDIT_AUD = "edit_sub", "edit_vid", "edit_aud"
@@ -56,6 +56,8 @@ EDIT_CLAMP = "edit_clamp"
 BTN_EDIT_CLAMP = "btn_edit_clamp"
 BTN_SAVE_CLAMP = "btn_save_clamp"
 BTN_START = "btn_start"
+BTN_SEL_ALL = "btn_sel_all"
+BTN_DESEL_ALL = "btn_desel_all"
 TREE_RESULT = "tree_result"
 ST_LB = "st_lb"
 HINT_LB = "hint_lb"
@@ -72,6 +74,9 @@ COLUMNS = [
 
 # 当前启用的列（enabled=True）
 _ENABLED_COLS = [c for c in COLUMNS if c.get("enabled", True)]
+
+# ── 结果分组顺序（四大分组，控制 Tree 渲染层级）──
+GROUP_ORDER = ["工程", "视频", "音频", "字幕"]
 
 
 def _col_index(key):
@@ -115,6 +120,17 @@ BTN_STYLE = (
     "QPushButton:hover{background-color:rgb(72,72,72)}"
     "QPushButton:pressed{background-color:rgb(45,45,45)}"
     "QPushButton:disabled{color:rgb(100,100,100);background-color:rgb(40,40,40)}"
+)
+BTN_ICON = (
+    "QPushButton{max-height:20px;max-width:24px;background-color:transparent;color:rgb(150,150,150);"
+    "border:1px solid transparent;border-radius:3px;padding:0px}"
+    "QPushButton:hover{background-color:rgb(60,60,60);color:rgb(220,220,220)}"
+)
+BTN_STYLE_SM = (
+    "QPushButton{max-height:22px;background-color:rgb(58,58,58);color:rgb(220,220,220);"
+    "border:1px solid rgb(80,80,80);border-radius:4px;padding:2px 8px;text-align:left}"
+    "QPushButton:hover{background-color:rgb(72,72,72)}"
+    "QPushButton:pressed{background-color:rgb(45,45,45)}"
 )
 BTN_PRIMARY = (
     "QPushButton{max-height:28px;background-color:rgb(50,120,220);color:rgb(255,255,255);"
@@ -185,23 +201,28 @@ def _run_censor_en(timeline, fps):
     """英文违禁词"""
     return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "censor_en.txt"), fps)
 
-def _run_censor_ad(timeline, fps):
-    """广审违禁词"""
-    return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "censor_ad.txt"), fps)
+def _run_censor_nrta(timeline, fps):
+    """广电违禁词"""
+    return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "censor_nrta.txt"), fps)
+
+def _run_censor_juicy(timeline, fps):
+    """短剧违禁词"""
+    return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "censor_juicy.txt"), fps)
 
 CHECKS = [
-    {"id": "timeline",      "section": "时间线",   "chk_id": CHK_TIMELINE,      "run_fn": _run_timeline_check},
-    {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "run_fn": _run_track_check},
-    {"id": "fragment",      "section": "片段状态", "chk_id": CHK_FRAGMENT,       "run_fn": _run_fragment_check},
-    {"id": "sub_duration",  "section": "时长",     "chk_id": CHK_SUB_DURATION,   "run_fn": _run_sub_duration_check},
-    {"id": "sub_linebreak", "section": "换行",     "chk_id": CHK_SUB_LINEBREAK,  "run_fn": _run_sub_linebreak_check},
-    {"id": "sub_glyph",     "section": "异体字",   "chk_id": CHK_SUB_GLYPH,      "run_fn": _run_sub_glyph_check},
-    {"id": "censor_cn",     "section": "中文违禁词","chk_id": CHK_CENSOR_CN,     "run_fn": _run_censor_cn},
-    {"id": "censor_en",     "section": "英文违禁词","chk_id": CHK_CENSOR_EN,     "run_fn": _run_censor_en},
-    {"id": "censor_ad",     "section": "广审违禁词","chk_id": CHK_CENSOR_AD,     "run_fn": _run_censor_ad},
-    {"id": "black_frame",   "section": "黑帧",     "chk_id": CHK_BLACK,          "run_fn": _run_black_frame_check},
+    {"id": "timeline",      "section": "时间线",   "chk_id": CHK_TIMELINE,      "group": "工程", "run_fn": _run_timeline_check},
+    {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "group": "工程", "run_fn": _run_track_check},
+    {"id": "fragment",      "section": "片段状态", "chk_id": CHK_FRAGMENT,       "group": "工程", "run_fn": _run_fragment_check},
+    {"id": "sub_duration",  "section": "时长",     "chk_id": CHK_SUB_DURATION,   "group": "字幕", "run_fn": _run_sub_duration_check},
+    {"id": "sub_linebreak", "section": "换行",     "chk_id": CHK_SUB_LINEBREAK,  "group": "字幕", "run_fn": _run_sub_linebreak_check},
+    {"id": "sub_glyph",     "section": "异体字",   "chk_id": CHK_SUB_GLYPH,      "group": "字幕", "run_fn": _run_sub_glyph_check},
+    {"id": "censor_cn",     "section": "中文违禁词","chk_id": CHK_CENSOR_CN,     "group": "字幕", "run_fn": _run_censor_cn},
+    {"id": "censor_en",     "section": "英文违禁词","chk_id": CHK_CENSOR_EN,     "group": "字幕", "run_fn": _run_censor_en},
+    {"id": "censor_nrta",   "section": "广电违禁词","chk_id": CHK_CENSOR_NRTA,   "group": "字幕", "run_fn": _run_censor_nrta},
+    {"id": "censor_juicy",  "section": "短剧违禁词","chk_id": CHK_CENSOR_JUICY,  "group": "字幕", "run_fn": _run_censor_juicy},
+    {"id": "black_frame",   "section": "黑帧",     "chk_id": CHK_BLACK,          "group": "视频", "run_fn": _run_black_frame_check},
     {"id": "black_border",  "section": "黑边",     "chk_id": CHK_BORDER,         "run_fn": None},
-    {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "run_fn": _run_mono_check},
+    {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "group": "音频", "run_fn": _run_mono_check},
     {"id": "audio_loudness","section": "音量",     "chk_id": CHK_LOUDNESS,       "run_fn": None},
     {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "run_fn": None},
 ]
@@ -211,6 +232,32 @@ CHECKS = [
 #   - 暂时关闭：run_fn 设为 None
 #   - 如果新检查需要专属 CheckBox，在控件 ID 区和 UI 布局区加对应行
 
+# ── 启动时校验：CHECKS 注册表与 run_fn 一致性 ──
+def _validate_checks():
+    """确保 CHECKS 中每个 run_fn 都存在且可调用。"""
+    import inspect
+    errors = []
+    for c in CHECKS:
+        fn = c.get("run_fn")
+        if fn is None:
+            continue
+        if not callable(fn):
+            errors.append(f"CHECKS['{c['id']}'] run_fn 不可调用: {fn}")
+            continue
+        try:
+            sig = inspect.signature(fn)
+        except (ValueError, TypeError):
+            errors.append(f"CHECKS['{c['id']}'] run_fn 无法获取签名: {fn}")
+            continue
+        params = list(sig.parameters.keys())
+        if not params:
+            errors.append(f"CHECKS['{c['id']}'] run_fn 无参数: {fn}")
+    if errors:
+        raise AssertionError("CHECKS 注册表校验失败:\n  " + "\n  ".join(errors))
+
+_validate_checks()
+del _validate_checks  # 用完即焚，不污染命名空间
+
 # ═══════════════════════════════════════════
 # 全局状态
 # ═══════════════════════════════════════════
@@ -219,6 +266,9 @@ _track_editing = False
 _clamp_value = DEFAULT_CLAMP_THRESHOLD
 _clamp_editing = False
 _checking = False
+
+# 轨道编辑 UI 暂时关闭（裁缝老师说放开时改 True 即可）
+_TRACK_EDIT_VISIBLE = False
 
 # ═══════════════════════════════════════════
 # 日志系统
@@ -269,7 +319,7 @@ _SECTION_LABEL = "color:rgb(220,220,220);font-size:14px;font-weight:bold;min-hei
 
 def _sec_label(text):
     """行内分类标签"""
-    return ui.Label({"Text": text, "StyleSheet": _SECTION_LABEL, "Weight": 0, "MinimumSize": [50, 18]})
+    return ui.Label({"Text": text, "StyleSheet": _SECTION_LABEL, "Weight": 0})
 _DISABLED_CB = {"Checked": False, "Enabled": False, "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}
 
 def _cb(id_, text, extra=None):
@@ -293,27 +343,41 @@ window_layout = [
 
             # ═══ 工程设置 ═══
             ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                _sec_label("工程设置"),
+                _sec_label("工程"),
                 _cb(CHK_TIMELINE, "时间线"),
                 _cb(CHK_FRAGMENT, "片段状态"),
                 _cb(CHK_TRACK, "轨道结构"),
-                ui.Label({"Text": "字幕", "StyleSheet": LABEL_DIM, "Weight": 0}),
+                ui.Label({"ID": "lbl_track_sub", "Text": "字幕", "StyleSheet": LABEL_DIM, "Weight": 0}),
                 ui.Label({"ID": LBL_SUB_VAL, "Text": str(DEFAULT_SUBTITLE_TRACKS),
                           "StyleSheet": LABEL_GRAY, "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_SUB, "Text": str(DEFAULT_SUBTITLE_TRACKS),
                              "MaximumSize": [20, 20], "Weight": 0}),
-                ui.Label({"Text": "视频", "StyleSheet": LABEL_DIM, "Weight": 0}),
+                ui.Label({"ID": "lbl_track_vid", "Text": "视频", "StyleSheet": LABEL_DIM, "Weight": 0}),
                 ui.Label({"ID": LBL_VID_VAL, "Text": str(DEFAULT_VIDEO_TRACKS),
                           "StyleSheet": LABEL_GRAY, "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_VID, "Text": str(DEFAULT_VIDEO_TRACKS),
                              "MaximumSize": [20, 20], "Weight": 0}),
-                ui.Label({"Text": "音频", "StyleSheet": LABEL_DIM, "Weight": 0}),
+                ui.Label({"ID": "lbl_track_aud", "Text": "音频", "StyleSheet": LABEL_DIM, "Weight": 0}),
                 ui.Label({"ID": LBL_AUD_VAL, "Text": str(DEFAULT_AUDIO_TRACKS),
                           "StyleSheet": LABEL_GRAY, "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_AUD, "Text": str(DEFAULT_AUDIO_TRACKS),
                              "MaximumSize": [20, 20], "Weight": 0}),
                 ui.Button({"ID": BTN_EDIT_TRACK, "Text": "✎", "StyleSheet": BTN_ICON, "Weight": 0}),
                 ui.Button({"ID": BTN_SAVE_TRACK, "Text": "✓", "StyleSheet": BTN_ICON, "Weight": 0}),
+            ]),
+
+            # ═══ 视频 ═══
+            ui.HGroup({"Spacing": 6, "Weight": 0}, [
+                _sec_label("视频"),
+                _cb(CHK_BLACK, "黑帧"),
+                _disabled_cb(CHK_BORDER, "黑边"),
+            ]),
+
+            # ═══ 音频 ═══
+            ui.HGroup({"Spacing": 6, "Weight": 0}, [
+                _sec_label("音频"),
+                _cb(CHK_MONO, "声道"),
+                _disabled_cb(CHK_LOUDNESS, "音量"),
             ]),
 
             # ═══ 字幕 ═══
@@ -332,24 +396,10 @@ window_layout = [
                 ui.Button({"ID": BTN_SAVE_CLAMP, "Text": "✓", "StyleSheet": BTN_ICON, "Weight": 0}),
             ]),
             ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                ui.Label({"Text": "    ", "StyleSheet": _SECTION_LABEL, "Weight": 0, "MinimumSize": [50, 18]}),
-                _disabled_cb(CHK_CENSOR_CN, "中文违禁词"),
+                _cb(CHK_CENSOR_CN, "中文违禁词"),
+                _cb(CHK_CENSOR_JUICY, "短剧违禁词"),
                 _disabled_cb(CHK_CENSOR_EN, "英文违禁词"),
-                _disabled_cb(CHK_CENSOR_AD, "广审违禁词"),
-            ]),
-
-            # ═══ 视频 ═══
-            ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                _sec_label("视频"),
-                _cb(CHK_BLACK, "黑帧"),
-                _disabled_cb(CHK_BORDER, "黑边"),
-            ]),
-
-            # ═══ 音频 ═══
-            ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                _sec_label("音频"),
-                _cb(CHK_MONO, "声道"),
-                _disabled_cb(CHK_LOUDNESS, "音量"),
+                _disabled_cb(CHK_CENSOR_NRTA, "广电违禁词"),
             ]),
 
             # ═══ 色彩 ═══
@@ -362,7 +412,16 @@ window_layout = [
 
             ui.HGap({"Weight": 1}),
 
-            # 右侧：开始检查按钮
+            # 全选/全不选 + 开始检查
+            ui.VGroup({"Spacing": 4, "Weight": 0}, [
+                ui.Button({"ID": BTN_SEL_ALL, "Text": "全选",
+                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
+                           "MinimumSize": [60, 22]}),
+                ui.Button({"ID": BTN_DESEL_ALL, "Text": "全不选",
+                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
+                           "MinimumSize": [60, 22]}),
+            ]),
+
             ui.Button({"ID": BTN_START, "Text": "开始检查",
                        "StyleSheet": BTN_PRIMARY, "Weight": 0,
                        "MinimumSize": [_BTN_HEIGHT, _BTN_HEIGHT]}),
@@ -403,10 +462,19 @@ itm = dlg.GetItems()
 # ═══════════════════════════════════════════
 # 初始状态
 # ═══════════════════════════════════════════
-itm[EDIT_SUB].Visible = False
-itm[EDIT_VID].Visible = False
-itm[EDIT_AUD].Visible = False
-itm[BTN_SAVE_TRACK].Visible = False
+# 轨道编辑 UI 暂时关闭（由 _TRACK_EDIT_VISIBLE 控制）
+itm["lbl_track_sub"].Visible = _TRACK_EDIT_VISIBLE
+itm[LBL_SUB_VAL].Visible = _TRACK_EDIT_VISIBLE
+itm[EDIT_SUB].Visible = _TRACK_EDIT_VISIBLE
+itm["lbl_track_vid"].Visible = _TRACK_EDIT_VISIBLE
+itm[LBL_VID_VAL].Visible = _TRACK_EDIT_VISIBLE
+itm[EDIT_VID].Visible = _TRACK_EDIT_VISIBLE
+itm["lbl_track_aud"].Visible = _TRACK_EDIT_VISIBLE
+itm[LBL_AUD_VAL].Visible = _TRACK_EDIT_VISIBLE
+itm[EDIT_AUD].Visible = _TRACK_EDIT_VISIBLE
+itm[BTN_EDIT_TRACK].Visible = _TRACK_EDIT_VISIBLE
+itm[BTN_SAVE_TRACK].Visible = _TRACK_EDIT_VISIBLE
+
 itm[EDIT_CLAMP].Visible = False
 itm[BTN_SAVE_CLAMP].Visible = False
 itm[BTN_EDIT_CLAMP].Visible = False  # 暂不可编辑，要恢复删这行即可
@@ -420,29 +488,43 @@ _setup_tree_header(tree)
 # Tree 渲染
 # ═══════════════════════════════════════════
 
-def _render_sections(sections, tree):
-    """将检查结果渲染到结果 Tree"""
-    for i, sec in enumerate(sections):
-        hdr = tree.NewItem()
-        hdr_title = sec["title"]
-        if sec["all_ok"]:
-            hdr_title += "  — 全部通过"
-        elif sec["summary"]:
-            hdr_title += "  —  " + sec["summary"]
-        _set_row_texts(hdr, "▶", "", "", hdr_title, "")
-        tree.AddTopLevelItem(hdr)
+def _render_groups(sections, tree):
+    """按四大分组层级渲染结果到 Tree。
+    
+    三级结构：
+        ▲ 工程（Group 父节点）
+          ◆ 时间线  —  汇总（Check 子节点）
+            ❌  V1  00:00:01:00  详情...  原因...（Detail 行）
+    """
+    # 按 GROUP_ORDER 顺序，从 sections 中筛选
+    for group_name in GROUP_ORDER:
+        secs = [s for s in sections if s.get("group") == group_name]
+        if not secs:
+            continue
 
-        if not sec["all_ok"]:
-            for row_data in sec["rows"]:
-                row = tree.NewItem()
-                _set_row(row, row_data)
-                tree.AddTopLevelItem(row)
+        # ── Group 父节点 ──
+        group_parent = tree.NewItem()
+        _set_row_texts(group_parent, f"▲ {group_name}", "", "", "", "")
+        tree.AddTopLevelItem(group_parent)
 
-        # 区域间空行
-        if i < len(sections) - 1:
-            gap = tree.NewItem()
-            _set_row_texts(gap, "", "", "", "", "")
-            tree.AddTopLevelItem(gap)
+        # ── 各检查 ──
+        for sec in secs:
+            # Check 子节点
+            check_row = tree.NewItem()
+            title = sec["title"]
+            if sec["all_ok"]:
+                title += "  — 全部通过"
+            elif sec["summary"]:
+                title += "  —  " + sec["summary"]
+            _set_row_texts(check_row, f"◆ {title}", "", "", "", "")
+            group_parent.AddChild(check_row)
+
+            # Detail 行（只在不通过时显示）
+            if not sec["all_ok"]:
+                for row_data in sec["rows"]:
+                    row = tree.NewItem()
+                    _set_row(row, row_data)
+                    group_parent.AddChild(row)
 
 
 # ═══════════════════════════════════════════
@@ -451,6 +533,8 @@ def _render_sections(sections, tree):
 
 def _enter_track_edit():
     """进入轨道编辑模式"""
+    if not _TRACK_EDIT_VISIBLE:
+        return
     global _track_editing
     _track_editing = True
     itm[EDIT_SUB].Text = itm[LBL_SUB_VAL].Text
@@ -504,14 +588,14 @@ def _refuse_edit():
     global _track_editing, _clamp_editing
     if _track_editing:
         _track_editing = False
-        itm[EDIT_SUB].Visible = False
-        itm[EDIT_VID].Visible = False
-        itm[EDIT_AUD].Visible = False
-        itm[BTN_SAVE_TRACK].Visible = False
-        itm[LBL_SUB_VAL].Visible = True
-        itm[LBL_VID_VAL].Visible = True
-        itm[LBL_AUD_VAL].Visible = True
-        itm[BTN_EDIT_TRACK].Visible = True
+        itm[EDIT_SUB].Visible = _TRACK_EDIT_VISIBLE
+        itm[EDIT_VID].Visible = _TRACK_EDIT_VISIBLE
+        itm[EDIT_AUD].Visible = _TRACK_EDIT_VISIBLE
+        itm[BTN_SAVE_TRACK].Visible = _TRACK_EDIT_VISIBLE
+        itm[LBL_SUB_VAL].Visible = _TRACK_EDIT_VISIBLE
+        itm[LBL_VID_VAL].Visible = _TRACK_EDIT_VISIBLE
+        itm[LBL_AUD_VAL].Visible = _TRACK_EDIT_VISIBLE
+        itm[BTN_EDIT_TRACK].Visible = _TRACK_EDIT_VISIBLE
         _action_log("✎ 轨道数字 取消编辑")
     if _clamp_editing:
         _clamp_editing = False
@@ -678,14 +762,15 @@ def _start_check():
 
             all_ok = not section_rows and section_pass > 0
             sections.append({
+                "group": check.get("group", ""),
                 "title": check["section"],
                 "summary": summary_text,
                 "rows": section_rows,
                 "all_ok": all_ok,
             })
 
-        # 按区域展示
-        _render_sections(sections, tree)
+        # 按分组层级展示
+        _render_groups(sections, tree)
 
         # 总结
         elapsed_ms = int((time.time() - _start_time) * 1000)
@@ -789,6 +874,19 @@ def _on_close(ev):
     disp.ExitLoop()
 
 
+def _toggle_all(checked):
+    """全选/全不选所有可用的 CheckBox"""
+    for c in CHECKS:
+        cid = c["chk_id"]
+        if cid is None or c.get("run_fn") is None:
+            continue
+        try:
+            itm[cid].Checked = checked
+            _action_log(f"{'☑' if checked else '☐'} {c['section']}")
+        except Exception:
+            pass
+
+
 # ═══════════════════════════════════════════
 # 事件绑定
 # ═══════════════════════════════════════════
@@ -809,6 +907,8 @@ dlg.On[BTN_SAVE_TRACK].Clicked = lambda ev: _save_track_edit()
 dlg.On[BTN_EDIT_CLAMP].Clicked = lambda ev: _enter_clamp_edit()
 dlg.On[BTN_SAVE_CLAMP].Clicked = lambda ev: _save_clamp_edit()
 dlg.On[BTN_START].Clicked = lambda ev: _start_check()
+dlg.On[BTN_SEL_ALL].Clicked = lambda ev: _toggle_all(True)
+dlg.On[BTN_DESEL_ALL].Clicked = lambda ev: _toggle_all(False)
 dlg.On[TREE_RESULT].ItemClicked = _on_result_click
 dlg.On[TREE_RESULT].ItemDoubleClicked = _on_result_click
 dlg.On[WIN_ID].Show = _on_show

@@ -85,11 +85,6 @@ def _get_smpte(fps):
         smpte.df = False
         _smpte_cache[fps] = smpte
     return _smpte_cache[fps]
-    try:
-        uid = item.GetUniqueId()
-        return _props_cache.get(uid, {}).get(key, default)
-    except Exception:
-        return default
 
 def _get_items(timeline, track_type, ti):
     """获取轨道片段（优先缓存）。"""
@@ -682,8 +677,14 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0) -> list:
             with open(dict_path, "r", encoding="utf-8") as f:
                 for line in f:
                     w = line.strip()
-                    if w and not w.startswith("#"):
-                        words.append(w)
+                    if not w or w.startswith("#"):
+                        continue
+                    # CSV 格式：违禁词,建议替换 → 存为 (word, suggestion)
+                    if "," in w:
+                        parts = w.split(",", 1)
+                        words.append((parts[0].strip(), parts[1].strip() if len(parts) > 1 else ""))
+                    else:
+                        words.append((w, ""))
         _censor_cache[dict_path] = words
     censor_words = _censor_cache[dict_path]
     if not censor_words:
@@ -705,11 +706,15 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0) -> list:
             start_frame = it.GetStart()
             tc = smpte.gettc(start_frame)
 
-            for w in censor_words:
-                if w in text:
+            for entry in censor_words:
+                word = entry[0] if isinstance(entry, tuple) else entry
+                suggestion = entry[1] if isinstance(entry, tuple) and entry[1] else ""
+                if word in text:
+                    reason = f"含违禁词: {word}"
+                    if suggestion:
+                        reason += f"，建议替换为: {suggestion}"
                     issues.append(_make_result("fail", track=track, timecode=tc,
-                        detail=repr(text),
-                        reason=f"含违禁词: {w}"))
+                        detail=repr(text), reason=reason))
                     break  # 一片段只报第一条
 
     if not issues:

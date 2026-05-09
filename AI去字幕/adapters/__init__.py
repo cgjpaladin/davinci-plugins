@@ -131,6 +131,21 @@ class BaseAdapter(ABC):
         """健康检查：验证 API 凭证是否有效"""
         return True  # 子类可选覆盖
 
+    def process_batch(self, tasks: list, timeout: int = 600,
+                      cancel_check=None, progress_callback=None) -> list:
+        """批量处理多片段。默认实现：逐个调用 process()。
+
+        适配器可以覆写以提供更高效的批量流水线（如并发上传、批量提交、统一轮询）。
+        覆写时签名保持一致，调用方只依赖本接口。
+        """
+        results = []
+        for task in tasks:
+            if cancel_check and cancel_check():
+                break
+            r = self.process(task, timeout=timeout, cancel_check=cancel_check)
+            results.append(r)
+        return results
+
 
 def create_wuhenai_adapter(mode: str = "pro_box") -> "WuhenAIV21Adapter":
     """创建标准配置的无痕AI 2.1 适配器。
