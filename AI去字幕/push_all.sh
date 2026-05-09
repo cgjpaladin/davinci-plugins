@@ -5,6 +5,7 @@ set -e
 
 # ── -1. 自动更新 launcher 文件名 ──
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR" || exit 1
 VERSION=$(python3 -c "import sys; sys.path.insert(0,'$SCRIPT_DIR'); from config import __version__; print(__version__)")
 LOCAL_DIR="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/本地版"
 COMPANY_DIR="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/公司版"
@@ -141,7 +142,23 @@ done
 # ── 3. 同步到 SMB ──
 echo ""
 echo "═══ 3. 同步到 SMB ═══"
+
+# 自动去 -dev：全公司的版本号不能带 -dev 后缀
+VERSION_RAW=$(grep '__version__' config.py | head -1 | sed 's/.*"\(.*\)".*/\1/')
+if [[ "$VERSION_RAW" == *-dev ]]; then
+    VERSION_CLEAN="${VERSION_RAW%-dev}"
+    echo "  去 dev: $VERSION_RAW → $VERSION_CLEAN"
+    sed -i '' "s/__version__ = \"$VERSION_RAW\"/__version__ = \"$VERSION_CLEAN\"/" config.py
+    WAS_DEV=1
+fi
+
 bash sync.sh
+
+# 恢复 -dev 后缀
+if [ "$WAS_DEV" = "1" ]; then
+    sed -i '' "s/__version__ = \"$VERSION_CLEAN\"/__version__ = \"$VERSION_RAW\"/" config.py
+    echo "  恢复 dev: $VERSION_RAW"
+fi
 
 # ── 4. 灰度状态 ──
 echo ""
