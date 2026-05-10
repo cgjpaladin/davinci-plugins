@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 # launcher.py — 交付自检工具 启动器
-# 部署到达芬奇 Fusion/Scripts/Edit/，通过 subprocess 外挂外部 Python 进程运行 UI
 import subprocess, os, sys, time, tempfile
 
 _PYTHON = "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
 if not os.path.exists(_PYTHON):
     _PYTHON = "/usr/bin/python3"
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
+try:
+    _HERE = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    _HERE = os.path.join(os.path.expanduser("~"),
+        "Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit")
+
 _PRODUCT_DIRS = [
     '/Volumes/MYJC/06_Software/达芬奇脚本/交付自检工具',
     os.path.join(_HERE, '..', '..', '交付自检工具'),
@@ -38,8 +42,9 @@ if '--dry-run' in sys.argv:
     checks.append(("路由", True, routing))
     checks.append(("ui.py", os.path.exists(_UI_SCRIPT), _UI_SCRIPT))
     checks.append(("python", os.path.exists(_PYTHON), _PYTHON))
-    result = subprocess.run([_PYTHON, '-c', f'import sys; sys.path.insert(0,"{os.path.dirname(_UI_SCRIPT)}"); sys.path.insert(0,"{os.path.dirname(_UI_SCRIPT)}/../shared"); import config; print(config.version_string())'],
-                            capture_output=True, text=True, timeout=10)
+    result = subprocess.run([_PYTHON, '-c',
+        f'import sys; sys.path.insert(0,"{os.path.dirname(_UI_SCRIPT)}"); sys.path.insert(0,"{os.path.dirname(_UI_SCRIPT)}/../shared"); import config; print(config.version_string())'
+    ], capture_output=True, text=True, timeout=10)
     if result.returncode == 0:
         checks.append(("模块导入", True, result.stdout.strip()))
     else:
