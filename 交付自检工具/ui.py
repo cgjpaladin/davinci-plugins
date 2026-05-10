@@ -1133,8 +1133,8 @@ def _start_check():
         gate0_ok = not itm[CHK_TIMELINE].Checked or (timeline.GetStartFrame() == 0)
         gate_warnings = []
         if not gate0_ok:
-            _action_log("⚠ 起始时码非零，后续所有检查已跳过，请先归零时码后重新运行")
-            gate_warnings.append("⚠ 起始时码非零，后续所有检查已跳过，请先归零时码后重新运行")
+            _action_log("⚠ 起始时码非零，后续所有检查已跳过，请归零时码后重新运行")
+            gate_warnings.append("⚠ 起始时码非 00:00:00:00，后续所有检查已跳过，请归零时码后重新运行")
 
         sub_count = timeline.GetTrackCount("subtitle")
         vid_count = timeline.GetTrackCount("video")
@@ -1167,7 +1167,7 @@ def _start_check():
 
         if itm[CHK_TRACK].Checked:
             failed_gates = []
-            for gate, label in [("subtitle","字幕"), ("video","视频"), ("audio","音频")]:
+            for gate, label in [("subtitle","字幕轨道"), ("video","视频轨道"), ("audio","音频轨道")]:
                 if not gates[gate]:
                     failed_gates.append(label)
                     _action_log(f"⚠ {label}结构异常，相关检查已跳过")
@@ -1181,7 +1181,7 @@ def _start_check():
             itm["lbl_gate_warn"].Text = ""
             itm["lbl_gate_warn"].Visible = False
 
-        gate_labels = {"subtitle": "字幕", "video": "视频", "audio": "音频"}
+        gate_labels = {"subtitle": "字幕轨道", "video": "视频轨道", "audio": "音频轨道"}
 
         # 按需预加载：只加载会实际运行的检查需要的轨道
         # （gate 关闭的检查会跳过，对应轨道也不用预加载）
