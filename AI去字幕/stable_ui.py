@@ -3,7 +3,7 @@
 stable_ui.py — AI去字幕 UI 入口
 
 架构: ui_widgets.py (UI表面) → ui_pipeline.py (业务逻辑) → stable_ui.py (事件绑定+启动)
-stable_ui.py 由 ui_external.py 灰度路由层 exec() 加载。
+stable_ui.py 由 launcher.py 通过 subprocess.Popen 外部进程启动。
 """
 import os
 import socket

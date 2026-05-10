@@ -94,7 +94,7 @@ rm plugins/AI换口型/adapters/__pycache__/*
 
 `build_local.sh` 已内置：
 - 📝 当前版本号显示
-- ⚠ 本地版 == 公司版 冲突检测（提醒升版本）
+- ⚠ 本地 `__channel__` = "dev" vs SMB `__channel__` = ""
 - 📦 `--save` 自动 git commit checkpoint
 - 📝 launcher 自动命名（`产品_v1.0.0-dev.py`）
 

@@ -79,8 +79,8 @@ publish_build_local() {
         python3 "$PRODUCT_DIR/../tools/deploy.py" "$PRODUCT_NAME" 2>&1
 
         # Fusion 兼容性（模拟 __file__ 不存在）
-        local launcher_path="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊/${PRODUCT_NAME}.py"
-        if [ -f "$launcher_path" ]; then
+        local launcher_path=$(ls "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊/${PRODUCT_NAME}"*.py 2>/dev/null | head -1)
+        if [ -n "$launcher_path" ] && [ -f "$launcher_path" ]; then
             echo ""
             echo "── Fusion 兼容性 ──"
             python3 -c "
@@ -91,7 +91,7 @@ try:
 except NameError:
     _HERE = _path
 assert _HERE == _path, f'fallback failed: {_HERE}'
-assert os.path.isdir('/Volumes/MYJC/06_Software/达芬奇脚本/$PRODUCT_NAME'), 'SMB product dir missing'
+assert os.path.isdir('/Volumes/MYJC/06_Software/达芬奇脚本/${PRODUCT_NAME}'), 'SMB product dir missing'
 assert os.path.isdir('/Volumes/MYJC/06_Software/达芬奇脚本/shared'), 'SMB shared missing'
 print('  ✅ Fusion __file__ fallback OK')
 print('  ✅ SMB 可达')

@@ -71,7 +71,7 @@ class QuietLogger(Logger):
 
 
 class UILogger(Logger):
-    """UI 日志器：输出到回调函数（供 ui_external.py 使用）。"""
+    """UI 日志器：输出到回调函数（供 stable_ui.py 使用）。"""
 
     def __init__(self, callback):
         """

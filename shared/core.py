@@ -1,6 +1,6 @@
 """
 core.py — AI去字幕共享业务逻辑
-pipeline.py 和 ui_external.py 的共同基础层。
+pipeline.py 和 stable_ui.py 的共同基础层。
 
 设计原则：
 - 纯函数：不操作 Resolve 状态（ReplaceClip/mark_processed 留给调用者）

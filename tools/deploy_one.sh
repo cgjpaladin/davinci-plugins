@@ -111,16 +111,14 @@ echo -n "[3b/4] Fusion兼容 ... "
 FUSION_OK=$(ssh -o ConnectTimeout=5 "$SSH_TARGET" "python3 -c \"
 # 模拟 Fusion 环境：__file__ 不存在时 launcher 能否正确 fallback 路径
 import sys, os
-_path_home = os.path.expanduser('~')
 _path = '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊'
-# 核心测试：launcher 里的 NameError fallback 逻辑
 try:
     _HERE = os.path.dirname(os.path.abspath(__file__))
 except NameError:
     _HERE = _path
 assert _HERE == _path, f'fallback failed: {_HERE}'
-# 验证 SMB 可达
-assert os.path.isdir('/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕'), 'SMB unreachable'
+# 验证 SMB 可达（产品目录）
+assert os.path.isdir('/Volumes/MYJC/06_Software/达芬奇脚本/$PRODUCT'), 'SMB unreachable'
 print('OK')
 \"" 2>&1)
 if echo "$FUSION_OK" | grep -q "OK"; then

@@ -149,7 +149,7 @@
 | 接口 | `GET business.aliyuncs.com/?Action=QueryAccountBalance` |
 | 认证 | OSS AccessKey + HMAC-SHA1 签名 V1（与 OSS 同一套凭证） |
 | 返回 | `{"Data": {"AvailableCashAmount": "99.77", "Currency": "CNY"}}` |
-| 代码位置 | `ui_external.py → refresh_oss_bal()` |
+| 代码位置 | `stable_ui.py → refresh_oss_bal()` |
 | API文档 | `https://help.aliyun.com/zh/user-center/developer-reference/queryaccountbalance` |
 
 > ⚠️ OSS AccessKey 需要有财务权限。当前 `OSS_ACCESS_KEY_ID/OSS_ACCESS_KEY_SECRET` 已有权限。

@@ -165,12 +165,12 @@ disp = bmd.UIDispatcher(ui)
 # ── 窗口 ──
 WIN_ID = "com.myjc.__MACHINE__"
 dlg = disp.AddWindow({
-    "WindowTitle": f"{brand.window_title} v{version_string()}",
+    "WindowTitle": brand.window_title,
     "ID": WIN_ID,
     "Geometry": [800, 300, 600, 400],
 }, [
     ui.VGroup({"Spacing": 8}, [
-        ui.Label({"ID": "title", "Text": f"裁缝老师的达芬奇插件工坊 ✂️ | v{version_string()}",
+        ui.Label({"ID": "title", "Text": f"裁缝老师的达芬奇插件工坊 ✂️",
                   "Weight": 0, "StyleSheet": "font-size: 11px;"}),
         ui.HGroup({"Spacing": 4, "Weight": 0}, [
             ui.Label({"ID": "status", "Text": "就绪", "Weight": 0}),
@@ -180,6 +180,9 @@ dlg = disp.AddWindow({
             ui.Button({"ID": "scan_btn", "Text": "扫描选区"}),
             ui.Button({"ID": "start_btn", "Text": brand.button, "Enabled": False}),
         ]),
+        ui.Label({"ID": "version_lb", "Text": f"v{version_string()}",
+                  "Weight": 0, "Alignment": {"AlignRight": True},
+                  "StyleSheet": "font-size: 10px; color: rgb(120,120,120);"}),
     ]),
 ])
 

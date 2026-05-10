@@ -27,7 +27,7 @@ ops_logger.py    → 结构化 JSONL 操作日志
 subtitle_state.py → 状态持久化 + 原子锁
 config.py        → 全局配置 + .env 加载
 launcher.py      → 达芬奇菜单入口 (5行，永不更新)
-ui_external.py   → UI 控件 + 事件绑定 + 线程编排
+stable_ui.py   → UI 控件 + 事件绑定 + 线程编排
 adapters/        → 外部 API 适配器
 ```
 
