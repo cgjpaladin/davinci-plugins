@@ -226,6 +226,19 @@ publish_push_all() {
 
     bash "$PRODUCT_DIR/sync.sh"
 
+    # 自动更新 gray.json：灰度目录指向当前稳定版
+    if [ -f "$GRAY_CFG" ]; then
+        local ver=$(publish_get_version)
+        python3 -c "
+import json
+cfg = json.load(open('$GRAY_CFG'))
+cfg['version'] = '$ver'
+cfg['gray_dir'] = '$PRODUCT_NAME'
+json.dump(cfg, open('$GRAY_CFG','w'), indent=2, ensure_ascii=False)
+print(f'  gray.json → v$ver')
+" 2>/dev/null || true
+    fi
+
     # 恢复 channel
     if [ -n "${WAS_CHANNEL:-}" ]; then
         cd "$PRODUCT_DIR"

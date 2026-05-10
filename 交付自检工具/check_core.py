@@ -1029,3 +1029,68 @@ def check_video_clamping(timeline, threshold_frames=1, fps=25.0, io_range=None) 
     results = [_make_result("fail", detail=f"夹帧: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
     return results
+
+
+def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
+    """检查调色：① 时间线节点为空 ② 片段唯一节点套 Sony LUT 但可能漏调色。
+
+    Returns:
+        list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
+    """
+    SONY_LUT = "Sony/SLog3SGamut3.CineToLC-709TypeA.cube"
+    issues = []
+
+    # ── ① 时间线节点 ──
+    try:
+        tl_graph = timeline.GetNodeGraph()
+        tl_nodes = tl_graph.GetNumNodes() if tl_graph else 0
+    except Exception:
+        tl_nodes = 0
+
+    if tl_nodes > 0:
+        issues.append(_make_result("fail",
+            detail=f"时间线有 {tl_nodes} 个节点",
+            reason="请删除时间线节点"))
+
+    # ── ② 片段节点 ──
+    video_count = timeline.GetTrackCount("video")
+    checked = 0
+    for vi in range(1, video_count + 1):
+        items = _get_items(timeline, "video", vi)
+        if not items:
+            continue
+        track = f"V{vi}"
+        for it in items:
+            if not _in_io_range(it, io_range):
+                continue
+            if _get_cached(it, "enabled", True) is False:
+                continue
+            if _get_cached(it, "mp") is None:
+                continue
+            checked += 1
+            try:
+                graph = it.GetNodeGraph()
+                n = graph.GetNumNodes() if graph else 0
+            except Exception:
+                n = 0
+            try:
+                lut = it.GetLUT(1)
+            except Exception:
+                lut = None
+
+            if n == 1 and lut == SONY_LUT:
+                name = _get_clip_name(it)
+                smpte = _get_smpte(fps)
+                tc = smpte.gettc(_get_cached(it, "start", 0))
+                issues.append(_make_result("warn", track=track, timecode=tc,
+                    detail=f"{name}，在唯一节点上应用了索尼 LUT",
+                    reason="请检查是否漏掉了调色"))
+
+    if not issues:
+        return [_make_result("pass",
+            detail=f"调色正常 ({checked} 个片段)",
+            is_summary=True)]
+
+    results = [_make_result("fail", detail=f"调色: {len(issues)} 处异常", is_summary=True)]
+    results.extend(issues)
+    return results
