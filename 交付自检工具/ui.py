@@ -1140,6 +1140,13 @@ def _start_check():
         vid_count = timeline.GetTrackCount("video")
         aud_count = timeline.GetTrackCount("audio")
 
+        def _all_enabled(tt, count):
+            for ti in range(1, count + 1):
+                try:
+                    if not timeline.GetIsTrackEnabled(tt, ti): return False
+                except: pass
+            return True
+
         aud_names_ok = True
         if aud_count == DEFAULT_AUDIO_TRACKS:
             for idx, preset in enumerate(AUDIO_TRACK_PRESET):
@@ -1149,9 +1156,9 @@ def _start_check():
         gates = {}
         if itm[CHK_TRACK].Checked:
             # 用户勾了轨道结构 → 启用门判断
-            gates["subtitle"] = gate0_ok and sub_count == DEFAULT_SUBTITLE_TRACKS
-            gates["video"]    = gate0_ok and vid_count == DEFAULT_VIDEO_TRACKS
-            gates["audio"]    = gate0_ok and aud_count == DEFAULT_AUDIO_TRACKS and aud_names_ok
+            gates["subtitle"] = gate0_ok and sub_count == DEFAULT_SUBTITLE_TRACKS and _all_enabled("subtitle", sub_count)
+            gates["video"]    = gate0_ok and vid_count == DEFAULT_VIDEO_TRACKS and _all_enabled("video", vid_count)
+            gates["audio"]    = gate0_ok and aud_count == DEFAULT_AUDIO_TRACKS and _all_enabled("audio", aud_count) and aud_names_ok
         else:
             gates["subtitle"] = gate0_ok
             gates["video"]    = gate0_ok
