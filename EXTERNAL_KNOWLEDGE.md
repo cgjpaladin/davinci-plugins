@@ -87,7 +87,7 @@
 | 代码 | `AI去字幕/adapters/ghostcut.py` |
 | GitHub | `https://github.com/JollyToday/GhostCut_Remove_Video_Text` |
 | 认证 | AppKey + AppSecret → MD5 签名 |
-| 定价（VIP3） | basic=1点/30秒, lite=4点/30秒, pro_box=5点/30秒, pro=10点/30秒 |
+| 定价（VIP3） | pro_box=5点/30秒, pro=10点/30秒（v1.9 实测验证） |
 | point_to_yuan | 0.19（¥189/1000点） |
 
 ### 阿里云 OSS

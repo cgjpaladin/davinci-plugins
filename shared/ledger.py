@@ -91,12 +91,14 @@ def record_submitted(file_name: str, strategy: str, resolution: str) -> None:
 def record_completed(file_name: str, output_path: str, original_path: str = "",
                      strategy: str = "", resolution: str = "",
                      points: int = 0, cost_yuan: float = 0.0,
-                     tl_color: str = "", mp_color: str = "") -> None:
+                     tl_color: str = "", mp_color: str = "",
+                     provider: str = "") -> None:
     _append("completed", file_name,
             original_path=original_path, output_path=output_path,
             strategy=strategy, resolution=resolution,
             points=points, cost_yuan=cost_yuan,
-            tl_color=tl_color, mp_color=mp_color)
+            tl_color=tl_color, mp_color=mp_color,
+            provider=provider)
 
 
 def record_reverted(file_name: str) -> None:

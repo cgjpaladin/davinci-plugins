@@ -40,24 +40,33 @@ def validate_task(task) -> tuple:
 
 # ── 缓存省钱计算 ──
 
-WUHENAI_YUAN_PER_SEC = 0.0091  # 无痕AI 1积分/秒 × ¥0.0091/积分
-
-
-def calc_cache_savings(clips, cache_hit_names: list) -> dict:
+def calc_cache_savings(clips, cache_hit_names: list, provider: str = "") -> dict:
     """计算缓存命中所节省的费用。
 
     Args:
         clips: ClipEntry 列表（含 name, duration）
         cache_hit_names: 缓存命中的片段名列表
+        provider: 供应商标识（"wuhenai" / "ghostcut"），空则查 active provider
 
     Returns:
         {"secs": int, "yuan": float}
     """
+    if not provider:
+        from pricing import ACTIVE_PROVIDER as provider
     clip_dur = {c.name: c.duration for c in clips}
     total_secs = sum(math.ceil(clip_dur.get(cn, 0)) for cn in cache_hit_names)
+    # 按供应商费率计算
+    from pricing import point_to_yuan
+    points_per_sec = 1.0  # 默认 1 积分/秒
+    try:
+        from pricing_defaults import PRICING
+        p = PRICING.get(provider, {})
+        points_per_sec = p.get("points_per_sec", 1.0)
+    except Exception:
+        pass
     return {
         "secs": total_secs,
-        "yuan": round(total_secs * WUHENAI_YUAN_PER_SEC, 2),
+        "yuan": round(total_secs * points_per_sec * point_to_yuan(1), 2),
     }
 
 

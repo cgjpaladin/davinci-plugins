@@ -25,7 +25,7 @@ WIN_ID = "com.myjc.ai_subtitle_ui"
 # ── API 配置 ──
 API_MODE = "pro_box"
 CLIP_COLOR = "Orange"
-API_PROVIDER = "无痕AI 2.1"
+API_PROVIDER = ""  # 由 adapters/preferred 自动选择
 OUTPUT_MODE = "replace"      # replace | append
 OUTPUT_SUBDIR = "03_去字幕"   # 相对于 04_素材
 

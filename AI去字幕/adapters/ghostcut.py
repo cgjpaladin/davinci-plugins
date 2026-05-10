@@ -22,10 +22,42 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from . import BaseAdapter, SubtitleTask, SubtitleResult, TaskStatus
-from config import DEFAULT_MASK_REGION as _MASK_REGION
 
 # 达芬奇内置 Python 可能缺 SSL 证书 — 全局宽松 context
 _SSL_CTX = ssl.create_default_context()
+
+_RESOLUTION_MAP = {
+    "1920x1080": "1080p",
+    "1080x1920": "1080p",
+    "1280x720":  "720p",
+    "720x1280":  "720p",
+}
+
+def _get_resolution(task: SubtitleTask) -> str:
+    """返回 GhostCut API 的 resolution 字段（1080p/720p）。
+    优先 task.resolution，fallback ffprobe，最后默认 1080p。
+    """
+    if task.resolution:
+        for k, v in _RESOLUTION_MAP.items():
+            if task.resolution in k or k in task.resolution:
+                return v
+    try:
+        from platform import ffprobe_path
+        import subprocess
+        ffprobe = ffprobe_path()
+        r = subprocess.run(
+            [ffprobe, "-v", "quiet", "-select_streams", "v:0",
+             "-show_entries", "stream=width,height",
+             "-of", "csv=p=0", task.video_path],
+            capture_output=True, text=True, timeout=10)
+        w, h = r.stdout.strip().split(",")
+        res_key = f"{w}x{h}"
+        for k, v in _RESOLUTION_MAP.items():
+            if res_key in k or k in res_key:
+                return v
+    except Exception:
+        pass
+    return "1080p"
 
 
 class GhostCutAdapter(BaseAdapter):
@@ -38,17 +70,17 @@ class GhostCutAdapter(BaseAdapter):
     
     # 擦除模型映射
     MODEL_MAP = {
-        "lite": "advanced_lite",          # 高级擦除 Lite
-        "pro": "advanced_full",            # 高级擦除 Pro（全屏）
-        "pro_box": "advanced",             # 高级擦除 Pro（小框）
-        "pro_large": "advanced_large_box", # 高级擦除 Pro（大框）
+        "basic": "",                     # 快速模式（测试用，无额外参数）
+        "pro": "advanced_full",          # 精修 Pro（全屏）
+        "pro_box": "advanced",           # 精修 Pro（小框）
+        "pro_large": "advanced_large_box", # 精修 Pro（大框）
     }
 
     def __init__(self, config: dict):
         super().__init__("GhostCut", config)
         self.app_key = config.get("app_key")
         self.app_secret = config.get("app_secret")
-        self.default_model = config.get("model", "basic")
+        self.default_model = config.get("model", "pro")
         
         if not self.app_key or not self.app_secret:
             raise ValueError("GhostCut 适配器需要 app_key 和 app_secret")
@@ -90,23 +122,45 @@ class GhostCutAdapter(BaseAdapter):
         自动处理本地文件上传：如果 video_path 是本地文件，
         自动上传到 GhostCut OSS 获取临时 URL 后再提交任务。
         """
+        # video_path 前置校验（与 wuhenai 对齐）
+        if not task.video_path or not task.video_path.strip():
+            raise ValueError("video_path 为空")
+        if not os.path.exists(task.video_path):
+            raise FileNotFoundError(f"文件不存在: {task.video_path}")
+        fsize = os.path.getsize(task.video_path)
+        if fsize == 0:
+            raise ValueError("零字节文件")
+        if fsize > 500 * 1024 * 1024:
+            raise ValueError(f"文件过大 ({fsize/1024/1024:.0f}MB > 500MB)")
+        
         video_url = task.video_path
         
         parsed = urlparse(video_url)
         if not parsed.scheme.startswith("http"):
             # 本地文件 → 自动上传
-            print(f"[GhostCut] 检测到本地文件，自动上传: {os.path.basename(video_url)}")
+            self._log("info", f"检测到本地文件，自动上传: {os.path.basename(video_url)}")
             video_url = self._upload_file(video_url)
-            print(f"[GhostCut] 上传完成: {video_url}")
+            self._log("info", f"上传完成: {video_url}")
         
         model_name = task.model or self.default_model
+        # pro_box / pro_large: 自动计算遮罩（符合 GhostCut API: type+region 多边形格式）
+        if model_name in ("pro_box", "pro_large") and not task.mask_regions:
+            # pro_box 框面积<20%, pro_large<40%
+            max_h = 0.20 if model_name == "pro_box" else 0.40
+            cut_y = 0.85 if model_name == "pro_box" else 0.65  # 底部保留字幕常见区域
+            task.mask_regions = [{
+                "type": "remove_only_ocr",
+                "region": [[0, cut_y], [1, cut_y], [1, 1.0], [0, 1.0]]
+            }]
+        
         base_name = os.path.splitext(os.path.basename(task.video_path))[0] if task.video_path else "unknown"
+        resolution = _get_resolution(task)
         
         if model_name == "basic":
             payload = {
                 "urls": [video_url],
                 "names": [base_name],
-                "resolution": "1080p",
+                "resolution": resolution,
                 "needChineseOcclude": 3,
                 "videoInpaintLang": task.language,
             }
@@ -119,7 +173,7 @@ class GhostCutAdapter(BaseAdapter):
             payload = {
                 "urls": [video_url],
                 "names": [base_name],
-                "resolution": "1080p",
+                "resolution": resolution,
                 "needChineseOcclude": 2,
                 "videoInpaintLang": task.language,
                 "videoInpaintMasks": json.dumps(masks),
@@ -127,36 +181,17 @@ class GhostCutAdapter(BaseAdapter):
                     "extra_inpaint_config": {"model": model_value}
                 }),
             }
-        else:
-            # Lite / Pro 全屏
-            masks = task.mask_regions
-            if masks is None and model_name == "lite":
-                masks = [{
-                    "type": "remove_only_ocr",
-                    "start": 0, "end": 99999,
-                    "region": _MASK_REGION
-                }]
-            
-            if model_name == "lite":
-                model_value = "advanced_lite"
-                need = 2
-            else:  # pro
-                model_value = "advanced_full"
-                need = 1
-                masks = None
-            
+        else:  # pro — 全屏精修
             payload = {
                 "urls": [video_url],
                 "names": [base_name],
-                "resolution": "1080p",
-                "needChineseOcclude": need,
-                "videoInpaintLang": "all" if model_name == "lite" else task.language,
+                "resolution": resolution,
+                "needChineseOcclude": 1,
+                "videoInpaintLang": task.language,
+                "extraOptions": json.dumps({
+                    "extra_inpaint_config": {"model": "advanced_full"}
+                }),
             }
-            if masks:
-                payload["videoInpaintMasks"] = json.dumps(masks)
-            payload["extraOptions"] = json.dumps({
-                "extra_inpaint_config": {"model": model_value}
-            })
         
         resp = self._api_post(self.CREATE_TASK, payload)
         
@@ -186,7 +221,7 @@ class GhostCutAdapter(BaseAdapter):
         # 大文件保护：短剧片段通常 < 500MB，超过则警告但不阻断
         file_size_mb = os.path.getsize(local_path) / (1024 * 1024)
         if file_size_mb > 500:
-            print(f"[GhostCut] ⚠ 文件较大 ({file_size_mb:.0f}MB)，上传可能耗时较长")
+            self._log("warn", f"文件较大 ({file_size_mb:.0f}MB)，上传可能耗时较长")
         
         filename = os.path.basename(local_path)
         
@@ -300,7 +335,7 @@ class GhostCutAdapter(BaseAdapter):
                     # 如果指定了 output_path，自动下载
                     download_path = self._output_path
                     if download_path:
-                        print(f"[GhostCut] 下载处理结果到: {download_path}")
+                        self._log("debug", f"下载处理结果到: {download_path}")
                         urllib.request.urlretrieve(video_url, download_path)
                     
                     return SubtitleResult(
@@ -324,13 +359,13 @@ class GhostCutAdapter(BaseAdapter):
                 
             except (urllib.error.URLError, OSError) as e:
                 # 网络错误不立即失败，重试
-                print(f"[GhostCut] 网络错误: {e}，{poll_interval}秒后重试...")
+                self._log("warn", f"网络错误: {e}，{poll_interval}秒后重试...")
             
             time.sleep(poll_interval)
             poll_interval = min(poll_interval * 1.5, 30)  # 逐渐拉长到30秒
 
     def process_batch(self, tasks: list, timeout: int = 600,
-                       cancel_check=None) -> list:
+                       cancel_check=None, progress_callback=None) -> list:
         """
         批量处理：上传全部 → 一次提交 → 一起轮询 → 逐个下载。
 
@@ -348,23 +383,23 @@ class GhostCutAdapter(BaseAdapter):
             与 tasks 顺序对应的 [SubtitleResult, ...]
         """
         n = len(tasks)
-        print(f"[GhostCut] 批量处理 {n} 个片段")
+        self._log("info", f"批量处理 {n} 个片段")
 
         # ── Phase 1: 上传所有文件 → CDN URLs ──
         records = []
         for i, task in enumerate(tasks):
             if cancel_check and cancel_check():
-                print(f"[GhostCut] 上传阶段收到停止，已上传 {i}/{n}")
+                self._log("warn", f"上传阶段收到停止，已上传 {i}/{n}")
                 break
             video_url = task.video_path
             parsed = urlparse(video_url)
             if not parsed.scheme.startswith("http"):
                 base = os.path.basename(video_url)
-                print(f"[GhostCut] [{i+1}/{n}] 上传: {base}")
+                self._log("info", f"[{i+1}/{n}] 上传: {base}")
                 try:
                     video_url = self._upload_file(video_url)
                 except Exception as e:
-                    print(f"[GhostCut] ⚠ 上传失败: {base} — {e}")
+                    self._log("error", f"上传失败: {base} — {e}")
                     records.append({
                         "video_url": "",
                         "base_name": base,
@@ -381,11 +416,13 @@ class GhostCutAdapter(BaseAdapter):
                 "task_id": None,
                 "result": None,
             })
-        print(f"[GhostCut] 上传完成")
+        self._log("info", "上传完成")
+        if progress_callback:
+            progress_callback("upload", 0.2)
 
         # ── Phase 2: 一次提交所有任务 ──
         if cancel_check and cancel_check():
-            print(f"[GhostCut] 提交阶段收到停止")
+            self._log("warn", "提交阶段收到停止")
             # 补齐未提交的结果
             for rec in records:
                 if rec.get("result") is None:
@@ -393,26 +430,31 @@ class GhostCutAdapter(BaseAdapter):
             return [r.get("result", SubtitleResult(success=False)) for r in records]
 
         model_name = self.default_model
+        
         urls = [r["video_url"] for r in records]
         names = [r["base_name"] for r in records]
+        resolution = _get_resolution(tasks[0]) if tasks else "1080p"
 
         if model_name == "basic":
             payload = {
                 "urls": urls,
                 "names": names,
-                "resolution": "1080p",
+                "resolution": resolution,
                 "needChineseOcclude": 3,
                 "videoInpaintLang": tasks[0].language if tasks else "zh",
             }
         elif model_name in ("pro_box", "pro_large"):
             masks = tasks[0].mask_regions if tasks else None
             if not masks:
-                raise ValueError(f"{model_name} 模式必须指定 mask_regions")
+                # 自动计算遮罩（与 submit() 一致，GhostCut API 格式）
+                cut_y = 0.85 if model_name == "pro_box" else 0.65
+                masks = [{"type": "remove_only_ocr",
+                          "region": [[0, cut_y], [1, cut_y], [1, 1.0], [0, 1.0]]}]
             model_value = self.MODEL_MAP.get(model_name, "advanced")
             payload = {
                 "urls": urls,
                 "names": names,
-                "resolution": "1080p",
+                "resolution": resolution,
                 "needChineseOcclude": 2,
                 "videoInpaintLang": tasks[0].language if tasks else "zh",
                 "videoInpaintMasks": json.dumps(masks),
@@ -420,19 +462,28 @@ class GhostCutAdapter(BaseAdapter):
                     "extra_inpaint_config": {"model": model_value}
                 }),
             }
-        else:
-            raise ValueError(f"process_batch 不支持模式: {model_name}")
+        else:  # pro — 全屏精修
+            payload = {
+                "urls": urls,
+                "names": names,
+                "resolution": resolution,
+                "needChineseOcclude": 1,
+                "videoInpaintLang": tasks[0].language if tasks else "zh",
+                "extraOptions": json.dumps({
+                    "extra_inpaint_config": {"model": "advanced_full"}
+                }),
+            }
 
         resp = self._api_post(self.CREATE_TASK, payload)
         data_list = resp["body"]["dataList"]
 
         if len(data_list) != n:
-            print(f"[GhostCut] ⚠ 返回 {len(data_list)} 个任务，期望 {n} 个")
+            self._log("warn", f"返回 {len(data_list)} 个任务，期望 {n} 个")
 
         for i, item in enumerate(data_list):
             if i < len(records):
                 records[i]["task_id"] = str(item["id"])
-        print(f"[GhostCut] 已提交 {len(data_list)} 个任务，等待处理...")
+        self._log("info", f"已提交 {len(data_list)} 个任务，等待处理...")
 
         # ── Phase 3: 一起轮询 ──
         all_ids = [int(r["task_id"]) for r in records if r["task_id"]]
@@ -444,7 +495,7 @@ class GhostCutAdapter(BaseAdapter):
         while pending_ids:
             # 检查取消
             if cancel_check and cancel_check():
-                print(f"[GhostCut] 停止：取消 {len(pending_ids)} 个排队任务...")
+                self._log("warn", f"停止：取消 {len(pending_ids)} 个排队任务...")
                 for tid in pending_ids:
                     idx = id_to_idx.get(tid)
                     if idx is not None:
@@ -458,6 +509,10 @@ class GhostCutAdapter(BaseAdapter):
             if elapsed > timeout:
                 for tid in pending_ids:
                     idx = id_to_idx[tid]
+                    try:
+                        self.cancel(str(tid))  # 尝试取消（API 不支持，但标记记录）
+                    except Exception:
+                        pass
                     records[idx]["result"] = SubtitleResult(
                         success=False, task_id=str(tid),
                         error_message=f"任务超时 ({timeout}秒)",
@@ -498,10 +553,12 @@ class GhostCutAdapter(BaseAdapter):
 
                 if pending_ids:
                     done = n - len(pending_ids)
-                    print(f"[GhostCut] 进度: {done}/{n} 完成, {len(pending_ids)} 处理中")
+                    self._log("debug", f"进度: {done}/{n} 完成, {len(pending_ids)} 处理中")
+                    if progress_callback:
+                        progress_callback("processing", 0.2 + done / n * 0.6)
 
             except (urllib.error.URLError, OSError) as e:
-                print(f"[GhostCut] 网络错误: {e}，{poll_interval}秒后重试...")
+                self._log("warn", f"网络错误: {e}，{poll_interval}秒后重试...")
 
             if pending_ids:
                 time.sleep(poll_interval)
@@ -519,7 +576,7 @@ class GhostCutAdapter(BaseAdapter):
 
         success_count = sum(1 for r in results if r.success)
         total_elapsed = time.time() - start_time
-        print(f"[GhostCut] 批量完成: {success_count}/{n} 成功, 总耗时 {total_elapsed:.0f}s")
+        self._log("info", f"批量完成: {success_count}/{n} 成功, 总耗时 {total_elapsed:.0f}s")
         return results
 
     def check_health(self) -> bool:
@@ -541,5 +598,5 @@ class GhostCutAdapter(BaseAdapter):
         """取消排队中的任务（GhostCut API 当前未提供取消接口）。
         Returns: True（取消结果由上层 try/except 兜底）
         """
-        print(f"[GhostCut] 取消请求已记录: {task_id}")
+        self._log("debug", f"取消请求已记录: {task_id}")
         return True

@@ -13,12 +13,21 @@ from timecode import SMPTE
 from config import AUDIO_TRACK_PRESET, VIDEO_TRACK_PRESET, SUBTITLE_TRACK_PRESET
 import json
 import os
+import re
 
 # ── 缓存：避免重复 IPC ──
 _items_cache = {}
 _props_cache = {}  # item_uid → {enabled, name, mp, mp_props, property, channel_mapping}
 _smpte_cache = {}  # fps → SMPTE 实例
 _censor_cache = {}  # path → [words]
+
+def clear_censor_cache(path=None):
+    """清除违禁词缓存。path=None → 清全部，path=str → 清指定文件。"""
+    global _censor_cache
+    if path is None:
+        _censor_cache.clear()
+    else:
+        _censor_cache.pop(path, None)
 
 def preload_timeline_items(timeline):
     """预加载所有轨道的片段列表及常用属性，避免重复 IPC。"""
@@ -46,14 +55,31 @@ def preload_timeline_items(timeline):
                     except Exception:
                         props = {}
                     cached = {"enabled": enabled, "mp": mp, "props": props or {}}
-                    # 缓存媒体池名
+                    # 缓存片段名 + 媒体池名 + 分辨率 + fps + 时间线位置 + 源帧范围
+                    try:
+                        cached["name"] = it.GetName()
+                    except Exception:
+                        pass
                     try:
                         if mp:
                             mp_props = mp.GetClipProperty()
                             if mp_props:
                                 cached["mp_name"] = mp_props.get("Clip Name", "")
+                                cached["mp_resolution"] = mp_props.get("Resolution", "")
+                                cached["mp_fps"] = mp_props.get("FPS", "")
                     except Exception:
                         pass
+                    try:
+                        cached["start"] = it.GetStart()
+                        cached["end"] = it.GetEnd()
+                    except Exception:
+                        pass
+                    if track_type == "video":
+                        try:
+                            cached["source_start"] = it.GetSourceStartFrame()
+                            cached["source_end"] = it.GetSourceEndFrame()
+                        except Exception:
+                            pass
                     if track_type == "audio":
                         try:
                             raw = it.GetSourceAudioChannelMapping()
@@ -95,6 +121,14 @@ def _get_items(timeline, track_type, ti):
 
 # 轨道类型 → UI 缩写（与达芬奇界面一致：ST/V/A）
 _TRACK_LABEL = {"subtitle": "ST", "video": "V", "audio": "A"}
+
+def _in_io_range(it, io_range):
+    """判断片段是否在 IO 范围内。io_range=None → 全通过。"""
+    if io_range is None:
+        return True
+    io_in, io_out = io_range
+    return _get_cached(it, "start", 0) < io_out and _get_cached(it, "end", 0) > io_in
+
 
 
 def _track_short(track_type, index):
@@ -208,7 +242,7 @@ def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expec
     return results
 
 
-def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0) -> list:
+def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0, io_range=None) -> list:
     """检查字幕：① 时长过短 ② 间距夹帧。
 
     Returns:
@@ -231,36 +265,27 @@ def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0) -> list:
         if not items:
             continue
 
-        sorted_items = sorted(items, key=lambda it: it.GetStart())
+        sorted_items = sorted(items, key=lambda it: _get_cached(it, "start", 0))
         prev_end = None
         prev_name = ""
 
         for item in sorted_items:
+            if not _in_io_range(item, io_range):
+                continue
             total_count += 1
-            name = item.GetName()
-            start_frame = item.GetStart()
-            end_frame = item.GetEnd()
+            name = _get_cached(item, "name", "")
+            start_frame = _get_cached(item, "start", 0)
+            end_frame = _get_cached(item, "end", 0)
             duration = end_frame - start_frame
 
-            try:
-                enabled = item.GetClipEnabled()
-            except Exception:
-                enabled = True
-            if enabled is False:
+            if _get_cached(item, "enabled", True) is False:
                 disabled_count += 1
                 continue
 
             text = name
-            try:
-                mp_item = item.GetMediaPoolItem()
-                if mp_item:
-                    mp_props = mp_item.GetClipProperty()
-                    if mp_props:
-                        n = mp_props.get("Clip Name", "")
-                        if n and n != name:
-                            text = n
-            except Exception:
-                pass
+            mp_name = _get_cached(item, "mp_name", "")
+            if mp_name and mp_name != name:
+                text = mp_name
 
             # ① 时长过短
             if duration <= threshold_frames:
@@ -268,7 +293,7 @@ def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0) -> list:
                 tc = smpte.gettc(start_frame)
                 issues_short.append(_make_result(
                     "fail", track=track, timecode=tc,
-                    detail=f"{text}  {duration}帧", reason="过短",
+                    detail=f"{text}  {duration}帧，过短",
                 ))
 
             # ② 间距夹帧
@@ -279,7 +304,7 @@ def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0) -> list:
                     tc = smpte.gettc(start_frame)
                     issues_gap.append(_make_result(
                         "fail", track=track, timecode=tc,
-                        detail=f"{prev_name} → {text}  {gap}帧", reason="夹帧",
+                        detail=f"{prev_name} → {text}  {gap}帧，夹帧",
                     ))
 
             prev_end = end_frame
@@ -307,7 +332,7 @@ def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0) -> list:
     return results
 
 
-def check_disabled_items(timeline, fps=25.0) -> list:
+def check_disabled_items(timeline, fps=25.0, io_range=None) -> list:
     """检查所有轨道上被禁用的片段（字幕/视频/音频）。
 
     Returns:
@@ -326,18 +351,20 @@ def check_disabled_items(timeline, fps=25.0) -> list:
                 continue
 
             for item in items:
+                if not _in_io_range(item, io_range):
+                    continue
                 total_count += 1
                 if _get_cached(item, "enabled", True) is not False:
                     continue
                 name = _get_clip_name(item)
-                start_frame = item.GetStart()
+                start_frame = _get_cached(item, "start", 0)
 
                 smpte = _get_smpte(fps)
                 tc = smpte.gettc(start_frame)
 
                 issues.append(_make_result(
                     "fail", track=track, timecode=tc,
-                    detail=name, reason="未启用",
+                    detail=f"{name}，未启用",
                 ))
 
     if not issues:
@@ -355,13 +382,13 @@ def _get_clip_name(item):
     """获取片段显示名：优先 MediaPoolItem 的 Clip Name，否则用 TimelineItem 名"""
     mp_name = _get_cached(item, "mp_name")
     if mp_name:
-        name = item.GetName()
+        name = _get_cached(item, "name", "")
         if mp_name != name:
             return mp_name
-    return item.GetName()
+    return _get_cached(item, "name", "") or item.GetName()
 
 
-def check_black_frames(timeline, fps=25.0) -> list:
+def check_black_frames(timeline, fps=25.0, io_range=None) -> list:
     """检测黑帧：合并所有视频轨的有效片段后，找未被覆盖的时间段。
 
     有效片段条件：启用 + 不透明度=100 + 有 MediaPoolItem。
@@ -384,8 +411,10 @@ def check_black_frames(timeline, fps=25.0) -> list:
 
         track = f"V{vi}"
         for it in items:
-            s = it.GetStart()
-            e = it.GetEnd()
+            if not _in_io_range(it, io_range):
+                continue
+            s = _get_cached(it, "start", 0)
+            e = _get_cached(it, "end", 0)
             name = _get_clip_name(it)
 
             # 检查禁用
@@ -459,7 +488,7 @@ def check_black_frames(timeline, fps=25.0) -> list:
         track = f"A{ai}"
         for it in audio_items:
             # 音频用子帧精度算真实尾部
-            a_start = it.GetStart()
+            a_start = _get_cached(it, "start", 0)
             a_dur = it.GetDuration(True)
             a_end_real = a_start + a_dur
             if a_end_real > last_video:
@@ -486,17 +515,19 @@ def check_black_frames(timeline, fps=25.0) -> list:
         tc = smpte.gettc(s)
         if gap_reason == "无片段覆盖":
             detail = f"空白 {duration} 帧"
+        elif gap_reason.startswith("音频超出"):
+            detail = f"{gap_reason}，{name}" if name else gap_reason
         elif name:
-            detail = name
+            detail = f"{name}，{gap_reason}"
         else:
-            detail = f"{duration} 帧"
+            detail = f"{duration} 帧，{gap_reason}"
         results.append(_make_result("fail", timecode=tc, track=track,
-                                    detail=detail, reason=gap_reason))
+                                    detail=detail))
 
     return results
 
 
-def check_audio_mono(timeline, fps=25.0) -> list:
+def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
     """检测音频片段声道异常：声道静音 / 立体声被压成单声道。
 
     Returns:
@@ -511,12 +542,14 @@ def check_audio_mono(timeline, fps=25.0) -> list:
             continue
         track = f"A{ai}"
         for it in items:
+            if not _in_io_range(it, io_range):
+                continue
             # 跳过禁用的片段
             if _get_cached(it, "enabled", True) is False:
                 continue
 
             name = _get_clip_name(it)
-            start_frame = it.GetStart()
+            start_frame = _get_cached(it, "start", 0)
             ch_map = _get_cached(it, "channel_mapping")
             if not ch_map:
                 continue
@@ -543,7 +576,7 @@ def check_audio_mono(timeline, fps=25.0) -> list:
                         ch_reason = "声道静音"
                     issues.append(_make_result(
                         "fail", track=track, timecode=tc,
-                        detail=name, reason=ch_reason,
+                        detail=f"{name}，{ch_reason}",
                     ))
                     break  # 一片段只报一次
 
@@ -552,7 +585,7 @@ def check_audio_mono(timeline, fps=25.0) -> list:
                 if embedded >= 2 and ch_type == "mono" and len(ch_idx) == 1:
                     issues.append(_make_result(
                         "fail", track=track, timecode=tc,
-                        detail=name, reason="单声道片段",
+                        detail=f"{name}，单声道片段",
                     ))
                     break
 
@@ -568,7 +601,7 @@ def check_audio_mono(timeline, fps=25.0) -> list:
     return results
 
 
-def check_subtitle_glyph(timeline, fps=25.0) -> list:
+def check_subtitle_glyph(timeline, fps=25.0, io_range=None) -> list:
     """检测字幕异体字：康熙部首 / 全角拉丁字母。
 
     Returns:
@@ -589,16 +622,18 @@ def check_subtitle_glyph(timeline, fps=25.0) -> list:
             continue
         track = f"ST{si}"
         for it in items:
-            text = it.GetName()
-            start_frame = it.GetStart()
+            if not _in_io_range(it, io_range):
+                continue
+            text = _get_cached(it, "name", "")
+            start_frame = _get_cached(it, "start", 0)
             tc = smpte.gettc(start_frame)
 
             for ch in text:
                 cp = ord(ch)
                 if 0x2F00 <= cp <= 0x2FDF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
                     issues.append(_make_result("fail", track=track, timecode=tc,
-                        detail=repr(text),
-                        reason="含异体字，请手动删除字幕中的文本，并重新输入"))
+                        detail=f"{repr(text)}，含异体字",
+                        reason="请手动删除字幕中的文本，并重新输入"))
                     break  # 一片段只报一条
 
     if not issues:
@@ -609,7 +644,7 @@ def check_subtitle_glyph(timeline, fps=25.0) -> list:
     return results
 
 
-def check_subtitle_linebreak(timeline, fps=25.0) -> list:
+def check_subtitle_linebreak(timeline, fps=25.0, io_range=None) -> list:
     """检测字幕换行：CPL 超限 / 硬换行。
 
     Returns:
@@ -635,21 +670,22 @@ def check_subtitle_linebreak(timeline, fps=25.0) -> list:
             continue
         track = f"ST{si}"
         for it in items:
-            text = it.GetName()
-            start_frame = it.GetStart()
+            if not _in_io_range(it, io_range):
+                continue
+            text = _get_cached(it, "name", "")
+            start_frame = _get_cached(it, "start", 0)
             tc = smpte.gettc(start_frame)
 
             # 硬换行
             if '\n' in text:
                 issues.append(_make_result("fail", track=track, timecode=tc,
-                    detail=repr(text), reason="含硬换行"))
+                    detail=f"{repr(text)}，含硬换行"))
                 continue
 
             # CPL 超限
             if cpl > 0 and len(text) > cpl:
                 issues.append(_make_result("fail", track=track, timecode=tc,
-                    detail=repr(text),
-                    reason=f"当前工程设置上限单行 {cpl} 字"))
+                    detail=f"{repr(text)}，超单行 {cpl} 字上限"))
                 continue
 
     if not issues:
@@ -660,7 +696,7 @@ def check_subtitle_linebreak(timeline, fps=25.0) -> list:
     return results
 
 
-def check_subtitle_censor(timeline, dict_path, fps=25.0) -> list:
+def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None) -> list:
     """检测字幕含违禁词。
 
     Args:
@@ -670,24 +706,46 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0) -> list:
         list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
     """
     global _censor_cache
-    # 加载字典
+    # 加载字典 + 编译正则
     if dict_path not in _censor_cache:
         words = []
+        category_map = {}   # word → "cat1 > cat2"
+        suggestion_map = {} # word → "sug1 / sug2 / ..."
         if os.path.isfile(dict_path):
             with open(dict_path, "r", encoding="utf-8") as f:
                 for line in f:
                     w = line.strip()
                     if not w or w.startswith("#"):
                         continue
-                    # CSV 格式：违禁词,建议替换 → 存为 (word, suggestion)
-                    if "," in w:
-                        parts = w.split(",", 1)
-                        words.append((parts[0].strip(), parts[1].strip() if len(parts) > 1 else ""))
-                    else:
-                        words.append((w, ""))
-        _censor_cache[dict_path] = words
-    censor_words = _censor_cache[dict_path]
-    if not censor_words:
+                    parts = w.split(",")
+                    # 纯单词列表（无逗号，兼容 censor_cn.txt 等）
+                    if len(parts) == 1:
+                        word = parts[0].strip()
+                        if word:
+                            words.append((word, [], "", ""))
+                        continue
+                    # CSV 格式：一级分类,二级分类,违禁词,建议替换1[,建议替换2...]
+                    if len(parts) < 3:
+                        continue
+                    cat1 = parts[0].strip()
+                    cat2 = parts[1].strip()
+                    word = parts[2].strip()
+                    if not word:
+                        continue
+                    sug_list = [p.strip() for p in parts[3:] if p.strip()]
+                    words.append((word, sug_list, cat1, cat2))
+                    if cat1 or cat2:
+                        cat_str = " > ".join(c for c in (cat1, cat2) if c)
+                        category_map[word] = cat_str
+                    if sug_list:
+                        suggestion_map[word] = " / ".join(sug_list)
+        # 编译正则：按长度降序（长词优先匹配）
+        word_list = sorted([w for w, *_ in words], key=len, reverse=True)
+        pattern = re.compile("|".join(re.escape(w) for w in word_list)) if word_list else None
+        _censor_cache[dict_path] = (words, pattern, suggestion_map, category_map)
+
+    censor_words, pattern, suggestion_map, category_map = _censor_cache[dict_path]
+    if not pattern:
         return [_make_result("warn", detail="违禁词字典为空", is_summary=True)]
 
     issues = []
@@ -702,20 +760,26 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0) -> list:
             continue
         track = f"ST{si}"
         for it in items:
-            text = it.GetName()
-            start_frame = it.GetStart()
+            if not _in_io_range(it, io_range):
+                continue
+            text = _get_cached(it, "name", "")
+            start_frame = _get_cached(it, "start", 0)
             tc = smpte.gettc(start_frame)
 
-            for entry in censor_words:
-                word = entry[0] if isinstance(entry, tuple) else entry
-                suggestion = entry[1] if isinstance(entry, tuple) and entry[1] else ""
-                if word in text:
-                    reason = f"含违禁词: {word}"
-                    if suggestion:
-                        reason += f"，建议替换为: {suggestion}"
-                    issues.append(_make_result("fail", track=track, timecode=tc,
-                        detail=repr(text), reason=reason))
-                    break  # 一片段只报第一条
+            m = pattern.search(text)
+            if m:
+                word = m.group()
+                detail_parts = [f"含违禁词: {word}"]
+                cat = category_map.get(word)
+                if cat:
+                    detail_parts.append(f" [{cat}]")
+                reason_text = ""
+                sug = suggestion_map.get(word)
+                if sug:
+                    reason_text = f"建议替换为: {sug}"
+                issues.append(_make_result("fail", track=track, timecode=tc,
+                    detail=f"{repr(text)}，{''.join(detail_parts)}",
+                    reason=reason_text))
 
     if not issues:
         return [_make_result("pass", detail="无违禁词", is_summary=True)]
@@ -808,3 +872,141 @@ def check_weather(timeline, fps=25.0) -> list:
     issues.insert(0, _make_result("fail",
         detail=f"天气异常: {temp}°C, 湿度 {hum}%", is_summary=True))
     return issues
+
+
+def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list:
+    """检测视频轨可见片段的黑边：缩放不足、位移、旋转导致的未覆盖区域。"""
+    import math
+    issues = []
+    video_count = timeline.GetTrackCount("video")
+    if video_count == 0:
+        return [_make_result("warn", detail="无视频轨道", is_summary=True)]
+    timeline_w, timeline_h = 1920, 1080
+    if project:
+        try:
+            timeline_w = int(project.GetSetting("timelineResolutionWidth") or timeline_w)
+            timeline_h = int(project.GetSetting("timelineResolutionHeight") or timeline_h)
+        except: pass
+    try:
+        tl_w = timeline.GetSetting("timelineResolutionWidth")
+        tl_h = timeline.GetSetting("timelineResolutionHeight")
+        if tl_w: timeline_w = int(tl_w)
+        if tl_h: timeline_h = int(tl_h)
+    except: pass
+    smpte = _get_smpte(fps)
+    for vi in range(1, video_count + 1):
+        items = _get_items(timeline, "video", vi)
+        if not items: continue
+        track = f"V{vi}"
+        for it in items:
+            if not _in_io_range(it, io_range): continue
+            if _get_cached(it, "enabled", True) is False: continue
+            if _get_cached(it, "mp") is None: continue
+            res_str = _get_cached(it, "mp_resolution", "")
+            if not res_str or "x" not in res_str: continue
+            try: src_w, src_h = map(int, res_str.split("x"))
+            except: continue
+            props = _get_cached(it, "props", {})
+            if not props: continue
+            zoom_x = float(props.get("ZoomX", 1.0))
+            zoom_y = float(props.get("ZoomY", 1.0))
+            pan = float(props.get("Pan", 0.0))
+            tilt = float(props.get("Tilt", 0.0))
+            rot = math.radians(float(props.get("RotationAngle", 0.0)))
+            cx = timeline_w / 2.0 + pan
+            cy = timeline_h / 2.0 + tilt
+            src_ratio = src_w / src_h if src_h else 1
+            tl_ratio = timeline_w / timeline_h if timeline_h else 1
+            fit_scale = max(timeline_w / src_w, timeline_h / src_h) if abs(src_ratio - tl_ratio) < 0.02 else 1.0
+            eff_w = src_w * fit_scale * zoom_x
+            eff_h = src_h * fit_scale * zoom_y
+            cos_r_raw = math.cos(rot); sin_r_raw = math.sin(rot)
+            hw, hh = eff_w / 2.0, eff_h / 2.0
+            has_gap = False
+            for tx, ty in [(0, 0), (timeline_w, 0), (timeline_w, timeline_h), (0, timeline_h)]:
+                dx, dy = tx - cx, ty - cy
+                lx = dx * cos_r_raw + dy * sin_r_raw
+                ly = -dx * sin_r_raw + dy * cos_r_raw
+                if abs(lx) > hw or abs(ly) > hh:
+                    has_gap = True; break
+            if not has_gap: continue
+            name = _get_clip_name(it)
+            tc = smpte.gettc(_get_cached(it, "start", 0))
+            issues.append(_make_result("fail", track=track, timecode=tc,
+                detail=f"{name}，有黑边", reason="适当调整以规避黑边"))
+    if not issues:
+        return [_make_result("pass", detail="无黑边", is_summary=True)]
+    results = [_make_result("fail", detail=f"黑边: {len(issues)} 处", is_summary=True)]
+    results.extend(issues)
+    return results
+
+
+def check_speed(timeline, project_fps=25.0, io_range=None) -> list:
+    """检测视频轨片段变速问题：慢放但未使用光流或帧混合。"""
+    issues = []
+    video_count = timeline.GetTrackCount("video")
+    if video_count == 0:
+        return [_make_result("warn", detail="无视频轨道", is_summary=True)]
+    for vi in range(1, video_count + 1):
+        items = _get_items(timeline, "video", vi)
+        if not items: continue
+        track = f"V{vi}"
+        for it in items:
+            if not _in_io_range(it, io_range): continue
+            if _get_cached(it, "enabled", True) is False: continue
+            if _get_cached(it, "mp") is None: continue
+            t_dur = _get_cached(it, "end", 0) - _get_cached(it, "start", 0)
+            if t_dur <= 0: continue
+            s_dur = abs(_get_cached(it, "source_end", 0) - _get_cached(it, "source_start", 0))
+            if s_dur <= 0: continue
+            src_fps = float(_get_cached(it, "mp_fps", project_fps) or project_fps)
+            retime = int(_get_cached(it, "props", {}).get("RetimeProcess", 0))
+            tl_sec = t_dur / project_fps
+            src_sec = s_dur / src_fps
+            speed = src_sec / tl_sec * 100
+            threshold = min(project_fps / src_fps, 1.0) * 100
+            # 容忍 1% 浮点误差，避免 speed=99.6 显示为 100% 却报变速
+            if speed < threshold - 1.0 and retime not in (2, 3):
+                name = _get_clip_name(it)
+                smpte = _get_smpte(project_fps)
+                tc = smpte.gettc(_get_cached(it, "start", 0))
+                issues.append(_make_result("fail", track=track, timecode=tc,
+                    detail=f"{name}，速度为{speed:.0f}%",
+                    reason="调整变速，或使用帧混合/光流法"))
+    if not issues:
+        return [_make_result("pass", detail="变速正常", is_summary=True)]
+    results = [_make_result("fail", detail=f"变速: {len(issues)} 处", is_summary=True)]
+    results.extend(issues)
+    return results
+
+
+def check_video_clamping(timeline, threshold_frames=1, fps=25.0, io_range=None) -> list:
+    """检测视频轨夹帧：启用的视频片段时长 ≤ X 帧。"""
+    issues = []
+    video_count = timeline.GetTrackCount("video")
+    if video_count == 0:
+        return [_make_result("warn", detail="无视频轨道", is_summary=True)]
+    smpte = _get_smpte(fps)
+    checked = 0
+    for vi in range(1, video_count + 1):
+        items = _get_items(timeline, "video", vi)
+        if not items: continue
+        track = f"V{vi}"
+        for it in items:
+            if not _in_io_range(it, io_range): continue
+            if _get_cached(it, "enabled", True) is False: continue
+            if _get_cached(it, "mp") is None: continue
+            checked += 1
+            duration = _get_cached(it, "end", 0) - _get_cached(it, "start", 0)
+            if duration <= threshold_frames:
+                name = _get_clip_name(it)
+                tc = smpte.gettc(_get_cached(it, "start", 0))
+                issues.append(_make_result("fail", track=track, timecode=tc,
+                    detail=f"{name}，仅 {duration} 帧，时长过短",
+                    reason="检查是否夹帧"))
+    if not issues:
+        return [_make_result("pass",
+            detail="无夹帧" if checked else "无可检片段", is_summary=True)]
+    results = [_make_result("fail", detail=f"夹帧: {len(issues)} 处", is_summary=True)]
+    results.extend(issues)
+    return results

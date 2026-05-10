@@ -26,7 +26,7 @@ ui = fu.UIManager
 disp = bmd.UIDispatcher(ui)
 from config import (
     DEBUG, get_output_dir, get_log_dir, __version__, __channel__, version_string,
-    SMB_SCRIPTS, SMB_MOUNT, DEV_LOG_DIR, SMB_LOG_DIR,
+    SMB_SCRIPTS, SMB_MOUNT, DEV_LOG_DIR, SMB_LOG_DIR, PRODUCT_NAME, BRAND_NAME,
 )
 from subtitle_state import init as state_init, is_locked as state_is_locked, acquire_lock, release_lock, get_original_path
 import ledger
@@ -36,8 +36,7 @@ from core import (
     estimate_cost, query_balance, post_check, CLIP_COLOR as _CLIP_COLOR,
     download_and_apply,
 )
-from adapters.wuhenai_v2 import wuhenai_set_logger
-from adapters import SubtitleTask, create_wuhenai_adapter
+from adapters import SubtitleTask
 from logger import UILogger, set_logger, info, warn, fail, ok as log_ok
 
 WIN_ID = "com.myjc.ai_subtitle_ui"
@@ -161,7 +160,7 @@ window_layout = [
                 ui.Label({"ID": "warn_lb", "Text": "⚠ 请勿切换至其他项目",
                           "StyleSheet": "color:rgb(255,80,80);font-size:12px;font-weight:bold", "Weight": 0}),
                 ui.Label({"Text": " ", "Weight": 1}),
-                ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | v{version_string()}",
+                ui.Label({"Text": f"{BRAND_NAME} | v{version_string()}",
                           "StyleSheet": "color:rgb(100,100,100);font-size:10px", "Weight": 0}),
             ]),
         ]),
@@ -169,7 +168,7 @@ window_layout = [
 ]
 
 dlg = disp.AddWindow({
-    "WindowTitle": f"AI 去字幕",
+    "WindowTitle": f"{PRODUCT_NAME}",
     "ID": WIN_ID,
     "Geometry": [800, 100, 880, 560],  # Geometry: [x, y, w, h]
     "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
@@ -239,17 +238,17 @@ def _ui_write_direct(msg: str):
                 try:
                     te.MoveCursor("End", "MoveAnchor")
                     te.EnsureCursorVisible()
-                except Exception:
+                except Exception:  # 日志截断是非关键路径，失败静默
                     pass
             else:
                 te.Append(msg + "\n")
-        except Exception:
+        except Exception:  # _smb_log 轮转失败不阻塞 UI
             import sys; print(f"[ui_write] UI 刷新失败", file=sys.stderr)
         # 追加后自动滚到底部
         try:
             te.MoveCursor("End", "MoveAnchor")
             te.EnsureCursorVisible()
-        except Exception:
+        except Exception:  # _smb_log 写入失败不阻塞 UI
             pass
     else:
         _log_queue.put(msg)
@@ -257,7 +256,7 @@ def _ui_write_direct(msg: str):
     try:
         with open(_UI_LOG_FILE, "a", encoding="utf-8") as f:
             f.write(msg + "\n")
-    except Exception:
+    except Exception:  # 日志追加失败不阻塞 UI
         import sys; print(f"[ui_write] 本地日志写入失败", file=sys.stderr)
 
 def _ui_write(msg: str):
@@ -272,7 +271,7 @@ def _smb_log(msg: str):
         os.makedirs(os.path.dirname(_SMB_LOG), exist_ok=True)
         with open(_SMB_LOG, "a", encoding="utf-8") as f:
             f.write(f"[{ts}] {msg}\n")
-    except Exception:
+    except Exception:  # SMB 写入失败不阻塞 UI
         import sys
         print(f"[_smb_log FAIL] {msg}", file=sys.stderr)
 
@@ -288,7 +287,7 @@ def _check_smb():
                 info("✅ SMB 已恢复")
                 _smb_log("SMB 重挂成功")
                 return True
-        except Exception:
+        except Exception:  # SMB 状态检查失败不阻塞 UI
             pass
     fail("❌ SMB 重挂失败，插件不可用")
     _smb_log("SMB 重挂失败 3 次")
@@ -301,7 +300,7 @@ def _flush_log():
         while not _log_queue.empty():
             msg = _log_queue.get_nowait()
             te.Append(msg + "\n")
-    except Exception:
+    except Exception:  # SMB 初始化失败不阻塞 UI
         # UI 未就绪时静默（初始化时序），真实错误由 _smb_log 覆盖
         pass
 
@@ -401,16 +400,16 @@ def _pg(r):
         try:
             pg_geo = itm["pg_group"].GetGeometry()
             max_w = pg_geo[3] if pg_geo.get(3, 0) > 0 else _PG_MAX_W_FALLBACK
-        except Exception:
+        except Exception:  # 余额查询网络失败不阻塞 UI 更新
             max_w = _PG_MAX_W_FALLBACK
         bar_w = max(2, int(max_w * ratio))
         itm[PG_BAR].Resize([bar_w, 8])
         itm[PG_BAR].Visible = ratio > 0.005
         try: itm[PG_BAR].Update()
-        except Exception:
+        except Exception:  # 余额解析失败不阻塞 UI
             #达芬奇 UIManager 控件未完全渲染时 Update 可能失败
             pass
-    except Exception:
+    except Exception:  # 状态栏更新失败不阻塞 UI
         pass
 
 def _log_file(msg: str):
@@ -418,12 +417,12 @@ def _log_file(msg: str):
     try:
         with open(_UI_LOG_FILE, "a", encoding="utf-8") as f:
             f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
-    except Exception:
+    except Exception:  # 进度条更新失败不阻塞 UI
         import sys; print(f"[_log_file] 本地日志写入失败", file=sys.stderr)
     try:
         with open(_SMB_LOG, "a", encoding="utf-8") as f:
             f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
-    except Exception:
+    except Exception:  # 按钮状态更新失败不阻塞 UI
         import sys; print(f"[_log_file] SMB日志写入失败", file=sys.stderr)
 
 def _log_action(action: str):
@@ -483,8 +482,12 @@ def _set_proj(path):
 def _guess_project_root():
     """从媒体池 01_素材 片段路径推测项目根目录（众数投票）。零磁盘 IO，纯字符串。"""
     try:
-        r, proj, _ = connect_resolve()
-        if not r or not proj:
+        import fusionscript_loader
+        r = fusionscript_loader.bmd.scriptapp("Resolve")
+        if not r:
+            return None
+        proj = r.GetProjectManager().GetCurrentProject()
+        if not proj:
             return None
         mp = proj.GetMediaPool()
         root = mp.GetRootFolder()
@@ -497,44 +500,37 @@ def _guess_project_root():
             return None
 
         from collections import Counter
+        import re
         counter = Counter()
-        _SAMPLE_MAX = 500
+        # 匹配路径中任意 /数字_名称/ 的文件夹
+        _ROOT_PATTERN = re.compile(r'/(\d{2}_[^/]*)/')
 
         def _extract_root(file_path):
-            """从 File Path 中截取项目根目录：找 /04_素材/ 或 /04_素材 的位置"""
-            for sep in ("/04_素材/", "/04_素材"):
-                idx = file_path.find(sep)
-                if idx != -1:
-                    return file_path[:idx]
-            return None
+            matches = list(_ROOT_PATTERN.finditer(file_path))
+            if not matches:
+                return None
+            return file_path[:matches[-1].start()]
 
         def _collect(folder, depth=0):
-            if depth > 8 or counter.total() >= _SAMPLE_MAX:
+            if depth > 8 or counter.total() >= 200:
                 return
-            if counter.total() >= 20:
-                top, cnt = counter.most_common(1)[0]
-                if cnt >= 10 and cnt >= counter.total() * 0.7:
-                    return
             for c in (folder.GetClipList() or []):
                 p = c.GetClipProperty("File Path")
                 if p:
-                    root_path = _extract_root(p)
-                    if root_path:
-                        counter[root_path] += 1
-                    if counter.total() >= _SAMPLE_MAX:
-                        return
+                    rp = _extract_root(p)
+                    if rp:
+                        counter[rp] += 1
             for sub in (folder.GetSubFolderList() or []):
                 _collect(sub, depth + 1)
-                if counter.total() >= _SAMPLE_MAX:
-                    return
 
         _collect(material)
         if not counter:
             return None
         proj_root, _count = counter.most_common(1)[0]
         return proj_root if os.path.isdir(proj_root) else None
-    except Exception:
+    except Exception:  # 项目路径猜测失败不阻塞 UI 初始化
         return None
+
 
 def auto_detect_project():
     """插件启动时推测项目根目录，显示建议等待用户确认。推测成功返回 True，失败返回 False。"""
@@ -551,7 +547,7 @@ def auto_detect_project():
         itm[BTN_PICK].Text = "手动选择"
         itm[PROJ_LB].Text = "① 请确认或手动选择项目路径"
         return True
-    except Exception:
+    except Exception:  # 路径自动检测失败不阻塞 UI
         return False
 
 _suggested_path = ""  # 推测但尚未确认的路径

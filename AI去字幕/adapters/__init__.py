@@ -77,6 +77,20 @@ class BaseAdapter(ABC):
         self.name = name
         self.config = config
         self._output_path: Optional[str] = None  # process() 设置，wait_for_result() 消费
+        self._logger = print  # 默认 stdout；外部可注入 set_logger(callback)
+
+    def set_logger(self, callback):
+        """注入日志回调。callback(level: str, msg: str) — level: info/warn/error/debug。
+        
+        所有适配器通过此回调输出，不直接 print()。
+        回调负责路由：UI 日志区 / SMB ops log / CLI stdout。
+        """
+        self._logger = callback or print
+
+    def _log(self, level: str, msg: str):
+        """统一日志输出。不直接 print()，通过注入的回调分发。"""
+        if self._logger:
+            self._logger(level, msg)
 
     @abstractmethod
     def submit(self, task: SubtitleTask) -> str:
@@ -162,3 +176,33 @@ def create_wuhenai_adapter(mode: str = "pro_box") -> "WuhenAIV21Adapter":
     adapter_cfg["model"] = "video_removal_std"
     adapter_cfg["method"] = "sel_area"
     return WuhenAIV21Adapter(adapter_cfg)
+
+
+def create_ghostcut_adapter(mode: str = "pro_box") -> "GhostCutAdapter":
+    """创建鬼手适配器。默认 pro_box（正式出片）模式。"""
+    from copy import deepcopy
+    from config import ADAPTER_CONFIGS
+    from adapters.ghostcut import GhostCutAdapter
+
+    _ = mode
+    adapter_cfg = deepcopy(ADAPTER_CONFIGS["ghostcut"])
+    return GhostCutAdapter(adapter_cfg)
+
+
+def create_preferred_adapter():
+    """按 ADAPTER_PRIORITY 依次尝试，返回第一个有余额的适配器。"""
+    from pricing_defaults import ADAPTER_PRIORITY
+    for key in ADAPTER_PRIORITY:
+        try:
+            if key == "ghostcut":
+                a = create_ghostcut_adapter()
+                bal = a.get_balance()
+                pts = sum(x["pointBalance"] for x in bal.get("pointAssets", []) if x["pointBalance"] > 0)
+            else:
+                a = create_wuhenai_adapter()
+                pts = float(a.get_balance().get("balance", 0))
+            if pts >= 5:
+                return a
+        except Exception:
+            continue
+    return create_wuhenai_adapter()  # 兜底

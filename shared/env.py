@@ -28,24 +28,21 @@ def load_dotenv(path: str):
         pass
 
 
-def load_all_env(plugin_dir: str):
+def load_all_env(plugin_dir: str, smb_env: str = ""):
     """按优先级加载全部 .env 文件（先加载的优先，后加载不覆盖已有 key）。
 
     加载顺序：
-    1. {plugin_dir}/.env         — 本地 / SMB 共享
-    2. ~/.subtitle.env            — 个人备用
-    3. ~/.watermark.env           — 旧名兼容
-
-    SMB 路径与本地同路径时自动跳过（生产机上 .env 是 SMB 挂载的同一个文件）。
+    1. {plugin_dir}/.env         — 本地
+    2. {smb_env}                  — SMB 共享（可选，同路径时跳过）
+    3. ~/.subtitle.env            — 个人备用
+    4. ~/.watermark.env           — 旧名兼容
     """
-    import os
     plugin_dir = os.path.abspath(plugin_dir)
 
     local_env = os.path.join(plugin_dir, ".env")
-    smb_env = "/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/.env"
 
     load_dotenv(local_env)
-    if os.path.realpath(local_env) != os.path.realpath(smb_env):
+    if smb_env and os.path.realpath(local_env) != os.path.realpath(smb_env):
         load_dotenv(smb_env)
     load_dotenv(os.path.expanduser("~/.subtitle.env"))
     load_dotenv(os.path.expanduser("~/.watermark.env"))

@@ -4,6 +4,16 @@
 """
 
 __version__ = "1.0.0-dev"
+__channel__ = "dev"
+
+def version_string():
+    return f"{__version__}{'-' + __channel__ if __channel__ else ''}"
+
+# ── SMB 常量 ──
+import os as _os
+SMB_MOUNT = "/Volumes/MYJC"
+SMB_SCRIPTS = _os.path.join(SMB_MOUNT, "06_Software", "达芬奇脚本")
+SMB_PLUGIN = _os.path.join(SMB_SCRIPTS, "交付自检工具")
 
 # ── 默认阈值 ──
 DEFAULT_CLAMP_THRESHOLD = 5

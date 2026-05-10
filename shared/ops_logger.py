@@ -148,7 +148,7 @@ def balance_check(balance: float, estimated: float, action: str):
     })
 
 
-def task_submit(clip_name: str, mode: str, duration: float, attempt: int = 0):
+def task_submit(clip_name: str, mode: str, duration: float, attempt: int = 0, provider: str = ""):
     """API 任务提交"""
     _write({
         "ts": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
@@ -159,10 +159,11 @@ def task_submit(clip_name: str, mode: str, duration: float, attempt: int = 0):
         "mode": mode,
         "duration_sec": round(duration, 1),
         "attempt": attempt,
+        "provider": provider,
     })
 
 
-def task_result(clip_name: str, task_id: str, elapsed: float, success: bool):
+def task_result(clip_name: str, task_id: str, elapsed: float, success: bool, provider: str = ""):
     """API 任务结果"""
     _write({
         "ts": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
@@ -173,6 +174,7 @@ def task_result(clip_name: str, task_id: str, elapsed: float, success: bool):
         "task_id": str(task_id),
         "elapsed_sec": round(elapsed, 1),
         "success": success,
+        "provider": provider,
     })
 
 

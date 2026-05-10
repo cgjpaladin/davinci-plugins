@@ -1,5 +1,5 @@
 #!/bin/bash
-# deploy_new_machine.sh — 新机器一键部署（SSH + 改名 + 插件 launcher + machine_map）
+# deploy_new_machine.sh — 新机器一键部署（SSH + 改名 + 插件 launcher + machine_registry）
 # 用法: ./deploy_new_machine.sh <IP末段> <短名> <姓名> [全名]
 set -e
 
@@ -27,28 +27,15 @@ if [ -z "$LAUNCHER_SRC" ]; then
     exit 1
 fi
 LAUNCHER_DST="$(basename "$LAUNCHER_SRC")"
-MAP_FILE="/Users/bryan/WorkBuddy/达芬奇插件工坊/AI去字幕/machine_map.json"
+MAP_FILE="/Users/bryan/WorkBuddy/达芬奇运维专家/machine_registry.json"
 
 echo "════ 新机器部署: mini${IP_SEG} (${IP}) ════"
 
 # ── 1. SSH config ──
+# ── 1. SSH config (由运维 workspace 统一管理) ──
 echo ""
 echo "═══ 1. SSH config ═══"
-SSH_CONFIG="$HOME/.ssh/config"
-HOST_ENTRY="
-Host mini${IP_SEG}
-    HostName ${IP}
-    User ${SHORT}
-    IdentityFile ${SSH_KEY}
-    StrictHostKeyChecking no
-    IdentitiesOnly yes
-"
-if grep -q "mini${IP_SEG}" "$SSH_CONFIG" 2>/dev/null; then
-    echo "  ⏭  mini${IP_SEG} 已存在，跳过"
-else
-    echo "$HOST_ENTRY" >> "$SSH_CONFIG"
-    echo "  ✅ 已添加 mini${IP_SEG}"
-fi
+bash /Users/bryan/WorkBuddy/达芬奇运维专家/tools/sync_ssh_config.sh
 
 # ── 2. SSH key ──
 echo ""
@@ -114,22 +101,27 @@ ssh mini${IP_SEG} "mkdir -p '${COMPANY_DIR}'"
 scp "$LAUNCHER_SRC" "mini${IP_SEG}:${COMPANY_DIR}/${LAUNCHER_DST}"
 echo "  ✅ ${LAUNCHER_DST} → mini${IP_SEG}:${COMPANY_DIR}"
 
-# ── 6. machine_map.json ──
+# ── 6. machine_registry.json ──
 echo ""
-echo "═══ 6. machine_map ═══"
+echo "═══ 6. machine_registry ═══"
 python3 -c "
 import json
 with open('${MAP_FILE}') as f:
-    mm = json.load(f)
-mm['${IP_SEG}'] = {
+    reg = json.load(f)
+reg['${IP_SEG}'] = {
     'name': '${NAME}',
     'short': '${SHORT}',
     'full': '${FULL}',
+    'ip': '${IP}',
     'status': '在职',
-    'ip': '${IP}'
+    'role': '',
+    'macos_version': '',
+    'dr_version': '',
+    'python_versions': [],
+    'ssh_alias': 'mini${IP_SEG}'
 }
 with open('${MAP_FILE}', 'w') as f:
-    json.dump(mm, f, ensure_ascii=False, indent=2)
+    json.dump(reg, f, ensure_ascii=False, indent=2, sort_keys=True)
 print(f'  ✅ 已添加 mini${IP_SEG} → ${NAME}')
 "
 

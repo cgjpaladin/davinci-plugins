@@ -33,7 +33,7 @@ from config import (
 from check_core import (check_track_structure, check_subtitle_clamping, check_disabled_items,
                           check_black_frames, check_audio_mono, check_timeline_settings,
                           check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
-                          preload_timeline_items)
+                          check_black_borders, check_speed, check_video_clamping, preload_timeline_items)
 
 # ═══════════════════════════════════════════
 # 常量
@@ -43,40 +43,58 @@ WIN_ID = "com.myjc.delivery_checker"
 # 控件 ID
 CHK_TRACK, CHK_SUB_DURATION, CHK_SUB_LINEBREAK, CHK_SUB_GLYPH = \
     "chk_track", "chk_sub_dur", "chk_sub_br", "chk_sub_glyph"
-CHK_BLACK, CHK_BORDER, CHK_MONO, CHK_LOUDNESS, CHK_FRAGMENT, CHK_TIMELINE, CHK_COLOR = \
-    "chk_black", "chk_border", "chk_mono", "chk_loudness", "chk_fragment", "chk_timeline", "chk_color"
-CHK_CENSOR_CN, CHK_CENSOR_EN, CHK_CENSOR_NRTA, CHK_CENSOR_JUICY = "chk_censor_cn", "chk_censor_en", "chk_censor_nrta", "chk_censor_juicy"
+CHK_BLACK, CHK_VIDEO_CLAMP, CHK_BORDER, CHK_SPEED, CHK_MONO, CHK_LOUDNESS, CHK_FRAGMENT, CHK_TIMELINE, CHK_COLOR = \
+    "chk_black", "chk_vid_clamp", "chk_border", "chk_speed", "chk_mono", "chk_loudness", "chk_fragment", "chk_timeline", "chk_color"
+CHK_CENSOR_SYSTEM, CHK_CENSOR_PERSONAL = "chk_censor_sys", "chk_censor_personal"
 CHK_BLACK_FRAME = CHK_BLACK  # 别名
-LBL_SUB_VAL, LBL_VID_VAL, LBL_AUD_VAL = "lbl_sub", "lbl_vid", "lbl_aud"
-EDIT_SUB, EDIT_VID, EDIT_AUD = "edit_sub", "edit_vid", "edit_aud"
-BTN_EDIT_TRACK = "btn_edit_track"
-BTN_SAVE_TRACK = "btn_save_track"
-LBL_CLAMP_VAL = "lbl_clamp"
-EDIT_CLAMP = "edit_clamp"
-BTN_EDIT_CLAMP = "btn_edit_clamp"
-BTN_SAVE_CLAMP = "btn_save_clamp"
 BTN_START = "btn_start"
 BTN_SEL_ALL = "btn_sel_all"
 BTN_DESEL_ALL = "btn_desel_all"
+BTN_CONFIG = "btn_config"
 TREE_RESULT = "tree_result"
-ST_LB = "st_lb"
+GROUP_TREE = "group_tree"
 HINT_LB = "hint_lb"
 
 # ── 结果列定义：加/删/挪/开关列只改这里 ──
 #   enabled=False → 列暂时隐藏，不删定义
 COLUMNS = [
-    {"header": "状态", "width": 40,  "key": "icon",   "enabled": True},
-    {"header": "轨道", "width": 50,  "key": "track",  "enabled": True},
-    {"header": "位置", "width": 100, "key": "tc",     "enabled": True},
-    {"header": "详情", "width": 280, "key": "msg",    "enabled": True},
-    {"header": "原因", "width": 200, "key": "reason", "enabled": True},
+    {"header": "轨道",   "width": 48,  "key": "track",  "enabled": True},
+    {"header": "时码",   "width": 120, "key": "tc",     "enabled": True},
+    {"header": "问题",   "width": 300, "key": "msg",    "enabled": True},
+    {"header": "建议",   "width": 180, "key": "reason", "enabled": True},
 ]
 
 # 当前启用的列（enabled=True）
 _ENABLED_COLS = [c for c in COLUMNS if c.get("enabled", True)]
 
 # ── 结果分组顺序（四大分组，控制 Tree 渲染层级）──
-GROUP_ORDER = ["工程", "视频", "音频", "字幕"]
+GROUP_ORDER = ["工程", "视频", "音频", "字幕", "色彩"]
+
+# ── check_core 输出字段 → Tree 列 key 映射（单一真相源）──
+# 加新字段规则：这里加一行 → COLUMNS 加一列 → _process_result 自动映射
+# 删字段同理：这里删一行 → COLUMNS 删对应列 → 完
+FIELD_TO_COLUMN = {
+    "track":    "track",     # 轨道（直接透传）
+    "timecode": "tc",        # 时码（仅 key 名不同）
+    "detail":   "msg",       # 问题（仅 key 名不同）
+    "reason":   "reason",    # 建议（直接透传）
+}
+
+# 启动时校验：FIELD_TO_COLUMN 与 COLUMNS 一致
+def _validate_field_map():
+    col_keys = {c["key"] for c in COLUMNS if c.get("enabled", True)}
+    map_keys = set(FIELD_TO_COLUMN.values())
+    only_in_map = map_keys - col_keys
+    only_in_col = col_keys - map_keys
+    errors = []
+    if only_in_map:
+        errors.append(f"FIELD_TO_COLUMN 中有但 COLUMNS 中无: {only_in_map}")
+    if only_in_col:
+        errors.append(f"COLUMNS 中有但 FIELD_TO_COLUMN 中无: {only_in_col}")
+    if errors:
+        raise AssertionError("字段映射不一致:\n  " + "\n  ".join(errors))
+_validate_field_map()
+del _validate_field_map
 
 
 def _col_index(key):
@@ -161,70 +179,146 @@ BTN_ICON = (
 # 检查注册表（加新检查 = 这里加一行；换顺序 = 挪位置）
 # ═══════════════════════════════════════════
 
-def _run_track_check(timeline, fps):
+def _run_track_check(timeline, fps, **_kw):
     """轨道结构"""
     return check_track_structure(timeline, *_track_values)
 
-def _run_sub_duration_check(timeline, fps):
+def _run_sub_duration_check(timeline, fps, **_kw):
     """字幕时长（过短 + 夹帧）"""
-    return check_subtitle_clamping(timeline, _clamp_value, fps)
+    return check_subtitle_clamping(timeline, _clamp_value, fps, io_range=_kw.get("io_range"))
 
-def _run_sub_glyph_check(timeline, fps):
+def _run_sub_glyph_check(timeline, fps, **_kw):
     """字幕异体字"""
-    return check_subtitle_glyph(timeline, fps)
+    return check_subtitle_glyph(timeline, fps, io_range=_kw.get("io_range"))
 
-def _run_sub_linebreak_check(timeline, fps):
+def _run_sub_linebreak_check(timeline, fps, **_kw):
     """字幕换行（CPL + 硬换行）"""
-    return check_subtitle_linebreak(timeline, fps)
+    return check_subtitle_linebreak(timeline, fps, io_range=_kw.get("io_range"))
 
-def _run_fragment_check(timeline, fps):
+def _run_fragment_check(timeline, fps, **_kw):
     """片段状态（启用/禁用）"""
-    return check_disabled_items(timeline, fps)
+    return check_disabled_items(timeline, fps, io_range=_kw.get("io_range"))
 
-def _run_black_frame_check(timeline, fps):
+def _run_black_frame_check(timeline, fps, **_kw):
     """黑帧"""
-    return check_black_frames(timeline, fps)
+    return check_black_frames(timeline, fps, io_range=_kw.get("io_range"))
 
-def _run_mono_check(timeline, fps):
+def _run_black_border_check(timeline, fps, **_kw):
+    """黑边"""
+    return check_black_borders(timeline, project=_kw.get("project"), fps=fps, io_range=_kw.get("io_range"))
+
+def _run_speed_check(timeline, fps, **_kw):
+    """变速"""
+    return check_speed(timeline, project_fps=fps, io_range=_kw.get("io_range"))
+
+def _run_video_clamp_check(timeline, fps, **_kw):
+    """视频夹帧"""
+    return check_video_clamping(timeline, _video_clamp_threshold, fps, io_range=_kw.get("io_range"))
+
+def _run_mono_check(timeline, fps, **_kw):
     """声道"""
-    return check_audio_mono(timeline, fps)
+    return check_audio_mono(timeline, fps, io_range=_kw.get("io_range"))
 
-def _run_timeline_check(timeline, fps):
+def _run_timeline_check(timeline, fps, **_kw):
     """时间线设置"""
-    return check_timeline_settings(timeline, fps=fps)
+    return check_timeline_settings(timeline, fps=fps, project=_kw.get("project"))
 
-def _run_censor_cn(timeline, fps):
-    """中文违禁词"""
-    return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "censor_cn.txt"), fps)
+def _run_censor_system(timeline, fps, **_kw):
+    """系统违禁词典（合并所有启用的子词典→一次扫描，个人词典覆盖的词自动跳过）"""
+    import tempfile
+    SUB_MAP = [
+        ("cn",     ["censor_cn.txt"]),
+        ("en",     ["censor_en.txt"]),
+        ("bw",     ["censor_bw.txt"]),
+        ("bw_sms", ["censor_bw_sms.txt"]),
+    ]
+    # 合并启用的子词典 → 临时文件 → 一次扫描
+    tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
+    try:
+        for key, dict_files in SUB_MAP:
+            if _censor_subs.get(key, True):
+                for df in dict_files:
+                    path = os.path.join(_SCRIPT_DIR, "dicts", df)
+                    if os.path.isfile(path):
+                        with open(path, "r", encoding="utf-8", errors="ignore") as src:
+                            tmp.write(src.read())
+        tmp.close()
+        all_results = check_subtitle_censor(timeline, tmp.name, fps, io_range=_kw.get("io_range"))
+    finally:
+        os.unlink(tmp.name)
 
-def _run_censor_en(timeline, fps):
-    """英文违禁词"""
-    return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "censor_en.txt"), fps)
+    # 过滤个人词典已覆盖的词
+    personal_words = set()
+    if _kw.get("personal_enabled"):
+        personal_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
+        if os.path.isfile(personal_path):
+            with open(personal_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    w = line.strip()
+                    if w and not w.startswith("#"):
+                        parts = w.split(",")
+                        if len(parts) >= 3:
+                            personal_words.add(parts[2].strip())
 
-def _run_censor_nrta(timeline, fps):
-    """广电违禁词"""
-    return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "censor_nrta.txt"), fps)
+    if personal_words:
+        all_results = _filter_covered(all_results, personal_words)
+    return all_results
 
-def _run_censor_juicy(timeline, fps):
-    """短剧违禁词"""
-    return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "censor_juicy.txt"), fps)
+def _run_censor_personal(timeline, fps, **_kw):
+    """个人违禁词典"""
+    return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv"), fps, io_range=_kw.get("io_range"))
+
+def _make_result_passthrough(status, track="", timecode="", detail="", reason="", is_summary=False):
+    """同 check_core._make_result 格式，避免跨模块循环导入。"""
+    return {"status": status, "track": track, "timecode": timecode,
+            "detail": detail, "reason": reason, "is_summary": is_summary}
+
+def _filter_covered(results, personal_words):
+    """过滤掉个人词典已覆盖的违禁词。保留汇总行，移除被覆盖的详情行。"""
+    kept = [results[0]]  # 保留汇总行
+    removed = 0
+    for r in results[1:]:
+        detail = r.get("detail", "")
+        # 从 detail 中提取被命中的词（check_subtitle_censor 使用 repr(text)）
+        word = _extract_censor_word(detail)
+        if word and word in personal_words:
+            removed += 1
+            continue
+        kept.append(r)
+    # 更新汇总行
+    if removed:
+        total = len(kept) - 1
+        if total == 0:
+            kept[0] = _make_result_passthrough("pass", detail="系统违禁词典: 无违禁词 (已由个人词典覆盖)", is_summary=True)
+        else:
+            kept[0] = _make_result_passthrough("fail",
+                detail=f"系统违禁词典: {total} 处  (个人词典覆盖 {removed} 处)", is_summary=True)
+    return kept
+
+def _extract_censor_word(detail):
+    """从 check_subtitle_censor 的 detail（repr格式）中提取违禁词。e.g. "'文本'" → None"""
+    import ast
+    try:
+        return ast.literal_eval(detail) if detail.startswith("'") else None
+    except Exception:
+        return None
 
 CHECKS = [
-    {"id": "timeline",      "section": "时间线",   "chk_id": CHK_TIMELINE,      "group": "工程", "run_fn": _run_timeline_check},
-    {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "group": "工程", "run_fn": _run_track_check},
-    {"id": "fragment",      "section": "片段状态", "chk_id": CHK_FRAGMENT,       "group": "工程", "run_fn": _run_fragment_check},
-    {"id": "sub_duration",  "section": "时长",     "chk_id": CHK_SUB_DURATION,   "group": "字幕", "run_fn": _run_sub_duration_check},
-    {"id": "sub_linebreak", "section": "换行",     "chk_id": CHK_SUB_LINEBREAK,  "group": "字幕", "run_fn": _run_sub_linebreak_check},
-    {"id": "sub_glyph",     "section": "异体字",   "chk_id": CHK_SUB_GLYPH,      "group": "字幕", "run_fn": _run_sub_glyph_check},
-    {"id": "censor_cn",     "section": "中文违禁词","chk_id": CHK_CENSOR_CN,     "group": "字幕", "run_fn": _run_censor_cn},
-    {"id": "censor_en",     "section": "英文违禁词","chk_id": CHK_CENSOR_EN,     "group": "字幕", "run_fn": _run_censor_en},
-    {"id": "censor_nrta",   "section": "广电违禁词","chk_id": CHK_CENSOR_NRTA,   "group": "字幕", "run_fn": _run_censor_nrta},
-    {"id": "censor_juicy",  "section": "短剧违禁词","chk_id": CHK_CENSOR_JUICY,  "group": "字幕", "run_fn": _run_censor_juicy},
-    {"id": "black_frame",   "section": "黑帧",     "chk_id": CHK_BLACK,          "group": "视频", "run_fn": _run_black_frame_check},
-    {"id": "black_border",  "section": "黑边",     "chk_id": CHK_BORDER,         "run_fn": None},
-    {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "group": "音频", "run_fn": _run_mono_check},
-    {"id": "audio_loudness","section": "音量",     "chk_id": CHK_LOUDNESS,       "run_fn": None},
-    {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "run_fn": None},
+    {"id": "timeline",      "section": "时间线",   "chk_id": CHK_TIMELINE,      "group": "工程", "subgroup": "时间线", "run_fn": _run_timeline_check},
+    {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "group": "工程", "subgroup": "轨道",   "run_fn": _run_track_check},
+    {"id": "fragment",      "section": "片段状态", "chk_id": CHK_FRAGMENT,       "group": "工程", "subgroup": "片段",   "run_fn": _run_fragment_check},
+    {"id": "sub_linebreak", "section": "换行",     "chk_id": CHK_SUB_LINEBREAK,  "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_linebreak_check},
+    {"id": "sub_glyph",     "section": "异体字",   "chk_id": CHK_SUB_GLYPH,      "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_glyph_check},
+    {"id": "sub_duration",  "section": "时长",     "chk_id": CHK_SUB_DURATION,   "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_duration_check},
+    {"id": "censor_system",  "section": "系统违禁词典","chk_id": CHK_CENSOR_SYSTEM, "group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_system},
+    {"id": "censor_personal","section": "个人违禁词典","chk_id": CHK_CENSOR_PERSONAL,"group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_personal},
+    {"id": "video_clamp",   "section": "夹帧",     "chk_id": CHK_VIDEO_CLAMP,    "group": "视频", "subgroup": "夹帧",   "run_fn": _run_video_clamp_check},
+    {"id": "black_frame",   "section": "黑帧",     "chk_id": CHK_BLACK,          "group": "视频", "subgroup": "黑帧",   "run_fn": _run_black_frame_check},
+    {"id": "black_border",  "section": "黑边",     "chk_id": CHK_BORDER,         "group": "视频", "subgroup": "黑边",   "run_fn": _run_black_border_check},
+    {"id": "speed",         "section": "变速",     "chk_id": CHK_SPEED,           "group": "视频", "subgroup": "变速",   "run_fn": _run_speed_check},
+    {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "group": "音频", "subgroup": "声道",   "run_fn": _run_mono_check},
+    {"id": "audio_loudness","section": "音量",     "chk_id": CHK_LOUDNESS,       "group": "音频", "subgroup": "声道",   "run_fn": None},
+    {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "group": "色彩", "subgroup": "色彩",   "run_fn": None},
 ]
 # 扩展指南：
 #   - 加新检查：往 CHECKS 末尾加一行 dict，写 run_fn
@@ -262,13 +356,10 @@ del _validate_checks  # 用完即焚，不污染命名空间
 # 全局状态
 # ═══════════════════════════════════════════
 _track_values = [DEFAULT_SUBTITLE_TRACKS, DEFAULT_VIDEO_TRACKS, DEFAULT_AUDIO_TRACKS]
-_track_editing = False
 _clamp_value = DEFAULT_CLAMP_THRESHOLD
-_clamp_editing = False
+_video_clamp_threshold = 2  # 视频夹帧阈值（帧）
+_censor_subs = {"base": True, "en": True, "bw": True, "bw_sms": True}
 _checking = False
-
-# 轨道编辑 UI 暂时关闭（裁缝老师说放开时改 True 即可）
-_TRACK_EDIT_VISIBLE = False
 
 # ═══════════════════════════════════════════
 # 日志系统
@@ -333,6 +424,45 @@ def _disabled_cb(id_, text):
     """创建灰色不可点的 CheckBox，文案加 (待开发)"""
     return _cb(id_, f"{text} (待开发)", _DISABLED_CB)
 
+def _section_checkboxes(*check_ids):
+    """从 CHECKS 查找指定 ID 生成 CheckBox 列表。
+    自动区分：run_fn 有效的 → 正常勾选框，run_fn=None → 灰色 disabled。
+    ID 不存在 → 红色错误标记。
+    """
+    widgets = []
+    for cid in check_ids:
+        check = next((c for c in CHECKS if c["id"] == cid), None)
+        if check is None:
+            print(f"⚠ _section_checkboxes: 未知 check_id '{cid}'", file=sys.stderr)
+            widgets.append(ui.Label({"Text": f"?{cid}",
+                "StyleSheet": "color:red;font-size:12px", "Weight": 0}))
+            continue
+        if check.get("run_fn") is None:
+            widgets.append(_disabled_cb(check["chk_id"], check["section"]))
+        else:
+            widgets.append(_cb(check["chk_id"], check["section"]))
+    return widgets
+
+def _build_group_rows(group_name, extras=None):
+    """从 CHECKS 自动生成一个分组的所有 CheckBox。
+    
+    group_name: 分组名，extras: [额外控件...] — 追加到行末尾
+    Returns: [HGroup] — 一行
+    """
+    extras = extras or []
+    group_checks = [c for c in CHECKS if c.get("group") == group_name]
+    if not group_checks:
+        return []
+    
+    widgets = [
+        _sec_label(group_name),
+        *_section_checkboxes(*[c["id"] for c in group_checks]),
+        *extras,
+    ]
+    return [ui.HGroup({"Spacing": 6, "Weight": 0}, widgets)]
+
+# ── 特殊控件常量（已迁移到「配置」弹窗）──
+
 window_layout = [
     ui.VGroup({"Spacing": 0}, [
 
@@ -341,72 +471,12 @@ window_layout = [
             # 左侧
             ui.VGroup({"Spacing": 2, "Weight": 0}, [
 
-            # ═══ 工程设置 ═══
-            ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                _sec_label("工程"),
-                _cb(CHK_TIMELINE, "时间线"),
-                _cb(CHK_FRAGMENT, "片段状态"),
-                _cb(CHK_TRACK, "轨道结构"),
-                ui.Label({"ID": "lbl_track_sub", "Text": "字幕", "StyleSheet": LABEL_DIM, "Weight": 0}),
-                ui.Label({"ID": LBL_SUB_VAL, "Text": str(DEFAULT_SUBTITLE_TRACKS),
-                          "StyleSheet": LABEL_GRAY, "Weight": 0}),
-                ui.LineEdit({"ID": EDIT_SUB, "Text": str(DEFAULT_SUBTITLE_TRACKS),
-                             "MaximumSize": [20, 20], "Weight": 0}),
-                ui.Label({"ID": "lbl_track_vid", "Text": "视频", "StyleSheet": LABEL_DIM, "Weight": 0}),
-                ui.Label({"ID": LBL_VID_VAL, "Text": str(DEFAULT_VIDEO_TRACKS),
-                          "StyleSheet": LABEL_GRAY, "Weight": 0}),
-                ui.LineEdit({"ID": EDIT_VID, "Text": str(DEFAULT_VIDEO_TRACKS),
-                             "MaximumSize": [20, 20], "Weight": 0}),
-                ui.Label({"ID": "lbl_track_aud", "Text": "音频", "StyleSheet": LABEL_DIM, "Weight": 0}),
-                ui.Label({"ID": LBL_AUD_VAL, "Text": str(DEFAULT_AUDIO_TRACKS),
-                          "StyleSheet": LABEL_GRAY, "Weight": 0}),
-                ui.LineEdit({"ID": EDIT_AUD, "Text": str(DEFAULT_AUDIO_TRACKS),
-                             "MaximumSize": [20, 20], "Weight": 0}),
-                ui.Button({"ID": BTN_EDIT_TRACK, "Text": "✎", "StyleSheet": BTN_ICON, "Weight": 0}),
-                ui.Button({"ID": BTN_SAVE_TRACK, "Text": "✓", "StyleSheet": BTN_ICON, "Weight": 0}),
-            ]),
-
-            # ═══ 视频 ═══
-            ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                _sec_label("视频"),
-                _cb(CHK_BLACK, "黑帧"),
-                _disabled_cb(CHK_BORDER, "黑边"),
-            ]),
-
-            # ═══ 音频 ═══
-            ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                _sec_label("音频"),
-                _cb(CHK_MONO, "声道"),
-                _disabled_cb(CHK_LOUDNESS, "音量"),
-            ]),
-
-            # ═══ 字幕 ═══
-            ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                _sec_label("字幕"),
-                _cb(CHK_SUB_DURATION, "时长"),
-                _cb(CHK_SUB_LINEBREAK, "换行"),
-                _cb(CHK_SUB_GLYPH, "异体字"),
-                ui.Label({"Text": "阈值", "StyleSheet": LABEL_DIM, "Weight": 0}),
-                ui.Label({"ID": LBL_CLAMP_VAL, "Text": str(DEFAULT_CLAMP_THRESHOLD),
-                          "StyleSheet": LABEL_GRAY, "Weight": 0}),
-                ui.LineEdit({"ID": EDIT_CLAMP, "Text": str(DEFAULT_CLAMP_THRESHOLD),
-                             "MaximumSize": [20, 20], "Weight": 0}),
-                ui.Label({"Text": "帧", "StyleSheet": LABEL_DIM, "Weight": 0}),
-                ui.Button({"ID": BTN_EDIT_CLAMP, "Text": "✎", "StyleSheet": BTN_ICON, "Weight": 0}),
-                ui.Button({"ID": BTN_SAVE_CLAMP, "Text": "✓", "StyleSheet": BTN_ICON, "Weight": 0}),
-            ]),
-            ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                _cb(CHK_CENSOR_CN, "中文违禁词"),
-                _cb(CHK_CENSOR_JUICY, "短剧违禁词"),
-                _disabled_cb(CHK_CENSOR_EN, "英文违禁词"),
-                _disabled_cb(CHK_CENSOR_NRTA, "广电违禁词"),
-            ]),
-
-            # ═══ 色彩 ═══
-            ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                _sec_label("色彩"),
-                _cb(CHK_COLOR, "（待开发）", _DISABLED_CB),
-            ]),
+            # ═══════ 检查选项（从 CHECKS 自动生成）═══════
+            *_build_group_rows("工程"),
+            *_build_group_rows("视频"),
+            *_build_group_rows("音频"),
+            *_build_group_rows("字幕"),
+            *_build_group_rows("色彩"),
 
             ]),  # 结束左侧 VGroup
 
@@ -420,6 +490,9 @@ window_layout = [
                 ui.Button({"ID": BTN_DESEL_ALL, "Text": "全不选",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [60, 22]}),
+                ui.Button({"ID": BTN_CONFIG, "Text": "配置",
+                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
+                           "MinimumSize": [60, 22]}),
             ]),
 
             ui.Button({"ID": BTN_START, "Text": "开始检查",
@@ -427,14 +500,16 @@ window_layout = [
                        "MinimumSize": [_BTN_HEIGHT, _BTN_HEIGHT]}),
         ]),
 
-        # ── 状态标签 ──
-        ui.Label({"ID": ST_LB, "Text": "",
-                  "StyleSheet": "color:rgb(180,180,180);font-size:11px;min-height:18px",
-                  "Weight": 0}),
-
-        # ── 结果区：Tree（可点击跳转）──
-        ui.Tree({"ID": TREE_RESULT, "Weight": 1.0,
-                 "Events": {"ItemClicked": True, "ItemDoubleClicked": True}}),
+        # ── 结果区：左侧分组 + 右侧数据 ──
+        ui.HGroup({"Spacing": 4, "Weight": 1.0}, [
+            ui.Tree({"ID": GROUP_TREE, "Weight": 0,
+                     "Events": {"ItemClicked": True},
+                     "Indentation": 0,
+                     "RootIsDecorated": False,
+                     "MinimumSize": [110, 0]}),
+            ui.Tree({"ID": TREE_RESULT, "Weight": 1.0,
+                     "Events": {"ItemClicked": True, "ItemDoubleClicked": True}}),
+        ]),
 
         # ── 底栏 ──
         ui.VGroup({"Spacing": 2, "Weight": 0}, [
@@ -462,207 +537,369 @@ itm = dlg.GetItems()
 # ═══════════════════════════════════════════
 # 初始状态
 # ═══════════════════════════════════════════
-# 轨道编辑 UI 暂时关闭（由 _TRACK_EDIT_VISIBLE 控制）
-itm["lbl_track_sub"].Visible = _TRACK_EDIT_VISIBLE
-itm[LBL_SUB_VAL].Visible = _TRACK_EDIT_VISIBLE
-itm[EDIT_SUB].Visible = _TRACK_EDIT_VISIBLE
-itm["lbl_track_vid"].Visible = _TRACK_EDIT_VISIBLE
-itm[LBL_VID_VAL].Visible = _TRACK_EDIT_VISIBLE
-itm[EDIT_VID].Visible = _TRACK_EDIT_VISIBLE
-itm["lbl_track_aud"].Visible = _TRACK_EDIT_VISIBLE
-itm[LBL_AUD_VAL].Visible = _TRACK_EDIT_VISIBLE
-itm[EDIT_AUD].Visible = _TRACK_EDIT_VISIBLE
-itm[BTN_EDIT_TRACK].Visible = _TRACK_EDIT_VISIBLE
-itm[BTN_SAVE_TRACK].Visible = _TRACK_EDIT_VISIBLE
-
-itm[EDIT_CLAMP].Visible = False
-itm[BTN_SAVE_CLAMP].Visible = False
-itm[BTN_EDIT_CLAMP].Visible = False  # 暂不可编辑，要恢复删这行即可
 itm[BTN_START].Enabled = False
 
 # Tree 表头
 tree = itm[TREE_RESULT]
 _setup_tree_header(tree)
 
+# 左侧导航 Tree — 检查时动态填充
+group_tree = itm[GROUP_TREE]
+_cached_sections = []
+
 # ═══════════════════════════════════════════
 # Tree 渲染
 # ═══════════════════════════════════════════
 
-def _render_groups(sections, tree):
-    """按四大分组层级渲染结果到 Tree。
-    
-    三级结构：
-        ▲ 工程（Group 父节点）
-          ◆ 时间线  —  汇总（Check 子节点）
-            ❌  V1  00:00:01:00  详情...  原因...（Detail 行）
-    """
-    # 按 GROUP_ORDER 顺序，从 sections 中筛选
-    for group_name in GROUP_ORDER:
-        secs = [s for s in sections if s.get("group") == group_name]
-        if not secs:
-            continue
-
-        # ── Group 父节点 ──
-        group_parent = tree.NewItem()
-        _set_row_texts(group_parent, f"▲ {group_name}", "", "", "", "")
-        tree.AddTopLevelItem(group_parent)
-
-        # ── 各检查 ──
-        for sec in secs:
-            # Check 子节点
-            check_row = tree.NewItem()
-            title = sec["title"]
-            if sec["all_ok"]:
-                title += "  — 全部通过"
-            elif sec["summary"]:
-                title += "  —  " + sec["summary"]
-            _set_row_texts(check_row, f"◆ {title}", "", "", "", "")
-            group_parent.AddChild(check_row)
-
-            # Detail 行（只在不通过时显示）
-            if not sec["all_ok"]:
+def _render_group(group_name, sections, tree):
+    """渲染一个 group 或 subgroup 的检查结果到右侧 Tree"""
+    tree.Clear()
+    _setup_tree_header(tree)
+    # 判断是 group 还是 subgroup
+    all_sg = sorted(set(c.get("subgroup", c.get("group", "")) for c in CHECKS if c.get("group") == group_name))
+    if all_sg:
+        # 是 group → 渲染其下所有 subgroup 的行
+        for sg in all_sg:
+            secs = [s for s in sections if s.get("subgroup") == sg]
+            for sec in secs:
                 for row_data in sec["rows"]:
                     row = tree.NewItem()
                     _set_row(row, row_data)
-                    group_parent.AddChild(row)
+                    tree.AddTopLevelItem(row)
+    else:
+        # 是 subgroup → 只渲染该子类
+        secs = [s for s in sections if s.get("subgroup") == group_name]
+        for sec in secs:
+            for row_data in sec["rows"]:
+                row = tree.NewItem()
+                _set_row(row, row_data)
+                tree.AddTopLevelItem(row)
 
 
 # ═══════════════════════════════════════════
-# 轨道编辑：✎ 进入编辑 / ✓ 保存
+# 配置弹窗（注册表驱动 — 加/删/调顺序只改 CONFIG_SECTIONS）
 # ═══════════════════════════════════════════
 
-def _enter_track_edit():
-    """进入轨道编辑模式"""
-    if not _TRACK_EDIT_VISIBLE:
-        return
-    global _track_editing
-    _track_editing = True
-    itm[EDIT_SUB].Text = itm[LBL_SUB_VAL].Text
-    itm[EDIT_VID].Text = itm[LBL_VID_VAL].Text
-    itm[EDIT_AUD].Text = itm[LBL_AUD_VAL].Text
-    itm[LBL_SUB_VAL].Visible = False
-    itm[LBL_VID_VAL].Visible = False
-    itm[LBL_AUD_VAL].Visible = False
-    itm[BTN_EDIT_TRACK].Visible = False
-    itm[EDIT_SUB].Visible = True
-    itm[EDIT_VID].Visible = True
-    itm[EDIT_AUD].Visible = True
-    itm[BTN_SAVE_TRACK].Visible = True
-    _action_log("✎ 轨道数字 编辑模式")
+# ── 配置项注册表（顺序 = UI 从上到下）──
+# 加新项：末尾加一个 dict（id / label / type），然后补对应的 _build_xxx 和 _save_xxx
+# 调顺序：移动 dict 位置
+# 删项：删 dict + 删对应的 _build_xxx / _save_xxx
+CONFIG_SECTIONS = [
+    {
+        "id": "track_count",
+        "label": "轨道数量预设",
+        "type": "track_preset",
+    },
+    {
+        "id": "clamp_threshold",
+        "label": "字幕时长阈值",
+        "type": "clamp_threshold",
+    },
+    {
+        "id": "video_clamp_threshold",
+        "label": "视频夹帧阈值",
+        "type": "video_clamp_threshold",
+    },
+    {
+        "id": "censor_system_subs",
+        "label": "系统违禁词典",
+        "type": "censor_system_subs",
+    },
+    {
+        "id": "censor_personal",
+        "label": "个人违禁词典",
+        "type": "censor_personal",
+    },
+]
+
+# ── 各 type 的 UI 构建函数 → [widget, ...] ──
+def _build_track_preset():
+    return [
+        ui.HGroup({"Spacing": 8, "Weight": 0}, [
+            ui.Label({"Text": "字幕", "StyleSheet": "color:rgb(150,150,150);font-size:13px",
+                      "Weight": 0, "MinimumSize": [28, 22]}),
+            ui.ComboBox({"ID": "cfg_sub", "Weight": 0, "MinimumSize": [55, 22]}),
+            ui.Label({"Text": "视频", "StyleSheet": "color:rgb(150,150,150);font-size:13px",
+                      "Weight": 0, "MinimumSize": [28, 22]}),
+            ui.ComboBox({"ID": "cfg_vid", "Weight": 0, "MinimumSize": [55, 22]}),
+            ui.Label({"Text": "音频", "StyleSheet": "color:rgb(150,150,150);font-size:13px",
+                      "Weight": 0, "MinimumSize": [28, 22]}),
+            ui.ComboBox({"ID": "cfg_aud", "Weight": 0, "MinimumSize": [55, 22]}),
+        ]),
+    ]
+
+def _build_clamp_threshold():
+    return [
+        ui.HGroup({"Spacing": 6, "Weight": 0}, [
+            ui.LineEdit({"ID": "cfg_clamp", "Text": str(_clamp_value),
+                         "MaximumSize": [45, 22], "Weight": 0}),
+            ui.Label({"Text": "帧（≤此值判定为过短/夹帧）",
+                      "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0}),
+        ]),
+    ]
+
+def _build_video_clamp_threshold():
+    return [
+        ui.HGroup({"Spacing": 6, "Weight": 0}, [
+            ui.LineEdit({"ID": "cfg_vid_clamp", "Text": str(_video_clamp_threshold),
+                         "MaximumSize": [45, 22], "Weight": 0}),
+            ui.Label({"Text": "帧（≤此值判定为视频夹帧）",
+                      "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0}),
+        ]),
+    ]
+
+def _build_censor_system_subs():
+    return [
+        ui.VGroup({"Spacing": 3, "Weight": 0}, [
+            ui.HGroup({"Spacing": 10, "Weight": 0}, [
+                ui.CheckBox({"ID": "cfg_csub_cn", "Text": "中文词库 (4.0k词)",
+                             "StyleSheet": "color:rgb(200,200,200);font-size:12px",
+                             "Weight": 0, "Checked": True}),
+                ui.CheckBox({"ID": "cfg_csub_en", "Text": "英文词库 (2.7k词)",
+                             "StyleSheet": "color:rgb(200,200,200);font-size:12px",
+                             "Weight": 0, "Checked": True}),
+            ]),
+            ui.HGroup({"Spacing": 10, "Weight": 0}, [
+                ui.CheckBox({"ID": "cfg_csub_bw", "Text": "通用违禁词 (1.6k词)",
+                             "StyleSheet": "color:rgb(200,200,200);font-size:12px",
+                             "Weight": 0, "Checked": True}),
+                ui.CheckBox({"ID": "cfg_csub_sms", "Text": "短信违禁词 (2.3k词)",
+                             "StyleSheet": "color:rgb(200,200,200);font-size:12px",
+                             "Weight": 0, "Checked": True}),
+            ]),
+        ]),
+    ]
+
+def _build_censor_personal():
+    return [
+        ui.HGroup({"Spacing": 6, "Weight": 0}, [
+            ui.Button({"ID": "cfg_edit_censor", "Text": "编辑",
+                       "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
+            ui.Label({"Text": "在 Numbers 表格中编辑  ·  列：分类 / 违禁词 / 替换选项…",
+                      "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0}),
+        ]),
+    ]
+
+_SECTION_BUILDERS = {
+    "track_preset":             _build_track_preset,
+    "clamp_threshold":          _build_clamp_threshold,
+    "video_clamp_threshold":    _build_video_clamp_threshold,
+    "censor_system_subs":       _build_censor_system_subs,
+    "censor_personal":          _build_censor_personal,
+}
 
 
-def _save_track_edit():
-    """保存轨道编辑"""
-    global _track_editing, _track_values
-    try:
-        sv = int(itm[EDIT_SUB].Text)
-        vv = int(itm[EDIT_VID].Text)
-        av = int(itm[EDIT_AUD].Text)
-        if sv < 0 or vv < 0 or av < 0:
-            _action_log("⚠ 轨道数字不能为负, 放弃保存")
-            return
-    except ValueError:
-        _action_log(f"⚠ 轨道数字无效: {itm[EDIT_SUB].Text},{itm[EDIT_VID].Text},{itm[EDIT_AUD].Text}, 放弃保存")
-        return
+def _show_config_dialog():
+    """打开配置窗口"""
+    CONFIG_WIN_ID = "com.myjc.delivery_checker_config"
 
-    old = _track_values.copy()
-    _track_values = [sv, vv, av]
-    _track_editing = False
-    itm[LBL_SUB_VAL].Text = str(sv)
-    itm[LBL_VID_VAL].Text = str(vv)
-    itm[LBL_AUD_VAL].Text = str(av)
-    itm[EDIT_SUB].Visible = False
-    itm[EDIT_VID].Visible = False
-    itm[EDIT_AUD].Visible = False
-    itm[BTN_SAVE_TRACK].Visible = False
-    itm[LBL_SUB_VAL].Visible = True
-    itm[LBL_VID_VAL].Visible = True
-    itm[LBL_AUD_VAL].Visible = True
-    itm[BTN_EDIT_TRACK].Visible = True
+    config_disp = bmd.UIDispatcher(fu.UIManager)
 
-    _action_log(f"✎ 轨道数字 保存: [{old[0]},{old[1]},{old[2]}] → [{sv},{vv},{av}]")
+    # ── 从注册表生成布局 ──
+    # 节间间距（section 与 section 之间）
+    _SECTION_GAP = 8
+    body_widgets = [
+        ui.Label({"Text": "配置", "StyleSheet": "font-size:15px;font-weight:bold;color:rgb(220,220,220)",
+                  "Weight": 0}),
+    ]
+    for section in CONFIG_SECTIONS:
+        sec_widgets = [ui.Label({
+            "Text": section["label"],
+            "StyleSheet": "font-size:13px;font-weight:bold;color:rgb(220,220,220)",
+            "Weight": 0,
+        })]
+        builder = _SECTION_BUILDERS.get(section["type"])
+        if builder:
+            sec_widgets.extend(builder())
+        else:
+            sec_widgets.append(ui.Label({
+                "Text": f"(未知类型: {section['type']})",
+                "StyleSheet": "color:red;font-size:12px", "Weight": 0,
+            }))
+        # 每节包成独立 VGroup，节内紧凑
+        body_widgets.append(ui.VGroup({"Spacing": 2, "Weight": 0}, sec_widgets))
 
+    config_layout = [
+        ui.VGroup({"Spacing": 0}, [
+            ui.VGroup({"Spacing": _SECTION_GAP, "Weight": 0}, body_widgets),
+            ui.VGap({"Weight": 1}),
 
-def _refuse_edit():
-    """拒绝编辑：恢复显示模式"""
-    global _track_editing, _clamp_editing
-    if _track_editing:
-        _track_editing = False
-        itm[EDIT_SUB].Visible = _TRACK_EDIT_VISIBLE
-        itm[EDIT_VID].Visible = _TRACK_EDIT_VISIBLE
-        itm[EDIT_AUD].Visible = _TRACK_EDIT_VISIBLE
-        itm[BTN_SAVE_TRACK].Visible = _TRACK_EDIT_VISIBLE
-        itm[LBL_SUB_VAL].Visible = _TRACK_EDIT_VISIBLE
-        itm[LBL_VID_VAL].Visible = _TRACK_EDIT_VISIBLE
-        itm[LBL_AUD_VAL].Visible = _TRACK_EDIT_VISIBLE
-        itm[BTN_EDIT_TRACK].Visible = _TRACK_EDIT_VISIBLE
-        _action_log("✎ 轨道数字 取消编辑")
-    if _clamp_editing:
-        _clamp_editing = False
-        itm[EDIT_CLAMP].Visible = False
-        itm[BTN_SAVE_CLAMP].Visible = False
-        itm[LBL_CLAMP_VAL].Visible = True
-        itm[BTN_EDIT_CLAMP].Visible = True
-        _action_log("✎ 夹帧阈值 取消编辑")
+            # ── 按钮（底部居中）──
+            ui.HGroup({"Spacing": 10, "Weight": 0}, [
+                ui.HGap({"Weight": 1}),
+                ui.Button({"ID": "cfg_cancel", "Text": "取消",
+                           "StyleSheet": BTN_STYLE, "Weight": 0}),
+                ui.Button({"ID": "cfg_save", "Text": "保存",
+                           "StyleSheet": BTN_PRIMARY, "Weight": 0}),
+                ui.HGap({"Weight": 1}),
+            ]),
+        ]),
+    ]
 
+    config_dlg = config_disp.AddWindow({
+        "WindowTitle": "交付自检 — 配置",
+        "ID": CONFIG_WIN_ID,
+        "Geometry": [820, 120, 420, 380],
+        "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
+    }, config_layout)
 
-# ═══════════════════════════════════════════
-# 夹帧阈值编辑
-# ═══════════════════════════════════════════
+    cfg = config_dlg.GetItems()
 
-def _enter_clamp_edit():
-    global _clamp_editing
-    _clamp_editing = True
-    itm[EDIT_CLAMP].Text = itm[LBL_CLAMP_VAL].Text
-    itm[LBL_CLAMP_VAL].Visible = False
-    itm[BTN_EDIT_CLAMP].Visible = False
-    itm[EDIT_CLAMP].Visible = True
-    itm[BTN_SAVE_CLAMP].Visible = True
-    _action_log("✎ 夹帧阈值 编辑模式")
+    # ── 初始化：填充轨道下拉 ──
+    TRACK_OPTIONS = {
+        "cfg_sub": (["1", "2", "3"], _track_values[0]),
+        "cfg_vid": (["1", "3", "5", "10"], _track_values[1]),
+        "cfg_aud": (["5", "10", "20"], _track_values[2]),
+    }
+    for cid, (values, default) in TRACK_OPTIONS.items():
+        try:
+            cfg[cid].Clear()
+            cfg[cid].AddItems(values)
+            cfg[cid].CurrentText = str(default)
+        except Exception:
+            pass
 
+    # 初始化子词典勾选框
+    SUB_CBOX_MAP = [
+        ("cfg_csub_cn", "cn"),
+        ("cfg_csub_en", "en"),
+        ("cfg_csub_bw", "bw"),
+        ("cfg_csub_sms", "bw_sms"),
+    ]
+    for cbox_id, key in SUB_CBOX_MAP:
+        try:
+            cfg[cbox_id].Checked = _censor_subs.get(key, True)
+        except Exception:
+            pass
 
-def _save_clamp_edit():
-    global _clamp_editing, _clamp_value
-    try:
-        cv = int(itm[EDIT_CLAMP].Text)
-        if cv < 1:
-            _action_log("⚠ 夹帧阈值不能小于1, 放弃保存")
-            return
-    except ValueError:
-        _action_log(f"⚠ 夹帧阈值无效: {itm[EDIT_CLAMP].Text}, 放弃保存")
-        return
+    # ── 保存（按类型分发）──
+    def _save(ev):
+        global _clamp_value, _track_values, _censor_subs, _video_clamp_threshold
+        msg_parts = []
 
-    old = _clamp_value
-    _clamp_value = cv
-    _clamp_editing = False
-    itm[LBL_CLAMP_VAL].Text = str(cv)
-    itm[EDIT_CLAMP].Visible = False
-    itm[BTN_SAVE_CLAMP].Visible = False
-    itm[LBL_CLAMP_VAL].Visible = True
-    itm[BTN_EDIT_CLAMP].Visible = True
+        for section in CONFIG_SECTIONS:
+            t = section["type"]
+            if t == "clamp_threshold":
+                try:
+                    cv = int(cfg["cfg_clamp"].Text)
+                    if cv < 1:
+                        _action_log("⚠ 时长阈值不能小于1, 放弃保存")
+                        return
+                except ValueError:
+                    _action_log(f"⚠ 时长阈值无效: {cfg['cfg_clamp'].Text}, 放弃保存")
+                    return
+                old = _clamp_value
+                _clamp_value = cv
+                if old != cv:
+                    msg_parts.append(f"阈值 {old}→{cv}")
 
-    _action_log(f"✎ 夹帧阈值 保存: {old} → {cv}")
+            elif t == "video_clamp_threshold":
+                global _video_clamp_threshold
+                try:
+                    cv = int(cfg["cfg_vid_clamp"].Text)
+                    if cv < 1:
+                        _action_log("⚠ 视频夹帧阈值不能小于1, 放弃保存")
+                        return
+                except ValueError:
+                    _action_log(f"⚠ 视频夹帧阈值无效: {cfg['cfg_vid_clamp'].Text}, 放弃保存")
+                    return
+                old = _video_clamp_threshold
+                _video_clamp_threshold = cv
+                if old != cv:
+                    msg_parts.append(f"视频夹帧 {old}→{cv}")
+
+            elif t == "track_preset":
+                old = _track_values.copy()
+                try:
+                    sv = int(cfg["cfg_sub"].CurrentText)
+                    vv = int(cfg["cfg_vid"].CurrentText)
+                    av = int(cfg["cfg_aud"].CurrentText)
+                except Exception:
+                    _action_log("⚠ 轨道数量读取失败, 放弃保存")
+                    return
+                _track_values = [sv, vv, av]
+                if old != _track_values:
+                    msg_parts.append(f"轨道 {old}→{_track_values}")
+
+            elif t == "censor_system_subs":
+                old_subs = _censor_subs.copy()
+                for cbox_id, key in SUB_CBOX_MAP:
+                    try:
+                        _censor_subs[key] = cfg[cbox_id].Checked
+                    except Exception:
+                        pass
+                if old_subs != _censor_subs:
+                    msg_parts.append(f"词典 {old_subs}→{_censor_subs}")
+
+            elif t == "censor_personal":
+                pass  # 编辑按钮独立处理
+
+        if msg_parts:
+            _action_log("⚙ 配置保存: " + ", ".join(msg_parts))
+        else:
+            _action_log("⚙ 配置保存: 无变更")
+        config_disp.ExitLoop()
+
+    # ── 编辑违禁词（打开系统文本编辑）──
+    censor_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
+    def _edit_censor(ev):
+        import subprocess
+        from check_core import clear_censor_cache
+        clear_censor_cache(censor_path)
+        subprocess.Popen(["open", "-a", "Numbers", censor_path])
+        _action_log("📝 打开违禁词编辑（Numbers）")
+
+    config_dlg.On["cfg_edit_censor"].Clicked = _edit_censor
+    config_dlg.On["cfg_save"].Clicked = _save
+    config_dlg.On["cfg_cancel"].Clicked = lambda ev: config_disp.ExitLoop()
+    config_dlg.On[CONFIG_WIN_ID].Close = lambda ev: config_disp.ExitLoop()
+
+    _action_log("⚙ 打开配置窗口")
+    config_dlg.Show()
+    config_disp.RunLoop()
+    config_dlg.Hide()
 
 
 # ═══════════════════════════════════════════
 # 结果处理
 # ═══════════════════════════════════════════
+#
+# 数据流 Schema（全链路）：
+#   check_core._make_result()
+#       → {status, track, timecode, detail, reason, is_summary}
+#           ↓ _process_result() + FIELD_TO_COLUMN
+#       → {icon, track, tc, msg, reason}
+#           ↓ _start_check() 分组
+#       → section: {group, title, summary, rows, all_ok}
+#           ↓ _render_group() 渲染
+#       → Tree:  1. Group ◆ Check → ❌ 问题 | 建议
+#
+# 扩展规则：
+#   - 加 check_core 字段 → _make_result + FIELD_TO_COLUMN + COLUMNS（3处）
+#   - 改字段映射 → 只改 FIELD_TO_COLUMN
+#   - 改列宽/顺序/显隐 → 只改 COLUMNS
+#
+# detail/reason 语义约定（2026-05-10 沉淀）：
+#   detail（→"问题"列）= 问题的简洁描述，不含"应为"/"建议"等
+#   reason（→"建议"列）= 修复方向或原因，可为空
+#   汇总行（is_summary）≠ 详情行（detail），禁止重复
 
 def _process_result(r, rows_list):
-    """处理单条检查结果。读取 track/timecode/detail 三字段，无需解析。返回 (has_fail, is_pass)"""
+    """处理单条检查结果，通过 FIELD_TO_COLUMN 映射到 Tree 列。
+    返回 (is_fail, is_warn, is_pass)，三者互斥"""
     if r["status"] == "pass":
-        return False, True
+        return False, False, True
 
     icon = "❌" if r["status"] == "fail" else "⚠"
+    cols = FIELD_TO_COLUMN
     rows_list.append({
-        "icon": icon,
-        "tc": r.get("timecode", ""),
-        "track": r.get("track", ""),
-        "msg": r.get("detail", ""),
-        "reason": r.get("reason", ""),
+        cols["track"]:    r.get("track", ""),
+        cols["timecode"]: r.get("timecode", ""),
+        cols["detail"]:   f"{icon} | {r.get('detail', '')}",
+        cols["reason"]:   r.get("reason", ""),
     })
     _action_log(r.get("detail", ""))
-    return True, False
+    return r["status"] == "fail", r["status"] == "warn", False
 
 
 # ═══════════════════════════════════════════
@@ -677,43 +914,47 @@ def _start_check():
     _start_time = time.time()
     itm[BTN_START].Enabled = False
 
-    any_checked = any(
-        itm[c["chk_id"]].Checked for c in CHECKS if c.get("run_fn")
-    )
-    if not any_checked:
-        _action_log("⚠ 未选择任何检查项")
-        _checking = False
-        itm[BTN_START].Enabled = True
-        return
-
-    _action_log(f"▶ 开始检查 (轨道模板={_track_values}, 夹帧阈值={_clamp_value})")
-    itm[HINT_LB].Text = "检查中..."
-
     try:
+        any_checked = any(
+            itm[c["chk_id"]].Checked for c in CHECKS if c.get("run_fn")
+        )
+        if not any_checked:
+            _action_log("⚠ 未选择任何检查项")
+            return
+
+        _action_log(f"▶ 开始检查 (轨道模板={_track_values}, 夹帧阈值={_clamp_value})")
+        itm[HINT_LB].Text = "检查中..."
+
         resolve = bmd.scriptapp("Resolve")
         if not resolve:
             _action_log("❌ 未连接达芬奇")
-            _checking = False
-            itm[BTN_START].Enabled = True
             return
 
         project = resolve.GetProjectManager().GetCurrentProject()
         if not project:
             _action_log("❌ 未打开项目")
-            _checking = False
-            itm[BTN_START].Enabled = True
             return
 
         timeline = project.GetCurrentTimeline()
         if not timeline:
             _action_log("❌ 未打开时间线")
-            _checking = False
-            itm[BTN_START].Enabled = True
             return
 
         fps = float(project.GetSetting("timelineFrameRate"))
 
-        itm[ST_LB].Text = f"项目: {project.GetName()}  |  时间线: {timeline.GetName()}  |  {fps} fps"
+        # IO 范围：有则只扫 IO 内
+        io_range = None
+        try:
+            marks = timeline.GetMarkInOut()
+            if marks and marks.get("video"):
+                io_in = marks["video"].get("in")
+                io_out = marks["video"].get("out")
+                if io_in is not None and io_out is not None and io_out > io_in:
+                    io_range = (io_in, io_out)
+                    _action_log(f"IO 选区: {io_in} → {io_out}")
+        except Exception:
+            pass
+
         _action_log(f"项目: {project.GetName()}")
         _action_log(f"时间线: {timeline.GetName()}")
         _action_log(f"帧率: {fps} fps")
@@ -726,8 +967,10 @@ def _start_check():
         _setup_tree_header(tree)
 
         has_failures = False
+        has_warnings = False
         pass_count = 0
         fail_count = 0
+        warn_count = 0
         sections = []
 
         # 按注册表顺序执行检查
@@ -738,7 +981,10 @@ def _start_check():
                 continue
 
             _action_log(f"── {check['section']}检查 ──")
-            all_results = list(check["run_fn"](timeline, fps))
+            all_results = list(check["run_fn"](
+                timeline=timeline, fps=fps, project=project,
+                personal_enabled=itm[CHK_CENSOR_PERSONAL].Checked,
+                io_range=io_range))
             section_rows = []
             section_pass = 0
             summary_text = ""
@@ -750,41 +996,91 @@ def _start_check():
             else:
                 summary_text = ""
                 rest = all_results
+                _action_log(f"⚠ {check['section']} 检查缺少 is_summary=True 汇总行 — 请给 check_core 函数加上")
 
             for r in rest:
-                has_fail, is_pass = _process_result(r, section_rows)
+                is_fail, is_warn, is_pass = _process_result(r, section_rows)
                 if is_pass:
                     pass_count += 1
                     section_pass += 1
-                elif has_fail:
+                elif is_fail:
                     fail_count += 1
                     has_failures = True
+                elif is_warn:
+                    warn_count += 1
+                    has_warnings = True
 
             all_ok = not section_rows and section_pass > 0
             sections.append({
                 "group": check.get("group", ""),
+                "subgroup": check.get("subgroup", check.get("group", "")),
                 "title": check["section"],
                 "summary": summary_text,
                 "rows": section_rows,
                 "all_ok": all_ok,
             })
 
-        # 按分组层级展示
-        _render_groups(sections, tree)
+        # 缓存 sections，重建左侧导航（只保留有数据的）
+        global _cached_sections
+        _cached_sections = sections
+        group_tree.Clear()
+        ghdr2 = group_tree.NewItem()
+        ghdr2.Text[0] = "分类"
+        group_tree.SetHeaderItem(ghdr2)
 
-        # 总结
+        first_group = None
+        for name in GROUP_ORDER:
+            # 收集该组的 subgroup
+            subgroups = []
+            for c in CHECKS:
+                if c.get("group") == name:
+                    sg = c.get("subgroup", name)
+                    if sg not in subgroups:
+                        subgroups.append(sg)
+
+            # 检查有没有数据
+            has_group_data = any(s.get("group") == name and s["rows"] for s in sections)
+            if not has_group_data:
+                continue
+            if first_group is None:
+                first_group = name
+
+            # 大类行
+            gi = group_tree.NewItem()
+            gi.Text[0] = name
+            group_tree.AddTopLevelItem(gi)
+
+            # 子类行
+            for sg in subgroups:
+                if any(s.get("subgroup") == sg and s["rows"] for s in sections):
+                    child = group_tree.NewItem()
+                    child.Text[0] = f"  · {sg}"
+                    group_tree.AddTopLevelItem(child)
+
+        if first_group:
+            _render_group(first_group, sections, tree)
+
+        # 总结 → 左下角状态栏
         elapsed_ms = int((time.time() - _start_time) * 1000)
+        jump_hint = "💡 点击结果行可跳转到对应时间码"
         if has_failures:
+            hint = f"❌ 未通过 {fail_count} 项"
+            if has_warnings:
+                hint += f"，⚠ {warn_count} 项警告"
+            hint += f"  |  {jump_hint}"
             _action_log("❌ 检查未通过 — 请修复上述问题")
-            itm[ST_LB].Text += f"  |  ❌ 未通过  ({elapsed_ms}ms)"
+        elif has_warnings:
+            hint = f"⚠ {warn_count} 项警告  |  {jump_hint}"
+            _action_log("⚠ 有警告 — 请检查")
         else:
+            hint = f"✅ 通过  |  {jump_hint}"
             _action_log("✅ 所有检查通过")
-            itm[ST_LB].Text += f"  |  ✅ 通过  ({elapsed_ms}ms)"
-        itm[HINT_LB].Text = "💡 点击结果行可跳转到对应时间码"
+        itm[HINT_LB].Text = hint
 
     except Exception as e:
         _action_log(f"❌ 检查崩溃: {e}")
         traceback.print_exc()
+        itm[HINT_LB].Text = f"❌ 检查崩溃: {e}"
     finally:
         _checking = False
         itm[BTN_START].Enabled = True
@@ -838,38 +1134,36 @@ def _init_connection():
         resolve = bmd.scriptapp("Resolve")
         if not resolve:
             _action_log("⚠ 未连接达芬奇")
-            itm[ST_LB].Text = "⚠ 请先启动 DaVinci Resolve"
+            itm[HINT_LB].Text = "⚠ 请先启动 DaVinci Resolve"
             return
 
         project = resolve.GetProjectManager().GetCurrentProject()
         if not project:
             _action_log("⚠ 未打开项目")
-            itm[ST_LB].Text = "⚠ 请先打开一个项目"
+            itm[HINT_LB].Text = "⚠ 请先打开一个项目"
             return
 
         timeline = project.GetCurrentTimeline()
         if not timeline:
             _action_log("⚠ 未打开时间线")
-            itm[ST_LB].Text = "⚠ 当前项目没有时间线"
+            itm[HINT_LB].Text = "⚠ 当前项目没有时间线"
             return
 
         fps = float(project.GetSetting("timelineFrameRate"))
         _action_log(f"连接达芬奇: 成功")
         _action_log(f"项目: {project.GetName()}")
         _action_log(f"时间线: {timeline.GetName()}  |  {fps} fps")
-        itm[ST_LB].Text = f"就绪 — {project.GetName()} / {timeline.GetName()}  |  {fps} fps"
         itm[BTN_START].Enabled = True
         itm[HINT_LB].Text = "请点击「开始检查」"
 
     except Exception as e:
         _action_log(f"❌ 初始化失败: {e}")
-        itm[ST_LB].Text = f"❌ 初始化失败: {e}"
+        itm[HINT_LB].Text = f"❌ 初始化失败: {e}"
 
 
 def _on_close(ev):
     global _checking
     _checking = False
-    _refuse_edit()
     _action_log("窗口关闭")
     disp.ExitLoop()
 
@@ -902,13 +1196,26 @@ for _c in CHECKS:
             f"{'☑' if itm[cid].Checked else '☐'} {sec} {'勾选' if itm[cid].Checked else '取消'}"
         )
     )
-dlg.On[BTN_EDIT_TRACK].Clicked = lambda ev: _enter_track_edit()
-dlg.On[BTN_SAVE_TRACK].Clicked = lambda ev: _save_track_edit()
-dlg.On[BTN_EDIT_CLAMP].Clicked = lambda ev: _enter_clamp_edit()
-dlg.On[BTN_SAVE_CLAMP].Clicked = lambda ev: _save_clamp_edit()
 dlg.On[BTN_START].Clicked = lambda ev: _start_check()
 dlg.On[BTN_SEL_ALL].Clicked = lambda ev: _toggle_all(True)
 dlg.On[BTN_DESEL_ALL].Clicked = lambda ev: _toggle_all(False)
+dlg.On[BTN_CONFIG].Clicked = lambda ev: _show_config_dialog()
+
+def _on_group_click(ev):
+    """左侧点击 → 子类行(· 前缀)显示该子类，大类行显示全组"""
+    item = ev.get("Item")
+    if item is None:
+        item = group_tree.CurrentItem()
+    if item is None:
+        return
+    text = item.Text[0]
+    text_stripped = text.lstrip()
+    if text_stripped.startswith("· "):
+        _render_group(text_stripped[2:], _cached_sections, tree)
+    else:
+        _render_group(text, _cached_sections, tree)
+
+dlg.On[GROUP_TREE].ItemClicked = _on_group_click
 dlg.On[TREE_RESULT].ItemClicked = _on_result_click
 dlg.On[TREE_RESULT].ItemDoubleClicked = _on_result_click
 dlg.On[WIN_ID].Show = _on_show
@@ -926,6 +1233,9 @@ def main():
     _init_connection()
     disp.RunLoop()
     dlg.Hide()
+    # os._exit 跳过 C++ 全局析构，避免 fusionscript.so 的
+    # ReusePoolManager::~ReusePoolManager SIGSEGV（DaVinci 20.3.2 已知 bug）
+    os._exit(0)
 
 
 if __name__ == "__main__":

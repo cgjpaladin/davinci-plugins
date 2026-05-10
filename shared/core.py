@@ -8,6 +8,43 @@ remove_subtitle.py 和 ui_external.py 的共同基础层。
 - 零用户可见输出：不 print/ui，只返回数据或写 SMB 运维日志
 """
 
+# ═══════════════════════════════════════════
+# 颜色恢复（ReplaceClip 后统一逻辑）
+# ═══════════════════════════════════════════
+
+def restore_clip_colors(mp_item, tl_item, tl_color, mp_color, alt_tl_items=None, log_tag="",
+                        linked_colors=None):
+    """ReplaceClip 后恢复片段原始颜色。
+
+    Args:
+        linked_colors: [(linked_tl_item, original_color), ...]
+                       caller 在 ReplaceClip 前保存，此处精确还原（含空串=无颜色）
+    """
+    label = f"[core] {log_tag} " if log_tag else "[core] "
+
+    if mp_color:
+        mp_item.SetClipColor(mp_color)
+
+    if tl_color and tl_item and tl_color != mp_color:
+        try:
+            tl_item.SetClipColor(tl_color)
+        except Exception:
+            _smb_log(f"{label}恢复 tl 颜色失败: {tl_item.GetName()}")
+
+    for alt_tl, alt_color in (alt_tl_items or ()):
+        if alt_color:
+            try:
+                alt_tl.SetClipColor(alt_color)
+            except Exception:
+                _smb_log(f"{label}恢复 alt tl 颜色失败")
+
+    # 链接音频：精确还原 ReplaceClip 前 caller 保存的原色（包括空串=无颜色）
+    for li, orig_color in (linked_colors or []):
+        try:
+            li.SetClipColor(orig_color)
+        except Exception:
+            _smb_log(f"{label}恢复链接音频颜色失败: {li.GetName()}")
+
 import os
 import math
 import re
@@ -19,7 +56,7 @@ from typing import Optional, NamedTuple, Callable, Any
 
 from config import (
     DEFAULT_MODE, MAX_SOURCE_DURATION,
-    CLIP_COLOR, DEFAULT_MASK_REGION,
+    CLIP_COLOR,
     ADAPTER_CONFIGS, DEBUG,
     get_output_dir, get_log_dir,
 )
@@ -156,34 +193,23 @@ def build_output_path(file_name: str, output_dir: str, mode: str = "") -> tuple:
 # 余额查询
 # ═══════════════════════════════════════════
 
-def query_balance(adapter_config: Optional[dict] = None, provider: str = "") -> float:
-    """查询无痕AI 2.1 余额（默认），返回可用点数。异常返回 0。
+def query_balance(adapter=None) -> float:
+    """查询适配器余额，返回可用点数。异常返回 0。
 
-    provider='ghostcut' 时走鬼手，否则走无痕AI。
-    也兼容旧调用方式：传入 adapter_config=ADAPTER_CONFIGS['ghostcut'] 自动识别。
+    调用方传入已创建的适配器实例。不关心供应商类型。
     """
+    import time
     try:
-        is_ghostcut = (provider == "ghostcut" or
-                       (adapter_config and adapter_config.get("app_key")))
-        if is_ghostcut:
-            # 鬼手（备用适配器）
-            from adapters.ghostcut import GhostCutAdapter
-            adapter = GhostCutAdapter(adapter_config)
-            bal = adapter.get_balance()
-            now_ms = time.time() * 1000
-            return float(sum(
-                a["pointBalance"] for a in bal.get("pointAssets", [])
-                if a["pointBalance"] > 0 and a.get("expireTime", now_ms + 1) > now_ms
-            ))
-        else:
-            cfg = adapter_config or deepcopy(ADAPTER_CONFIGS["wuhenai_v21"])
-            from adapters.wuhenai_v2 import WuhenAIV21Adapter  # 懒加载，避免模块级耦合
-            adapter = WuhenAIV21Adapter(cfg)
-            bal = adapter.get_balance()
-            return float(bal.get("balance", 0))
+        bal = adapter.get_balance()
+        if "balance" in bal:
+            return float(bal["balance"])
+        # GhostCut 格式：pointAssets 数组
+        now_ms = time.time() * 1000
+        return float(sum(
+            a["pointBalance"] for a in bal.get("pointAssets", [])
+            if a["pointBalance"] > 0 and a.get("expireTime", now_ms + 1) > now_ms
+        ))
     except Exception:
-        # 余额查询是前置检查，API可能网络波动/认证过期/返回格式变化，
-        # 失败不阻塞主流程，上层会用0余额触发保护逻辑
         return 0
 
 
@@ -372,20 +398,18 @@ def prepare_tasks(
                 replaced = False
                 try:
                     old_path = c.mp_item.GetClipProperty("File Path") or c.path
+                    # 保存链接音频原色（ReplaceClip 前读取）
+                    linked_colors = []
+                    try:
+                        for li in (c.tl_item.GetLinkedItems() or ()):
+                            linked_colors.append((li, li.GetClipColor() or ""))
+                    except Exception: pass
                     replaced = c.mp_item.ReplaceClipPreserveSubClip(cached)
                     if replaced:
                         actual_out = c.mp_item.GetClipProperty("File Path") or cached
-                        if c.mp_color:
-                            c.mp_item.SetClipColor(c.mp_color)
-                        if c.tl_color and c.tl_item and c.tl_color != c.mp_color:
-                            try: c.tl_item.SetClipColor(c.tl_color)
-                            except Exception:
-                                _smb_log(f"[core] 缓存命中恢复 tl 颜色失败: {c.name}")
-                        for alt_tl, alt_color in (c.alt_tl_items or ()):
-                            if alt_color:
-                                try: alt_tl.SetClipColor(alt_color)
-                                except Exception:
-                                    _smb_log(f"[core] 缓存命中恢复 alt tl 颜色失败: {c.name}")
+                        restore_clip_colors(c.mp_item, c.tl_item, c.tl_color, c.mp_color,
+                                           c.alt_tl_items, log_tag="缓存命中",
+                                           linked_colors=linked_colors)
                         ledger.record_completed(c.file_name, actual_out, original_path=old_path,
                                                 strategy="cached", points=0,
                                                 tl_color=c.tl_color, mp_color=c.mp_color)
@@ -404,12 +428,7 @@ def prepare_tasks(
     task_records = []
     for c in remaining_clips:
         kwargs = {"video_path": c.path, "language": "zh", "model": mode, "duration": c.duration, "resolution": c.resolution}
-        if mode in ("pro_box",):
-            kwargs["mask_regions"] = [{
-                "type": "remove_only_ocr",
-                "start": 0, "end": 99999,
-                "region": DEFAULT_MASK_REGION,
-            }]
+        # mask 由适配器自行计算，不在此处预设错误值
         task_records.append(TaskRecord(
             mp_item=c.mp_item, name=c.name, path=c.path,
             kwargs=kwargs, duration=c.duration,
@@ -583,6 +602,7 @@ def download_and_apply(
     on_done: Optional[Callable] = None,
     on_fail: Optional[Callable] = None,
     on_start: Optional[Callable] = None,
+    provider: str = "",
 ) -> tuple:
     """
     下载 API 处理结果 → ReplaceClip → 标记完成。
@@ -659,6 +679,12 @@ def download_and_apply(
             continue
 
         fn = mp_item.GetClipProperty("File Name") or file_name
+        # 保存链接音频原色（ReplaceClip 前读取）
+        linked_colors = []
+        try:
+            for li in (tl_item.GetLinkedItems() if tl_item else [] or ()):
+                linked_colors.append((li, li.GetClipColor() or ""))
+        except Exception: pass
         try:
             replaced = mp_item.ReplaceClipPreserveSubClip(dl)
         except Exception:
@@ -683,21 +709,13 @@ def download_and_apply(
         ledger.record_completed(fn, output_path_for_ledger, original_path=path,
                                 strategy=strategy, resolution=resolution,
                                 points=points, cost_yuan=cost_yuan,
-                                tl_color=tl_color, mp_color=mp_color)
+                                tl_color=tl_color, mp_color=mp_color,
+                                provider=provider)
 
         if replaced:
             # 恢复原色
-            if mp_color:
-                mp_item.SetClipColor(mp_color)
-            if tl_color and tl_item and tl_color != mp_color:
-                try: tl_item.SetClipColor(tl_color)
-                except Exception:
-                    _smb_log(f"[core] ReplaceClip 后恢复 tl 颜色失败: {name}")
-            for alt_tl, alt_color in alt_tl_items:
-                if alt_color:
-                    try: alt_tl.SetClipColor(alt_color)
-                    except Exception:
-                        _smb_log(f"[core] 恢复 alt tl 颜色失败: {name}")
+            restore_clip_colors(mp_item, tl_item, tl_color, mp_color, alt_tl_items,
+                               log_tag="下载替换", linked_colors=linked_colors)
             actual_path = mp_item.GetClipProperty("File Path") or dl
             success_count += 1
             output_files.append(actual_path)

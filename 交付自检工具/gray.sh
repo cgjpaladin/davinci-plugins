@@ -1,16 +1,16 @@
 #!/bin/bash
-# gray.sh — AI去字幕 灰度管理（薄包装 → tools/publish.sh）
+# gray.sh — 交付自检工具 灰度管理（薄包装 → tools/publish.sh）
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PRODUCT_DIR="$SCRIPT_DIR"
-PRODUCT_NAME="AI去字幕"
-SMB_DIR="/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕"
+PRODUCT_NAME="交付自检工具"
+SMB_DIR="/Volumes/MYJC/06_Software/达芬奇脚本/交付自检工具"
 GRAY_CFG="$SMB_DIR/gray.json"
 
 source "$SCRIPT_DIR/../tools/publish.sh"
 
 _usage() {
-    echo "灰度发布 — AI去字幕"
+    echo "灰度发布 — 交付自检工具"
     echo "  gray.sh add <id> [...]   加入灰度"
     echo "  gray.sh remove <id> [...] 移出灰度"
     echo "  gray.sh status            查看状态"

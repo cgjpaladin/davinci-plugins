@@ -4,40 +4,20 @@ pricing.py — 去字幕计费模块
 所有供应商定价集中管理，换 API = 改一行 ACTIVE_PROVIDER。
 上游代码只调 estimate_cost() / point_to_yuan()，不关心底层计费模型。
 
-定价来源：
-  无痕AI 2.1: wuhenapi_2_1.md 计费表（2026-04-20）
-  鬼手: GhostCut API 官方定价 VIP3
-  OSS: 阿里云官方定价页（2026-05-05），杭州区域折扣价
+数值调整请修改 pricing_defaults.py（非程序员可直接打开编辑）。
 """
 
 import math
 import threading
 
 from config import ADAPTER_CONFIGS
+from pricing_defaults import PRICING, ACTIVE_PROVIDER, OSS_PRICE_PER_GB
 
 # ═══════════════════════════════════════════
-# 供应商定价表
+# 供应商定价表（从 pricing_defaults.py 导入）
 # ═══════════════════════════════════════════
 
-PRICING = {
-    "wuhenai": {
-        # 计费模型：按秒，向上取整
-        "models": {
-            "video_removal_std": {"sel_area": 1, "all_area": 1.5},  # 积分/秒
-            "video_removal_pro":  {"sel_area": 2, "all_area": 3},
-        },
-        "point_to_yuan": 0.0091,  # ¥1000→110000积分，裁缝老师实测（2026-05-05）
-    },
-    "ghostcut": {
-        # 计费模型：按30秒单位
-        "unit_seconds": 30,
-        "modes": {"basic": 1, "lite": 4, "pro_box": 5, "pro": 10},  # 点/30秒
-        "point_to_yuan": 0.19,    # ¥189/1000点
-    },
-}
-
-# 当前活跃供应商
-ACTIVE_PROVIDER = "wuhenai"
+# PRICING / ACTIVE_PROVIDER / OSS_PRICE_PER_GB 已从 pricing_defaults 导入
 
 
 # ═══════════════════════════════════════════

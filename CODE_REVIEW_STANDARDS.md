@@ -1,6 +1,6 @@
 # 达芬奇插件工坊 — 代码审查标准与流程
 
-> 版本 2.1 | 2026-05-09 | 基于全部 55 个 Python 文件深度审计 + wuhenai_v2.py 实战审查反馈
+> 版本 2.4 | 2026-05-10 | 新增交付自检工具专属规则（R7/S10/S11）
 
 ---
 
@@ -245,6 +245,25 @@ api_key = "sk-abc123..."  # 直接阻断
 先加载的优先，后加载不覆盖已有 key。这是为了让裁缝老师的开发机可以用自己的测试密钥，不影响生产机用团队密钥。
 
 **当前状态**：✅ `config.py` 已正确实现。`.env` 在 `.gitignore`。pre-commit 自动扫描硬编码密钥。
+
+---
+
+#### R7. CHECKS 注册表完整性（v2.4 新增 — 交付自检工具专属）
+
+**业务现实**：交付自检工具的 30+ 检查项通过 `CHECKS` 注册表驱动，布局从 CHECKS 自动生成。CHECKS 中缺失 `group` 字段的项不会被渲染到 UI，用户看不到。
+
+**审查规则**：
+- CHECKS 中 `run_fn` 不为 `None` 的每项 MUST 有 `group` 字段 = 🔴
+- `layout_row` 字段可选，同分组需拆多行时使用
+- 新增检查时同步检查 `GROUP_ORDER` 是否包含对应分组
+
+**检查方式**：
+```python
+# 模块加载时自动校验（已集成到 _validate_checks）
+for c in CHECKS:
+    if c.get("run_fn") and "group" not in c:
+        raise AssertionError(f"CHECKS['{c['id']}'] 缺少 group 字段")
+```
 
 ---
 
@@ -542,6 +561,27 @@ from macos_utils import mount_smb
 # 检查 class 是否有实际调用方（排除定义自身）
 grep -rn "ClassName" --include="*.py" | grep -v "class ClassName"
 ```
+
+---
+
+#### S10. check_ 函数 is_summary 约定（v2.4 新增 — 交付自检工具专属）
+
+**业务现实**：每个 `check_` 函数的第一条结果 MUST 设 `is_summary=True`。UI 将其提取为标题栏汇总。不遵循约定会导致标题栏空着，用户体验差但不报错。
+
+**审查规则**：
+- 新增 `check_` 函数第一条 `_make_result()` 必须传 `is_summary=True` = 🟡
+- 修改现有检查逻辑后确认汇总行仍准确 = 🟡
+
+---
+
+#### S11. 布局自动化禁止硬编码 CheckBox（v2.4 新增 — 交付自检工具专属）
+
+**业务现实**：检查项数量增长（30+），手写布局维护成本线性增长。`_build_group_rows()` 从 CHECKS 全自动生成 CheckBox 行。
+
+**审查规则**：
+- 交付自检工具的 `window_layout` 中禁止 `_cb(CHK_xxx, "text")` 或 `_disabled_cb(CHK_xxx, "text")` = 🟡
+- 必须通过 `_section_checkboxes(*ids)` 或 `_build_group_rows(name)` 生成
+- 特殊非 CheckBox 控件（轨道编辑、夹帧阈值）走 `extras` 参数注入
 
 ---
 

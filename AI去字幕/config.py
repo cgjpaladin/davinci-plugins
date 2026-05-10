@@ -31,12 +31,17 @@ if _shared not in sys.path:
 
 from env import load_all_env
 
-load_all_env(os.path.dirname(os.path.abspath(__file__)))
+_PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
+load_all_env(_PLUGIN_DIR, smb_env="/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/.env")
 
 # 版本号 — 纯数字，不含后缀
 __version__ = "1.9.0"
 # 发布通道：""=稳定版, "dev"=开发版, 未来可扩展 "alpha"/"beta"/"rc1"
 __channel__ = "dev"
+
+# ── 品牌 ──
+PRODUCT_NAME = "AI 去字幕"
+BRAND_NAME = "裁缝老师的达芬奇插件工坊 ✂️"
 
 def version_string():
     """完整版本字符串，如 '1.8.0-dev' 或 '1.8.0'"""
@@ -237,17 +242,14 @@ OPS_LOG_DIR = os.path.join(DEBUG_MEDIA_DIR, ".ops_logs")
 # ============================================================
 # 处理模式
 # ============================================================
-DEFAULT_MODE = _env("MODE", "pro_box")  # basic / pro_box
+DEFAULT_MODE = _env("MODE", "pro_box")  # pro_box
 
 # 模式显示名（UI 和 Console 用）
-MODE_LABELS = {"basic": "快速预览", "pro_box": "正式出片"}
+MODE_LABELS = {"basic": "快速预览（测试用）", "pro_box": "正式出片"}
 
 # 输出文件名标签（剪辑师看到的中文名，不含供应商）
-MODE_FILE_TAGS = {"basic": "快速预览", "pro_box": "正式出片", "lite": "精修Lite", "pro": "精修Pro"}
+MODE_FILE_TAGS = {"basic": "快速预览", "pro_box": "正式出片", "pro": "精修Pro"}
 
-# 短剧字幕遮罩区域（基于34张截图豆包多模态识别，含多行字幕，2026-05-07）
-# 豆包报告: y: 57.3%~80.4%, 444px高, x全宽, 面积479,520≤480,000
-DEFAULT_MASK_REGION = [[0, 0.573], [1, 0.573], [1, 0.804], [0, 0.804]]
 
 # 片段颜色过滤
 CLIP_COLOR = _env("COLOR", "Orange")  # 裁缝老师用橘黄
@@ -271,6 +273,8 @@ ADAPTER_CONFIGS = {
         "oss_region": OSS_REGION,
         "model": "video_removal_std",
         "method": "sel_area",  # Seedance 字幕固定底部，sel_area 省33%积分
+        "sel_area_max_pixels": 480000,  # sel_area 面积上限（超过则降级 all_area）
+        "portrait_cut_y": 0.50,         # 竖屏字幕区域起始比例（底部50%一刀切）
     },
     "volcengine": {
         "enabled": False,

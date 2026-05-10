@@ -1,0 +1,201 @@
+# -*- coding: utf-8 -*-
+"""
+pipeline.py — AI去字幕 产品流水线
+
+继承 shared/pipeline_base.py 的 BasePipeline，
+只实现 3 个抽象方法（_scan / _prepare / _submit）+ 环境检查钩子。
+"""
+
+import os
+import time
+import math
+import sys
+
+# 路径初始化
+_plugin_root = os.path.dirname(os.path.abspath(__file__))
+if _plugin_root not in sys.path:
+    sys.path.insert(0, _plugin_root)
+_shared_root = os.path.join(os.path.dirname(_plugin_root), 'shared')
+if _shared_root not in sys.path:
+    sys.path.insert(0, _shared_root)
+
+from pipeline_base import BasePipeline, ResultItem
+from interface import PipelineUI, CLIPipelineUI, DaVinciPipelineUI
+
+from config import (
+    __version__, version_string, DEFAULT_MODE, MODE_LABELS,
+    CLIP_COLOR, API_TIMEOUT, SMB_MOUNT, DEBUG, SCAN_ONLY,
+    get_output_dir, get_log_dir, PLUGIN_DIR, SMB_AI_PROJECT,
+)
+from core import (
+    connect_resolve, scan_io_clips, prepare_tasks, get_io,
+    download_and_apply, post_check,
+)
+from adapters import SubtitleTask, create_preferred_adapter
+import ops_logger
+from pricing import estimate_cost, point_to_yuan
+
+
+class SubtitlePipeline(BasePipeline):
+    """AI去字幕 流水线。"""
+
+    PRODUCT_NAME = "AI 去字幕"
+    SECTION_AI_PROCESSING = "AI去字幕中"
+
+    def __init__(self):
+        super().__init__()
+        self._adapter = None
+        self._scan_report = None
+        self._io_info = None
+
+    # ═══════════════════════════════════════
+    # 适配器
+    # ═══════════════════════════════════════
+
+    def _get_adapter(self):
+        if self._adapter is None:
+            self._adapter = create_preferred_adapter()
+        return self._adapter
+
+    # ═══════════════════════════════════════
+    # 抽象方法实现
+    # ═══════════════════════════════════════
+
+    def _scan(self) -> list:
+        """扫描时间线 IO 内标橙色的片段。"""
+        clips, self._scan_report = scan_io_clips(self._timeline, CLIP_COLOR)
+        io_in, io_out = get_io(self._timeline)
+        self._io_info = {"in": io_in, "out": io_out}
+        self._report["io"] = self._io_info
+        if self._scan_report:
+            self._report["scan"] = {
+                "total": self._scan_report.total,
+                "valid": self._scan_report.valid,
+                "skipped": self._scan_report.skipped,
+            }
+        return clips
+
+    def _show_scan_summary(self, clips: list):
+        """展示扫描结果（含 IO 范围和扫描统计）。"""
+        if not clips:
+            self.ui.log_info("IO 内无符合筛选的片段")
+            self.ui.set_status("无有效片段")
+            return
+
+        io_info = self._io_info or {}
+        sr = self._scan_report
+        if sr:
+            self.ui.log_info(f"🎬 IO({io_info.get('in', '?')}→{io_info.get('out', '?')}): "
+                           f"{sr.valid}/{sr.total} 符合筛选")
+        else:
+            self.ui.log_info(f"🎬 扫描到 {len(clips)} 个片段")
+        self.ui.set_progress(0.20)
+        self._report.setdefault("scan", {})["clips_count"] = len(clips)
+
+        # 记录扫描结果到运营日志
+        ops_logger.clip_scan(len(clips), 0, [c.name for c in clips])
+
+    def _prepare(self, clips: list, mode: str) -> tuple:
+        """任务准备（含缓存复用）。返回 (tasks, cache_hits, cache_hit_names)。"""
+        from core import prepare_tasks as _prepare_tasks
+
+        self._output_dir = get_output_dir(self._project_root)
+        self._report["project_root"] = self._project_root
+        self._report["output_dir"] = self._output_dir
+
+        prepared = _prepare_tasks(
+            clips, mode, self._output_dir,
+            force=self._force,
+            stop_check=self._get_stop_check(),
+        )
+        self._report["_tasks"] = prepared.tasks  # 存引用给 _final_report 用
+
+        return prepared.tasks, prepared.cache_hits, prepared.cache_hit_names
+
+    def _submit(self, tasks: list, batch: bool) -> list:
+        """提交无痕/鬼手 API 处理。返回 [ResultItem, ...] 列表。"""
+        adapter = self._get_adapter()
+        api_tasks = [SubtitleTask(**t.kwargs) for t in tasks]
+        provider = adapter.name
+
+        # 显示处理开始
+        for i, t in enumerate(tasks, 1):
+            self.log.progress(i, len(tasks), t.name, "处理中")
+
+        self.ui.set_status("AI 处理中...")
+        self.ui.set_progress(0.40)
+
+        t0 = time.time()
+        api_results = adapter.process_batch(
+            api_tasks, timeout=API_TIMEOUT,
+            cancel_check=self._get_stop_check(),
+            progress_callback=self._get_progress_callback(),
+        )
+        elapsed = time.time() - t0
+
+        # 适配器处理完成
+        self.log.info(f"全部完成，耗时 {elapsed:.0f} 秒")
+
+        # 构造结果，task_id 只进后端
+        results = []
+        for t, r in zip(tasks, api_results):
+            ops_logger.task_submit(t.name, self._mode, t.duration, 0, provider=provider)
+            ops_logger.task_result(t.name, str(getattr(r, 'task_id', '')), elapsed / len(api_tasks), r.success if r else False, provider=provider)
+            if r and r.success:
+                self._log_action(f"✅ {t.name} (task_id={getattr(r, 'task_id', '')})")
+            else:
+                msg = getattr(r, 'error_message', '未知错误') if r else '处理失败'
+                self.log.fail(f"{t.name}: {msg}")
+                self._log_action(f"❌ {t.name}: {msg}")
+
+            results.append(ResultItem(
+                mp_item=t.mp_item, name=t.name, path=t.path,
+                result=r, elapsed=time.time() - t0,
+                tl_item=t.tl_item, tl_color=t.tl_color,
+                mp_color=t.mp_color, alt_tl_items=t.alt_tl_items,
+            ))
+
+        self.ui.set_progress(0.60)
+        self.ui.set_status("下载处理结果...")
+        return results
+
+    # ═══════════════════════════════════════
+    # CLI 专属：环境自检
+    # ═══════════════════════════════════════
+
+    def _check_env(self):
+        """CLI 环境自检：SMB/API/OSS/DVR。UI 跳过（在 scan_io 中逐渐检查）。"""
+        from config import WUHENAI_V2_API_KEY, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET
+
+        checks = {
+            "SMB 挂载": os.path.exists(SMB_MOUNT),
+            "API Key (无痕AI 2.1)": bool(WUHENAI_V2_API_KEY),
+            "OSS 凭证 (阿里云)": bool(OSS_ACCESS_KEY_ID and OSS_ACCESS_KEY_SECRET),
+            "达芬奇运行": os.path.exists("/Applications/DaVinci Resolve"),
+        }
+
+        all_ok = True
+        for name, ok_flag in checks.items():
+            if not ok_flag:
+                self.ui.log_fail(f"环境自检失败: {name} 不可用")
+                all_ok = False
+
+        if not all_ok:
+            self.ui.log_info("💡 请确保: SMB 已挂载 / .env 已配置 / 达芬奇已启动")
+            self._report["error"] = "环境自检失败"
+            self._report["checks"] = {n: f for n, f in checks.items()}
+            return
+
+        self.ui.log_info("✅ 环境自检通过 (SMB/API/OSS/DVR)")
+        self.ui.set_progress(0.05)
+
+    def _preflight(self):
+        """CLI OSS 预检。"""
+        try:
+            adapter = self._get_adapter()
+            if hasattr(adapter, 'check_oss') and not adapter.check_oss():
+                self.ui.log_fail("无痕AI OSS 不可用，请检查阿里云账号状态")
+                self._report["error"] = "OSS不可用"
+        except Exception as e:
+            self.ui.log_fail(f"OSS 预检失败: {e}")
+            self._report["error"] = str(e)

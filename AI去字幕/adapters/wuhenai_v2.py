@@ -91,6 +91,11 @@ class WuhenAIV21Adapter(BaseAdapter):
         self.default_model = config.get("model", "video_removal_std")
         self.default_method = config.get("method", "all_area")
 
+    def set_logger(self, callback):
+        """同时更新 BaseAdapter + wuhenai 模块级全局 logger。"""
+        wuhenai_set_logger(callback)
+        self._logger = callback or print
+
         if not self.api_key:
             raise ValueError("无痕AI 2.1 需要 api_key")
         if not all([self.access_key_id, self.access_key_secret, self.bucket]):
@@ -329,9 +334,10 @@ class WuhenAIV21Adapter(BaseAdapter):
         # 分辨率自适应
         if is_portrait(vid_w, vid_h):
             # 竖屏：一刀切下半块
-            y1 = int(vid_h * 0.50)
+            y1 = int(vid_h * self.config.get("portrait_cut_y", 0.50))
             area = vid_w * (vid_h - y1)
-            if area <= 480000:
+            max_pixels = self.config.get("sel_area_max_pixels", 480000)
+            if area <= max_pixels:
                 return "sel_area", {
                     "x1": 0, "y1": y1,
                     "x2": vid_w, "y2": vid_h,
@@ -490,14 +496,16 @@ class WuhenAIV21Adapter(BaseAdapter):
                     except Exception as e:
                         _log(f"[无痕AI 2.1] 操作日志写入失败: {e}")
 
-                    # 清理 OSS 上的输入文件（输出保留供 pipeline 下载）
+                    # 清理 OSS 上的中转文件
                     try:
                         input_key = task_info.get("input_key", "")
+                        output_key = task_info.get("output_key", "")
                         if input_key:
                             self._oss_delete(input_key)
-                        # 输出不删，OSS 生命周期 1 天自动清理
+                        if output_key:
+                            self._oss_delete(output_key)  # 已下载，OSS 上不留垃圾
                     except Exception:
-                        # 清理失败不阻塞主流程：OSS对象可能已自动过期/网络波动
+                        # 清理失败不阻塞主流程
                         pass
 
                     # 打印分段耗时（帮助诊断 API 慢的原因）
@@ -751,9 +759,16 @@ class WuhenAIV21Adapter(BaseAdapter):
             elapsed = time.time() - start_time
             if elapsed > timeout:
                 for rec in pending:
+                    tid = rec.get("task_id")
+                    if tid:
+                        # 尝试 cancel 服务端任务，避免白扣钱
+                        try:
+                            self.cancel(tid)
+                        except Exception:
+                            pass
                     rec["result"] = SubtitleResult(
                         success=False,
-                        task_id=rec["task_id"],
+                        task_id=tid,
                         error_message=f"任务超时 ({timeout}秒)",
                     )
                 break
@@ -795,7 +810,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                                           "resolution": rec.get("resolution", ""),
                                           "duration": rec.get("duration", 0)},
                             )
-                        # 清理 OSS 输入（输出保留供 pipeline 下载）
+                        # 清理 OSS 中转文件
                         try:
                             self._oss_delete(rec["input_key"])
                         except Exception:

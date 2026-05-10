@@ -1,7 +1,7 @@
 ---
 name: plugin-skeleton
 description: 达芬奇插件工坊新产品启动流程。当裁缝老师说「开新产品」或「启动AI换口型」等时自动加载。
-version: 1.0.0
+version: 1.1.0
 agent_created: true
 ---
 
@@ -87,11 +87,20 @@ rm plugins/AI换口型/remove_subtitle.py
 ## 第六步：部署脚本
 
 从 AI去字幕 复制以下脚本，搜索替换「AI去字幕」→ 新产品名：
-- `build_local.sh` — 本地验证
+- `build_local.sh` — 本地验证（含版本提醒、launcher自动命名、`--save` checkpoint）
 - `push_all.sh` — 全量发布
 - `sync.sh` — SMB 同步
+- `bump_version.sh` — 版本号 MINOR +0.1
 - `gray.sh` — 灰度管理
 - `deploy.sh` — 单机部署
+
+`build_local.sh` 已内置：
+- 📝 当前版本号显示
+- ⚠ 本地版 == 公司版 冲突检测（提醒升版本）
+- 📦 `--save` 自动 git commit checkpoint
+- 📝 launcher 自动命名（`产品_v1.0.0-dev.py`）
+
+`bump_version.sh`：自动 `config.py` `__version__` MINOR +0.1。用 `version_string()` 返回 `1.1.0-dev`。
 
 ---
 

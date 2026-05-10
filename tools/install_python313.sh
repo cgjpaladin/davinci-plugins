@@ -12,9 +12,16 @@ PY_PATH="/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
 CERT_CMD="/Applications/Python 3.13/Install Certificates.command"
 PASSWORD="123456"
 
-# 目标机器列表
+# 目标机器列表：从运维 workspace 注册表动态读取（排除本机 mini200）
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+MAP_FILE="/Users/bryan/WorkBuddy/达芬奇运维专家/machine_registry.json"
+
 if [ $# -eq 0 ]; then
-    TARGETS=(101 102 103 104 105 106 107 108 109 110 131 132 133 134 136 137 138 140)
+    if [ ! -f "$MAP_FILE" ]; then
+        echo "❌ 找不到 machine_map.json: $MAP_FILE"
+        exit 1
+    fi
+    mapfile -t TARGETS < <(jq -r 'keys[]' "$MAP_FILE" | grep -v '^200$' | sort -n)
 else
     TARGETS=("$@")
 fi
