@@ -73,11 +73,12 @@ class LogWriter:
     def __init__(self, product: str):
         _local_root = os.path.join(os.path.expanduser("~"), ".workbuddy", "logs")
         _smb_root = "/Volumes/MYJC/06_Software/达芬奇脚本/日志"
+        _host = socket.gethostname()
 
-        self.ui =       _DailyWriter(_local_root, "ui",       product, "log")
-        self.launcher = _DailyWriter(_local_root, "launcher", product, "log")
-        self.ops =      _DailyWriter(_local_root, "ops",      product, "jsonl")
-        self.smb =      _DailyWriter(_smb_root,  socket.gethostname(), product, "log")
+        self.ui =       _DailyWriter(_local_root, f"ui_{_host}",       product, "log")
+        self.launcher = _DailyWriter(_local_root, f"launcher_{_host}", product, "log")
+        self.ops =      _DailyWriter(_local_root, f"ops_{_host}",      product, "jsonl")
+        self.smb =      _DailyWriter(_smb_root,  _host,                product, "log")
 
     def all_paths(self) -> list:
         """返回当前所有日志路径（用于 tools/logs.sh）。"""

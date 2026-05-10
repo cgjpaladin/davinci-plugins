@@ -15,9 +15,6 @@ except NameError:
 sys.path.insert(0, os.path.join(_HERE, '..', 'shared'))
 sys.path.insert(0, '/Volumes/MYJC/06_Software/达芬奇脚本/shared')
 
-from log_writer import get_logger
-_log = get_logger("交付自检工具")
-
 _PRODUCT_DIRS = [
     '/Volumes/MYJC/06_Software/达芬奇脚本/交付自检工具',
     os.path.join(_HERE, '..', '..', '交付自检工具'),
@@ -31,10 +28,10 @@ for d in _PRODUCT_DIRS:
         break
 
 if not _UI_SCRIPT:
-    _log.launcher(f"找不到 ui.py，搜索: {_PRODUCT_DIRS}")
+    print(f"找不到 ui.py，搜索: {_PRODUCT_DIRS}", file=sys.stderr)
     raise FileNotFoundError(f"找不到 ui.py")
 
-_log.launcher(f"启动 ui: {_UI_SCRIPT}")
+print(f"[launcher] 启动 ui: {_UI_SCRIPT}")
 
 if '--dry-run' in sys.argv:
     import socket
