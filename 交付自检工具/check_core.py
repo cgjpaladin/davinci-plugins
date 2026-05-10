@@ -644,13 +644,15 @@ def check_subtitle_glyph(timeline, fps=25.0, io_range=None) -> list:
                             lo = int(m.group(1), 16)
                             hi = int(m.group(2), 16) if m.group(2) else lo
                             ranges.append((lo, hi))
-            # 编译成正则字符类: [\uXXXX-\uYYYY\uAAAA-\uBBBB...]
+            # 编译成正则字符类（用 chr() 避免 \u 4位限制）
             if ranges:
-                pattern = "[" + "".join(
-                    f"\\u{lo:04X}" if lo == hi else f"\\u{lo:04X}-\\u{hi:04X}"
-                    for lo, hi in ranges
-                ) + "]"
-                _censor_cache[range_path] = re.compile(pattern)
+                chars = []
+                for lo, hi in ranges:
+                    chars.append(chr(lo))
+                    if lo != hi:
+                        chars.append("-")
+                        chars.append(chr(hi))
+                _censor_cache[range_path] = re.compile("[" + "".join(chars) + "]")
             else:
                 _censor_cache[range_path] = None
         except Exception:
@@ -791,8 +793,8 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn
                         category_map[word] = cat_str
                     if sug_list:
                         suggestion_map[word] = " / ".join(sug_list)
-        # 编译正则：按长度降序（长词优先匹配）
-        word_list = sorted([w for w, *_ in words], key=len, reverse=True)
+        # 编译正则：按长度降序（长词优先匹配），过滤空词
+        word_list = sorted([w for w, *_ in words if w], key=len, reverse=True)
         pattern = re.compile("|".join(re.escape(w) for w in word_list)) if word_list else None
         _censor_cache[dict_path] = (words, pattern, suggestion_map, category_map)
 
@@ -1034,6 +1036,14 @@ def check_speed(timeline, project_fps=25.0, io_range=None) -> list:
             threshold = min(project_fps / src_fps, 1.0) * 100
             # 容忍 ±2% 误差（如 50fps→25fps 时间线，49% 不报）
             if speed < threshold - 2.0 and retime not in (2, 3):
+                # 跳过静帧/图片（天然无变速，素材1帧拉长到N帧）
+                mp = _get_cached(it, "mp")
+                if mp:
+                    try:
+                        if mp.GetClipProperty("Type") == "静帧":
+                            continue
+                    except Exception:
+                        pass
                 name = _get_clip_name(it)
                 if any(kw in name for kw in ("未完待续", "定格转场", "全剧终")):
                     continue
