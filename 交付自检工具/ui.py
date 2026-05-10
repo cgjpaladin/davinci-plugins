@@ -1122,9 +1122,9 @@ def _start_check():
         _action_log(f"时间线: {timeline.GetName()}")
         _action_log(f"帧率: {fps} fps")
 
-        # ── 四道门：结构不对则跳过整组检查 ──
-        # Gate 0: 起始时码归零
-        gate0_ok = (timeline.GetStartFrame() == 0)
+        # ── 四道门：结构不对则跳过整组检查（仅当用户勾选了对应结构检查才生效）──
+        # Gate 0: 起始时码归零（仅当勾了「时间线」检查）
+        gate0_ok = not itm[CHK_TIMELINE].Checked or (timeline.GetStartFrame() == 0)
         if not gate0_ok:
             _action_log("⚠ 起始时码非零，后续所有检查已跳过，请先归零时码后重新运行")
 
@@ -1139,7 +1139,6 @@ def _start_check():
                 except: pass
             return True
 
-        # 音频名称校验
         aud_names_ok = True
         if aud_count == 10:
             for idx, preset in enumerate(AUDIO_TRACK_PRESET):
@@ -1147,13 +1146,21 @@ def _start_check():
                     aud_names_ok = False; break
 
         gates = {}
-        gates["subtitle"] = gate0_ok and sub_count == 1 and _all_enabled("subtitle", sub_count)
-        gates["video"]    = gate0_ok and vid_count == 5 and _all_enabled("video", vid_count)
-        gates["audio"]    = gate0_ok and aud_count == 10 and _all_enabled("audio", aud_count) and aud_names_ok
+        if itm[CHK_TRACK].Checked:
+            # 用户勾了轨道结构 → 启用门判断
+            gates["subtitle"] = gate0_ok and sub_count == 1 and _all_enabled("subtitle", sub_count)
+            gates["video"]    = gate0_ok and vid_count == 5 and _all_enabled("video", vid_count)
+            gates["audio"]    = gate0_ok and aud_count == 10 and _all_enabled("audio", aud_count) and aud_names_ok
+        else:
+            # 没勾轨道结构 → 门全开，不拦任何内容检查
+            gates["subtitle"] = gate0_ok
+            gates["video"]    = gate0_ok
+            gates["audio"]    = gate0_ok
 
-        for gate, label in [("subtitle","字幕"), ("video","视频"), ("audio","音频")]:
-            if not gates[gate]:
-                _action_log(f"⚠ {label}结构异常，{label}相关检查已跳过，请先修复基础问题后重新运行")
+        if itm[CHK_TRACK].Checked:
+            for gate, label in [("subtitle","字幕"), ("video","视频"), ("audio","音频")]:
+                if not gates[gate]:
+                    _action_log(f"⚠ {label}结构异常，{label}相关检查已跳过，请先修复基础问题后重新运行")
 
         gate_labels = {"subtitle": "字幕", "video": "视频", "audio": "音频"}
 
