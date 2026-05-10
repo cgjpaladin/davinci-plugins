@@ -19,11 +19,10 @@ import json
 with open('$MAP') as f: mm = json.load(f)
 with open('$TRACKER') as f: dt = json.load(f)
 
-active = {k:v for k,v in mm.items() if v['status']=='在职'}
-deployed = [k for k in active if dt['machines'].get(k,{}).get('status')=='deployed']
-pending  = [k for k in active if dt['machines'].get(k,{}).get('status')=='pending']
+deployed = [k for k in mm if dt['machines'].get(k,{}).get('status')=='deployed']
+pending  = [k for k in mm if dt['machines'].get(k,{}).get('status')=='pending']
 
-print(f'在职: {len(active)} | 已部署: {len(deployed)} | 待部署: {len(pending)}')
+print(f'共: {len(mm)} 台 | 已部署: {len(deployed)} | 待部署: {len(pending)}')
 if deployed:
     print('\\n已部署:')
     for k in deployed:
@@ -46,7 +45,7 @@ import json
 with open('$MAP') as f: mm = json.load(f)
 with open('$TRACKER') as f: dt = json.load(f)
 pending = [(k,v) for k,v in sorted(mm.items()) 
-           if v['status']=='在职' and dt['machines'].get(k,{}).get('status')=='pending']
+           if dt['machines'].get(k,{}).get('status')=='pending']
 if not pending:
     print('  ✅ 全部已部署！')
 else:
@@ -69,12 +68,6 @@ print(json.dumps(m))
 
 IP=$(echo "$MACHINE_INFO" | python3 -c "import json,sys; print(json.load(sys.stdin)['ip'])")
 NAME=$(echo "$MACHINE_INFO" | python3 -c "import json,sys; print(json.load(sys.stdin)['name'])")
-STATUS=$(echo "$MACHINE_INFO" | python3 -c "import json,sys; print(json.load(sys.stdin).get('status',''))")
-
-if [[ "$STATUS" != "在职" ]]; then
-    echo "⚠ $MID ($NAME): 状态=$STATUS，跳过"
-    exit 0
-fi
 
 # ── 检查 tracker ──
 CUR_STATUS=$(python3 -c "

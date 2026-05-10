@@ -7,9 +7,9 @@
   "_ssh_password": "123456",
   "last_updated": "2026-05-11T00:00:00",
   "stats": {
-    "total_active": 16,
+    "total": 20,
     "deployed": 2,
-    "pending": 14,
+    "pending": 18,
     "skipped": 0
   },
   "machines": {
@@ -112,6 +112,30 @@
       "ip": "192.168.1.140",
       "name": "张冀恒",
       "short": "macmini09",
+      "status": "pending"
+    },
+    "101": {
+      "ip": "192.168.1.101",
+      "name": "王家政",
+      "short": "macmini03",
+      "status": "pending"
+    },
+    "105": {
+      "ip": "192.168.1.105",
+      "name": "袁宁",
+      "short": "macmini13",
+      "status": "pending"
+    },
+    "133": {
+      "ip": "192.168.1.133",
+      "name": "杨惠雯",
+      "short": "macmini10",
+      "status": "pending"
+    },
+    "134": {
+      "ip": "192.168.1.134",
+      "name": "刘双静",
+      "short": "xiaolvhua",
       "status": "pending"
     }
   }
