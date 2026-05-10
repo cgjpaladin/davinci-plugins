@@ -1166,11 +1166,13 @@ def _start_check():
             gates["audio"]    = gate0_ok
 
         if itm[CHK_TRACK].Checked:
+            failed_gates = []
             for gate, label in [("subtitle","字幕"), ("video","视频"), ("audio","音频")]:
                 if not gates[gate]:
-                    msg = f"⚠ {label}结构异常，{label}相关检查已跳过，请先修复基础问题后重新运行"
-                    _action_log(msg)
-                    gate_warnings.append(msg)
+                    failed_gates.append(label)
+                    _action_log(f"⚠ {label}结构异常，相关检查已跳过")
+            if failed_gates:
+                gate_warnings.append(f"⚠ {'、'.join(failed_gates)}结构异常，相关检查已跳过，请先修复基础问题后重新运行")
 
         if gate_warnings:
             itm["lbl_gate_warn"].Text = "\n".join(gate_warnings)
