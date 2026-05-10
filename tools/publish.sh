@@ -268,6 +268,18 @@ print(f'  gray.json → v$ver')
         echo "  恢复 channel: $WAS_CHANNEL"
     fi
 
+    # ── 推完自动 bump 版本号（本地进入下一个开发周期）──
+    local new_ver=$(cd "$PRODUCT_DIR" && python3 -c "
+import re
+with open('config.py') as f: code = f.read()
+code = re.sub(r'__version__\s*=\s*\"(\d+)\.(\d+)\.(\d+)\"',
+              lambda m: f'__version__ = \"{m.group(1)}.{int(m.group(2))+1}.0\"', code)
+with open('config.py', 'w') as f: f.write(code)
+from config import version_string
+print(version_string())
+" 2>/dev/null)
+    echo "🏷 本地版本 bump → $new_ver"
+
     # 5. diff 检查
     if [ "$VERIFY_MODE" = "full" ]; then
         echo ""
