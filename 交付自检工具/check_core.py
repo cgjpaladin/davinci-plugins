@@ -1119,6 +1119,8 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
     """检查视频越轨（前置：视频轨数=5）。
     ① 实拍素材（含摄影机元数据）放在了 V4/V5 — 应放 V1-V3
     ② 尾板素材（未完待续/定格转场/全剧终）放在了 V1-V3 — 应放 V4-V5
+    ③ 文本/Text+ 放在了 V1-V3 — 应放 V4-V5
+    ④ 调整图层放在了 V1/V4/V5 — 应放 V2-V3
 
     Returns:
         list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
@@ -1188,6 +1190,75 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
             issues.append(_make_result("fail", track=track, timecode=tc,
                 detail=f"{name}，位于第 {vi} 轨",
                 reason="尾板请放 V4-V5"))
+
+    # ── ③ 文本/Text+ 不得在 V1-V3 ──
+    _type_cache = {}  # mp_uid → type str
+    for vi in (1, 2, 3):
+        items = _get_items(timeline, "video", vi)
+        if not items:
+            continue
+        track = f"V{vi}"
+        for it in items:
+            if not _in_io_range(it, io_range):
+                continue
+            if _get_cached(it, "enabled", True) is False:
+                continue
+            mp = _get_cached(it, "mp")
+            if mp is None:
+                continue
+            try:
+                mp_uid = mp.GetUniqueId()
+            except Exception:
+                continue
+            if mp_uid not in _type_cache:
+                try:
+                    _type_cache[mp_uid] = mp.GetClipProperty("Type") or ""
+                except Exception:
+                    _type_cache[mp_uid] = ""
+            mp_type = _type_cache[mp_uid]
+            if mp_type not in ("Text", "Text+"):
+                continue
+
+            name = _get_clip_name(it)
+            smpte = _get_smpte(fps)
+            tc = smpte.gettc(_get_cached(it, "start", 0))
+            issues.append(_make_result("fail", track=track, timecode=tc,
+                detail=f"{name}，位于第 {vi} 轨",
+                reason="文本/Text+请放 V4-V5"))
+
+    # ── ④ 调整图层不得在 V1/V4/V5 ──
+    for vi in (1, 4, 5):
+        items = _get_items(timeline, "video", vi)
+        if not items:
+            continue
+        track = f"V{vi}"
+        for it in items:
+            if not _in_io_range(it, io_range):
+                continue
+            if _get_cached(it, "enabled", True) is False:
+                continue
+            mp = _get_cached(it, "mp")
+            if mp is None:
+                continue
+            try:
+                mp_uid = mp.GetUniqueId()
+            except Exception:
+                continue
+            if mp_uid not in _type_cache:
+                try:
+                    _type_cache[mp_uid] = mp.GetClipProperty("Type") or ""
+                except Exception:
+                    _type_cache[mp_uid] = ""
+            mp_type = _type_cache[mp_uid]
+            if mp_type != "调整剪辑":
+                continue
+
+            name = _get_clip_name(it)
+            smpte = _get_smpte(fps)
+            tc = smpte.gettc(_get_cached(it, "start", 0))
+            issues.append(_make_result("fail", track=track, timecode=tc,
+                detail=f"{name}，位于第 {vi} 轨",
+                reason="调整图层请放 V2-V3"))
 
     if not issues:
         return [_make_result("pass", detail="视频越轨: 全部通过", is_summary=True)]

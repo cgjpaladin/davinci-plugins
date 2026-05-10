@@ -327,7 +327,7 @@ CHECKS = [
     {"id": "audio_loudness","section": "音量",     "chk_id": CHK_LOUDNESS,       "group": "音频", "subgroup": "声道",   "run_fn": None},
     {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "group": "色彩", "subgroup": "色彩",   "run_fn": _run_color_check},
     {"id": "camera_track",  "section": "视频越轨", "chk_id": CHK_CAMERA,          "group": "工程", "subgroup": "轨道",   "run_fn": _run_camera_track_check},
-    {"id": "audio_color",   "section": "音频越轨", "chk_id": CHK_AUDIO_COLOR,     "group": "音频", "subgroup": "声道",   "run_fn": _run_audio_color_check},
+    {"id": "audio_color",   "section": "音频越轨", "chk_id": CHK_AUDIO_COLOR,     "group": "工程", "subgroup": "轨道",   "run_fn": _run_audio_color_check},
 ]
 # 扩展指南：
 #   - 加新检查：往 CHECKS 末尾加一行 dict，写 run_fn
