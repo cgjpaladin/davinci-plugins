@@ -1219,7 +1219,7 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
     # ── 前置：视频轨数必须为 5 ──
     video_count = timeline.GetTrackCount("video")
     if video_count != len(VIDEO_TRACK_PRESET):
-        return [_make_result("pass",
+        return [_make_result("warn",
             detail=f"视频轨数 {video_count}≠{len(VIDEO_TRACK_PRESET)}，跳过视频越轨检测",
             is_summary=True)]
     _cam_fields = ("ISO", "Camera Model", "Lens", "Gamma", "Color Space")
@@ -1417,7 +1417,7 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None) -> list:
     # ── 前置①：音轨数必须为 10 ──
     audio_count = timeline.GetTrackCount("audio")
     if audio_count != len(AUDIO_TRACK_PRESET):
-        return [_make_result("pass",
+        return [_make_result("warn",
             detail=f"音轨数 {audio_count}≠{len(AUDIO_TRACK_PRESET)}，跳过音频越轨检测",
             is_summary=True)]
 
@@ -1430,7 +1430,7 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None) -> list:
             names_ok = False
             break
     if not names_ok:
-        return [_make_result("pass",
+        return [_make_result("warn",
             detail="音频轨名称与预设不符，跳过音频越轨检测",
             is_summary=True)]
 
