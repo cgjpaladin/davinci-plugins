@@ -100,6 +100,10 @@ def preload_timeline_items(timeline, track_types=None):
                             pass
                     if track_type == "audio":
                         try:
+                            cached["audio_dur"] = it.GetDuration(True) or 0
+                        except Exception:
+                            cached["audio_dur"] = 0
+                        try:
                             raw = it.GetSourceAudioChannelMapping()
                             if isinstance(raw, str):
                                 try:
@@ -500,7 +504,7 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
                 break
         gaps.append((prev, tl_end, reason, track, gap_name))
 
-    # ── 补充：音频尾部超出视频（用子帧精度，只取最终位置）──
+    # ── 补充：音频尾部超出视频（用子帧精度，从预加载缓存读取）──
     last_video = merged[-1][1] if merged else tl_end
     audio_max_end = last_video
     for ai in range(1, timeline.GetTrackCount("audio") + 1):
@@ -509,7 +513,9 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
             continue
         for it in audio_items:
             a_start = _get_cached(it, "start", 0)
-            a_dur = it.GetDuration(True)
+            a_dur = _get_cached(it, "audio_dur", 0)
+            if a_dur <= 0:
+                continue
             a_end_real = a_start + a_dur
             if a_end_real > audio_max_end:
                 audio_max_end = a_end_real
