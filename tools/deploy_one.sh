@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 TRACKER="$SCRIPT_DIR/deploy_tracker.json"
 MAP="$ROOT/shared/machine_map.json"
-DAVINCI_DIR="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
+DAVINCI_DIR="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊"
 
 # ── --status 查看概况 ──
 if [[ "${1:-}" == "--status" ]]; then
@@ -112,7 +112,7 @@ FUSION_OK=$(ssh -o ConnectTimeout=5 "$SSH_TARGET" "python3 -c \"
 # 模拟 Fusion 环境：__file__ 不存在时 launcher 能否正确 fallback 路径
 import sys, os
 _path_home = os.path.expanduser('~')
-_path = '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit'
+_path = '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊'
 # 核心测试：launcher 里的 NameError fallback 逻辑
 try:
     _HERE = os.path.dirname(os.path.abspath(__file__))

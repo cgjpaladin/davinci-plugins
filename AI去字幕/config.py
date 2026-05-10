@@ -100,7 +100,7 @@ def hide_path(path: str):
 # ============================================================
 RESOLVE_SCRIPT_API = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting"
 RESOLVE_SCRIPT_LIB = "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so"
-RESOLVE_SCRIPTS_DIR = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/"
+RESOLVE_SCRIPTS_DIR = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊/"
 
 # 插件自身路径
 PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))

@@ -1,7 +1,7 @@
 {
   "_schema": "2.0",
   "_description": "达芬奇插件工坊 — 全产品部署追踪。每台机器首个 launcher 部署后更新。",
-  "_deploy_path": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit",
+  "_deploy_path": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊",
   "last_updated": "2026-05-11T00:00:00",
   "stats": {
     "total": 20,

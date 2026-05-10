@@ -79,13 +79,13 @@ publish_build_local() {
         python3 "$PRODUCT_DIR/../tools/deploy.py" "$PRODUCT_NAME" 2>&1
 
         # Fusion 兼容性（模拟 __file__ 不存在）
-        local launcher_path="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/${PRODUCT_NAME}.py"
+        local launcher_path="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊/${PRODUCT_NAME}.py"
         if [ -f "$launcher_path" ]; then
             echo ""
             echo "── Fusion 兼容性 ──"
             python3 -c "
 import sys, os
-_path = '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit'
+_path = '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊'
 try:
     _HERE = os.path.dirname(os.path.abspath(__file__))
 except NameError:

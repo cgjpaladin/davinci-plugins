@@ -2,7 +2,7 @@
 """
 tools/deploy.py — 一键部署到达芬奇
 
-把 launcher.py 复制到达芬奇 Edit 目录，Workspace → Scripts 直接可见。
+把 launcher.py 复制到达芬奇 Edit/达芬奇插件工坊/ 子目录。
 launcher.py 内部通过 shared/launcher_router.py 按主机名自动路由。
 
 用法:
@@ -15,7 +15,9 @@ import sys, os, shutil, argparse
 _here = os.path.dirname(os.path.abspath(__file__))
 _project_root = os.path.dirname(_here)
 
-DAVINCI_EDIT = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
+DAVINCI_SCRIPTS = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
+SUBFOLDER = "达芬奇插件工坊"
+DAVINCI_EDIT = os.path.join(DAVINCI_SCRIPTS, SUBFOLDER)
 
 
 def list_projects():
@@ -38,10 +40,13 @@ def deploy(project_name, dry_run=False):
         print(f"❌ 项目不存在: {project_dir}")
         return False
     
-    if not os.path.isdir(DAVINCI_EDIT):
-        print(f"❌ 达芬奇 Edit 目录不存在: {DAVINCI_EDIT}")
+    if not os.path.isdir(DAVINCI_SCRIPTS):
+        print(f"❌ 达芬奇 Edit 目录不存在: {DAVINCI_SCRIPTS}")
         print(f"   请先启动一次 DaVinci Resolve")
         return False
+    
+    # 确保子文件夹存在
+    os.makedirs(DAVINCI_EDIT, exist_ok=True)
     
     src = os.path.join(project_dir, "launcher.py")
     if not os.path.exists(src):
@@ -63,7 +68,7 @@ def deploy(project_name, dry_run=False):
     else:
         filename = f"{project_name}.py"
     
-    # 清理旧版本 launcher（同一个项目只留一个）
+    # 清理旧版本 launcher（子文件夹内只留一个）
     for fname in os.listdir(DAVINCI_EDIT):
         if fname == filename:
             continue
@@ -71,14 +76,22 @@ def deploy(project_name, dry_run=False):
             os.remove(os.path.join(DAVINCI_EDIT, fname))
             print(f"  🗑 清理旧 launcher: {fname}")
     
+    # 清理 Edit 根目录的旧 launcher（迁移期）
+    for fname in os.listdir(DAVINCI_SCRIPTS):
+        if os.path.isdir(os.path.join(DAVINCI_SCRIPTS, fname)):
+            continue
+        if (fname.startswith(f"{project_name}_v") or fname == f"{project_name}.py") and fname.endswith(".py"):
+            os.remove(os.path.join(DAVINCI_SCRIPTS, fname))
+            print(f"  🗑 清理根目录旧 launcher: {fname}")
+    
     dst = os.path.join(DAVINCI_EDIT, filename)
     if dry_run:
         print(f"  [DRY RUN] {src} → {dst}")
     else:
         shutil.copy2(src, dst)
-        print(f"  ✅ launcher.py → {filename}")
+        print(f"  ✅ launcher.py → {SUBFOLDER}/{filename}")
     
-    print(f"\n🎉 已部署到 Workspace → Scripts:")
+    print(f"\n🎉 已部署到 Workspace → Scripts → {SUBFOLDER}:")
     print(f"   {filename}")
     return True
 
