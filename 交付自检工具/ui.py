@@ -378,7 +378,7 @@ CHECKS = [
     # 第零道门（无gate → 永远跑）
     {"id": "timeline",      "section": "时间线",   "chk_id": CHK_TIMELINE,      "group": "工程", "subgroup": "时间线", "run_fn": _run_timeline_check,     "tracks": [], "gate": ""},
     {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "group": "工程", "subgroup": "轨道",   "run_fn": _run_track_check,        "tracks": ["subtitle","video","audio"], "gate": ""},
-    {"id": "fragment",      "section": "启用/禁用", "chk_id": CHK_FRAGMENT,       "group": "工程", "subgroup": "启用",   "run_fn": _run_fragment_check,      "tracks": ["subtitle","video","audio"], "gate": ""},
+    {"id": "fragment",      "section": "启用/禁用", "chk_id": CHK_FRAGMENT,       "group": "工程", "subgroup": "启用",   "run_fn": _run_fragment_check,      "tracks": ["subtitle","video","audio"], "gate": "all"},
     # 字幕门
     {"id": "sub_linebreak", "section": "换行",     "chk_id": CHK_SUB_LINEBREAK,  "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_linebreak_check, "tracks": ["subtitle"], "gate": "subtitle"},
     {"id": "sub_duration",  "section": "时长",     "chk_id": CHK_SUB_DURATION,   "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_duration_check,  "tracks": ["subtitle"], "gate": "subtitle"},
@@ -613,8 +613,8 @@ window_layout = [
         # ── 结果区：左侧分组 + 右侧数据 ──
         ui.VGroup({"Spacing": 4, "Weight": 0}, [
             ui.Label({"ID": "lbl_gate_warn", "Text": "",
-                      "StyleSheet": "color:rgb(220,180,80);font-size:13px;padding:4px 8px",
-                      "Weight": 0, "WordWrap": True}),
+                      "StyleSheet": "color:rgb(220,180,80);font-size:13px;padding:6px 10px",
+                      "Weight": 0, "WordWrap": True, "MinimumSize": [0, 48]}),
         ]),
         ui.HGroup({"Spacing": 4, "Weight": 1.0}, [
             ui.Tree({"ID": GROUP_TREE, "Weight": 0,
@@ -1209,9 +1209,14 @@ def _start_check():
                 continue
             # 门关闭 → 跳过
             g = check.get("gate", "")
-            if g and not gates.get(g, True):
-                _action_log(f"⏭ {check['section']}检查跳过（{gate_labels.get(g, g)}门未通过）")
-                continue
+            if g:
+                if g == "all":
+                    ok = all(gates.values())  # 三门全开才跑
+                else:
+                    ok = gates.get(g, True)
+                if not ok:
+                    _action_log(f"⏭ {check['section']}检查跳过（{gate_labels.get(g, g)}门未通过）")
+                    continue
 
             _action_log(f"── {check['section']}检查 ──")
             all_results = list(check["run_fn"](
