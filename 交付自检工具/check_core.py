@@ -821,7 +821,7 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None) -> list:
             if m:
                 word = m.group()
                 sug = suggestion_map.get(word, "")
-                reason_text = f"建议替换为: {sug}" if sug else "删除违禁词"
+                reason_text = f"建议替换为: {sug}" if sug else "检查违禁词"
                 issues.append(_make_result("fail", track=track, timecode=tc,
                     detail=word,
                     reason=reason_text))
