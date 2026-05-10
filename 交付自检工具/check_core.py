@@ -749,12 +749,13 @@ def check_subtitle_linebreak(timeline, fps=25.0, io_range=None) -> list:
     return results
 
 
-def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn=False) -> list:
+def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn=False, whitelist_path=None) -> list:
     """检测字幕含违禁词。
 
     Args:
         dict_path: 违禁词文件路径，一行一词
         use_warn: True=用⚠, False=用❌（个人词典用❌，系统词典用⚠）
+        whitelist_path: 白名单文件路径，匹配到的词无条件跳过
 
     Returns:
         list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
@@ -802,6 +803,23 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn
     if not pattern:
         return [_make_result("warn", detail="违禁词字典为空", is_summary=True)]
 
+    # ── 白名单（缓存）──
+    wl_pattern = None
+    if whitelist_path:
+        wl_key = f"WL:{whitelist_path}"
+        if wl_key not in _censor_cache:
+            wl_words = []
+            try:
+                with open(whitelist_path, encoding="utf-8") as f:
+                    for line in f:
+                        w = line.strip()
+                        if w and not w.startswith("#"):
+                            wl_words.append(w)
+            except Exception:
+                pass
+            _censor_cache[wl_key] = re.compile("|".join(re.escape(w) for w in sorted(wl_words, key=len, reverse=True))) if wl_words else None
+        wl_pattern = _censor_cache[wl_key]
+
     issues = []
     subtitle_count = timeline.GetTrackCount("subtitle")
     if subtitle_count == 0:
@@ -823,6 +841,9 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn
             m = pattern.search(text)
             if m:
                 word = m.group()
+                # 白名单过滤：匹配词在白名单中 → 跳过
+                if wl_pattern and wl_pattern.search(word):
+                    continue
                 sug = suggestion_map.get(word, "")
                 reason_text = f"建议替换为: {sug}" if sug else "检查违禁词"
                 status = "warn" if use_warn else "fail"

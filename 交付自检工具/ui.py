@@ -282,8 +282,45 @@ def _run_censor_system(timeline, fps, **_kw):
     return all_results
 
 def _run_censor_personal(timeline, fps, **_kw):
-    """个人违禁词典"""
-    return check_subtitle_censor(timeline, os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv"), fps, io_range=_kw.get("io_range"))
+    """个人词典（黑名单+白名单）"""
+    import tempfile, csv
+    csv_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
+    black_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
+    white_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
+    try:
+        blacklist = []
+        whitelist = []
+        if os.path.isfile(csv_path):
+            with open(csv_path, "r", encoding="utf-8") as f:
+                reader = csv.reader(f)
+                next(reader, None)  # skip header
+                for row in reader:
+                    if len(row) >= 1:
+                        b = row[0].strip()
+                        if b:
+                            blacklist.append(b)
+                    if len(row) >= 2:
+                        w = row[1].strip()
+                        if w:
+                            whitelist.append(w)
+        for w in blacklist:
+            black_tmp.write(w + "\n")
+        black_tmp.close()
+        if whitelist:
+            for w in whitelist:
+                white_tmp.write(w + "\n")
+            white_tmp.close()
+            return check_subtitle_censor(timeline, black_tmp.name, fps,
+                io_range=_kw.get("io_range"), whitelist_path=white_tmp.name)
+        else:
+            white_tmp.close()
+            return check_subtitle_censor(timeline, black_tmp.name, fps,
+                io_range=_kw.get("io_range"))
+    finally:
+        try: os.unlink(black_tmp.name)
+        except: pass
+        try: os.unlink(white_tmp.name)
+        except: pass
 
 def _make_result_passthrough(status, track="", timecode="", detail="", reason="", is_summary=False):
     """同 check_core._make_result 格式，避免跨模块循环导入。"""
@@ -316,8 +353,8 @@ CHECKS = [
     {"id": "sub_linebreak", "section": "换行",     "chk_id": CHK_SUB_LINEBREAK,  "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_linebreak_check},
     {"id": "sub_duration",  "section": "时长",     "chk_id": CHK_SUB_DURATION,   "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_duration_check},
     {"id": "sub_glyph",     "section": "异体字",   "chk_id": CHK_SUB_GLYPH,      "group": "字幕", "subgroup": "合规",   "run_fn": _run_sub_glyph_check},
-    {"id": "censor_personal","section": "个人违禁词典","chk_id": CHK_CENSOR_PERSONAL,"group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_personal},
-    {"id": "censor_system",  "section": "系统违禁词典","chk_id": CHK_CENSOR_SYSTEM, "group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_system},
+    {"id": "censor_personal","section": "个人词典","chk_id": CHK_CENSOR_PERSONAL,"group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_personal},
+    {"id": "censor_system",  "section": "系统词典","chk_id": CHK_CENSOR_SYSTEM, "group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_system},
     {"id": "typo",           "section": "错别字校对",  "chk_id": CHK_TYPO,           "group": "字幕", "subgroup": "合规",   "run_fn": None},
     {"id": "video_clamp",   "section": "夹帧",     "chk_id": CHK_VIDEO_CLAMP,    "group": "视频", "subgroup": "夹帧",   "run_fn": _run_video_clamp_check},
     {"id": "black_frame",   "section": "黑帧",     "chk_id": CHK_BLACK,          "group": "视频", "subgroup": "黑帧",   "run_fn": _run_black_frame_check},
@@ -801,7 +838,7 @@ def _show_config_dialog():
     config_dlg = config_disp.AddWindow({
         "WindowTitle": "交付自检 — 配置",
         "ID": CONFIG_WIN_ID,
-        "Geometry": [820, 120, 420, 380],
+        "Geometry": [820, 120, 420, 430],
         "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
     }, config_layout)
 
