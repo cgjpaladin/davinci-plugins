@@ -2,7 +2,7 @@
 # launcher.py — AI去字幕 启动器
 # 部署到达芬奇 Fusion/Scripts/Edit/，通过 subprocess 外挂外部 Python 进程运行 UI
 # 注意: DaVinci Fusion 内 __file__ 不存在，需 fallback
-import subprocess, os, sys, time, tempfile
+import subprocess, os, sys, time
 
 _PYTHON = "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
 if not os.path.exists(_PYTHON):
@@ -15,9 +15,16 @@ except NameError:
     _HERE = os.path.join(os.path.expanduser("~"),
         "Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit")
 
+# 让 log_writer 可导入
+sys.path.insert(0, os.path.join(_HERE, '..', 'shared'))
+sys.path.insert(0, '/Volumes/MYJC/06_Software/达芬奇脚本/shared')
+
+from log_writer import get_logger
+_log = get_logger("AI去字幕")
+
 _PRODUCT_DIRS = [
-    '/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕',   # SMB 生产
-    os.path.join(_HERE, '..', '..', 'AI去字幕'),         # 本地开发
+    '/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕',
+    os.path.join(_HERE, '..', '..', 'AI去字幕'),
 ]
 
 _STABLE_UI = None
@@ -28,19 +35,12 @@ for d in _PRODUCT_DIRS:
         break
 
 if not _STABLE_UI:
-    _LOG = os.path.join(tempfile.gettempdir(), "ai_subtitle_launcher.err")
-    with open(_LOG, "w") as f:
-        f.write(f"找不到 stable_ui.py\n搜索路径: {_PRODUCT_DIRS}\n")
+    _log.launcher(f"找不到 stable_ui.py，搜索: {_PRODUCT_DIRS}")
     raise FileNotFoundError(f"找不到 stable_ui.py")
 
-# 日志
-_log = os.path.join(tempfile.gettempdir(), "ai_subtitle_ui.log")
-with open(_log, "a", encoding="utf-8") as f:
-    f.write(f"\n=== AI去字幕 UI 启动 {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-    f.write(f"stable_ui: {_STABLE_UI}\n")
-    f.write(f"python: {_PYTHON}\n")
+_log.launcher(f"启动 stable_ui: {_STABLE_UI} python: {_PYTHON}")
 
-# dry-run 自检（仅外部 Python 可见，Fusion 内点脚本不会带这个参数）
+# dry-run 自检（仅外部 Python 可见，Fusion 内不会带这个参数）
 if '--dry-run' in sys.argv:
     import socket
     print(f"═══ AI去字幕 部署自检 ═══")
@@ -53,7 +53,9 @@ if '--dry-run' in sys.argv:
     checks.append(("stable_ui", os.path.exists(_STABLE_UI), _STABLE_UI))
     checks.append(("python", os.path.exists(_PYTHON), _PYTHON))
     result = subprocess.run([_PYTHON, '-c',
-        f'import sys; sys.path.insert(0,"{os.path.dirname(_STABLE_UI)}"); sys.path.insert(0,"{os.path.dirname(_STABLE_UI)}/../shared"); import config; print(config.version_string())'
+        f'import sys; sys.path.insert(0,"{os.path.dirname(_STABLE_UI)}"); '
+        f'sys.path.insert(0,"{os.path.dirname(_STABLE_UI)}/../shared"); '
+        f'import config; print(config.version_string())'
     ], capture_output=True, text=True, timeout=10)
     if result.returncode == 0:
         checks.append(("模块导入", True, result.stdout.strip()))
@@ -65,9 +67,7 @@ if '--dry-run' in sys.argv:
     print(f"\n{'✅ 部署自检通过' if ok else '❌ 部署自检失败'}")
     sys.exit(0 if ok else 1)
 
-# 启动外部 Python 进程
+# 启动外部 Python 进程（stdout/stderr 保留给子进程，不归 log_writer 管）
 _env = os.environ.copy()
 _env["PYTHONIOENCODING"] = "utf-8"
-_stdout = open(_log, "a", encoding="utf-8")
-_stderr = open(_log, "a", encoding="utf-8")
-subprocess.Popen([_PYTHON, _STABLE_UI], env=_env, stdout=_stdout, stderr=_stderr)
+subprocess.Popen([_PYTHON, _STABLE_UI], env=_env)

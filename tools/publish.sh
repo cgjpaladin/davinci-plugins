@@ -106,7 +106,7 @@ print('  ✅ SMB 可达')
         echo "语法检查..."
         local fail=0
         cd "$PRODUCT_DIR"
-        for f in config.py check_core.py check.py ui.py; do
+        for f in config.py check_core.py ui.py; do
             python3 -m py_compile "$f" 2>/dev/null && echo "  ✅ $f" || { echo "  ❌ $f"; fail=1; }
         done
         [ $fail -ne 0 ] && echo "❌ 语法错误" && exit 1
@@ -211,7 +211,7 @@ publish_push_all() {
     else
         cd "$PRODUCT_DIR"
         local fail=0
-        for f in config.py check_core.py check.py ui.py; do
+        for f in config.py check_core.py ui.py; do
             python3 -m py_compile "$f" 2>/dev/null && echo "  ✅ $f" || { echo "  ❌ $f"; fail=1; }
         done
         [ $fail -ne 0 ] && echo "❌ 语法错误" && exit 1

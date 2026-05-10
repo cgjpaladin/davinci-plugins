@@ -476,44 +476,18 @@ def _load_config_from_file():
         _action_log(f"⚠ 读取配置失败: {e}")
 
 # ═══════════════════════════════════════════
-# 日志系统
+# 日志系统（统一 log_writer 模块）
 # ═══════════════════════════════════════════
-_HOSTNAME = socket.gethostname()
-_CONFIG_DIR = os.path.expanduser("~/Library/Application Support/交付自检")
-_CONFIG_FILE = os.path.join(_CONFIG_DIR, "config.json")
-_LOG_DIR_SMB = "/Volumes/MYJC/06_Software/达芬奇脚本/交付自检工具/logs"
-_LOG_FILE_SMB = os.path.join(_LOG_DIR_SMB, f"{_HOSTNAME}.log")
-
-# 本地开发日志
-_DEV_LOG_DIR = "/tmp/delivery_checker_dev"
-_LOG_FILE_LOCAL = os.path.join(_DEV_LOG_DIR,
-                               f"{_HOSTNAME}.log" if __channel__ == "dev"
-                               else f"{_HOSTNAME}_dev.log")
-
+from log_writer import get_logger
+_log = get_logger("交付自检工具")
 
 def _ts():
-    """当前时间戳字符串"""
     return time.strftime("%m-%d %H:%M:%S")
 
-
 def _action_log(msg: str):
-    """记录操作日志：SMB + 本地文件"""
-    ts = _ts()
-    line = f"[{ts}] {msg}"
-
-    # SMB 持久化
     try:
-        os.makedirs(_LOG_DIR_SMB, exist_ok=True)
-        with open(_LOG_FILE_SMB, "a", encoding="utf-8") as f:
-            f.write(line + "\n")
-    except Exception:
-        pass
-
-    # 本地文件
-    try:
-        os.makedirs(_DEV_LOG_DIR, exist_ok=True)
-        with open(_LOG_FILE_LOCAL, "a", encoding="utf-8") as f:
-            f.write(line + "\n")
+        _log.ui(f"[{_ts()}] {msg}")
+        _log.smb(f"[{_ts()}] {msg}")
     except Exception:
         pass
 
@@ -1317,28 +1291,24 @@ def _start_check():
             _action_log("✅ 所有检查通过")
         itm[HINT_LB].Text = hint
 
-        # ── 结果持久化：写入本地日志（AI 可读，窗口关闭后不丢）──
+        # ── 结果持久化 ──
         try:
-            import json as _json
-            _log_path = os.path.join(os.path.expanduser("~/.workbuddy/logs"), "delivery_checker.jsonl")
-            os.makedirs(os.path.dirname(_log_path), exist_ok=True)
-            with open(_log_path, "a", encoding="utf-8") as _lf:
-                _lf.write(_json.dumps({
-                    "t": time.time(),
-                    "project": project.GetName(),
-                    "timeline": timeline.GetName(),
-                    "fps": fps,
-                    "has_failures": has_failures,
-                    "has_warnings": has_warnings,
-                    "pass": pass_count, "fail": fail_count, "warn": warn_count,
-                    "sections": [
-                        {"group": s["group"], "section": s["section"],
-                         "all_ok": s["all_ok"],
-                         "fails": [{k: v for k, v in r.items() if not k.startswith("_")}
-                                   for r in s.get("rows", []) if "❌" in str(r.get("detail", ""))]}
-                        for s in sections
-                    ],
-                }, ensure_ascii=False) + "\n")
+            _log.ops({
+                "t": time.time(),
+                "project": project.GetName(),
+                "timeline": timeline.GetName(),
+                "fps": fps,
+                "has_failures": has_failures,
+                "has_warnings": has_warnings,
+                "pass": pass_count, "fail": fail_count, "warn": warn_count,
+                "sections": [
+                    {"group": s["group"], "section": s["section"],
+                     "all_ok": s["all_ok"],
+                     "fails": [{k: v for k, v in r.items() if not k.startswith("_")}
+                               for r in s.get("rows", []) if "❌" in str(r.get("detail", ""))]}
+                    for s in sections
+                ],
+            })
         except Exception:
             pass
 

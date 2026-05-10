@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # launcher.py — 交付自检工具 启动器
-import subprocess, os, sys, time, tempfile
+import subprocess, os, sys, time
 
 _PYTHON = "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
 if not os.path.exists(_PYTHON):
@@ -11,6 +11,12 @@ try:
 except NameError:
     _HERE = os.path.join(os.path.expanduser("~"),
         "Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit")
+
+sys.path.insert(0, os.path.join(_HERE, '..', 'shared'))
+sys.path.insert(0, '/Volumes/MYJC/06_Software/达芬奇脚本/shared')
+
+from log_writer import get_logger
+_log = get_logger("交付自检工具")
 
 _PRODUCT_DIRS = [
     '/Volumes/MYJC/06_Software/达芬奇脚本/交付自检工具',
@@ -25,11 +31,10 @@ for d in _PRODUCT_DIRS:
         break
 
 if not _UI_SCRIPT:
-    raise FileNotFoundError(f"找不到 ui.py，搜索路径: {_PRODUCT_DIRS}")
+    _log.launcher(f"找不到 ui.py，搜索: {_PRODUCT_DIRS}")
+    raise FileNotFoundError(f"找不到 ui.py")
 
-_log = os.path.join(tempfile.gettempdir(), "delivery_checker_ui.log")
-with open(_log, "a", encoding="utf-8") as f:
-    f.write(f"\n=== 交付自检 UI 启动 {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+_log.launcher(f"启动 ui: {_UI_SCRIPT}")
 
 if '--dry-run' in sys.argv:
     import socket
@@ -43,7 +48,9 @@ if '--dry-run' in sys.argv:
     checks.append(("ui.py", os.path.exists(_UI_SCRIPT), _UI_SCRIPT))
     checks.append(("python", os.path.exists(_PYTHON), _PYTHON))
     result = subprocess.run([_PYTHON, '-c',
-        f'import sys; sys.path.insert(0,"{os.path.dirname(_UI_SCRIPT)}"); sys.path.insert(0,"{os.path.dirname(_UI_SCRIPT)}/../shared"); import config; print(config.version_string())'
+        f'import sys; sys.path.insert(0,"{os.path.dirname(_UI_SCRIPT)}"); '
+        f'sys.path.insert(0,"{os.path.dirname(_UI_SCRIPT)}/../shared"); '
+        f'import config; print(config.version_string())'
     ], capture_output=True, text=True, timeout=10)
     if result.returncode == 0:
         checks.append(("模块导入", True, result.stdout.strip()))
@@ -57,6 +64,4 @@ if '--dry-run' in sys.argv:
 
 _env = os.environ.copy()
 _env["PYTHONIOENCODING"] = "utf-8"
-_stdout = open(_log, "a", encoding="utf-8")
-_stderr = open(_log, "a", encoding="utf-8")
-subprocess.Popen([_PYTHON, _UI_SCRIPT], env=_env, stdout=_stdout, stderr=_stderr)
+subprocess.Popen([_PYTHON, _UI_SCRIPT], env=_env)

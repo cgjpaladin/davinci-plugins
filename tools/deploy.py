@@ -50,15 +50,38 @@ def deploy(project_name, dry_run=False):
         print(f"❌ launcher.py 不存在: {src}")
         return False
     
-    dst = os.path.join(DAVINCI_EDIT, f"{project_name}.py")
+    # 读版本号，本地 launcher 带版本后缀
+    ver = ""
+    try:
+        sys.path.insert(0, project_dir)
+        sys.path.insert(0, os.path.join(project_dir, "..", "shared"))
+        import config
+        ver = config.version_string()
+    except Exception:
+        pass
+    
+    if ver:
+        filename = f"{project_name}_v{ver}.py"
+    else:
+        filename = f"{project_name}.py"
+    
+    # 清理旧版本 launcher（同一个项目只留一个）
+    for fname in os.listdir(DAVINCI_EDIT):
+        if fname == filename:
+            continue
+        if (fname.startswith(f"{project_name}_v") or fname == f"{project_name}.py") and fname.endswith(".py"):
+            os.remove(os.path.join(DAVINCI_EDIT, fname))
+            print(f"  🗑 清理旧 launcher: {fname}")
+    
+    dst = os.path.join(DAVINCI_EDIT, filename)
     if dry_run:
         print(f"  [DRY RUN] {src} → {dst}")
     else:
         shutil.copy2(src, dst)
-        print(f"  ✅ launcher.py → {project_name}.py")
+        print(f"  ✅ launcher.py → {filename}")
     
     print(f"\n🎉 已部署到 Workspace → Scripts:")
-    print(f"   {project_name}.py")
+    print(f"   {filename}")
     return True
 
 

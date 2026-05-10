@@ -198,13 +198,48 @@ dlg.Hide()
 '''
 
 LAUNCHER_PY = '''#!/usr/bin/env python3
-# launcher.py — __NAME__ 启动器（薄包装 → shared/launcher_router.py）
-import sys, os
-_here = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(_here, '..', 'shared'))
+# launcher.py — __NAME__ 启动器
+import subprocess, os, sys
+
+_PYTHON = "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
+if not os.path.exists(_PYTHON):
+    _PYTHON = "/usr/bin/python3"
+
+try:
+    _HERE = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    _HERE = os.path.join(os.path.expanduser("~"),
+        "Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit")
+
+sys.path.insert(0, os.path.join(_HERE, '..', 'shared'))
 sys.path.insert(0, '/Volumes/MYJC/06_Software/达芬奇脚本/shared')
-from launcher_router import route
-route("__DIR__", ui_module="ui")
+
+from log_writer import get_logger
+_log = get_logger("__DIR__")
+
+_UI_SCRIPT = '/Volumes/MYJC/06_Software/达芬奇脚本/__DIR__/ui.py'
+if not os.path.exists(_UI_SCRIPT):
+    _UI_SCRIPT = os.path.join(_HERE, '..', '..', '__DIR__', 'ui.py')
+
+_log.launcher(f"启动 {_UI_SCRIPT}")
+
+if '--dry-run' in sys.argv:
+    import socket
+    print(f"═══ __NAME__ 部署自检 ═══")
+    host = socket.gethostname()
+    routing = "DEV" if host in {"BryandeMac-mini.local", "BryandeMac-mini"} else "SMB"
+    print(f"  ✅ Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+    print(f"  ✅ 路由: {routing}")
+    result = subprocess.run([_PYTHON, '-c',
+        f'import sys; sys.path.insert(0,"{os.path.dirname(_UI_SCRIPT)}"); '
+        f'sys.path.insert(0,"{os.path.dirname(_UI_SCRIPT)}/../shared"); '
+        f'import config; print(config.version_string())'
+    ], capture_output=True, text=True, timeout=10)
+    print(f"  {'✅' if result.returncode == 0 else '❌'} 模块导入: {result.stdout.strip() if result.returncode == 0 else result.stderr.strip()[:60]}")
+    print(f"\n{'✅ 部署自检通过' if result.returncode == 0 else '❌ 部署自检失败'}")
+    sys.exit(0 if result.returncode == 0 else 1)
+
+subprocess.Popen([_PYTHON, _UI_SCRIPT], env=os.environ)
 '''
 
 ADAPTER_INIT_PY = '''# -*- coding: utf-8 -*-

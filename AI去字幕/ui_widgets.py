@@ -26,8 +26,10 @@ ui = fu.UIManager
 disp = bmd.UIDispatcher(ui)
 from config import (
     DEBUG, get_output_dir, get_log_dir, __version__, __channel__, version_string,
-    SMB_SCRIPTS, SMB_MOUNT, DEV_LOG_DIR, SMB_LOG_DIR, PRODUCT_NAME, BRAND_NAME,
+    SMB_SCRIPTS, SMB_MOUNT, PRODUCT_NAME, BRAND_NAME,
 )
+from log_writer import get_logger
+_log = get_logger(PRODUCT_NAME)
 from subtitle_state import init as state_init, is_locked as state_is_locked, acquire_lock, release_lock, get_original_path
 import ledger
 import ops_logger
@@ -210,18 +212,7 @@ dlg.On[COLOR_CB].CurrentIndexChanged = _on_color_change
 # ── 线程安全的日志队列 ──
 _log_queue = queue.Queue()
 _main_thread = threading.current_thread()
-import tempfile as _tempfile
-# 日志路径（常量来自 config.py）
-# dev 版写本地 dev 目录；生产版写 ~/.workbuddy/logs/（持久化，非 /tmp）
-_UI_LOG_FILE = os.path.join(DEV_LOG_DIR, "ui.log") if __channel__ == "dev" else \
-               os.path.join(os.path.expanduser("~/.workbuddy/logs"), "ui.log")
-
-# 确保日志目录存在（生产版 ~/.workbuddy/logs/ 可能未创建）
-os.makedirs(os.path.dirname(_UI_LOG_FILE), exist_ok=True)
-
-# dev 版写本地固定目录，避免混入生产 SMB 目录
-_SMB_LOG_DIR = DEV_LOG_DIR if __channel__ == "dev" else SMB_LOG_DIR
-_SMB_LOG = os.path.join(_SMB_LOG_DIR, f"{socket.gethostname()}.log")
+# 日志通过 log_writer 模块写入 ~/.workbuddy/logs/AI去字幕/ui_{date}.log
 
 _LOG_MAX_LINES = 200
 _log_line_count = 0
@@ -256,27 +247,23 @@ def _ui_write_direct(msg: str):
             pass
     else:
         _log_queue.put(msg)
-    # 文件持久化（本地 + SMB 双写，方便查同事日志）
+    # 文件持久化（本地 + SMB 双写）
     try:
-        with open(_UI_LOG_FILE, "a", encoding="utf-8") as f:
-            f.write(msg + "\n")
-    except Exception:  # 日志追加失败不阻塞 UI
-        import sys; print(f"[ui_write] 本地日志写入失败", file=sys.stderr)
+        _log.ui(msg)
+        _log.smb(msg)
+    except Exception:
+        pass
 
 def _ui_write(msg: str):
     _ui_write_direct(msg)
 
-# ── SMB 关键事件日志：一人一文件，方便远程 debug ──
-# _SMB_LOG 已在文件顶部定义，始终指向 SMB
+# ── SMB 关键事件日志 ──
 def _smb_log(msg: str):
-    """只记关键事件到 SMB，不记适配器噪音"""
+    """只记关键事件到 SMB"""
     try:
-        ts = time.strftime("%m-%d %H:%M:%S")
-        os.makedirs(os.path.dirname(_SMB_LOG), exist_ok=True)
-        with open(_SMB_LOG, "a", encoding="utf-8") as f:
-            f.write(f"[{ts}] {msg}\n")
-    except Exception:  # SMB 写入失败不阻塞 UI
-        import sys
+        _log.smb(msg)
+    except Exception:
+        pass
         print(f"[_smb_log FAIL] {msg}", file=sys.stderr)
 
 def _check_smb():
@@ -417,17 +404,12 @@ def _pg(r):
         pass
 
 def _log_file(msg: str):
-    """写本地 + SMB 双日志（操作和状态，方便远程 debug）"""
+    """写本地 + SMB 双日志"""
     try:
-        with open(_UI_LOG_FILE, "a", encoding="utf-8") as f:
-            f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
-    except Exception:  # 进度条更新失败不阻塞 UI
-        import sys; print(f"[_log_file] 本地日志写入失败", file=sys.stderr)
-    try:
-        with open(_SMB_LOG, "a", encoding="utf-8") as f:
-            f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
-    except Exception:  # 按钮状态更新失败不阻塞 UI
-        import sys; print(f"[_log_file] SMB日志写入失败", file=sys.stderr)
+        _log.ui(msg)
+        _log.smb(msg)
+    except Exception:
+        pass
 
 def _log_action(action: str):
     """记录用户操作到日志"""
