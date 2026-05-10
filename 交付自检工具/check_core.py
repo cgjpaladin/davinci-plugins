@@ -1113,3 +1113,58 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
     results = [_make_result("fail", detail=f"调色: {len(issues)} 处异常", is_summary=True)]
     results.extend(issues)
     return results
+
+
+def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
+    """检查实拍素材（含摄影机元数据）是否放在了 V4/V5。
+
+    短剧项目约定：实拍素材只能放 V1-V3。放在 V4/V5 会打乱剪辑师工作流。
+
+    Returns:
+        list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
+    """
+    _cam_fields = ("ISO", "Camera Model", "Lens", "Gamma", "Color Space")
+    _cam_cache = {}   # mp_unique_id → bool: 是否为实拍素材
+    issues = []
+
+    for vi in (4, 5):
+        items = _get_items(timeline, "video", vi)
+        if not items:
+            continue
+        track = f"V{vi}"
+        for it in items:
+            if not _in_io_range(it, io_range):
+                continue
+            if _get_cached(it, "enabled", True) is False:
+                continue
+            mp = _get_cached(it, "mp")
+            if mp is None:
+                continue
+
+            # 缓存：同一 MediaPoolItem 只查一次摄影机元数据
+            try:
+                mp_uid = mp.GetUniqueId()
+            except Exception:
+                continue
+            if mp_uid not in _cam_cache:
+                try:
+                    _cam_cache[mp_uid] = any(mp.GetClipProperty(f) for f in _cam_fields)
+                except Exception:
+                    _cam_cache[mp_uid] = False
+            if not _cam_cache[mp_uid]:
+                continue
+
+            name = _get_clip_name(it)
+            smpte = _get_smpte(fps)
+            tc = smpte.gettc(_get_cached(it, "start", 0))
+            issues.append(_make_result("fail", track=track, timecode=tc,
+                detail=f"实拍素材「{name}」位于第 {vi} 轨",
+                reason="实拍素材请放 V1-V3"))
+
+    if not issues:
+        return [_make_result("pass", detail="实拍素材均在 V1-V3", is_summary=True)]
+
+    results = [_make_result("fail",
+        detail=f"实拍素材越轨: {len(issues)} 处", is_summary=True)]
+    results.extend(issues)
+    return results

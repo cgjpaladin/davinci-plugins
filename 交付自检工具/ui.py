@@ -51,6 +51,7 @@ CHK_TRACK, CHK_SUB_DURATION, CHK_SUB_LINEBREAK, CHK_SUB_GLYPH = \
 CHK_BLACK, CHK_VIDEO_CLAMP, CHK_BORDER, CHK_SPEED, CHK_MONO, CHK_LOUDNESS, CHK_FRAGMENT, CHK_TIMELINE, CHK_COLOR = \
     "chk_black", "chk_vid_clamp", "chk_border", "chk_speed", "chk_mono", "chk_loudness", "chk_fragment", "chk_timeline", "chk_color"
 CHK_CENSOR_SYSTEM, CHK_CENSOR_PERSONAL, CHK_TYPO = "chk_censor_sys", "chk_censor_personal", "chk_typo"
+CHK_CAMERA = "chk_camera"
 CHK_BLACK_FRAME = CHK_BLACK  # 别名
 BTN_START = "btn_start"
 BTN_CONFIG = "btn_config"

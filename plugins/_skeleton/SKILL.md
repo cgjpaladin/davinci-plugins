@@ -91,7 +91,6 @@ rm plugins/AI换口型/adapters/__pycache__/*
 - `sync.sh` — SMB 同步
 - `bump_version.sh` — 版本号 MINOR +0.1
 - `gray.sh` — 灰度管理
-- `deploy.sh` — 单机部署
 
 `build_local.sh` 已内置：
 - 📝 当前版本号显示
@@ -105,7 +104,8 @@ rm plugins/AI换口型/adapters/__pycache__/*
 
 ## 第七步：launcher
 
-从 AI去字幕 复制 launcher.py + launcher_ui.py，改 import 路径。
+launcher.py 是薄包装，调用 `shared/launcher_router.py`（按 hostname 自动路由到本地/SMB）。只需改产品名即可。
+通过 `tools/deploy.py` 一键部署到达芬奇。
 
 ---
 
