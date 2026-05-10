@@ -2,7 +2,7 @@
 # launcher.py — AI去字幕 启动器
 # 部署到达芬奇 Fusion/Scripts/Edit/，通过 subprocess 外挂外部 Python 进程运行 UI
 # 注意: DaVinci Fusion 内 __file__ 不存在，需 fallback
-import subprocess, os, sys, time
+import subprocess, os, sys, time, socket
 
 _PYTHON = "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
 if not os.path.exists(_PYTHON):
