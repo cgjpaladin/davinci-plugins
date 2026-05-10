@@ -318,7 +318,7 @@ def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0, io_range=Non
         parts = ["无异常"]
         if disabled_count:
             parts.append(f"跳过 {disabled_count} 条禁用")
-        results.append(_make_result("pass", detail=", ".join(parts), is_summary=True))
+        results.append(_make_result("pass", detail="字幕时长: 全部通过", is_summary=True))
     else:
         parts = []
         if issues_short:
@@ -327,7 +327,7 @@ def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0, io_range=Non
             parts.append(f"夹帧: {len(issues_gap)} 处")
         if disabled_count:
             parts.append(f"跳过 {disabled_count} 条禁用")
-        results.append(_make_result("fail", detail=", ".join(parts), is_summary=True))
+        results.append(_make_result("fail", detail=f"字幕时长: {total_issues} 处", is_summary=True))
         results.extend(issues_short)
         results.extend(issues_gap)
 
@@ -372,10 +372,10 @@ def check_disabled_items(timeline, fps=25.0, io_range=None) -> list:
 
     if not issues:
         results.append(_make_result("pass",
-            detail="无禁用", is_summary=True))
+            detail="启用/禁用: 全部通过", is_summary=True))
     else:
         results.append(_make_result("fail",
-            detail=f"未启用: {len(issues)} 个片段", is_summary=True))
+            detail=f"启用/禁用: {len(issues)} 处", is_summary=True))
         results.extend(issues)
 
     return results
@@ -503,7 +503,7 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
 
     if not gaps:
         return [_make_result("pass",
-            detail="覆盖完整, 无黑帧",
+            detail="黑帧: 全部通过",
             is_summary=True)]
 
     smpte = SMPTE()
@@ -511,7 +511,7 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
     smpte.df = False
 
     results = [_make_result("fail",
-        detail=f"黑帧: {len(gaps)} 处空隙",
+        detail=f"黑帧: {len(gaps)} 处",
         is_summary=True)]
 
     for s, e, gap_reason, track, name in gaps:
@@ -607,11 +607,11 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
 
     if not issues:
         return [_make_result("pass",
-            detail="所有音频声道正常",
+            detail="声道: 全部通过",
             is_summary=True)]
 
     results = [_make_result("fail",
-        detail=f"声道异常: {len(issues)} 处",
+        detail=f"声道: {len(issues)} 处",
         is_summary=True)]
     results.extend(issues)
     return results
@@ -653,7 +653,7 @@ def check_subtitle_glyph(timeline, fps=25.0, io_range=None) -> list:
                     break  # 一片段只报一条
 
     if not issues:
-        return [_make_result("pass", detail="无异体字", is_summary=True)]
+        return [_make_result("pass", detail="异体字: 全部通过", is_summary=True)]
 
     results = [_make_result("fail", detail=f"异体字: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
@@ -707,7 +707,7 @@ def check_subtitle_linebreak(timeline, fps=25.0, io_range=None) -> list:
                 continue
 
     if not issues:
-        return [_make_result("pass", detail="换行正常", is_summary=True)]
+        return [_make_result("pass", detail="换行: 全部通过", is_summary=True)]
 
     results = [_make_result("fail", detail=f"换行异常: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
@@ -966,7 +966,7 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
             issues.append(_make_result("fail", track=track, timecode=tc,
                 detail=f"{name}，有黑边", reason="适当调整以规避黑边"))
     if not issues:
-        return [_make_result("pass", detail="无黑边", is_summary=True)]
+        return [_make_result("pass", detail="黑边: 全部通过", is_summary=True)]
     results = [_make_result("fail", detail=f"黑边: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
     return results
@@ -1005,7 +1005,7 @@ def check_speed(timeline, project_fps=25.0, io_range=None) -> list:
                     detail=f"{name}，速度为{speed:.0f}%",
                     reason="调整变速，或使用帧混合/光流法"))
     if not issues:
-        return [_make_result("pass", detail="变速正常", is_summary=True)]
+        return [_make_result("pass", detail="变速: 全部通过", is_summary=True)]
     results = [_make_result("fail", detail=f"变速: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
     return results
@@ -1037,7 +1037,7 @@ def check_video_clamping(timeline, threshold_frames=1, fps=25.0, io_range=None) 
                     reason="检查是否夹帧"))
     if not issues:
         return [_make_result("pass",
-            detail="无夹帧" if checked else "无可检片段", is_summary=True)]
+            detail="视频夹帧: 全部通过", is_summary=True)]
     results = [_make_result("fail", detail=f"夹帧: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
     return results
@@ -1107,10 +1107,10 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
 
     if not issues:
         return [_make_result("pass",
-            detail=f"调色正常 ({checked} 个片段)",
+            detail="调色: 全部通过",
             is_summary=True)]
 
-    results = [_make_result("fail", detail=f"调色: {len(issues)} 处异常", is_summary=True)]
+    results = [_make_result("fail", detail=f"调色: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
     return results
 
@@ -1203,23 +1203,28 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
                 continue
             if _get_cached(it, "enabled", True) is False:
                 continue
+            name = _get_clip_name(it)
             mp = _get_cached(it, "mp")
-            if mp is None:
-                continue
-            try:
-                mp_uid = mp.GetUniqueId()
-            except Exception:
-                continue
-            if mp_uid not in _type_cache:
+            # 判断：MP存在→查Type，MP不存在→查名字
+            is_text = False
+            if mp is not None:
                 try:
-                    _type_cache[mp_uid] = mp.GetClipProperty("Type") or ""
+                    mp_uid = mp.GetUniqueId()
                 except Exception:
-                    _type_cache[mp_uid] = ""
-            mp_type = _type_cache[mp_uid]
-            if mp_type not in ("Text", "Text+"):
+                    mp_uid = None
+                if mp_uid is not None:
+                    if mp_uid not in _type_cache:
+                        try:
+                            _type_cache[mp_uid] = mp.GetClipProperty("Type") or ""
+                        except Exception:
+                            _type_cache[mp_uid] = ""
+                    is_text = _type_cache[mp_uid] in ("Text", "Text+")
+            else:
+                # 时间线上直接创建的文本片段（无MP）
+                is_text = name.startswith("文本") or name in ("Text", "Text+")
+            if not is_text:
                 continue
 
-            name = _get_clip_name(it)
             smpte = _get_smpte(fps)
             tc = smpte.gettc(_get_cached(it, "start", 0))
             issues.append(_make_result("fail", track=track, timecode=tc,
@@ -1237,23 +1242,27 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
                 continue
             if _get_cached(it, "enabled", True) is False:
                 continue
+            name = _get_clip_name(it)
             mp = _get_cached(it, "mp")
-            if mp is None:
-                continue
-            try:
-                mp_uid = mp.GetUniqueId()
-            except Exception:
-                continue
-            if mp_uid not in _type_cache:
+            is_adj = False
+            if mp is not None:
                 try:
-                    _type_cache[mp_uid] = mp.GetClipProperty("Type") or ""
+                    mp_uid = mp.GetUniqueId()
                 except Exception:
-                    _type_cache[mp_uid] = ""
-            mp_type = _type_cache[mp_uid]
-            if mp_type != "调整剪辑":
+                    mp_uid = None
+                if mp_uid is not None:
+                    if mp_uid not in _type_cache:
+                        try:
+                            _type_cache[mp_uid] = mp.GetClipProperty("Type") or ""
+                        except Exception:
+                            _type_cache[mp_uid] = ""
+                    is_adj = _type_cache[mp_uid] == "调整剪辑"
+            else:
+                # 时间线上直接创建的调整图层（无MP）
+                is_adj = name == "调整片段"
+            if not is_adj:
                 continue
 
-            name = _get_clip_name(it)
             smpte = _get_smpte(fps)
             tc = smpte.gettc(_get_cached(it, "start", 0))
             issues.append(_make_result("fail", track=track, timecode=tc,
