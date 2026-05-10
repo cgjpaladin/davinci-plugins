@@ -5,10 +5,24 @@
 set -e
 
 # ── 自动推断产品信息 ──
-SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)}"
+# 从调用脚本的目录名推断产品名
+_CALLER="${BASH_SOURCE[1]}"
+_CALLER_DIR="$(cd "$(dirname "$_CALLER")" && pwd)"
+SCRIPT_DIR="${SCRIPT_DIR:-$_CALLER_DIR}"
 PRODUCT_DIR="${PRODUCT_DIR:-$SCRIPT_DIR}"
 PRODUCT_NAME="${PRODUCT_NAME:-$(basename "$PRODUCT_DIR")}"
-VERIFY_MODE="${VERIFY_MODE:-full}"  # full=AI产品 / light=自检工具
+
+# 从调用脚本名推断 stage（build_local / push_all / sync / gray）
+_STAGE="${_STAGE:-$(basename "$_CALLER" .sh)}"
+
+# VERIFY_MODE: 有 adapters/ 目录 = AI 产品 → full，否则 light
+if [ -z "${VERIFY_MODE:-}" ]; then
+    if [ -d "$PRODUCT_DIR/adapters" ]; then
+        VERIFY_MODE=full
+    else
+        VERIFY_MODE=light
+    fi
+fi
 
 # Launcher 文件名前缀（从 PRODUCT_NAME 推断）
 LAUNCHER_PREFIX="${LAUNCHER_PREFIX:-$PRODUCT_NAME}"
@@ -477,3 +491,8 @@ with open('$SMB_CFG', 'w') as f: f.write(code)
         exit 1
     fi
 }
+
+# ── 自动路由（如果壳脚本没有显式调用函数，按脚本名自动分发）──
+if [ "${_AUTO_DISPATCH:-1}" = "1" ] && declare -f "publish_${_STAGE}" > /dev/null 2>&1; then
+    publish_${_STAGE}
+fi
