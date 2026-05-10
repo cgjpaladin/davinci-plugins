@@ -8,6 +8,7 @@ import sys
 import platform
 
 # ── 达芬奇 API 路径 ──
+# 以下 Developer/Scripting 为达芬奇官方安装目录（系统级），保留不改
 _SYS = platform.system()
 
 if _SYS == "Darwin":
