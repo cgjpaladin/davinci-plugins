@@ -33,6 +33,7 @@ from config import (
     DEFAULT_SUBTITLE_TRACKS,
     DEFAULT_VIDEO_TRACKS,
     DEFAULT_AUDIO_TRACKS,
+    AUDIO_TRACK_PRESET,
 )
 from check_core import (check_track_structure, check_subtitle_clamping, check_disabled_items,
                           check_black_frames, check_audio_mono, check_timeline_settings,
@@ -1147,7 +1148,7 @@ def _start_check():
             return True
 
         aud_names_ok = True
-        if aud_count == 10:
+        if aud_count == DEFAULT_AUDIO_TRACKS:
             for idx, preset in enumerate(AUDIO_TRACK_PRESET):
                 if timeline.GetTrackName("audio", idx + 1) != preset["name"]:
                     aud_names_ok = False; break
@@ -1155,9 +1156,9 @@ def _start_check():
         gates = {}
         if itm[CHK_TRACK].Checked:
             # 用户勾了轨道结构 → 启用门判断
-            gates["subtitle"] = gate0_ok and sub_count == 1 and _all_enabled("subtitle", sub_count)
-            gates["video"]    = gate0_ok and vid_count == 5 and _all_enabled("video", vid_count)
-            gates["audio"]    = gate0_ok and aud_count == 10 and _all_enabled("audio", aud_count) and aud_names_ok
+            gates["subtitle"] = gate0_ok and sub_count == DEFAULT_SUBTITLE_TRACKS and _all_enabled("subtitle", sub_count)
+            gates["video"]    = gate0_ok and vid_count == DEFAULT_VIDEO_TRACKS and _all_enabled("video", vid_count)
+            gates["audio"]    = gate0_ok and aud_count == DEFAULT_AUDIO_TRACKS and _all_enabled("audio", aud_count) and aud_names_ok
         else:
             # 没勾轨道结构 → 门全开，不拦任何内容检查
             gates["subtitle"] = gate0_ok
