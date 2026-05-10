@@ -278,9 +278,7 @@ def _filter_covered(results, personal_words):
     kept = [results[0]]  # 保留汇总行
     removed = 0
     for r in results[1:]:
-        detail = r.get("detail", "")
-        # 从 detail 中提取被命中的词（check_subtitle_censor 使用 repr(text)）
-        word = _extract_censor_word(detail)
+        word = r.get("detail", "")
         if word and word in personal_words:
             removed += 1
             continue
@@ -294,15 +292,6 @@ def _filter_covered(results, personal_words):
             kept[0] = _make_result_passthrough("fail",
                 detail=f"系统违禁词典: {total} 处  (个人词典覆盖 {removed} 处)", is_summary=True)
     return kept
-
-def _extract_censor_word(detail):
-    """从 check_subtitle_censor 的 detail（repr格式）中提取违禁词。e.g. "'文本'" → None"""
-    import ast
-    try:
-        return ast.literal_eval(detail) if detail.startswith("'") else None
-    except Exception:
-        return None
-
 CHECKS = [
     {"id": "timeline",      "section": "时间线",   "chk_id": CHK_TIMELINE,      "group": "工程", "subgroup": "时间线", "run_fn": _run_timeline_check},
     {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "group": "工程", "subgroup": "轨道",   "run_fn": _run_track_check},
@@ -310,8 +299,8 @@ CHECKS = [
     {"id": "sub_linebreak", "section": "换行",     "chk_id": CHK_SUB_LINEBREAK,  "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_linebreak_check},
     {"id": "sub_glyph",     "section": "异体字",   "chk_id": CHK_SUB_GLYPH,      "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_glyph_check},
     {"id": "sub_duration",  "section": "时长",     "chk_id": CHK_SUB_DURATION,   "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_duration_check},
-    {"id": "censor_system",  "section": "系统违禁词典","chk_id": CHK_CENSOR_SYSTEM, "group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_system},
     {"id": "censor_personal","section": "个人违禁词典","chk_id": CHK_CENSOR_PERSONAL,"group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_personal},
+    {"id": "censor_system",  "section": "系统违禁词典","chk_id": CHK_CENSOR_SYSTEM, "group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_system},
     {"id": "video_clamp",   "section": "夹帧",     "chk_id": CHK_VIDEO_CLAMP,    "group": "视频", "subgroup": "夹帧",   "run_fn": _run_video_clamp_check},
     {"id": "black_frame",   "section": "黑帧",     "chk_id": CHK_BLACK,          "group": "视频", "subgroup": "黑帧",   "run_fn": _run_black_frame_check},
     {"id": "black_border",  "section": "黑边",     "chk_id": CHK_BORDER,         "group": "视频", "subgroup": "黑边",   "run_fn": _run_black_border_check},

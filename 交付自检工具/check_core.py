@@ -294,6 +294,7 @@ def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0, io_range=Non
                 issues_short.append(_make_result(
                     "fail", track=track, timecode=tc,
                     detail=f"{text}  {duration}帧，过短",
+                    reason="请检查字幕是否夹帧",
                 ))
 
             # ② 间距夹帧
@@ -305,6 +306,7 @@ def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0, io_range=Non
                     issues_gap.append(_make_result(
                         "fail", track=track, timecode=tc,
                         detail=f"{prev_name} → {text}  {gap}帧，夹帧",
+                        reason="请调整字幕间距",
                     ))
 
             prev_end = end_frame
@@ -365,6 +367,7 @@ def check_disabled_items(timeline, fps=25.0, io_range=None) -> list:
                 issues.append(_make_result(
                     "fail", track=track, timecode=tc,
                     detail=f"{name}，未启用",
+                    reason="请在时间线上启用该片段",
                 ))
 
     if not issues:
@@ -479,23 +482,24 @@ def check_black_frames(timeline, fps=25.0, io_range=None) -> list:
                 break
         gaps.append((prev, tl_end, reason, track, gap_name))
 
-    # ── 补充：音频尾部超出视频（用子帧精度）──
+    # ── 补充：音频尾部超出视频（用子帧精度，只取最终位置）──
     last_video = merged[-1][1] if merged else tl_end
+    audio_max_end = last_video
     for ai in range(1, timeline.GetTrackCount("audio") + 1):
         audio_items = _get_items(timeline, "audio", ai)
         if not audio_items:
             continue
-        track = f"A{ai}"
         for it in audio_items:
-            # 音频用子帧精度算真实尾部
             a_start = _get_cached(it, "start", 0)
             a_dur = it.GetDuration(True)
             a_end_real = a_start + a_dur
-            if a_end_real > last_video:
-                overrun = round(a_end_real - last_video, 2)
-                audio_name = _get_clip_name(it)
-                gaps.append((last_video, int(a_end_real) + 1,
-                             f"音频超出视频尾 {overrun}帧", track, audio_name))
+            if a_end_real > audio_max_end:
+                audio_max_end = a_end_real
+
+    if audio_max_end > last_video:
+        overrun = round(audio_max_end - last_video, 2)
+        gaps.append((last_video, int(audio_max_end) + 1,
+                     f"音频超出视频尾 {overrun}帧", "", ""))
 
     if not gaps:
         return [_make_result("pass",
@@ -515,14 +519,24 @@ def check_black_frames(timeline, fps=25.0, io_range=None) -> list:
         tc = smpte.gettc(s)
         if gap_reason == "无片段覆盖":
             detail = f"空白 {duration} 帧"
+            reason = "请删除大段黑场" if duration >= fps else "请检查是否有夹帧"
         elif gap_reason.startswith("音频超出"):
             detail = f"{gap_reason}，{name}" if name else gap_reason
+            reason = "请调整音频长度使其不超过视频尾"
+        elif gap_reason.startswith("不透明度"):
+            detail = f"{name}，不透明度不为 100%"
+            reason = "请将不透明度调回 100%"
+        elif gap_reason == "未启用":
+            detail = f"{name}，{gap_reason}"
+            reason = "请在时间线上启用该片段"
         elif name:
             detail = f"{name}，{gap_reason}"
+            reason = "请替换为有效视频素材"
         else:
             detail = f"{duration} 帧，{gap_reason}"
+            reason = ""
         results.append(_make_result("fail", timecode=tc, track=track,
-                                    detail=detail))
+                                    detail=detail, reason=reason))
 
     return results
 
@@ -577,6 +591,7 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
                     issues.append(_make_result(
                         "fail", track=track, timecode=tc,
                         detail=f"{name}，{ch_reason}",
+                        reason="请将音频片段复制为立体声",
                     ))
                     break  # 一片段只报一次
 
@@ -586,6 +601,7 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
                     issues.append(_make_result(
                         "fail", track=track, timecode=tc,
                         detail=f"{name}，单声道片段",
+                        reason="请将音频片段复制为立体声",
                     ))
                     break
 
@@ -679,13 +695,15 @@ def check_subtitle_linebreak(timeline, fps=25.0, io_range=None) -> list:
             # 硬换行
             if '\n' in text:
                 issues.append(_make_result("fail", track=track, timecode=tc,
-                    detail=f"{repr(text)}，含硬换行"))
+                    detail=f"硬换行: {text}",
+                    reason="请调整断句"))
                 continue
 
             # CPL 超限
             if cpl > 0 and len(text) > cpl:
                 issues.append(_make_result("fail", track=track, timecode=tc,
-                    detail=f"{repr(text)}，超单行 {cpl} 字上限"))
+                    detail=f"超单行 {cpl} 字上限: {text}",
+                    reason="请调整断句"))
                 continue
 
     if not issues:
@@ -769,16 +787,10 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None) -> list:
             m = pattern.search(text)
             if m:
                 word = m.group()
-                detail_parts = [f"含违禁词: {word}"]
-                cat = category_map.get(word)
-                if cat:
-                    detail_parts.append(f" [{cat}]")
-                reason_text = ""
-                sug = suggestion_map.get(word)
-                if sug:
-                    reason_text = f"建议替换为: {sug}"
+                sug = suggestion_map.get(word, "")
+                reason_text = f"建议替换为: {sug}" if sug else "删除违禁词"
                 issues.append(_make_result("fail", track=track, timecode=tc,
-                    detail=f"{repr(text)}，{''.join(detail_parts)}",
+                    detail=word,
                     reason=reason_text))
 
     if not issues:
@@ -920,6 +932,10 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
             fit_scale = max(timeline_w / src_w, timeline_h / src_h) if abs(src_ratio - tl_ratio) < 0.02 else 1.0
             eff_w = src_w * fit_scale * zoom_x
             eff_h = src_h * fit_scale * zoom_y
+            # 素材够大且无旋转 → 偏位是故意的构图选择，不报
+            # 有旋转时即使素材够大，角点检测也可能漏判边缘黑三角（SAT盲区）
+            if eff_w >= timeline_w and eff_h >= timeline_h and rot == 0:
+                continue
             cos_r_raw = math.cos(rot); sin_r_raw = math.sin(rot)
             hw, hh = eff_w / 2.0, eff_h / 2.0
             has_gap = False
@@ -931,6 +947,9 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
                     has_gap = True; break
             if not has_gap: continue
             name = _get_clip_name(it)
+            # 跳过特殊片段（定场/转场/结尾画面）
+            if any(kw in name for kw in ("未完待续", "定格转场", "全剧终")):
+                continue
             tc = smpte.gettc(_get_cached(it, "start", 0))
             issues.append(_make_result("fail", track=track, timecode=tc,
                 detail=f"{name}，有黑边", reason="适当调整以规避黑边"))

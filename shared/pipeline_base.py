@@ -190,10 +190,14 @@ class BasePipeline(ABC):
         results = self._submit(tasks, batch)
         self._t_prep_end = time.time()
 
+        # ── 自动 fallback：全部失败 → 切备用 adapter 重试 ──
+        if results and all(not (r and getattr(r.result, 'success', False)) for r in results):
+            self.log.warn(f"{self._get_adapter().name} 全部失败，切换到备用...")
+            results = self._retry_with_fallback(tasks, batch)
+            self._t_prep_end = time.time()
+
         if not results:
             return self._report
-
-        self.log.info("下载中...")
 
         # ── 替换回时间线 ──
         output_files = self._download_apply(results)
@@ -450,6 +454,23 @@ class BasePipeline(ABC):
     def _submit(self, tasks: list, batch: bool) -> list:
         """提交 API 处理。返回 [ResultItem, ...] 列表。"""
         ...
+
+    # ═══════════════════════════════════════
+    # Fallback
+    # ═══════════════════════════════════════
+
+    def _retry_with_fallback(self, tasks: list, batch: bool) -> list:
+        """全部失败时自动切备用 adapter 重试。"""
+        current = self._get_adapter()
+        current_key = "ghostcut" if current.name == "GhostCut" else "wuhenai"
+        self.log.info(f"切换到备用 adapter（跳过 {current.name}）")
+
+        self._adapter = None
+        from adapters import create_preferred_adapter
+        self._adapter = create_preferred_adapter(exclude=current_key)
+        self._wire_adapter_logger(self._adapter)
+
+        return self._submit(tasks, batch)
 
     # ═══════════════════════════════════════
     # 钩子（子类按需覆盖）

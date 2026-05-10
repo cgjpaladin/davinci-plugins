@@ -189,10 +189,14 @@ def create_ghostcut_adapter(mode: str = "pro_box") -> "GhostCutAdapter":
     return GhostCutAdapter(adapter_cfg)
 
 
-def create_preferred_adapter():
-    """按 ADAPTER_PRIORITY 依次尝试，返回第一个有余额的适配器。"""
+def create_preferred_adapter(exclude: str = ""):
+    """按 ADAPTER_PRIORITY 依次尝试，返回第一个有余额的适配器。
+    exclude: 跳过指定的 pricing key，用于 fallback 重试。
+    """
     from pricing_defaults import ADAPTER_PRIORITY
     for key in ADAPTER_PRIORITY:
+        if key == exclude:
+            continue
         try:
             if key == "ghostcut":
                 a = create_ghostcut_adapter()
