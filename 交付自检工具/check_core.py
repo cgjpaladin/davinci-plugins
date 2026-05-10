@@ -747,11 +747,12 @@ def check_subtitle_linebreak(timeline, fps=25.0, io_range=None) -> list:
     return results
 
 
-def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None) -> list:
+def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn=False) -> list:
     """检测字幕含违禁词。
 
     Args:
         dict_path: 违禁词文件路径，一行一词
+        use_warn: True=用⚠, False=用❌（个人词典用❌，系统词典用⚠）
 
     Returns:
         list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
@@ -822,14 +823,16 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None) -> list:
                 word = m.group()
                 sug = suggestion_map.get(word, "")
                 reason_text = f"建议替换为: {sug}" if sug else "检查违禁词"
-                issues.append(_make_result("fail", track=track, timecode=tc,
+                status = "warn" if use_warn else "fail"
+                issues.append(_make_result(status, track=track, timecode=tc,
                     detail=word,
                     reason=reason_text))
 
     if not issues:
         return [_make_result("pass", detail="无违禁词", is_summary=True)]
 
-    results = [_make_result("fail", detail=f"违禁词: {len(issues)} 处", is_summary=True)]
+    status = "warn" if use_warn else "fail"
+    results = [_make_result(status, detail=f"违禁词: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
     return results
 

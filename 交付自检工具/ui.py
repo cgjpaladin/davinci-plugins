@@ -260,7 +260,7 @@ def _run_censor_system(timeline, fps, **_kw):
                         with open(path, "r", encoding="utf-8", errors="ignore") as src:
                             tmp.write(src.read())
         tmp.close()
-        all_results = check_subtitle_censor(timeline, tmp.name, fps, io_range=_kw.get("io_range"))
+        all_results = check_subtitle_censor(timeline, tmp.name, fps, io_range=_kw.get("io_range"), use_warn=True)
     finally:
         os.unlink(tmp.name)
 
