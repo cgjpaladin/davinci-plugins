@@ -481,6 +481,9 @@ def _load_config_from_file():
 # ═══════════════════════════════════════════
 from log_writer import get_logger
 _log = get_logger("交付自检工具")
+_HOSTNAME = socket.gethostname()
+_CONFIG_DIR = os.path.expanduser("~/Library/Application Support/交付自检")
+_CONFIG_FILE = os.path.join(_CONFIG_DIR, "config.json")
 
 def _ts():
     return time.strftime("%m-%d %H:%M:%S")

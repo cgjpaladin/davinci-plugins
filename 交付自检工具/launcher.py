@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # launcher.py — 交付自检工具 启动器
-import subprocess, os, sys, time
+import subprocess, os, sys, time, socket
 
 _PYTHON = "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
 if not os.path.exists(_PYTHON):
@@ -19,8 +19,13 @@ _log = get_logger("交付自检工具")
 
 _PRODUCT_DIRS = [
     '/Volumes/MYJC/06_Software/达芬奇脚本/交付自检工具',
-    os.path.join(_HERE, '..', '..', '交付自检工具'),
+    '/Users/bryan/WorkBuddy/达芬奇插件工坊/交付自检工具',
 ]
+
+# Dev 机本地优先
+_DEV_HOSTS = {"BryandeMac-mini.local", "BryandeMac-mini"}
+if socket.gethostname() in _DEV_HOSTS:
+    _PRODUCT_DIRS.reverse()
 
 _UI_SCRIPT = None
 for d in _PRODUCT_DIRS:

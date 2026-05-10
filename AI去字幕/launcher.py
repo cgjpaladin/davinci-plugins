@@ -23,8 +23,13 @@ _log = get_logger("AI去字幕")
 
 _PRODUCT_DIRS = [
     '/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕',
-    os.path.join(_HERE, '..', '..', 'AI去字幕'),
+    '/Users/bryan/WorkBuddy/达芬奇插件工坊/AI去字幕',
 ]
+
+# Dev 机本地优先
+_DEV_HOSTS = {"BryandeMac-mini.local", "BryandeMac-mini"}
+if socket.gethostname() in _DEV_HOSTS:
+    _PRODUCT_DIRS.reverse()
 
 _STABLE_UI = None
 for d in _PRODUCT_DIRS:
