@@ -38,7 +38,7 @@ from check_core import (check_track_structure, check_subtitle_clamping, check_di
                           check_black_frames, check_audio_mono, check_timeline_settings,
                           check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
                           check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
-                          check_color)
+                          check_color, check_camera_on_high_tracks)
 
 # ═══════════════════════════════════════════
 # 常量
@@ -227,6 +227,10 @@ def _run_color_check(timeline, fps, **_kw):
     """调色"""
     return check_color(timeline, project=_kw.get("project"), fps=fps, io_range=_kw.get("io_range"))
 
+def _run_camera_track_check(timeline, fps, **_kw):
+    """实拍素材越轨"""
+    return check_camera_on_high_tracks(timeline, fps=fps, io_range=_kw.get("io_range"))
+
 def _run_timeline_check(timeline, fps, **_kw):
     """时间线设置"""
     return check_timeline_settings(timeline, fps=fps, project=_kw.get("project"))
@@ -317,6 +321,7 @@ CHECKS = [
     {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "group": "音频", "subgroup": "声道",   "run_fn": _run_mono_check},
     {"id": "audio_loudness","section": "音量",     "chk_id": CHK_LOUDNESS,       "group": "音频", "subgroup": "声道",   "run_fn": None},
     {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "group": "色彩", "subgroup": "色彩",   "run_fn": _run_color_check},
+    {"id": "camera_track",  "section": "实拍越轨", "chk_id": CHK_CAMERA,          "group": "工程", "subgroup": "轨道",   "run_fn": _run_camera_track_check},
 ]
 # 扩展指南：
 #   - 加新检查：往 CHECKS 末尾加一行 dict，写 run_fn
