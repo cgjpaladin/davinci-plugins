@@ -66,32 +66,38 @@ publish_build_local() {
     echo ""
 
     if [ "$VERIFY_MODE" = "full" ]; then
-        # AI 产品：launcher 命名 + 版本号冲突检测 + quick_verify
-        local launcher_dir="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/本地版"
+        # AI 产品：quick_verify + 本地 launcher 部署 + Fusion 兼容性
         local version_str=$(python3 -c "import sys; sys.path.insert(0,'$PRODUCT_DIR'); from config import version_string; print(version_string())" 2>/dev/null || echo "$ver")
-
-        # 版本号冲突检测
-        local company_launcher=$(ls "$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/公司版"/${LAUNCHER_PREFIX}_*.py 2>/dev/null | head -1)
-        if [ -n "$company_launcher" ]; then
-            local company_ver=$(basename "$company_launcher" | sed "s/${LAUNCHER_PREFIX}_v//" | sed 's/\.py$//')
-            if [ "$ver" = "$company_ver" ]; then
-                echo "WARNING: local version ($ver) == company version ($company_ver)"
-                echo "  New dev cycle? Bump version first."
-                echo ""
-            fi
-        fi
-
-        # Launcher 自动命名
-        if [ -d "$launcher_dir" ]; then
-            local current=$(ls "$launcher_dir"/${LAUNCHER_PREFIX}_*.py 2>/dev/null | head -1)
-            local expected="$launcher_dir/${LAUNCHER_PREFIX}_v$version_str.py"
-            if [ "$current" != "$expected" ] && [ -n "$current" ]; then
-                mv "$current" "$expected"
-                echo "📝 launcher: $(basename "$current") → $(basename "$expected")"
-            fi
-        fi
+        echo "📝 版本: $version_str"
+        echo ""
 
         bash "$PRODUCT_DIR/../tools/quick_verify.sh"
+
+        # 本地 launcher 部署（通过 deploy.py）
+        echo ""
+        echo "── launcher 部署 ──"
+        python3 "$PRODUCT_DIR/../tools/deploy.py" "$PRODUCT_NAME" 2>&1
+
+        # Fusion 兼容性（模拟 __file__ 不存在）
+        local launcher_path="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/${PRODUCT_NAME}.py"
+        if [ -f "$launcher_path" ]; then
+            echo ""
+            echo "── Fusion 兼容性 ──"
+            python3 -c "
+import sys, os
+_path_home = os.path.expanduser('~')
+_path = _path_home + '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit'
+try:
+    _HERE = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    _HERE = _path
+assert _HERE == _path, f'fallback failed: {_HERE}'
+assert os.path.isdir('/Volumes/MYJC/06_Software/达芬奇脚本/$PRODUCT_NAME'), 'SMB product dir missing'
+assert os.path.isdir('/Volumes/MYJC/06_Software/达芬奇脚本/shared'), 'SMB shared missing'
+print('  ✅ Fusion __file__ fallback OK')
+print('  ✅ SMB 可达')
+" && echo "  ✅ Fusion 兼容性通过" || echo "  ⚠ Fusion 兼容性检查失败"
+        fi
     else
         # 轻量验证
         local ver_raw=$(python3 -c "import sys; sys.path.insert(0,'$PRODUCT_DIR'); from config import __version__; print(__version__)" 2>/dev/null || echo "?")
