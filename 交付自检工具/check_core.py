@@ -1021,7 +1021,7 @@ def check_speed(timeline, project_fps=25.0, io_range=None) -> list:
             if _get_cached(it, "mp") is None: continue
             t_dur = _get_cached(it, "end", 0) - _get_cached(it, "start", 0)
             if t_dur <= 0: continue
-            s_dur = abs(_get_cached(it, "source_end", 0) - _get_cached(it, "source_start", 0))
+            s_dur = abs(_get_cached(it, "source_end", 0) - _get_cached(it, "source_start", 0)) + 1
             if s_dur <= 0: continue
             src_fps = float(_get_cached(it, "mp_fps", project_fps) or project_fps)
             retime = int(_get_cached(it, "props", {}).get("RetimeProcess", 0))
