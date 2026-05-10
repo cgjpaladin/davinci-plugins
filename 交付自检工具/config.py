@@ -3,7 +3,7 @@
 时间线检查 — 配置
 """
 
-__version__ = "1.0.0-dev"
+__version__ = "1.1.0"
 __channel__ = "dev"
 
 def version_string():
@@ -17,6 +17,7 @@ SMB_PLUGIN = _os.path.join(SMB_SCRIPTS, "交付自检工具")
 
 # ── 默认阈值 ──
 DEFAULT_CLAMP_THRESHOLD = 5
+DEFAULT_BLACK_FRAME_SEC = 1.0
 
 # ── 轨道预设 ──
 # 视频轨：5轨，全部启用

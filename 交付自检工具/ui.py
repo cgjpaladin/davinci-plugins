@@ -10,6 +10,7 @@ import socket
 import sys
 import time
 import traceback
+import json
 
 os.environ["RESOLVE_SCRIPT_API"] = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting"
 os.environ["RESOLVE_SCRIPT_LIB"] = "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so"
@@ -25,7 +26,10 @@ disp = bmd.UIDispatcher(ui)
 
 from config import (
     __version__,
+    __channel__,
+    version_string,
     DEFAULT_CLAMP_THRESHOLD,
+    DEFAULT_BLACK_FRAME_SEC,
     DEFAULT_SUBTITLE_TRACKS,
     DEFAULT_VIDEO_TRACKS,
     DEFAULT_AUDIO_TRACKS,
@@ -46,12 +50,11 @@ CHK_TRACK, CHK_SUB_DURATION, CHK_SUB_LINEBREAK, CHK_SUB_GLYPH = \
     "chk_track", "chk_sub_dur", "chk_sub_br", "chk_sub_glyph"
 CHK_BLACK, CHK_VIDEO_CLAMP, CHK_BORDER, CHK_SPEED, CHK_MONO, CHK_LOUDNESS, CHK_FRAGMENT, CHK_TIMELINE, CHK_COLOR = \
     "chk_black", "chk_vid_clamp", "chk_border", "chk_speed", "chk_mono", "chk_loudness", "chk_fragment", "chk_timeline", "chk_color"
-CHK_CENSOR_SYSTEM, CHK_CENSOR_PERSONAL = "chk_censor_sys", "chk_censor_personal"
+CHK_CENSOR_SYSTEM, CHK_CENSOR_PERSONAL, CHK_TYPO = "chk_censor_sys", "chk_censor_personal", "chk_typo"
 CHK_BLACK_FRAME = CHK_BLACK  # 别名
 BTN_START = "btn_start"
-BTN_SEL_ALL = "btn_sel_all"
-BTN_DESEL_ALL = "btn_desel_all"
 BTN_CONFIG = "btn_config"
+BTN_TOGGLE_GROUP = "btn_toggle_group_"  # + group_name → "btn_toggle_group_工程"
 TREE_RESULT = "tree_result"
 GROUP_TREE = "group_tree"
 HINT_LB = "hint_lb"
@@ -129,10 +132,9 @@ def _set_row_texts(row, *texts):
 
 
 # ═══════════════════════════════════════════
+# ═══════════════════════════════════════════
 # 样式
 # ═══════════════════════════════════════════
-_CHECK_ROWS = 6
-_BTN_HEIGHT = min(_CHECK_ROWS * 22 + (_CHECK_ROWS - 1) * 2 + 5 * 16, 120)
 BTN_STYLE = (
     "QPushButton{max-height:28px;background-color:rgb(58,58,58);color:rgb(220,220,220);"
     "border:1px solid rgb(80,80,80);border-radius:4px;padding:4px 12px}"
@@ -202,7 +204,7 @@ def _run_fragment_check(timeline, fps, **_kw):
 
 def _run_black_frame_check(timeline, fps, **_kw):
     """黑帧"""
-    return check_black_frames(timeline, fps, io_range=_kw.get("io_range"))
+    return check_black_frames(timeline, fps, threshold_sec=_black_frame_sec, io_range=_kw.get("io_range"))
 
 def _run_black_border_check(timeline, fps, **_kw):
     """黑边"""
@@ -306,6 +308,7 @@ CHECKS = [
     {"id": "sub_duration",  "section": "时长",     "chk_id": CHK_SUB_DURATION,   "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_duration_check},
     {"id": "censor_personal","section": "个人违禁词典","chk_id": CHK_CENSOR_PERSONAL,"group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_personal},
     {"id": "censor_system",  "section": "系统违禁词典","chk_id": CHK_CENSOR_SYSTEM, "group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_system},
+    {"id": "typo",           "section": "错别字校对",  "chk_id": CHK_TYPO,           "group": "字幕", "subgroup": "合规",   "run_fn": None},
     {"id": "video_clamp",   "section": "夹帧",     "chk_id": CHK_VIDEO_CLAMP,    "group": "视频", "subgroup": "夹帧",   "run_fn": _run_video_clamp_check},
     {"id": "black_frame",   "section": "黑帧",     "chk_id": CHK_BLACK,          "group": "视频", "subgroup": "黑帧",   "run_fn": _run_black_frame_check},
     {"id": "black_border",  "section": "黑边",     "chk_id": CHK_BORDER,         "group": "视频", "subgroup": "黑边",   "run_fn": _run_black_border_check},
@@ -352,20 +355,57 @@ del _validate_checks  # 用完即焚，不污染命名空间
 _track_values = [DEFAULT_SUBTITLE_TRACKS, DEFAULT_VIDEO_TRACKS, DEFAULT_AUDIO_TRACKS]
 _clamp_value = DEFAULT_CLAMP_THRESHOLD
 _video_clamp_threshold = 2  # 视频夹帧阈值（帧）
+_black_frame_sec = DEFAULT_BLACK_FRAME_SEC
 _censor_subs = {"base": True, "en": True, "bw": True, "bw_sms": True}
 _checking = False
+
+# ── 配置持久化（本地 JSON，每人独立）──
+def _save_config_to_file():
+    """保存当前配置到本地 JSON 文件"""
+    try:
+        os.makedirs(_CONFIG_DIR, exist_ok=True)
+        data = {
+            "track_values": _track_values,
+            "clamp_threshold": _clamp_value,
+            "video_clamp_threshold": _video_clamp_threshold,
+            "black_frame_sec": _black_frame_sec,
+            "censor_subs": _censor_subs,
+        }
+        with open(_CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        _action_log(f"⚠ 保存配置失败: {e}")
+
+def _load_config_from_file():
+    """从本地 JSON 加载配置，文件不存在则跳过"""
+    global _track_values, _clamp_value, _video_clamp_threshold, _black_frame_sec, _censor_subs
+    if not os.path.isfile(_CONFIG_FILE):
+        return
+    try:
+        with open(_CONFIG_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        _track_values = data.get("track_values", _track_values)
+        _clamp_value = data.get("clamp_threshold", _clamp_value)
+        _video_clamp_threshold = data.get("video_clamp_threshold", _video_clamp_threshold)
+        _black_frame_sec = data.get("black_frame_sec", _black_frame_sec)
+        _censor_subs = data.get("censor_subs", _censor_subs)
+        _action_log(f"📂 加载配置: 轨道={_track_values} 夹帧={_clamp_value} 黑帧={_black_frame_sec}s")
+    except Exception as e:
+        _action_log(f"⚠ 读取配置失败: {e}")
 
 # ═══════════════════════════════════════════
 # 日志系统
 # ═══════════════════════════════════════════
 _HOSTNAME = socket.gethostname()
+_CONFIG_DIR = os.path.expanduser("~/Library/Application Support/交付自检")
+_CONFIG_FILE = os.path.join(_CONFIG_DIR, "config.json")
 _LOG_DIR_SMB = "/Volumes/MYJC/06_Software/达芬奇脚本/交付自检工具/logs"
 _LOG_FILE_SMB = os.path.join(_LOG_DIR_SMB, f"{_HOSTNAME}.log")
 
 # 本地开发日志
 _DEV_LOG_DIR = "/tmp/delivery_checker_dev"
 _LOG_FILE_LOCAL = os.path.join(_DEV_LOG_DIR,
-                               f"{_HOSTNAME}.log" if not __version__.endswith("-dev")
+                               f"{_HOSTNAME}.log" if __channel__ == "dev"
                                else f"{_HOSTNAME}_dev.log")
 
 
@@ -400,11 +440,6 @@ def _action_log(msg: str):
 # UI 布局
 # ═══════════════════════════════════════════
 _CHECK_ROW_STYLE = "font-size:13px;color:rgb(220,220,220)"
-_SECTION_LABEL = "color:rgb(220,220,220);font-size:14px;font-weight:bold;min-height:18px"
-
-def _sec_label(text):
-    """行内分类标签"""
-    return ui.Label({"Text": text, "StyleSheet": _SECTION_LABEL, "Weight": 0})
 _DISABLED_CB = {"Checked": False, "Enabled": False, "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}
 
 def _cb(id_, text, extra=None):
@@ -449,7 +484,6 @@ def _build_group_rows(group_name, extras=None):
         return []
     
     widgets = [
-        _sec_label(group_name),
         *_section_checkboxes(*[c["id"] for c in group_checks]),
         *extras,
     ]
@@ -462,7 +496,15 @@ window_layout = [
 
         # ── 上半区：检查选项 + 开始按钮 ──
         ui.HGroup({"Spacing": 10, "Weight": 0}, [
-            # 左侧
+            # 最左：5 个分组开关
+            ui.VGroup({"Spacing": 2, "Weight": 0}, list(
+                ui.Button({"ID": f"{BTN_TOGGLE_GROUP}{gn}", "Text": gn,
+                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
+                           "MinimumSize": [44, 22]})
+                for gn in GROUP_ORDER
+            )),
+
+            # 左侧：检查选项
             ui.VGroup({"Spacing": 2, "Weight": 0}, [
 
             # ═══════ 检查选项（从 CHECKS 自动生成）═══════
@@ -476,22 +518,15 @@ window_layout = [
 
             ui.HGap({"Weight": 1}),
 
-            # 全选/全不选 + 开始检查
+            # 开始检查 + 配置
             ui.VGroup({"Spacing": 4, "Weight": 0}, [
-                ui.Button({"ID": BTN_SEL_ALL, "Text": "全选",
-                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                           "MinimumSize": [60, 22]}),
-                ui.Button({"ID": BTN_DESEL_ALL, "Text": "全不选",
-                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                           "MinimumSize": [60, 22]}),
+                ui.Button({"ID": BTN_START, "Text": "开始检查",
+                           "StyleSheet": BTN_PRIMARY, "Weight": 0,
+                           "MinimumSize": [100, 95]}),
                 ui.Button({"ID": BTN_CONFIG, "Text": "配置",
-                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                           "MinimumSize": [60, 22]}),
+                           "StyleSheet": BTN_STYLE, "Weight": 0,
+                           "MinimumSize": [100, 20]}),
             ]),
-
-            ui.Button({"ID": BTN_START, "Text": "开始检查",
-                       "StyleSheet": BTN_PRIMARY, "Weight": 0,
-                       "MinimumSize": [_BTN_HEIGHT, _BTN_HEIGHT]}),
         ]),
 
         # ── 结果区：左侧分组 + 右侧数据 ──
@@ -512,7 +547,7 @@ window_layout = [
                           "StyleSheet": "color:rgb(130,130,130);font-size:10px", "Weight": 0,
                           "MinimumSize": [260, 16]}),
                 ui.Label({"Text": " ", "Weight": 1}),
-                ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | v{__version__}",
+                ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | v{version_string()}",
                           "StyleSheet": "color:rgb(100,100,100);font-size:10px", "Weight": 0}),
             ]),
         ]),
@@ -595,6 +630,11 @@ CONFIG_SECTIONS = [
         "type": "video_clamp_threshold",
     },
     {
+        "id": "black_frame_sec",
+        "label": "黑帧时长阈值",
+        "type": "black_frame_sec",
+    },
+    {
         "id": "censor_system_subs",
         "label": "系统违禁词典",
         "type": "censor_system_subs",
@@ -612,13 +652,16 @@ def _build_track_preset():
         ui.HGroup({"Spacing": 8, "Weight": 0}, [
             ui.Label({"Text": "字幕", "StyleSheet": "color:rgb(150,150,150);font-size:13px",
                       "Weight": 0, "MinimumSize": [28, 22]}),
-            ui.ComboBox({"ID": "cfg_sub", "Weight": 0, "MinimumSize": [55, 22]}),
+            ui.LineEdit({"ID": "cfg_sub", "Text": str(_track_values[0]),
+                         "MaximumSize": [35, 22], "Weight": 0}),
             ui.Label({"Text": "视频", "StyleSheet": "color:rgb(150,150,150);font-size:13px",
                       "Weight": 0, "MinimumSize": [28, 22]}),
-            ui.ComboBox({"ID": "cfg_vid", "Weight": 0, "MinimumSize": [55, 22]}),
+            ui.LineEdit({"ID": "cfg_vid", "Text": str(_track_values[1]),
+                         "MaximumSize": [35, 22], "Weight": 0}),
             ui.Label({"Text": "音频", "StyleSheet": "color:rgb(150,150,150);font-size:13px",
                       "Weight": 0, "MinimumSize": [28, 22]}),
-            ui.ComboBox({"ID": "cfg_aud", "Weight": 0, "MinimumSize": [55, 22]}),
+            ui.LineEdit({"ID": "cfg_aud", "Text": str(_track_values[2]),
+                         "MaximumSize": [35, 22], "Weight": 0}),
         ]),
     ]
 
@@ -638,6 +681,16 @@ def _build_video_clamp_threshold():
             ui.LineEdit({"ID": "cfg_vid_clamp", "Text": str(_video_clamp_threshold),
                          "MaximumSize": [45, 22], "Weight": 0}),
             ui.Label({"Text": "帧（≤此值判定为视频夹帧）",
+                      "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0}),
+        ]),
+    ]
+
+def _build_black_frame_sec():
+    return [
+        ui.HGroup({"Spacing": 6, "Weight": 0}, [
+            ui.LineEdit({"ID": "cfg_black_sec", "Text": str(int(_black_frame_sec)),
+                         "MaximumSize": [35, 22], "Weight": 0}),
+            ui.Label({"Text": "秒（≥此值判定为大段黑场）",
                       "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0}),
         ]),
     ]
@@ -678,6 +731,7 @@ _SECTION_BUILDERS = {
     "track_preset":             _build_track_preset,
     "clamp_threshold":          _build_clamp_threshold,
     "video_clamp_threshold":    _build_video_clamp_threshold,
+    "black_frame_sec":          _build_black_frame_sec,
     "censor_system_subs":       _build_censor_system_subs,
     "censor_personal":          _build_censor_personal,
 }
@@ -721,6 +775,8 @@ def _show_config_dialog():
             # ── 按钮（底部居中）──
             ui.HGroup({"Spacing": 10, "Weight": 0}, [
                 ui.HGap({"Weight": 1}),
+                ui.Button({"ID": "cfg_reset", "Text": "恢复默认",
+                           "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Button({"ID": "cfg_cancel", "Text": "取消",
                            "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Button({"ID": "cfg_save", "Text": "保存",
@@ -739,19 +795,13 @@ def _show_config_dialog():
 
     cfg = config_dlg.GetItems()
 
-    # ── 初始化：填充轨道下拉 ──
-    TRACK_OPTIONS = {
-        "cfg_sub": (["1", "2", "3"], _track_values[0]),
-        "cfg_vid": (["1", "3", "5", "10"], _track_values[1]),
-        "cfg_aud": (["5", "10", "20"], _track_values[2]),
-    }
-    for cid, (values, default) in TRACK_OPTIONS.items():
-        try:
-            cfg[cid].Clear()
-            cfg[cid].AddItems(values)
-            cfg[cid].CurrentText = str(default)
-        except Exception:
-            pass
+    # ── 轨道数量（LineEdit 直输）──
+    try:
+        cfg["cfg_sub"].Text = str(_track_values[0])
+        cfg["cfg_vid"].Text = str(_track_values[1])
+        cfg["cfg_aud"].Text = str(_track_values[2])
+    except Exception:
+        pass
 
     # 初始化子词典勾选框
     SUB_CBOX_MAP = [
@@ -802,12 +852,26 @@ def _show_config_dialog():
                 if old != cv:
                     msg_parts.append(f"视频夹帧 {old}→{cv}")
 
+            elif t == "black_frame_sec":
+                try:
+                    cv = float(cfg["cfg_black_sec"].Text)
+                    if cv <= 0:
+                        _action_log("⚠ 黑帧阈值必须大于0, 放弃保存")
+                        return
+                except ValueError:
+                    _action_log(f"⚠ 黑帧阈值无效: {cfg['cfg_black_sec'].Text}, 放弃保存")
+                    return
+                old = _black_frame_sec
+                _black_frame_sec = cv
+                if old != cv:
+                    msg_parts.append(f"黑帧 {old}s→{cv}s")
+
             elif t == "track_preset":
                 old = _track_values.copy()
                 try:
-                    sv = int(cfg["cfg_sub"].CurrentText)
-                    vv = int(cfg["cfg_vid"].CurrentText)
-                    av = int(cfg["cfg_aud"].CurrentText)
+                    sv = int(cfg["cfg_sub"].Text)
+                    vv = int(cfg["cfg_vid"].Text)
+                    av = int(cfg["cfg_aud"].Text)
                 except Exception:
                     _action_log("⚠ 轨道数量读取失败, 放弃保存")
                     return
@@ -832,6 +896,7 @@ def _show_config_dialog():
             _action_log("⚙ 配置保存: " + ", ".join(msg_parts))
         else:
             _action_log("⚙ 配置保存: 无变更")
+        _save_config_to_file()
         config_disp.ExitLoop()
 
     # ── 编辑违禁词（打开系统文本编辑）──
@@ -846,6 +911,28 @@ def _show_config_dialog():
     config_dlg.On["cfg_edit_censor"].Clicked = _edit_censor
     config_dlg.On["cfg_save"].Clicked = _save
     config_dlg.On["cfg_cancel"].Clicked = lambda ev: config_disp.ExitLoop()
+    config_dlg.On["cfg_reset"].Clicked = lambda ev: _reset_defaults()
+
+    def _reset_defaults():
+        global _track_values, _clamp_value, _video_clamp_threshold, _black_frame_sec, _censor_subs
+        _track_values = [DEFAULT_SUBTITLE_TRACKS, DEFAULT_VIDEO_TRACKS, DEFAULT_AUDIO_TRACKS]
+        _clamp_value = DEFAULT_CLAMP_THRESHOLD
+        _video_clamp_threshold = 2
+        _black_frame_sec = DEFAULT_BLACK_FRAME_SEC
+        _censor_subs = {"base": True, "en": True, "bw": True, "bw_sms": True}
+        _save_config_to_file()
+        try:
+            cfg["cfg_sub"].Text = str(_track_values[0])
+            cfg["cfg_vid"].Text = str(_track_values[1])
+            cfg["cfg_aud"].Text = str(_track_values[2])
+            cfg["cfg_clamp"].Text = str(_clamp_value)
+            cfg["cfg_vid_clamp"].Text = str(_video_clamp_threshold)
+            cfg["cfg_black_sec"].Text = str(int(_black_frame_sec))
+            for cbox_id, key in SUB_CBOX_MAP:
+                cfg[cbox_id].Checked = _censor_subs.get(key, True)
+        except Exception:
+            pass
+        _action_log("🔄 配置已恢复默认")
     config_dlg.On[CONFIG_WIN_ID].Close = lambda ev: config_disp.ExitLoop()
 
     _action_log("⚙ 打开配置窗口")
@@ -1071,6 +1158,31 @@ def _start_check():
             _action_log("✅ 所有检查通过")
         itm[HINT_LB].Text = hint
 
+        # ── 结果持久化：写入本地日志（AI 可读，窗口关闭后不丢）──
+        try:
+            import json as _json
+            _log_path = os.path.join(os.path.expanduser("~/.workbuddy/logs"), "delivery_checker.jsonl")
+            os.makedirs(os.path.dirname(_log_path), exist_ok=True)
+            with open(_log_path, "a", encoding="utf-8") as _lf:
+                _lf.write(_json.dumps({
+                    "t": time.time(),
+                    "project": project.GetName(),
+                    "timeline": timeline.GetName(),
+                    "fps": fps,
+                    "has_failures": has_failures,
+                    "has_warnings": has_warnings,
+                    "pass": pass_count, "fail": fail_count, "warn": warn_count,
+                    "sections": [
+                        {"group": s["group"], "section": s["section"],
+                         "all_ok": s["all_ok"],
+                         "fails": [{k: v for k, v in r.items() if not k.startswith("_")}
+                                   for r in s.get("rows", []) if "❌" in str(r.get("detail", ""))]}
+                        for s in sections
+                    ],
+                }, ensure_ascii=False) + "\n")
+        except Exception:
+            pass
+
     except Exception as e:
         _action_log(f"❌ 检查崩溃: {e}")
         traceback.print_exc()
@@ -1124,6 +1236,7 @@ def _on_show(ev):
 
 def _init_connection():
     """初始化达芬奇连接，设置按钮状态"""
+    _load_config_from_file()
     try:
         resolve = bmd.scriptapp("Resolve")
         if not resolve:
@@ -1162,18 +1275,6 @@ def _on_close(ev):
     disp.ExitLoop()
 
 
-def _toggle_all(checked):
-    """全选/全不选所有可用的 CheckBox"""
-    for c in CHECKS:
-        cid = c["chk_id"]
-        if cid is None or c.get("run_fn") is None:
-            continue
-        try:
-            itm[cid].Checked = checked
-            _action_log(f"{'☑' if checked else '☐'} {c['section']}")
-        except Exception:
-            pass
-
 
 # ═══════════════════════════════════════════
 # 事件绑定
@@ -1191,9 +1292,23 @@ for _c in CHECKS:
         )
     )
 dlg.On[BTN_START].Clicked = lambda ev: _start_check()
-dlg.On[BTN_SEL_ALL].Clicked = lambda ev: _toggle_all(True)
-dlg.On[BTN_DESEL_ALL].Clicked = lambda ev: _toggle_all(False)
 dlg.On[BTN_CONFIG].Clicked = lambda ev: _show_config_dialog()
+
+# 分组开关事件
+def _make_group_toggle(group_name):
+    def _toggle(ev):
+        group_checks = [c for c in CHECKS if c.get("group") == group_name and c.get("run_fn")]
+        if not group_checks:
+            return
+        all_on = all(itm[c["chk_id"]].Checked for c in group_checks)
+        target = not all_on
+        for c in group_checks:
+            itm[c["chk_id"]].Checked = target
+        _action_log(f"{'☑' if target else '☐'} {group_name} 分组 {'全选' if target else '全不选'}")
+    return _toggle
+
+for _gn in GROUP_ORDER:
+    dlg.On[f"{BTN_TOGGLE_GROUP}{_gn}"].Clicked = _make_group_toggle(_gn)
 
 def _on_group_click(ev):
     """左侧点击 → 子类行(· 前缀)显示该子类，大类行显示全组"""
@@ -1221,7 +1336,7 @@ dlg.On[WIN_ID].Close = _on_close
 # ═══════════════════════════════════════════
 
 def main():
-    _action_log("═══ 交付自检 启动 v" + __version__ + " ═══")
+    _action_log("═══ 交付自检 启动 v" + version_string() + " ═══")
     dlg.Show()
     dlg.RecalcLayout()
     _init_connection()

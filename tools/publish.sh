@@ -42,10 +42,25 @@ log_full_done()       { publish_log "full"   "done"   "$*"; }
 log_full_skip_gray()  { publish_log "full"   "skip_gray" "$*"; }
 log_gray_confirm()    { publish_log "full"   "gray_confirmed" "$*"; }
 
+# ── 产品注册表校验（build/push 都会调）──
+publish_validate_product() {
+    cd "$PRODUCT_DIR"
+    python3 -c "
+import sys; sys.path.insert(0,'$PRODUCT_DIR/../shared')
+from product_registry import get_by_dir
+p = get_by_dir('$PRODUCT_NAME')
+if p:
+    print(f'  📦 {$PRODUCT_NAME} — {p.get(\"category\",\"?\")} — {p.get(\"status\",\"?\")}')
+else:
+    print(f'  ⚠  {$PRODUCT_NAME} 未注册 — 请加到 shared/product_registry.py')
+" 2>/dev/null || true
+}
+
 # ── 核心：本地构建 ──
 publish_build_local() {
     local ver=$(publish_get_version)
     log_local_start "v$ver"
+    publish_validate_product
 
     echo "═══ 本地验证 — $PRODUCT_NAME ═══"
     echo ""
@@ -134,6 +149,7 @@ publish_gray_check() {
 publish_push_all() {
     local ver=$(publish_get_version)
     log_full_start "push_all v$ver"
+    publish_validate_product
 
     # 1. 验证
     echo "═══ 推送到全公司 — $PRODUCT_NAME ═══"

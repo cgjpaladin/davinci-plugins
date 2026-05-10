@@ -27,7 +27,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import Optional, NamedTuple, Callable, Any
 
-from interface import PipelineUI, CLIPipelineUI
+from interface import PipelineUI
 from pricing import estimate_cost, point_to_yuan, oss_tracker
 from pipeline_utils import validate_task, calc_cache_savings
 from pipeline_log import StepLogger
@@ -231,18 +231,19 @@ class BasePipeline(ABC):
         self._report = {"version": "", "mode": mode, "dry_run": False}
 
     def _init_project_state(self):
-        """初始化项目级别的状态/日志/账本。子类可覆盖以使用不同模块。"""
+        """初始化项目级别的状态/日志/账本。"""
         from subtitle_state import init as state_init
         import ledger
         state_init(self._project_root)
         ledger.init(self._project_root)
-        from config import get_log_dir
-        ops_logger.init(get_log_dir(self._project_root))
-        ops_logger.session_start(
-            self._project.GetName() if self._project else "",
-            self._timeline.GetName() if self._timeline else "",
-            self._mode, 0,
-        )
+        if self.FEATURES.get("ops_logging", True):
+            from config import get_log_dir
+            ops_logger.init(get_log_dir(self._project_root))
+            ops_logger.session_start(
+                self._project.GetName() if self._project else "",
+                self._timeline.GetName() if self._timeline else "",
+                self._mode, 0,
+            )
 
     # ═══════════════════════════════════════
     # 通用步骤（基类实现）
@@ -404,14 +405,15 @@ class BasePipeline(ABC):
         total_success = self._report.get("results", {}).get("success", 0)
         total_all = len(results)
 
-        # 阶段耗时
-        t_api = round(self._t_prep_end - self._t_start, 1)
-        t_dl = round(t_done - self._t_prep_end, 1)
-        self._report["phase_timing"] = {
-            "api_secs": t_api,
-            "download_secs": t_dl,
-            "total_processing_secs": round(t_done - self._t_start, 1),
-        }
+        # 阶段耗时（仅记录到 report，CLI JSON 报告消费）
+        if self.FEATURES.get("phase_timing", True):
+            t_api = round(self._t_prep_end - self._t_start, 1)
+            t_dl = round(t_done - self._t_prep_end, 1)
+            self._report["phase_timing"] = {
+                "api_secs": t_api,
+                "download_secs": t_dl,
+                "total_processing_secs": round(t_done - self._t_start, 1),
+            }
 
         # OSS 统计
         if self.FEATURES.get("oss_tracking", True):

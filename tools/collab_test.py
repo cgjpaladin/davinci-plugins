@@ -90,8 +90,10 @@ from core import scan_io_clips
 clips, report = scan_io_clips(tl, "Orange")
 if not clips: print("SKIP: 无橙色片段"); sys.exit(0)
 print(f"扫描: {{report.valid}} 个")
-from remove_subtitle import run_pipeline
-result = run_pipeline(mode="pro_box", dry_run=True, force=False, report_json="{OUTPUT_DIR}/a1.json", batch=True, project_root="{OUTPUT_DIR}")
+from pipeline import SubtitlePipeline
+from interface import CLIPipelineUI
+pipeline = SubtitlePipeline()
+result = pipeline.run(ui=CLIPipelineUI(), mode="pro_box", dry_run=True, force=False, report_json="{OUTPUT_DIR}/a1.json", project_root="{OUTPUT_DIR}")
 print(f"PASS: dry-run done" if result.get("dry_run_completed") else f"OK: {{result.get('completed','?')}}")
 """)
     ok, out = remote_run(MAIN, s, timeout=60)
@@ -102,8 +104,10 @@ def a2_full_process():
     s = dvr(body=f"""
 os.makedirs("{OUTPUT_DIR}", exist_ok=True)
 tl = proj.GetCurrentTimeline(); tl.SetMarkInOut({IO_START}, {IO_END})
-from remove_subtitle import run_pipeline
-result = run_pipeline(mode="pro_box", dry_run=False, force=True, report_json="{OUTPUT_DIR}/a2.json", batch=True, project_root="{OUTPUT_DIR}")
+from pipeline import SubtitlePipeline
+from interface import CLIPipelineUI
+pipeline = SubtitlePipeline()
+result = pipeline.run(ui=CLIPipelineUI(), mode="pro_box", dry_run=False, force=True, report_json="{OUTPUT_DIR}/a2.json", project_root="{OUTPUT_DIR}")
 r = result.get("results", {{}})
 if r: print(f"PASS: {{r.get('success',0)}}/{{r.get('total',0)}} 完成")
 elif result.get("error"): print(f"ERROR: {{result['error']}}")

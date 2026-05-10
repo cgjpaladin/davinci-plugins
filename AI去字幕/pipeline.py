@@ -20,7 +20,7 @@ if _shared_root not in sys.path:
     sys.path.insert(0, _shared_root)
 
 from pipeline_base import BasePipeline, ResultItem
-from interface import PipelineUI, CLIPipelineUI, DaVinciPipelineUI
+from interface import PipelineUI, DaVinciPipelineUI
 
 from config import (
     __version__, version_string, DEFAULT_MODE, MODE_LABELS,

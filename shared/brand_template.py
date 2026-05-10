@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-brand.py — 产品品牌配置模板。每个产品在自身目录下创建 brand.py 覆写。
-shared/ 代码通过 `import brand` 自动找到产品目录下的版本。
+brand_template.py — 新产品品牌配置模板
+复制到产品目录，按注释修改即可。
 """
+
 # ── 基本信息 ──
 PRODUCT_NAME = "产品名"
 WINDOW_TITLE = "窗口标题"
-FOOTER_TEXT = "底部文字"
 __version__ = "0.1.0"
 
 # ── UI 文案 ──
@@ -20,23 +20,18 @@ BTN_START_TEXT = "开始处理"
 BTN_STOP_TEXT = "停止"
 BTN_UNDO_TEXT = "撤销替换"
 PATH_PLACEHOLDER = "未指定项目路径"
-WIN_ID = "com.myjc.ai_subtitle_ui"
+WIN_ID = "com.myjc.product_name"  # 每个产品用唯一 ID
 
-# ── API 配置 ──
-API_MODE = "pro_box"
+# ── 处理参数 ──
 CLIP_COLOR = "Orange"
-API_PROVIDER = ""  # 由 adapters/preferred 自动选择
-OUTPUT_MODE = "replace"      # replace | append
-OUTPUT_SUBDIR = "03_去字幕"   # 相对于 04_素材
+OUTPUT_SUBDIR = "03_输出"   # 相对于 04_素材
 
-# ── 路径 ──
+# ── SMB 路径 ──
 SMB_SCRIPT_DIR = "/Volumes/MYJC/06_Software/达芬奇脚本/产品名"
 
-# ── Adapter 工厂 ──
-def get_adapter():
-    """返回适配器实例。每个产品实现自己的。"""
-    raise NotImplementedError
-
-def set_adapter_logger(log_fn):
-    """设置适配器日志回调。"""
-    pass
+# ═══════════════════════════════════════════
+# 以下无需改动（由 BasePipeline + shared/ 统一管理）
+# ═══════════════════════════════════════════
+# - Adapter 优先级：pricing_defaults.py → ADAPTER_PRIORITY
+# - 日志输出：BasePipeline → StepLogger
+# - 缓存/账单/调试：shared/ 模块自动处理

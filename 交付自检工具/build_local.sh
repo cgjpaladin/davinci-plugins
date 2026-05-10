@@ -5,7 +5,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PRODUCT_DIR="$SCRIPT_DIR"
 PRODUCT_NAME="交付自检工具"
-VERIFY_MODE=light
+LAUNCHER_PREFIX="交付自检"
+VERIFY_MODE=full
 
 if [ "$1" = "--save" ]; then
     HASH=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "none")

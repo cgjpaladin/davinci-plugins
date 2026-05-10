@@ -16,10 +16,10 @@ import os
 import re
 
 # ── 缓存：避免重复 IPC ──
-_items_cache = {}
-_props_cache = {}  # item_uid → {enabled, name, mp, mp_props, property, channel_mapping}
-_smpte_cache = {}  # fps → SMPTE 实例
-_censor_cache = {}  # path → [words]
+_items_cache: dict = {}
+_props_cache: dict = {}  # item_uid → {enabled, name, mp, mp_props, property, channel_mapping}
+_smpte_cache: dict = {}  # fps → SMPTE 实例
+_censor_cache: dict = {}  # path → [words]
 
 def clear_censor_cache(path=None):
     """清除违禁词缓存。path=None → 清全部，path=str → 清指定文件。"""
@@ -391,7 +391,7 @@ def _get_clip_name(item):
     return _get_cached(item, "name", "") or item.GetName()
 
 
-def check_black_frames(timeline, fps=25.0, io_range=None) -> list:
+def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> list:
     """检测黑帧：合并所有视频轨的有效片段后，找未被覆盖的时间段。
 
     有效片段条件：启用 + 不透明度=100 + 有 MediaPoolItem。
@@ -446,7 +446,7 @@ def check_black_frames(timeline, fps=25.0, io_range=None) -> list:
 
     # 合并有效区间，找空隙
     valid_intervals.sort()
-    merged = []
+    merged: list = []
     for s, e in valid_intervals:
         if merged and s <= merged[-1][1]:
             merged[-1] = (merged[-1][0], max(merged[-1][1], e))
@@ -519,7 +519,7 @@ def check_black_frames(timeline, fps=25.0, io_range=None) -> list:
         tc = smpte.gettc(s)
         if gap_reason == "无片段覆盖":
             detail = f"空白 {duration} 帧"
-            reason = "请删除大段黑场" if duration >= fps else "请检查是否有夹帧"
+            reason = "请删除大段黑场" if duration >= threshold_sec * fps else "请检查是否有夹帧"
         elif gap_reason.startswith("音频超出"):
             detail = f"{gap_reason}，{name}" if name else gap_reason
             reason = "请调整音频长度使其不超过视频尾"
@@ -726,7 +726,7 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None) -> list:
     global _censor_cache
     # 加载字典 + 编译正则
     if dict_path not in _censor_cache:
-        words = []
+        words: list = []
         category_map = {}   # word → "cat1 > cat2"
         suggestion_map = {} # word → "sug1 / sug2 / ..."
         if os.path.isfile(dict_path):
@@ -858,32 +858,14 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     return results
 
 
-# ── 参考案例（已从注册表移除，保留代码作模板）──
+# ── 待开发 ──
 
-def check_weather(timeline, fps=25.0) -> list:
-    """天气检查 — 扩展性参考案例"""
-    import random
-    name = timeline.GetName()
-    seed = sum(ord(c) for c in name)
-    rng = random.Random(seed + 42)
-    temp = rng.randint(-5, 42)
-    hum = rng.randint(10, 99)
-
-    issues = []
-    if hum > 80:
-        issues.append(_make_result("fail", detail=f"湿度过高: {hum}% (建议除湿)"))
-    if temp > 35:
-        issues.append(_make_result("fail", detail=f"温度过高: {temp}°C (建议开空调)"))
-    if temp < 0:
-        issues.append(_make_result("fail", detail=f"温度过低: {temp}°C (建议取暖)"))
-
-    if not issues:
-        return [_make_result("pass",
-            detail=f"天气适宜: {temp}°C, 湿度 {hum}%", is_summary=True)]
-
-    issues.insert(0, _make_result("fail",
-        detail=f"天气异常: {temp}°C, 湿度 {hum}%", is_summary=True))
-    return issues
+def check_subtitle_typo(timeline, fps=25.0, io_range=None) -> list:
+    """字幕错别字校对 — 通过 LLM API 比对 ASR 字幕与剧本。
+    方案见: 外部调研报告/LLM字幕校对方案设计.md
+    待 API key 配置 + 千问/豆包接入后实现。
+    """
+    return [_make_result("pass", detail="错别字校对 (未开发)", is_summary=True)]
 
 
 def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list:
@@ -906,14 +888,33 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
         if tl_h: timeline_h = int(tl_h)
     except: pass
     smpte = _get_smpte(fps)
+    # 先收集所有轨上所有片段的时间范围（用于覆盖判定）
+    all_ranges = {}  # track_index → [(start, end), ...]
     for vi in range(1, video_count + 1):
         items = _get_items(timeline, "video", vi)
         if not items: continue
+        all_ranges[vi] = [(it, _get_cached(it, "start", 0), _get_cached(it, "end", 0)) for it in items]
+    # 从顶层往下遍历，上层覆盖下层 → 跳过不可见片段
+    for vi in range(video_count, 0, -1):
+        if vi not in all_ranges: continue
         track = f"V{vi}"
-        for it in items:
+        for it_data in all_ranges[vi]:
+            it, s, e = it_data if len(it_data) == 3 else (it_data[0], it_data[1], it_data[2])
             if not _in_io_range(it, io_range): continue
             if _get_cached(it, "enabled", True) is False: continue
             if _get_cached(it, "mp") is None: continue
+            # 被所有上层轨道的片段联合覆盖 ≥80% → 跳过
+            clip_dur = e - s
+            if clip_dur > 0:
+                upper_cover = 0
+                for uvi in range(vi + 1, video_count + 1):
+                    if uvi not in all_ranges: continue
+                    for _, us, ue in all_ranges[uvi]:
+                        ov = min(e, ue) - max(s, us)
+                        if ov > 0:
+                            upper_cover += ov
+                if upper_cover >= clip_dur * 0.8:
+                    continue
             res_str = _get_cached(it, "mp_resolution", "")
             if not res_str or "x" not in res_str: continue
             try: src_w, src_h = map(int, res_str.split("x"))
@@ -932,10 +933,21 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
             fit_scale = max(timeline_w / src_w, timeline_h / src_h) if abs(src_ratio - tl_ratio) < 0.02 else 1.0
             eff_w = src_w * fit_scale * zoom_x
             eff_h = src_h * fit_scale * zoom_y
-            # 素材够大且无旋转 → 偏位是故意的构图选择，不报
-            # 有旋转时即使素材够大，角点检测也可能漏判边缘黑三角（SAT盲区）
-            if eff_w >= timeline_w and eff_h >= timeline_h and rot == 0:
-                continue
+            # 素材够大且轴对齐（旋转 ≈ 90° 倍数）→ 偏位是故意的构图选择
+            # RotationAngle 为累计值（如 -5156.6°），用 % 360 归一化后 ±30° 容差匹配
+            rot_360 = abs(math.degrees(rot)) % 360
+            near_axis = any(abs(rot_360 - a) < 30.0 or abs(rot_360 - (a + 360)) < 30.0
+                           for a in (0, 90, 180, 270))
+            if near_axis:
+                # 找最近的标准轴，判断是否需交换宽高
+                nearest = min((0, 90, 180, 270), key=lambda a: min(abs(rot_360 - a), abs(rot_360 - (a + 360))))
+                if nearest in (90, 270):
+                    check_w, check_h = eff_h, eff_w
+                    check_w, check_h = eff_h, eff_w
+                else:
+                    check_w, check_h = eff_w, eff_h
+                if check_w >= timeline_w and check_h >= timeline_h:
+                    continue
             cos_r_raw = math.cos(rot); sin_r_raw = math.sin(rot)
             hw, hh = eff_w / 2.0, eff_h / 2.0
             has_gap = False
@@ -984,8 +996,8 @@ def check_speed(timeline, project_fps=25.0, io_range=None) -> list:
             src_sec = s_dur / src_fps
             speed = src_sec / tl_sec * 100
             threshold = min(project_fps / src_fps, 1.0) * 100
-            # 容忍 1% 浮点误差，避免 speed=99.6 显示为 100% 却报变速
-            if speed < threshold - 1.0 and retime not in (2, 3):
+            # 容忍 ±2% 误差（如 50fps→25fps 时间线，49% 不报）
+            if speed < threshold - 2.0 and retime not in (2, 3):
                 name = _get_clip_name(it)
                 smpte = _get_smpte(project_fps)
                 tc = smpte.gettc(_get_cached(it, "start", 0))

@@ -212,8 +212,12 @@ _log_queue = queue.Queue()
 _main_thread = threading.current_thread()
 import tempfile as _tempfile
 # 日志路径（常量来自 config.py）
+# dev 版写本地 dev 目录；生产版写 ~/.workbuddy/logs/（持久化，非 /tmp）
 _UI_LOG_FILE = os.path.join(DEV_LOG_DIR, "ui.log") if __channel__ == "dev" else \
-               os.path.join(_tempfile.gettempdir(), "ai_subtitle_ui.log")
+               os.path.join(os.path.expanduser("~/.workbuddy/logs"), "ui.log")
+
+# 确保日志目录存在（生产版 ~/.workbuddy/logs/ 可能未创建）
+os.makedirs(os.path.dirname(_UI_LOG_FILE), exist_ok=True)
 
 # dev 版写本地固定目录，避免混入生产 SMB 目录
 _SMB_LOG_DIR = DEV_LOG_DIR if __channel__ == "dev" else SMB_LOG_DIR

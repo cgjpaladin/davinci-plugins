@@ -6,8 +6,10 @@ set -e
 
 GIT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PLUGIN_DIR="$GIT_ROOT/AI去字幕"
+DELIVERY_DIR="$GIT_ROOT/交付自检工具"
 SHARED_DIR="$GIT_ROOT/shared"
 TOOLS_DIR="$GIT_ROOT/tools"
+SCAN_DIRS=("$PLUGIN_DIR"/*.py "$PLUGIN_DIR"/adapters/*.py "$DELIVERY_DIR"/*.py "$SHARED_DIR"/*.py "$TOOLS_DIR"/*.py)
 FAIL=0
 
 # 收集所有 staged + unstaged 变更的 .py 文件
@@ -48,7 +50,7 @@ BANNED_IMPORTS=(
 )
 PIP_FAIL=0
 for pattern in "${BANNED_IMPORTS[@]}"; do
-    HITS=$(grep -rn "$pattern" "$PLUGIN_DIR"/*.py "$PLUGIN_DIR"/adapters/*.py "$SHARED_DIR"/*.py "$TOOLS_DIR"/*.py 2>/dev/null || true)
+    HITS=$(grep -rn "$pattern" ${SCAN_DIRS[@]} 2>/dev/null || true)
     if [ -n "$HITS" ]; then
         echo "  ❌ 检测到禁止的 pip 第三方包:"
         echo "$HITS"
@@ -63,7 +65,7 @@ echo "  🔍 检查: 禁止 SMB 全盘扫描..."
 SMB_MOUNT="/Volumes/MYJC"
 SMB_DANGER=$(grep -rnE \
     "(subprocess\.|os\.system\(|os\.popen\().*['\"](find|grep|du).*$SMB_MOUNT" \
-    "$PLUGIN_DIR"/*.py "$PLUGIN_DIR"/adapters/*.py "$SHARED_DIR"/*.py "$TOOLS_DIR"/*.py 2>/dev/null || true)
+    ${SCAN_DIRS[@]} 2>/dev/null || true)
 if [ -n "$SMB_DANGER" ]; then
     echo "  ❌ 检测到可能的 SMB 全盘扫描（会打挂 20 台机器）:"
     echo "$SMB_DANGER"
@@ -74,8 +76,8 @@ fi
 
 # ── 3. 禁止硬编码密钥 ──
 echo "  🔍 检查: 无硬编码密钥..."
-KEY_LEAKS=$(grep -rn 'api_key\s*=\s*"[^"{]' "$PLUGIN_DIR"/*.py "$PLUGIN_DIR"/adapters/*.py "$SHARED_DIR"/*.py "$TOOLS_DIR"/*.py 2>/dev/null || true)
-KEY_LEAKS2=$(grep -rnE '(secret|password|token)\s*=\s*"[^"{]+"' "$PLUGIN_DIR"/*.py "$PLUGIN_DIR"/adapters/*.py "$SHARED_DIR"/*.py 2>/dev/null | grep -v 'os\.environ' | grep -v '_env(' || true)
+KEY_LEAKS=$(grep -rn 'api_key\s*=\s*"[^"{]' ${SCAN_DIRS[@]} 2>/dev/null || true)
+KEY_LEAKS2=$(grep -rnE '(secret|password|token)\s*=\s*"[^"{]+"' ${SCAN_DIRS[@]} 2>/dev/null | grep -v 'os\.environ' | grep -v '_env(' || true)
 if [ -n "$KEY_LEAKS" ] || [ -n "$KEY_LEAKS2" ]; then
     echo "  ❌ 检测到疑似硬编码密钥:"
     [ -n "$KEY_LEAKS" ] && echo "$KEY_LEAKS"
@@ -101,14 +103,14 @@ fi
 echo "  🔍 检查: 无调试残留..."
 DEBUG_FAIL=0
 # breakpoint() 调用
-BP_HITS=$(grep -rn 'breakpoint()' "$PLUGIN_DIR"/*.py "$PLUGIN_DIR"/adapters/*.py "$SHARED_DIR"/*.py "$TOOLS_DIR"/*.py 2>/dev/null || true)
+BP_HITS=$(grep -rn 'breakpoint()' ${SCAN_DIRS[@]} 2>/dev/null || true)
 if [ -n "$BP_HITS" ]; then
     echo "  ❌ 检测到 breakpoint() 调试残留:"
     echo "$BP_HITS"
     DEBUG_FAIL=1
 fi
 # 裸 print() — 排除 logger 模块中的 print、docstrings、注释
-PRINT_HITS=$(grep -rn '^\s*print(' "$PLUGIN_DIR"/*.py "$PLUGIN_DIR"/adapters/*.py "$SHARED_DIR"/*.py "$TOOLS_DIR"/*.py 2>/dev/null \
+PRINT_HITS=$(grep -rn '^\s*print(' ${SCAN_DIRS[@]} 2>/dev/null \
     | grep -v 'logger\.py' \
     | grep -v 'if __name__' \
     | grep -v '#.*print' \
@@ -122,9 +124,9 @@ fi
 
 # ── 6. 禁止裸 except ──
 echo "  🔍 检查: 异常处理规范..."
-BARE_EXCEPT=$(grep -rn '^\s*except\s*:' "$PLUGIN_DIR"/*.py "$PLUGIN_DIR"/adapters/*.py "$SHARED_DIR"/*.py "$TOOLS_DIR"/*.py 2>/dev/null || true)
+BARE_EXCEPT=$(grep -rn '^\s*except\s*:' ${SCAN_DIRS[@]} 2>/dev/null || true)
 # 检测 except: 下一行是 pass（吞异常）
-SILENT_PASS=$(grep -rnA1 'except\(\s*\w*\)\?\s*:' "$PLUGIN_DIR"/*.py "$PLUGIN_DIR"/adapters/*.py "$SHARED_DIR"/*.py 2>/dev/null | grep -E '^\d+-(\s*pass|\s*#.*pass)' || true)
+SILENT_PASS=$(grep -rnA1 'except\(\s*\w*\)\?\s*:' ${SCAN_DIRS[@]} 2>/dev/null | grep -E '^\d+-(\s*pass|\s*#.*pass)' || true)
 if [ -n "$BARE_EXCEPT" ]; then
     echo "  ⚠️  检测到 $(echo "$BARE_EXCEPT" | wc -l | tr -d ' ') 处裸 except:（请指定异常类型）"
 fi
@@ -138,8 +140,15 @@ fi
 echo "  🔍 检查: mypy 类型..."
 if command -v mypy &>/dev/null; then
     CORE_FILE="$PLUGIN_DIR/core.py"
+    CORE_FILE2="$DELIVERY_DIR/check_core.py"
     [ ! -f "$CORE_FILE" ] && CORE_FILE="$SHARED_DIR/core.py"
-    if [ -f "$CORE_FILE" ] && MYPYPATH="$PLUGIN_DIR:$SHARED_DIR" mypy --no-implicit-optional --follow-imports=skip "$CORE_FILE" 2>/dev/null; then
+    MYPY_OK=0
+    for cf in "$CORE_FILE" "$CORE_FILE2"; do
+        if [ -f "$cf" ]; then
+            MYPYPATH="$PLUGIN_DIR:$DELIVERY_DIR:$SHARED_DIR" mypy --no-implicit-optional --follow-imports=skip "$cf" 2>/dev/null || MYPY_OK=1
+        fi
+    done
+    if [ $MYPY_OK -eq 0 ]; then
         echo "  ✅ mypy 通过"
     else
         echo "  ❌ mypy 类型错误"
@@ -147,6 +156,21 @@ if command -v mypy &>/dev/null; then
     fi
 else
     echo "  💡 mypy 未安装，跳过"
+fi
+
+# ── 8. 单元测试（纯逻辑，不依赖达芬奇）──
+echo "  🔍 检查: 单元测试..."
+UNIT_OK=0
+if [ -f "$PLUGIN_DIR/tests/test_core.py" ]; then
+    python3 "$PLUGIN_DIR/tests/test_core.py" 2>&1 | tail -3 || UNIT_OK=1
+    if [ $UNIT_OK -eq 0 ]; then
+        echo "  ✅ 单元测试通过"
+    else
+        echo "  ❌ 单元测试失败"
+        FAIL=1
+    fi
+else
+    echo "  💡 无单元测试文件，跳过"
 fi
 
 echo "════════════════════════"

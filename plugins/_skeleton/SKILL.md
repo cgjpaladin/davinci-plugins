@@ -38,7 +38,6 @@ cp -r AI去字幕/ plugins/AI换口型/
 rm plugins/AI换口型/adapters/wuhenai_v2.py
 rm plugins/AI换口型/adapters/ghostcut.py
 rm plugins/AI换口型/adapters/__pycache__/*
-rm plugins/AI换口型/remove_subtitle.py
 ```
 
 ---
@@ -140,6 +139,6 @@ rm plugins/AI换口型/remove_subtitle.py
 
 ## 参考
 
-- 完整产品示例：`AI去字幕/`（v1.7.0-dev，生产级）
+- 完整产品示例：`AI去字幕/`
 - 品牌模板：`shared/brand_template.py`
-- 代码审查标准：`CODE_REVIEW_STANDARDS.md` v2.2
+- 代码质量：pre-commit.sh 自动化检查（语法/零pip/密钥泄露）

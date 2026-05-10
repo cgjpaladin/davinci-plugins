@@ -47,7 +47,7 @@ class PipelineUI:
 # ── CLI 实现 ──
 
 class CLIPipelineUI(PipelineUI):
-    """输出到终端"""
+    """文本输出实现（print到stdout）。用于自动化测试/远程SSH/调试。不是交互式CLI。"""
 
     def log_info(self, msg: str):
         print(f"  {msg}")

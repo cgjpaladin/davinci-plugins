@@ -11,7 +11,7 @@ skills: davinci-resolve-scripting
 
 ## 诊断流程
 
-1. 读报告 → `--dry-run --report-json` 定位失败点
+1. 读报告 → 通过 BasePipeline.run(dry_run=True, report_json=...) 定位失败点
 2. 查日志 → `.ops_logs/op_*.jsonl` 看操作轨迹
 3. 还原现场 → traceback → 文件+行号 → 变量状态
 4. 最小复现 → dry-run 验证 → 确认修复
@@ -29,7 +29,7 @@ skills: davinci-resolve-scripting
 ## 关键命令
 
 ```bash
-python3 remove_subtitle.py --dry-run --report-json /tmp/diag.json
+python3 -c "from pipeline import SubtitlePipeline; p=SubtitlePipeline(); p.run(ui=CLIPipelineUI(), dry_run=True, report_json='/tmp/diag.json')"
 python3 tests/test_core.py
 find .ops_logs/ -name "*.jsonl" -exec tail -1 {} \;
 ```
