@@ -360,3 +360,91 @@ json.dump(cfg, open('$GRAY_CFG','w'), indent=2, ensure_ascii=False)
     echo "✅ 全量发布完成"
     log_gray_promote "全量发布完成"
 }
+
+# ── 核心：同步产品文件到 SMB（新版，两个产品共用）──
+# 使用: source ../tools/publish.sh; publish_sync
+# 环境变量: SYNC_EXTRA_DIRS="dicts" → 额外同步的目录（如交付自检的词典）
+publish_sync() {
+    cd "$PRODUCT_DIR"
+
+    # ── 版本检查（比纯数字，忽略 -dev 通道）──
+    SMB_RAW=$(python3 -c "import sys; sys.path.insert(0,'$SMB_DIR'); from config import __version__; print(__version__)" 2>/dev/null || echo "?")
+    LOCAL_RAW=$(python3 -c "from config import __version__; print(__version__)")
+    echo "🏷 本地: $(python3 -c 'from config import version_string; print(version_string())') | SMB: $(python3 -c "import sys; sys.path.insert(0,'$SMB_DIR'); from config import version_string; print(version_string())" 2>/dev/null || echo '?')"
+    if [ "$LOCAL_RAW" = "$SMB_RAW" ]; then
+        read -p "改动值得升版本吗？(y/N) " BUMP
+        if [ "$BUMP" = "y" ] || [ "$BUMP" = "Y" ]; then
+            read -p "升大版本(1.x→2.0)还是小版本(1.1→1.2)？(M/m) " LEVEL
+            if [ "$LEVEL" = "M" ] || [ "$LEVEL" = "M" ]; then
+                python3 -c "import re; f=open('config.py'); c=f.read(); f.close(); c=re.sub(r'__version__\s*=\s*\"(\d+)\.(\d+)\.(\d+)\"', lambda m: f'__version__ = \"{int(m.group(1))+1}.0.0\"', c); open('config.py','w').write(c)"
+            else
+                python3 -c "import re; f=open('config.py'); c=f.read(); f.close(); c=re.sub(r'__version__\s*=\s*\"(\d+)\.(\d+)\.(\d+)\"', lambda m: f'__version__ = \"{m.group(1)}.{int(m.group(2))+1}.0\"', c); open('config.py','w').write(c)"
+            fi
+            python3 -c "from config import version_string; print(f'🏷 新版本: {version_string()}')"
+        fi
+    fi
+
+    # ── 备份现有 SMB 文件 ──
+    BAK_DIR="$SMB_DIR/.bak_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$BAK_DIR"
+    echo "备份 SMB → $BAK_DIR"
+
+    # ── 同步本产品 .py 文件 ──
+    FILES=()
+    while IFS= read -r f; do
+        FILES+=("$f")
+    done < <(find . -maxdepth 1 -name '*.py' | sed 's|^\./||' | sort)
+
+    echo "同步到 SMB..."
+    for f in "${FILES[@]}"; do
+        src="$PWD/$f"
+        dst="$SMB_DIR/$f"
+        if [ -f "$src" ]; then
+            if [ -f "$dst" ]; then
+                cp "$dst" "$BAK_DIR/$f" 2>/dev/null || true
+            fi
+            # 原子写入：先写临时文件再 rename
+            cp "$src" "$dst.tmp" && mv "$dst.tmp" "$dst"
+        fi
+    done
+
+    # ── 同步额外目录（如 交付自检 的 dicts/）──
+    for extra in ${SYNC_EXTRA_DIRS:-}; do
+        if [ -d "$PRODUCT_DIR/$extra" ]; then
+            SMB_EXTRA="$SMB_DIR/$extra"
+            mkdir -p "$SMB_EXTRA"
+            echo "同步 $extra/..."
+            rsync -a "$PRODUCT_DIR/$extra/" "$SMB_EXTRA/" 2>/dev/null
+            echo "  ✅ $extra/ 同步完成"
+        fi
+    done
+
+    # 创建日志目录
+    mkdir -p "$SMB_DIR/logs"
+
+    # ── 语法检查 ──
+    echo "语法检查..."
+    FAIL=0
+    for f in "${FILES[@]}"; do
+        if [ -f "$SMB_DIR/$f" ] && [[ "$f" == *.py ]]; then
+            python3 -m py_compile "$SMB_DIR/$f" || FAIL=1
+        fi
+    done
+
+    if [ $FAIL -eq 0 ]; then
+        # ── 自动去通道（Python 正则，兼容任意通道名）──
+        SMB_CFG="$SMB_DIR/config.py"
+        python3 -c "
+import re
+with open('$SMB_CFG') as f: code = f.read()
+code = re.sub(r'__channel__\s*=\s*\"[^\"]*\"', '__channel__ = \"\"', code)
+with open('$SMB_CFG', 'w') as f: f.write(code)
+" 2>/dev/null
+        SMB_VER=$(python3 -c "import sys; sys.path.insert(0,'$SMB_DIR'); from config import version_string; print(version_string())")
+        echo "🏷 SMB 版本: $SMB_VER"
+        echo "✅ 同步完成"
+    else
+        echo "❌ 有语法错误"
+        exit 1
+    fi
+}

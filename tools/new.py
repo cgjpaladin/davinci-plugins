@@ -197,30 +197,12 @@ disp.RunLoop()
 dlg.Hide()
 '''
 
-LAUNCHER_PY = '''# -*- coding: utf-8 -*-
-# __NAME__ — 达芬奇内建启动器（部署后永不更新）
-import sys
-sys.path.insert(0, "__SMB__")
-from main import run_pipeline
-# 达芬奇 Workspace→Scripts 入口：无参数
-run_pipeline.__defaults__ = (False, "")
-run_pipeline()
-'''
-
-LAUNCHER_UI_PY = '''# -*- coding: utf-8 -*-
-# __NAME__ UI — 外部 Python 子进程启动器
-import subprocess, os, tempfile
-
-_python = "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
-if not os.path.exists(_python):
-    _python = "/usr/bin/python3"
-
-_log = os.path.join(tempfile.gettempdir(), "__MACHINE___ui.log")
-with open(_log, "a") as f:
-    f.write(f"\\n=== __NAME__ UI 启动 {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())} ===\\n")
-
-_sub = subprocess.Popen([_python, "__SMB__/ui.py"],
-    stdout=open(_log, "a"), stderr=open(_log, "a"))
+LAUNCHER_PY = '''#!/usr/bin/env python3
+# launcher.py — __NAME__ 启动器（薄包装 → shared/launcher_router.py）
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
+from launcher_router import route
+route("__DIR__", ui_module="ui")
 '''
 
 ADAPTER_INIT_PY = '''# -*- coding: utf-8 -*-
@@ -291,44 +273,13 @@ def create_default_adapter() -> BaseAdapter:
 '''
 
 BUILD_LOCAL_SH = '''#!/bin/bash
-# build_local.sh — __NAME__ 本地验证（不同步 SMB）
+# build_local.sh — __NAME__ 本地验证（薄包装 → tools/publish.sh）
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
-
-VERSION=$(python3 -c "import sys; sys.path.insert(0,'.'); from config import version_string; print(version_string())")
-LAUNCHER_DIR="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/本地版"
-LAUNCHER_FILE="$LAUNCHER_DIR/__NAME___v$VERSION.py"
-
-# 更新 launcher 命名
-mkdir -p "$LAUNCHER_DIR"
-OLD=$(ls "$LAUNCHER_DIR"/__NAME___v*.py 2>/dev/null | head -1)
-if [ -n "$OLD" ] && [ "$OLD" != "$LAUNCHER_FILE" ]; then
-    echo "📝 launcher: $(basename "$OLD") → $(basename "$LAUNCHER_FILE")"
-    mv "$OLD" "$LAUNCHER_FILE"
-elif [ ! -f "$LAUNCHER_FILE" ]; then
-    cp launcher.py "$LAUNCHER_FILE"
-    echo "📝 launcher: → $(basename "$LAUNCHER_FILE")"
-fi
-
-echo ""
-echo "═══ 语法检查 ═══"
-FAIL=0
-for f in *.py adapters/*.py; do
-    [ -f "$f" ] || continue
-    if python3 -m py_compile "$f" 2>/dev/null; then
-        echo "  ✅ $f"
-    else
-        echo "  ❌ $f"
-        FAIL=1
-    fi
-done
-[ $FAIL -eq 0 ] && echo "✅ 全部通过" || { echo "❌ 有语法错误"; exit 1; }
-
-echo ""
-echo "════════════════════"
-echo "✅ 本地验证完成（未同步 SMB）"
-echo "   确认没问题后运行 ./push_all.sh 推送到全公司"
+PRODUCT_DIR="$SCRIPT_DIR"
+PRODUCT_NAME="__DIR__"
+source "$SCRIPT_DIR/../tools/publish.sh"
+publish_build_local
 '''
 
 PUSH_ALL_SH = '''#!/bin/bash
@@ -390,17 +341,13 @@ echo "✅ push_all.sh 完成 — 全公司已更新到 v$VERSION，本地已升�
 '''
 
 SYNC_SH = '''#!/bin/bash
-# sync.sh — __NAME__ 同步本地改动到 SMB（内部使用，push_all.sh 调用）
+# sync.sh — __NAME__ 同步到 SMB（薄包装 → tools/publish.sh）
 set -e
-SMB="__SMB__"
-[ ! -d "$SMB" ] && { echo "❌ SMB 未挂载: $SMB"; exit 1; }
-
-for f in *.py adapters/*.py; do
-    [ -f "$f" ] || continue
-    mkdir -p "$(dirname "$SMB/$f")"
-    cp "$f" "$SMB/$f"
-done
-echo "✅ 同步完成"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PRODUCT_DIR="$SCRIPT_DIR"
+PRODUCT_NAME="__DIR__"
+source "$SCRIPT_DIR/../tools/publish.sh"
+publish_sync
 '''
 
 
@@ -428,7 +375,6 @@ def new_project(name: str, dry_run: bool = False):
         "main.py": MAIN_PY,
         "ui.py": UI_MAIN_PY,
         "launcher.py": LAUNCHER_PY,
-        "launcher_ui.py": LAUNCHER_UI_PY,
         "adapters/__init__.py": ADAPTER_INIT_PY,
         "build_local.sh": BUILD_LOCAL_SH,
         "push_all.sh": PUSH_ALL_SH,

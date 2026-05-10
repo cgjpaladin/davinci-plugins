@@ -1064,7 +1064,9 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
             detail=f"时间线有 {tl_nodes} 个节点",
             reason="请删除时间线节点"))
 
-    # ── ② 片段节点 ──
+    # ── ② 片段节点（加缓存避免重复 IPC）──
+    _lut_cache = {}
+    _node_cache = {}
     video_count = timeline.GetTrackCount("video")
     checked = 0
     for vi in range(1, video_count + 1):
@@ -1081,12 +1083,17 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
                 continue
             checked += 1
             try:
-                graph = it.GetNodeGraph()
-                n = graph.GetNumNodes() if graph else 0
+                uid = it.GetUniqueId()
+                if uid not in _node_cache:
+                    graph = it.GetNodeGraph()
+                    _node_cache[uid] = graph.GetNumNodes() if graph else 0
+                n = _node_cache[uid]
             except Exception:
                 n = 0
             try:
-                lut = it.GetLUT(1)
+                if uid not in _lut_cache:
+                    _lut_cache[uid] = it.GetLUT(1)
+                lut = _lut_cache[uid]
             except Exception:
                 lut = None
 
