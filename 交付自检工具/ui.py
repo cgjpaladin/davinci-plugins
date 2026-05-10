@@ -375,28 +375,32 @@ def _filter_covered(results, personal_words):
                 detail=f"系统违禁词典: {total} 处  (个人词典覆盖 {removed} 处)", is_summary=True)
     return kept
 CHECKS = [
-    {"id": "timeline",      "section": "时间线",   "chk_id": CHK_TIMELINE,      "group": "工程", "subgroup": "时间线", "run_fn": _run_timeline_check,     "tracks": []},
-    {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "group": "工程", "subgroup": "轨道",   "run_fn": _run_track_check,        "tracks": ["subtitle","video","audio"]},
-    {"id": "fragment",      "section": "启用/禁用", "chk_id": CHK_FRAGMENT,       "group": "工程", "subgroup": "启用",   "run_fn": _run_fragment_check,      "tracks": ["subtitle","video","audio"]},
-    {"id": "sub_linebreak", "section": "换行",     "chk_id": CHK_SUB_LINEBREAK,  "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_linebreak_check, "tracks": ["subtitle"]},
-    {"id": "sub_duration",  "section": "时长",     "chk_id": CHK_SUB_DURATION,   "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_duration_check,  "tracks": ["subtitle"]},
-    {"id": "sub_glyph",     "section": "异体字",   "chk_id": CHK_SUB_GLYPH,      "group": "字幕", "subgroup": "合规",   "run_fn": _run_sub_glyph_check,     "tracks": ["subtitle"]},
-    {"id": "censor_personal","section": "个人词典","chk_id": CHK_CENSOR_PERSONAL,"group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_personal,     "tracks": ["subtitle"]},
-    {"id": "censor_system",  "section": "系统词典","chk_id": CHK_CENSOR_SYSTEM, "group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_system,       "tracks": ["subtitle"]},
-    {"id": "typo",           "section": "错别字校对",  "chk_id": CHK_TYPO,           "group": "字幕", "subgroup": "合规",   "run_fn": None,                     "tracks": []},
-    {"id": "video_clamp",   "section": "夹帧",     "chk_id": CHK_VIDEO_CLAMP,    "group": "视频", "subgroup": "夹帧",   "run_fn": _run_video_clamp_check,   "tracks": ["video"]},
-    {"id": "black_frame",   "section": "黑帧",     "chk_id": CHK_BLACK,          "group": "视频", "subgroup": "黑帧",   "run_fn": _run_black_frame_check,   "tracks": ["video","audio"]},
-    {"id": "black_border",  "section": "黑边",     "chk_id": CHK_BORDER,         "group": "视频", "subgroup": "黑边",   "run_fn": _run_black_border_check,  "tracks": ["video"]},
-    {"id": "speed",         "section": "变速",     "chk_id": CHK_SPEED,           "group": "视频", "subgroup": "变速",   "run_fn": _run_speed_check,         "tracks": ["video"]},
-    {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "group": "音频", "subgroup": "声道",   "run_fn": _run_mono_check,          "tracks": ["audio"]},
-    {"id": "audio_loudness","section": "音量",     "chk_id": CHK_LOUDNESS,       "group": "音频", "subgroup": "声道",   "run_fn": None,                     "tracks": []},
-    {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "group": "色彩", "subgroup": "色彩",   "run_fn": _run_color_check,         "tracks": ["video"]},
-    {"id": "camera_track",  "section": "视频越轨", "chk_id": CHK_CAMERA,          "group": "工程", "subgroup": "越轨",   "run_fn": _run_camera_track_check,  "tracks": ["video"]},
-    {"id": "audio_color",   "section": "音频越轨", "chk_id": CHK_AUDIO_COLOR,     "group": "工程", "subgroup": "越轨",   "run_fn": _run_audio_color_check,   "tracks": ["audio"]},
+    # 第零道门（无gate → 永远跑）
+    {"id": "timeline",      "section": "时间线",   "chk_id": CHK_TIMELINE,      "group": "工程", "subgroup": "时间线", "run_fn": _run_timeline_check,     "tracks": [], "gate": ""},
+    {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "group": "工程", "subgroup": "轨道",   "run_fn": _run_track_check,        "tracks": ["subtitle","video","audio"], "gate": ""},
+    {"id": "fragment",      "section": "启用/禁用", "chk_id": CHK_FRAGMENT,       "group": "工程", "subgroup": "启用",   "run_fn": _run_fragment_check,      "tracks": ["subtitle","video","audio"], "gate": ""},
+    # 字幕门
+    {"id": "sub_linebreak", "section": "换行",     "chk_id": CHK_SUB_LINEBREAK,  "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_linebreak_check, "tracks": ["subtitle"], "gate": "subtitle"},
+    {"id": "sub_duration",  "section": "时长",     "chk_id": CHK_SUB_DURATION,   "group": "字幕", "subgroup": "文本",   "run_fn": _run_sub_duration_check,  "tracks": ["subtitle"], "gate": "subtitle"},
+    {"id": "sub_glyph",     "section": "异体字",   "chk_id": CHK_SUB_GLYPH,      "group": "字幕", "subgroup": "合规",   "run_fn": _run_sub_glyph_check,     "tracks": ["subtitle"], "gate": "subtitle"},
+    {"id": "censor_personal","section": "个人词典","chk_id": CHK_CENSOR_PERSONAL,"group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_personal,     "tracks": ["subtitle"], "gate": "subtitle"},
+    {"id": "censor_system",  "section": "系统词典","chk_id": CHK_CENSOR_SYSTEM, "group": "字幕", "subgroup": "合规",   "run_fn": _run_censor_system,       "tracks": ["subtitle"], "gate": "subtitle"},
+    {"id": "typo",           "section": "错别字校对",  "chk_id": CHK_TYPO,           "group": "字幕", "subgroup": "合规",   "run_fn": None,                     "tracks": [], "gate": "subtitle"},
+    # 视频门
+    {"id": "video_clamp",   "section": "夹帧",     "chk_id": CHK_VIDEO_CLAMP,    "group": "视频", "subgroup": "夹帧",   "run_fn": _run_video_clamp_check,   "tracks": ["video"], "gate": "video"},
+    {"id": "black_frame",   "section": "黑帧",     "chk_id": CHK_BLACK,          "group": "视频", "subgroup": "黑帧",   "run_fn": _run_black_frame_check,   "tracks": ["video","audio"], "gate": "video"},
+    {"id": "black_border",  "section": "黑边",     "chk_id": CHK_BORDER,         "group": "视频", "subgroup": "黑边",   "run_fn": _run_black_border_check,  "tracks": ["video"], "gate": "video"},
+    {"id": "speed",         "section": "变速",     "chk_id": CHK_SPEED,           "group": "视频", "subgroup": "变速",   "run_fn": _run_speed_check,         "tracks": ["video"], "gate": "video"},
+    {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "group": "色彩", "subgroup": "色彩",   "run_fn": _run_color_check,         "tracks": ["video"], "gate": "video"},
+    {"id": "camera_track",  "section": "视频越轨", "chk_id": CHK_CAMERA,          "group": "工程", "subgroup": "越轨",   "run_fn": _run_camera_track_check,  "tracks": ["video"], "gate": "video"},
+    # 音频门
+    {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "group": "音频", "subgroup": "声道",   "run_fn": _run_mono_check,          "tracks": ["audio"], "gate": "audio"},
+    {"id": "audio_loudness","section": "音量",     "chk_id": CHK_LOUDNESS,       "group": "音频", "subgroup": "声道",   "run_fn": None,                     "tracks": [], "gate": "audio"},
+    {"id": "audio_color",   "section": "音频越轨", "chk_id": CHK_AUDIO_COLOR,     "group": "工程", "subgroup": "越轨",   "run_fn": _run_audio_color_check,   "tracks": ["audio"], "gate": "audio"},
 ]
 # 扩展指南：
-#   - 加新检查：往 CHECKS 末尾加一行 dict（含 tracks 字段声明需要的轨道类型）
-#   - tracks: [] 不预加载, ["video"], ["audio"], ["subtitle"], 或组合
+#   - gate: ""=无门永远跑, "subtitle"/"video"/"audio"=受对应结构门控制
+#   - tracks: 声明需要的轨道类型, []不预加载; gate 关闭时相关轨道也不会预加载
 #   - 换位置：移动 list 中 dict 的位置
 #   - 暂时关闭：run_fn 设为 None
 
@@ -1118,12 +1122,49 @@ def _start_check():
         _action_log(f"时间线: {timeline.GetName()}")
         _action_log(f"帧率: {fps} fps")
 
-        # 预加载所有轨道片段（避免每个检查重复 IPC）
-        # 按需预加载：只加载启用的检查需要的轨道类型
+        # ── 四道门：结构不对则跳过整组检查 ──
+        # Gate 0: 起始时码归零
+        gate0_ok = (timeline.GetStartFrame() == 0)
+        if not gate0_ok:
+            _action_log("⚠ 起始时码非零，后续所有检查已跳过，请先归零时码后重新运行")
+
+        sub_count = timeline.GetTrackCount("subtitle")
+        vid_count = timeline.GetTrackCount("video")
+        aud_count = timeline.GetTrackCount("audio")
+
+        def _all_enabled(tt, count):
+            for ti in range(1, count + 1):
+                try:
+                    if not timeline.GetTrackEnabled(tt, ti): return False
+                except: pass
+            return True
+
+        # 音频名称校验
+        aud_names_ok = True
+        if aud_count == 10:
+            for idx, preset in enumerate(AUDIO_TRACK_PRESET):
+                if timeline.GetTrackName("audio", idx + 1) != preset["name"]:
+                    aud_names_ok = False; break
+
+        gates = {}
+        gates["subtitle"] = gate0_ok and sub_count == 1 and _all_enabled("subtitle", sub_count)
+        gates["video"]    = gate0_ok and vid_count == 5 and _all_enabled("video", vid_count)
+        gates["audio"]    = gate0_ok and aud_count == 10 and _all_enabled("audio", aud_count) and aud_names_ok
+
+        for gate, label in [("subtitle","字幕"), ("video","视频"), ("audio","音频")]:
+            if not gates[gate]:
+                _action_log(f"⚠ {label}结构异常，{label}相关检查已跳过，请先修复基础问题后重新运行")
+
+        gate_labels = {"subtitle": "字幕", "video": "视频", "audio": "音频"}
+
+        # 按需预加载：只加载会实际运行的检查需要的轨道
+        # （gate 关闭的检查会跳过，对应轨道也不用预加载）
         needed = set()
         for check in CHECKS:
+            g = check.get("gate", "")
             if check.get("run_fn") and itm[check["chk_id"]].Checked:
-                needed.update(check.get("tracks", []))
+                if not g or gates.get(g, True):
+                    needed.update(check.get("tracks", []))
         preload_timeline_items(timeline, track_types=list(needed) if needed else None)
 
         # 清空结果
@@ -1142,6 +1183,11 @@ def _start_check():
             if not check.get("run_fn"):
                 continue
             if not itm[check["chk_id"]].Checked:
+                continue
+            # 门关闭 → 跳过
+            g = check.get("gate", "")
+            if g and not gates.get(g, True):
+                _action_log(f"⏭ {check['section']}检查跳过（{gate_labels.get(g, g)}门未通过）")
                 continue
 
             _action_log(f"── {check['section']}检查 ──")
