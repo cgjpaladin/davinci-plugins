@@ -20,13 +20,24 @@ SKIPPED=0
 FAILED=0
 OFFLINE=()
 FAILURES=()
-LOG_DIR="$HOME/.workbuddy/logs/cleanup"
-LOG_FILE="$LOG_DIR/machine_id_cleanup_$(date +%Y-%m-%d).log"
-mkdir -p "$LOG_DIR"
+
+# 双路径留痕：本地 + SMB（裁缝老师可从任何机器查看）
+HOST=$(hostname)
+DATE=$(date +%Y-%m-%d)
+LOG_DIR_LOCAL="$HOME/.workbuddy/logs/cleanup"
+LOG_FILE_LOCAL="$LOG_DIR_LOCAL/machine_id_cleanup_${DATE}.log"
+mkdir -p "$LOG_DIR_LOCAL"
+
+LOG_DIR_SMB="/Volumes/MYJC/06_Software/达芬奇脚本/日志/cleanup"
+LOG_FILE_SMB="$LOG_DIR_SMB/${HOST}_${DATE}.log"
+mkdir -p "$LOG_DIR_SMB" 2>/dev/null || true
 
 log() {
     local ts=$(date +%H:%M:%S)
-    echo "[$ts] $*" | tee -a "$LOG_FILE"
+    local line="[$ts] $*"
+    echo "$line"
+    echo "$line" >> "$LOG_FILE_LOCAL"
+    echo "$line" >> "$LOG_FILE_SMB" 2>/dev/null || true
 }
 
 log "═══ machine_id.txt 清理启动 ═══"
@@ -82,4 +93,5 @@ fi
 if $DRY_RUN; then
     log "  (dry-run 模式)"
 fi
-log "  日志: $LOG_FILE"
+log "  本地: $LOG_FILE_LOCAL"
+log "  SMB:  $LOG_FILE_SMB"
