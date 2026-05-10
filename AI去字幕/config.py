@@ -35,7 +35,7 @@ _PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 load_all_env(_PLUGIN_DIR, smb_env="/Volumes/MYJC/06_Software/达芬奇脚本/AI去字幕/.env")
 
 # 版本号 — 纯数字，不含后缀
-__version__ = "1.10.0"
+__version__ = "1.11.0"
 # 发布通道：""=稳定版, "dev"=开发版, 未来可扩展 "alpha"/"beta"/"rc1"
 __channel__ = "dev"
 

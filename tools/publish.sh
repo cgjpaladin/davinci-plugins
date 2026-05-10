@@ -129,7 +129,12 @@ publish_gray_check() {
     echo "    [2] 跳过灰度检查 — 强制发布（有记录）"
     echo "    [3] 取消 — 去灰度测试后再回来"
     echo ""
-    read -p "  请选择 [1/2/3]: " GRAY_CHOICE
+
+    if [ -n "${GRAY_CHOICE:-}" ]; then
+        echo "  (命令行: $GRAY_CHOICE)"
+    else
+        read -p "  请选择 [1/2/3]: " GRAY_CHOICE
+    fi
 
     case "$GRAY_CHOICE" in
         1)
@@ -388,7 +393,7 @@ publish_sync() {
     SMB_RAW=$(python3 -c "import sys; sys.path.insert(0,'$SMB_DIR'); from config import __version__; print(__version__)" 2>/dev/null || echo "?")
     LOCAL_RAW=$(python3 -c "from config import __version__; print(__version__)")
     echo "🏷 本地: $(python3 -c 'from config import version_string; print(version_string())') | SMB: $(python3 -c "import sys; sys.path.insert(0,'$SMB_DIR'); from config import version_string; print(version_string())" 2>/dev/null || echo '?')"
-    if [ "$LOCAL_RAW" = "$SMB_RAW" ]; then
+    if [ "$LOCAL_RAW" = "$SMB_RAW" ] && [ "${SKIP_VERSION_BUMP:-}" != "1" ]; then
         read -p "改动值得升版本吗？(y/N) " BUMP
         if [ "$BUMP" = "y" ] || [ "$BUMP" = "Y" ]; then
             read -p "升大版本(1.x→2.0)还是小版本(1.1→1.2)？(M/m) " LEVEL

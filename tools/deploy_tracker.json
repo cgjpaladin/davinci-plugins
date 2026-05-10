@@ -2,34 +2,207 @@
   "_schema": "2.0",
   "_description": "达芬奇插件工坊 — 全产品部署追踪。每台机器首个 launcher 部署后更新。",
   "_deploy_path": "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊",
-  "last_updated": "2026-05-11T00:00:00",
+  "last_updated": "2026-05-11T05:24:08.673351",
   "stats": {
     "total": 20,
     "online": 0,
-    "deployed": 2,
-    "pending": 18
+    "deployed": 20,
+    "pending": 0
   },
-  "products": ["AI去字幕", "交付自检工具"],
+  "products": [
+    "AI去字幕",
+    "交付自检工具"
+  ],
   "machines": {
-    "200": {"ip": "192.168.1.200", "name": "陈冠杰", "short": "bryan", "mode": "dev", "deployed": ["AI去字幕", "交付自检工具"], "deployed_at": "2026-05-10"},
-    "104": {"ip": "192.168.1.104", "name": "惠洋",     "short": "macmini11",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-10", "note": "灰度验证机"},
-    "102": {"ip": "192.168.1.102", "name": "张江涛",   "short": "macmini01",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "103": {"ip": "192.168.1.103", "name": "李娜",     "short": "macmini02",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "106": {"ip": "192.168.1.106", "name": "王平波",   "short": "macmini07",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "107": {"ip": "192.168.1.107", "name": "张瑞珈",   "short": "macmini08",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "108": {"ip": "192.168.1.108", "name": "白岳",     "short": "macmini06",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "109": {"ip": "192.168.1.109", "name": "王译茉",   "short": "macmini05",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "110": {"ip": "192.168.1.110", "name": "陈佳馨",   "short": "macmini04",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "131": {"ip": "192.168.1.131", "name": "张国庆",   "short": "macmini00",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "132": {"ip": "192.168.1.132", "name": "张婧怡",   "short": "macmini14",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "135": {"ip": "192.168.1.135", "name": "高怡洁",   "short": "g",         "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "136": {"ip": "192.168.1.136", "name": "赵梓言",   "short": "macmini12",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "137": {"ip": "192.168.1.137", "name": "黄霈",     "short": "pei",       "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "138": {"ip": "192.168.1.138", "name": "葛晨阳",   "short": "macmini138", "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "140": {"ip": "192.168.1.140", "name": "张冀恒",   "short": "macmini09",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "101": {"ip": "192.168.1.101", "name": "王家政",   "short": "macmini15",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "105": {"ip": "192.168.1.105", "name": "袁宁",     "short": "macmini13",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "133": {"ip": "192.168.1.133", "name": "杨惠雯",   "short": "macmini10",  "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"},
-    "134": {"ip": "192.168.1.134", "name": "刘双静",   "short": "xiaolvhua", "deployed": ["AI去字幕"], "deployed_at": "2026-05-09"}
+    "200": {
+      "ip": "192.168.1.200",
+      "name": "陈冠杰",
+      "short": "bryan",
+      "mode": "dev",
+      "deployed": [
+        "AI去字幕",
+        "交付自检工具"
+      ],
+      "deployed_at": "2026-05-10"
+    },
+    "104": {
+      "ip": "192.168.1.104",
+      "name": "惠洋",
+      "short": "macmini11",
+      "deployed": [
+        "AI去字幕"
+      ],
+      "deployed_at": "2026-05-10",
+      "note": "灰度验证机"
+    },
+    "102": {
+      "ip": "192.168.1.102",
+      "name": "张江涛",
+      "short": "macmini01",
+      "deployed": [
+        "AI去字幕",
+        "交付自检工具"
+      ],
+      "deployed_at": "2026-05-11 05:23"
+    },
+    "103": {
+      "ip": "192.168.1.103",
+      "name": "李娜",
+      "short": "macmini02",
+      "deployed": [
+        "AI去字幕",
+        "交付自检工具"
+      ],
+      "deployed_at": "2026-05-11 05:23"
+    },
+    "106": {
+      "ip": "192.168.1.106",
+      "name": "王平波",
+      "short": "macmini07",
+      "deployed": [
+        "AI去字幕"
+      ],
+      "deployed_at": "2026-05-09"
+    },
+    "107": {
+      "ip": "192.168.1.107",
+      "name": "张瑞珈",
+      "short": "macmini08",
+      "deployed": [
+        "AI去字幕"
+      ],
+      "deployed_at": "2026-05-09"
+    },
+    "108": {
+      "ip": "192.168.1.108",
+      "name": "白岳",
+      "short": "macmini06",
+      "deployed": [
+        "AI去字幕"
+      ],
+      "deployed_at": "2026-05-09"
+    },
+    "109": {
+      "ip": "192.168.1.109",
+      "name": "王译茉",
+      "short": "macmini05",
+      "deployed": [
+        "AI去字幕"
+      ],
+      "deployed_at": "2026-05-09"
+    },
+    "110": {
+      "ip": "192.168.1.110",
+      "name": "陈佳馨",
+      "short": "macmini04",
+      "deployed": [
+        "AI去字幕"
+      ],
+      "deployed_at": "2026-05-09"
+    },
+    "131": {
+      "ip": "192.168.1.131",
+      "name": "张国庆",
+      "short": "macmini00",
+      "deployed": [
+        "AI去字幕"
+      ],
+      "deployed_at": "2026-05-09"
+    },
+    "132": {
+      "ip": "192.168.1.132",
+      "name": "张婧怡",
+      "short": "macmini14",
+      "deployed": [
+        "AI去字幕",
+        "交付自检工具"
+      ],
+      "deployed_at": "2026-05-11 05:23"
+    },
+    "135": {
+      "ip": "192.168.1.135",
+      "name": "高怡洁",
+      "short": "g",
+      "deployed": [
+        "AI去字幕"
+      ],
+      "deployed_at": "2026-05-09"
+    },
+    "136": {
+      "ip": "192.168.1.136",
+      "name": "赵梓言",
+      "short": "macmini12",
+      "deployed": [
+        "AI去字幕",
+        "交付自检工具"
+      ],
+      "deployed_at": "2026-05-11 05:23"
+    },
+    "137": {
+      "ip": "192.168.1.137",
+      "name": "黄霈",
+      "short": "pei",
+      "deployed": [
+        "AI去字幕"
+      ],
+      "deployed_at": "2026-05-09"
+    },
+    "138": {
+      "ip": "192.168.1.138",
+      "name": "葛晨阳",
+      "short": "macmini138",
+      "deployed": [
+        "AI去字幕",
+        "交付自检工具"
+      ],
+      "deployed_at": "2026-05-11 05:24"
+    },
+    "140": {
+      "ip": "192.168.1.140",
+      "name": "张冀恒",
+      "short": "macmini09",
+      "deployed": [
+        "AI去字幕"
+      ],
+      "deployed_at": "2026-05-09"
+    },
+    "101": {
+      "ip": "192.168.1.101",
+      "name": "王家政",
+      "short": "macmini15",
+      "deployed": [
+        "AI去字幕",
+        "交付自检工具"
+      ],
+      "deployed_at": "2026-05-11 05:24"
+    },
+    "105": {
+      "ip": "192.168.1.105",
+      "name": "袁宁",
+      "short": "macmini13",
+      "deployed": [
+        "AI去字幕",
+        "交付自检工具"
+      ],
+      "deployed_at": "2026-05-11 05:23"
+    },
+    "133": {
+      "ip": "192.168.1.133",
+      "name": "杨惠雯",
+      "short": "macmini10",
+      "deployed": [
+        "AI去字幕"
+      ],
+      "deployed_at": "2026-05-09"
+    },
+    "134": {
+      "ip": "192.168.1.134",
+      "name": "刘双静",
+      "short": "xiaolvhua",
+      "deployed": [
+        "AI去字幕"
+      ],
+      "deployed_at": "2026-05-09"
+    }
   }
 }
