@@ -616,7 +616,7 @@ window_layout = [
 ]
 
 dlg = disp.AddWindow({
-    "WindowTitle": "交付自检",
+    "WindowTitle": f"交付自检 v{version_string()}",
     "ID": WIN_ID,
     "Geometry": [800, 100, 900, 520],
     "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
@@ -848,7 +848,7 @@ def _show_config_dialog():
     ]
 
     config_dlg = config_disp.AddWindow({
-        "WindowTitle": "交付自检 — 配置",
+        "WindowTitle": f"交付自检 v{version_string()} — 配置",
         "ID": CONFIG_WIN_ID,
         "Geometry": [820, 120, 420, 430],
         "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},

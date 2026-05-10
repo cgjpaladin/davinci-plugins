@@ -170,7 +170,7 @@ window_layout = [
 ]
 
 dlg = disp.AddWindow({
-    "WindowTitle": f"{PRODUCT_NAME}",
+    "WindowTitle": f"{PRODUCT_NAME} v{version_string()}",
     "ID": WIN_ID,
     "Geometry": [800, 100, 880, 560],  # Geometry: [x, y, w, h]
     "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
