@@ -15,9 +15,7 @@ import sys, os, shutil, argparse
 _here = os.path.dirname(os.path.abspath(__file__))
 _project_root = os.path.dirname(_here)
 
-DAVINCI_EDIT = os.path.expanduser(
-    "~/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
-)
+DAVINCI_EDIT = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
 
 
 def list_projects():

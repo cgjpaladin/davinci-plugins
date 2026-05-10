@@ -17,7 +17,7 @@ IP="192.168.1.$IP_SEG"
 SSH_KEY="/Users/bryan/.ssh/id_ed25519_nopass"
 
 # 路径
-SCRIPTS_DIR="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
+SCRIPTS_DIR="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
 COMPANY_DIR="$SCRIPTS_DIR/公司版"
 # 自动发现公司版 launcher（避免硬编码版本号）
 LAUNCHER_SRC=$(ls "$COMPANY_DIR"/AI去字幕_v*.py 2>/dev/null | head -1)

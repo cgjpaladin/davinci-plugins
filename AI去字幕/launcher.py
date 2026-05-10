@@ -12,8 +12,7 @@ if not os.path.exists(_PYTHON):
 try:
     _HERE = os.path.dirname(os.path.abspath(__file__))
 except NameError:
-    _HERE = os.path.join(os.path.expanduser("~"),
-        "Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit")
+    _HERE = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
 
 # 让 log_writer 可导入
 sys.path.insert(0, os.path.join(_HERE, '..', 'shared'))
