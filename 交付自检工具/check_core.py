@@ -1116,17 +1116,25 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
 
 
 def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
-    """检查实拍素材（含摄影机元数据）是否放在了 V4/V5。
-
-    短剧项目约定：实拍素材只能放 V1-V3。放在 V4/V5 会打乱剪辑师工作流。
+    """检查视频越轨（前置：视频轨数=5）。
+    ① 实拍素材（含摄影机元数据）放在了 V4/V5 — 应放 V1-V3
+    ② 尾板素材（未完待续/定格转场/全剧终）放在了 V1-V3 — 应放 V4-V5
 
     Returns:
         list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
     """
+    # ── 前置：视频轨数必须为 5 ──
+    video_count = timeline.GetTrackCount("video")
+    if video_count != len(VIDEO_TRACK_PRESET):
+        return [_make_result("pass",
+            detail=f"视频轨数 {video_count}≠{len(VIDEO_TRACK_PRESET)}，跳过视频越轨检测",
+            is_summary=True)]
     _cam_fields = ("ISO", "Camera Model", "Lens", "Gamma", "Color Space")
     _cam_cache = {}   # mp_unique_id → bool: 是否为实拍素材
+    _tail_kw = ("未完待续", "定格转场", "全剧终")
     issues = []
 
+    # ── ① 实拍素材不得在 V4/V5 ──
     for vi in (4, 5):
         items = _get_items(timeline, "video", vi)
         if not items:
@@ -1141,7 +1149,6 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
             if mp is None:
                 continue
 
-            # 缓存：同一 MediaPoolItem 只查一次摄影机元数据
             try:
                 mp_uid = mp.GetUniqueId()
             except Exception:
@@ -1158,13 +1165,147 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
             smpte = _get_smpte(fps)
             tc = smpte.gettc(_get_cached(it, "start", 0))
             issues.append(_make_result("fail", track=track, timecode=tc,
-                detail=f"实拍素材「{name}」位于第 {vi} 轨",
+                detail=f"{name}，位于第 {vi} 轨",
                 reason="实拍素材请放 V1-V3"))
 
+    # ── ② 尾板素材不得在 V1-V3 ──
+    for vi in (1, 2, 3):
+        items = _get_items(timeline, "video", vi)
+        if not items:
+            continue
+        track = f"V{vi}"
+        for it in items:
+            if not _in_io_range(it, io_range):
+                continue
+            if _get_cached(it, "enabled", True) is False:
+                continue
+            name = _get_clip_name(it)
+            if not any(kw in name for kw in _tail_kw):
+                continue
+
+            smpte = _get_smpte(fps)
+            tc = smpte.gettc(_get_cached(it, "start", 0))
+            issues.append(_make_result("fail", track=track, timecode=tc,
+                detail=f"{name}，位于第 {vi} 轨",
+                reason="尾板请放 V4-V5"))
+
     if not issues:
-        return [_make_result("pass", detail="实拍素材均在 V1-V3", is_summary=True)]
+        return [_make_result("pass", detail="视频越轨: 全部通过", is_summary=True)]
 
     results = [_make_result("fail",
-        detail=f"实拍素材越轨: {len(issues)} 处", is_summary=True)]
+        detail=f"视频越轨: {len(issues)} 处", is_summary=True)]
+    results.extend(issues)
+    return results
+
+
+# ── 音频颜色 → 轨道映射 ──
+# key: GetClipColor() 返回值, value: (允许轨道范围, 音频类型)
+_AUDIO_COLOR_RULES = {
+    "":        ((1, 3), "人声"),   # 无色
+    "Purple":  ((1, 3), "人声"),   # 紫色
+    "Yellow":  ((1, 3), "人声"),   # 黄色
+    "Pink":    ((4, 7), "音效"),   # 粉色
+    "Chocolate": ((8, 10), "音乐"), # 巧克力色
+}
+
+
+def _audio_color_detail(color, vi, name):
+    """根据颜色和轨道生成 detail/reason。"""
+    if not color:
+        return (f"{name}，无片段色彩",
+                "请在媒体池添加片段色彩")
+    rule = _AUDIO_COLOR_RULES.get(color)
+    if rule is None:
+        return (f"{name}，颜色为{color}",
+                "请在媒体池归类为指定片段色彩")
+    (lo, hi), cat = rule
+    if lo <= vi <= hi:
+        return None  # 合规
+    # 越轨
+    loc_map = {(1, 3): "A1-A3", (4, 7): "A4-A7", (8, 10): "A8-A10"}
+    dest = loc_map.get((lo, hi), f"A{lo}-A{hi}")
+    return (f"{name}，位于第 {vi} 轨",
+            f"{cat}请放 {dest}")
+
+
+def check_audio_color_tracks(timeline, fps=25.0, io_range=None) -> list:
+    """检查音频媒体池颜色越轨（前置：音轨数=10 且名称匹配预设）。
+
+    短剧项目音频轨道颜色约定：
+      A1-A3（VO/OS）→ 无色/紫色/黄色（人声）
+      A4-A7（SFX）   → 粉色（音效）
+      A8-A10（BGM）  → 巧克力色（音乐）
+      其他颜色       → 未归类
+
+    MP 颜色 ≠ 时间线颜色。此检查读 MediaPoolItem.GetClipColor()。
+    包含复合片段。
+
+    Returns:
+        list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
+    """
+    # ── 前置①：音轨数必须为 10 ──
+    audio_count = timeline.GetTrackCount("audio")
+    if audio_count != len(AUDIO_TRACK_PRESET):
+        return [_make_result("pass",
+            detail=f"音轨数 {audio_count}≠{len(AUDIO_TRACK_PRESET)}，跳过音频越轨检测",
+            is_summary=True)]
+
+    # ── 前置②：音频轨名称必须匹配预设 ──
+    names_ok = True
+    for idx, preset in enumerate(AUDIO_TRACK_PRESET):
+        if idx + 1 > audio_count:
+            break
+        if timeline.GetTrackName("audio", idx + 1) != preset["name"]:
+            names_ok = False
+            break
+    if not names_ok:
+        return [_make_result("pass",
+            detail="音频轨名称与预设不符，跳过音频越轨检测",
+            is_summary=True)]
+
+    # ── 颜色检查 ──
+    _color_cache = {}  # mp_unique_id → color str
+    issues = []
+
+    for vi in range(1, audio_count + 1):
+        items = _get_items(timeline, "audio", vi)
+        if not items:
+            continue
+        track = f"A{vi}"
+        for it in items:
+            if not _in_io_range(it, io_range):
+                continue
+            if _get_cached(it, "enabled", True) is False:
+                continue
+            mp = _get_cached(it, "mp")
+            if mp is None:
+                continue
+
+            # 缓存：同一 MediaPoolItem 只查一次颜色
+            try:
+                mp_uid = mp.GetUniqueId()
+            except Exception:
+                continue
+            if mp_uid not in _color_cache:
+                try:
+                    _color_cache[mp_uid] = mp.GetClipColor() or ""
+                except Exception:
+                    _color_cache[mp_uid] = ""
+            color = _color_cache[mp_uid]
+
+            result = _audio_color_detail(color, vi, _get_clip_name(it))
+            if result is None:
+                continue
+
+            smpte = _get_smpte(fps)
+            tc = smpte.gettc(_get_cached(it, "start", 0))
+            issues.append(_make_result("fail", track=track, timecode=tc,
+                detail=result[0], reason=result[1]))
+
+    if not issues:
+        return [_make_result("pass", detail="音频越轨: 全部通过", is_summary=True)]
+
+    results = [_make_result("fail",
+        detail=f"音频越轨: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
     return results
