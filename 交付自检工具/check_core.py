@@ -31,12 +31,28 @@ def clear_censor_cache(path=None):
     else:
         _censor_cache.pop(path, None)
 
-def preload_timeline_items(timeline):
-    """预加载所有轨道的片段列表及常用属性，避免重复 IPC。"""
+def preload_timeline_items(timeline, track_types=None):
+    """预加载轨道片段列表及常用属性，避免重复 IPC。
+
+    Args:
+        track_types: 要预加载的轨道类型列表，None=全部 ["subtitle","video","audio"]
+                    传空列表 [] 只清缓存不预加载
+    """
     global _items_cache, _props_cache
     _items_cache.clear()
     _props_cache.clear()
-    for track_type in ["subtitle", "video", "audio"]:
+
+    if track_types is None:
+        track_types = ["subtitle", "video", "audio"]
+
+    # 未预加载的轨道初始化为空列表（_get_items 不再回退 API 调用）
+    all_types = ["subtitle", "video", "audio"]
+    for tt in all_types:
+        for ti in range(1, timeline.GetTrackCount(tt) + 1):
+            if tt not in track_types:
+                _items_cache[(tt, ti)] = []
+
+    for track_type in track_types:
         count = timeline.GetTrackCount(track_type)
         for ti in range(1, count + 1):
             items = timeline.GetItemListInTrack(track_type, ti)
@@ -115,7 +131,7 @@ def _get_smpte(fps):
     return _smpte_cache[fps]
 
 def _get_items(timeline, track_type, ti):
-    """获取轨道片段（优先缓存）。"""
+    """获取轨道片段（缓存优先；未预加载的轨道返回空列表）。"""
     key = (track_type, ti)
     if key in _items_cache:
         return _items_cache[key]
