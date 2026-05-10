@@ -1032,6 +1032,8 @@ def check_speed(timeline, project_fps=25.0, io_range=None) -> list:
             # 容忍 ±2% 误差（如 50fps→25fps 时间线，49% 不报）
             if speed < threshold - 2.0 and retime not in (2, 3):
                 name = _get_clip_name(it)
+                if any(kw in name for kw in ("未完待续", "定格转场", "全剧终")):
+                    continue
                 smpte = _get_smpte(project_fps)
                 tc = smpte.gettc(_get_cached(it, "start", 0))
                 issues.append(_make_result("fail", track=track, timecode=tc,
