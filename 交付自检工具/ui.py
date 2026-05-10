@@ -241,14 +241,37 @@ def _run_timeline_check(timeline, fps, **_kw):
     return check_timeline_settings(timeline, fps=fps, project=_kw.get("project"))
 
 def _run_censor_system(timeline, fps, **_kw):
-    """系统违禁词典（合并所有启用的子词典→一次扫描，个人词典覆盖的词自动跳过）"""
-    import tempfile
+    """系统词典（合并所有启用的子词典→一次扫描）"""
+    import tempfile, csv
     SUB_MAP = [
         ("cn",     ["censor_cn.txt"]),
         ("en",     ["censor_en.txt"]),
         ("bw",     ["censor_bw.txt"]),
         ("bw_sms", ["censor_bw_sms.txt"]),
     ]
+    # 加载个人词典白名单
+    whitelist_path = None
+    personal_csv = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
+    white_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
+    try:
+        if os.path.isfile(personal_csv):
+            whitelist = []
+            with open(personal_csv, "r", encoding="utf-8") as f:
+                reader = csv.reader(f)
+                next(reader, None)
+                for row in reader:
+                    if len(row) >= 2 and row[1].strip():
+                        whitelist.append(row[1].strip())
+            if whitelist:
+                for w in whitelist:
+                    white_tmp.write(w + "\n")
+                white_tmp.close()
+                whitelist_path = white_tmp.name
+    except Exception:
+        pass
+    if not whitelist_path:
+        white_tmp.close()
+
     # 合并启用的子词典 → 临时文件 → 一次扫描
     tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
     try:
@@ -260,9 +283,14 @@ def _run_censor_system(timeline, fps, **_kw):
                         with open(path, "r", encoding="utf-8", errors="ignore") as src:
                             tmp.write(src.read())
         tmp.close()
-        all_results = check_subtitle_censor(timeline, tmp.name, fps, io_range=_kw.get("io_range"), use_warn=True)
+        all_results = check_subtitle_censor(timeline, tmp.name, fps,
+            io_range=_kw.get("io_range"), use_warn=True,
+            whitelist_path=whitelist_path)
     finally:
         os.unlink(tmp.name)
+        if whitelist_path:
+            try: os.unlink(whitelist_path)
+            except: pass
 
     # 过滤个人词典已覆盖的词
     personal_words = set()
@@ -685,12 +713,12 @@ CONFIG_SECTIONS = [
     },
     {
         "id": "censor_system_subs",
-        "label": "系统违禁词典",
+        "label": "系统词典",
         "type": "censor_system_subs",
     },
     {
         "id": "censor_personal",
-        "label": "个人违禁词典",
+        "label": "个人词典",
         "type": "censor_personal",
     },
 ]
@@ -769,9 +797,9 @@ def _build_censor_system_subs():
 def _build_censor_personal():
     return [
         ui.HGroup({"Spacing": 6, "Weight": 0}, [
-            ui.Button({"ID": "cfg_edit_censor", "Text": "编辑",
+            ui.Button({"ID": "cfg_edit_censor", "Text": "在 Finder 中打开",
                        "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
-            ui.Label({"Text": "在 Numbers 表格中编辑  ·  列：分类 / 违禁词 / 替换选项…",
+            ui.Label({"Text": "右键 CSV → 打开方式 → WPS Office 编辑",
                       "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0}),
         ]),
     ]
@@ -946,6 +974,7 @@ def _show_config_dialog():
         else:
             _action_log("⚙ 配置保存: 无变更")
         _save_config_to_file()
+        config_dlg.Hide()
         config_disp.ExitLoop()
 
     # ── 编辑违禁词（打开系统文本编辑）──
@@ -954,8 +983,8 @@ def _show_config_dialog():
         import subprocess
         from check_core import clear_censor_cache
         clear_censor_cache(censor_path)
-        subprocess.Popen(["open", "-a", "Numbers", censor_path])
-        _action_log("📝 打开违禁词编辑（Numbers）")
+        subprocess.Popen(["open", "-R", censor_path])
+        _action_log("📝 在 Finder 中定位个人词典")
 
     config_dlg.On["cfg_edit_censor"].Clicked = _edit_censor
     config_dlg.On["cfg_save"].Clicked = _save
