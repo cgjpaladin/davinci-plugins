@@ -15,6 +15,8 @@ import json
 import os
 import re
 
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # ── 缓存：避免重复 IPC ──
 _items_cache: dict = {}
 _props_cache: dict = {}  # item_uid → {enabled, name, mp, mp_props, property, channel_mapping}
@@ -618,19 +620,52 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
 
 
 def check_subtitle_glyph(timeline, fps=25.0, io_range=None) -> list:
-    """检测字幕异体字：康熙部首 / 全角拉丁字母。
+    """检测字幕不规范字符：根据 Unicode 范围正则匹配。
+    范围定义见 dicts/bad_char_ranges.txt（CJK 兼容/部首/全角/私用区等）。
 
     Returns:
         list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
     """
+    # ── 加载范围 → 编译正则（缓存）──
+    range_path = os.path.join(_SCRIPT_DIR, "dicts", "bad_char_ranges.txt")
+    if range_path not in _censor_cache:
+        try:
+            ranges = []
+            with open(range_path, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    # 格式: U+XXXX-U+YYYY  ...
+                    parts = line.split()
+                    if len(parts) >= 1 and parts[0].startswith("U+"):
+                        m = re.match(r"U\+([0-9A-Fa-f]+)(?:-U\+([0-9A-Fa-f]+))?", parts[0])
+                        if m:
+                            lo = int(m.group(1), 16)
+                            hi = int(m.group(2), 16) if m.group(2) else lo
+                            ranges.append((lo, hi))
+            # 编译成正则字符类: [\uXXXX-\uYYYY\uAAAA-\uBBBB...]
+            if ranges:
+                pattern = "[" + "".join(
+                    f"\\u{lo:04X}" if lo == hi else f"\\u{lo:04X}-\\u{hi:04X}"
+                    for lo, hi in ranges
+                ) + "]"
+                _censor_cache[range_path] = re.compile(pattern)
+            else:
+                _censor_cache[range_path] = None
+        except Exception:
+            _censor_cache[range_path] = None
+    glyph_re = _censor_cache[range_path]
+
+    if glyph_re is None:
+        return [_make_result("warn", detail="不规范字符范围为为空", is_summary=True)]
+
     issues = []
     subtitle_count = timeline.GetTrackCount("subtitle")
     if subtitle_count == 0:
         return [_make_result("warn", detail="无字幕轨道", is_summary=True)]
 
-    smpte = SMPTE()
-    smpte.fps = fps
-    smpte.df = False
+    smpte = _get_smpte(fps)
 
     for si in range(1, subtitle_count + 1):
         items = _get_items(timeline, "subtitle", si)
@@ -644,13 +679,11 @@ def check_subtitle_glyph(timeline, fps=25.0, io_range=None) -> list:
             start_frame = _get_cached(it, "start", 0)
             tc = smpte.gettc(start_frame)
 
-            for ch in text:
-                cp = ord(ch)
-                if 0x2F00 <= cp <= 0x2FDF or 0xFF21 <= cp <= 0xFF3A or 0xFF41 <= cp <= 0xFF5A:
-                    issues.append(_make_result("fail", track=track, timecode=tc,
-                        detail=f"{repr(text)}，含异体字",
-                        reason="请手动删除字幕中的文本，并重新输入"))
-                    break  # 一片段只报一条
+            m = glyph_re.search(text)
+            if m:
+                issues.append(_make_result("fail", track=track, timecode=tc,
+                    detail=f"{text}，含不规范字符「{m.group()}」",
+                    reason="请替换为规范汉字"))
 
     if not issues:
         return [_make_result("pass", detail="异体字: 全部通过", is_summary=True)]

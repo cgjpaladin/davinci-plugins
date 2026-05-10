@@ -1,0 +1,32 @@
+# 不规范字符范围 — 中文短剧字幕质检
+# 格式：U+XXXX-U+YYYY  # 区块名 — 说明
+# 编辑方式：删 # 启用 / 加 # 禁用该范围
+# 来源：Unicode 15.1 标准区块定义
+
+# ── CJK 兼容汉字（字型变异体，不应出现在现代中文字幕）──
+U+F900-U+FAFF    # CJK Compatibility Ideographs — 康熙字典/韩国/越南兼容汉字
+U+2F800-U+2FA1F  # CJK Compatibility Ideographs Supplement — 补充兼容汉字
+
+# ── 部首/笔画（排版用，不是真实文字）──
+U+2F00-U+2FDF    # Kangxi Radicals — 康熙部首（214 个）
+U+2E80-U+2EFF    # CJK Radicals Supplement — 补充部首
+
+# ── 全角拉丁/假名（中文排版不用全角拉丁）──
+U+FF01-U+FF5E    # Fullwidth ASCII — 全角标点+拉丁字母（！ＡＢＣ等）
+U+FF5F-U+FF60    # Fullwidth brackets — 全角括号对
+
+# ── 私用区（字体内部字符/自定义字，跨平台不兼容）──
+U+E000-U+F8FF    # Private Use Area — BMP 私用区
+
+# ── 小写变体（排版专用，正常文本不用）──
+U+FE50-U+FE6F    # Small Form Variants — 小写标点变体
+
+# ── 带圈/带括号 CJK（装饰用，正常文本不用）──
+U+3200-U+32FF    # Enclosed CJK Letters and Months — 带圈字母/月名
+U+3300-U+33FF    # CJK Compatibility — 平方/立方等兼容字符
+
+# ── 竖排标点（横排字幕不该出现）──
+U+FE10-U+FE1F    # Vertical Forms — 竖排标点变体
+
+# ── 其他兼容字符 ──
+U+FE30-U+FE4F    # CJK Compatibility Forms — 兼容标点
