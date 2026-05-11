@@ -38,6 +38,8 @@ from urllib.parse import urlparse, quote
 from email.utils import formatdate
 
 from resolution import parse as parse_resolution, is_portrait
+from log_writer import get_logger as _get_logger
+_ops = _get_logger("AI去字幕")
 
 from . import BaseAdapter, SubtitleTask, SubtitleResult, TaskStatus
 
@@ -610,13 +612,13 @@ class WuhenAIV21Adapter(BaseAdapter):
             try:
                 fsize = os.path.getsize(video_path)
                 if fsize == 0:
-                    records.append({"idx": i, "result": SubtitleResult(success=False, error_message="零字节文件"), "video_path": video_path})
+                    records.append({"idx": i, "result": SubtitleResult(success=False, error_message="零字节文件"), "video_path": video_path, "name": task.name})
                     continue
                 if fsize > self._MAX_FILE_SIZE:
-                    records.append({"idx": i, "result": SubtitleResult(success=False, error_message=f"文件过大 ({fsize/1024/1024:.0f}MB > 100MB)"), "video_path": video_path})
+                    records.append({"idx": i, "result": SubtitleResult(success=False, error_message=f"文件过大 ({fsize/1024/1024:.0f}MB > 100MB)"), "video_path": video_path, "name": task.name})
                     continue
             except OSError as e:
-                records.append({"idx": i, "result": SubtitleResult(success=False, error_message=f"无法访问: {e}"), "video_path": video_path})
+                records.append({"idx": i, "result": SubtitleResult(success=False, error_message=f"无法访问: {e}"), "video_path": video_path, "name": task.name})
                 continue
             filename = os.path.basename(video_path)
             base, ext = os.path.splitext(filename)
@@ -624,6 +626,10 @@ class WuhenAIV21Adapter(BaseAdapter):
             input_key = f"input/{fhash}_{i}_{base}{ext}"
             output_key = f"output/{fhash}_{i}_{base}_clean{ext}"
             upload_tasks.append((i, video_path, input_key, output_key, task))
+
+        # 写 task_submit 事件（每个任务一条）
+        for t in tasks:
+            _ops.ops({"event": "task_submit", "name": t.name, "provider": "无痕AI"})
 
         # 1b. 并发上传（网络 I/O 密集，线程并发收益大）
         uploaded = 0
@@ -636,7 +642,8 @@ class WuhenAIV21Adapter(BaseAdapter):
                     records.append({"idx": idx,
                                     "input_key": input_key, "output_key": output_key,
                                     "video_path": video_path, "output_path": task.output_path,
-                                    "task_id": None, "result": None, "duration": task.duration})
+                                    "task_id": None, "result": None, "duration": task.duration,
+                                    "name": task.name})
                     uploaded += 1
                     if progress_callback:
                         progress_callback("upload", uploaded / n * 0.2)
@@ -645,7 +652,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                 with _upload_lock:
                     records.append({"idx": idx,
                                     "result": SubtitleResult(success=False, error_message=f"上传失败: {e}"),
-                                    "video_path": video_path})
+                                    "video_path": video_path, "name": task.name})
 
         if upload_tasks:
             with ThreadPoolExecutor(max_workers=3) as pool:
@@ -871,8 +878,18 @@ class WuhenAIV21Adapter(BaseAdapter):
             records.append({"result": SubtitleResult(
                 success=False,
                 error_message="未上传（停止）",
-            )})
+            ), "name": f"未上传#{len(records)}"})
         results = [rec["result"] for rec in records]
+        # 写 task_result/error 事件
+        for rec in records:
+            r = rec["result"]
+            nm = rec.get("name", f"#{rec.get('idx','?')}")
+            if r.success:
+                _ops.ops({"event": "task_result", "name": nm, "success": True})
+            else:
+                _ops.ops({"event": "task_error", "name": nm,
+                           "error": getattr(r, 'error_message', '?'),
+                           "success": False})
         success_count = sum(1 for r in results if r.success)
         total_elapsed = time.time() - start_time
         _log(f"[无痕AI 2.1] 批量完成: {success_count}/{n} 成功, 总耗时 {total_elapsed:.0f}s")
