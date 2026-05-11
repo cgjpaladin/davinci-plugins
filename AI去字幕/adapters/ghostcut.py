@@ -18,6 +18,9 @@ import ssl
 import time
 import urllib.request
 import urllib.error
+
+from log_writer import get_logger
+_ops = get_logger("AI去字幕")
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -483,6 +486,9 @@ class GhostCutAdapter(BaseAdapter):
         for i, item in enumerate(data_list):
             if i < len(records):
                 records[i]["task_id"] = str(item["id"])
+                _ops.ops({"event": "task_submit", "provider": "GhostCut",
+                          "clip": records[i]["base_name"], "task_id": str(item["id"]),
+                          "model": model_name})
         self._log("info", f"已提交 {len(data_list)} 个任务，等待处理...")
 
         # ── Phase 3: 一起轮询 ──
@@ -572,7 +578,12 @@ class GhostCutAdapter(BaseAdapter):
                     success=False, task_id=r.get("task_id", ""),
                     error_message="未知错误",
                 )
-            results.append(r["result"])
+            final = r["result"]
+            _ops.ops({"event": "task_result", "provider": "GhostCut",
+                      "clip": r["base_name"], "task_id": r.get("task_id", ""),
+                      "success": final.success,
+                      "error": getattr(final, 'error_message', '') if not final.success else ""})
+            results.append(final)
 
         success_count = sum(1 for r in results if r.success)
         total_elapsed = time.time() - start_time
