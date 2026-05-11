@@ -48,7 +48,7 @@ from ui_widgets import (
     _CLIP_COLORS,
     _check_smb, _flush_log, _apply_ui_state,
     _st, _pg, _bal, _set_btn, _set_proj,
-    _smb_log, _log_file, _log_action,
+    _event_log, _log_file, _log_action,
     _ui_lock, _ui_pending,
     _t_start, _t_estimated, _task_count,
     _update_countdown,
@@ -59,7 +59,7 @@ from ui_widgets import (
 import ui_widgets as _uw  # 用于跨模块写全局变量 _t_start/_t_estimated/_task_count
 
 # ── UI 抽象层 ──
-ui = DaVinciPipelineUI(itm, _st, _pg, _bal, dlg, _smb_log)
+ui = DaVinciPipelineUI(itm, _st, _pg, _bal, dlg, _event_log)
 
 # ── 媒体池自动导航 ──
 def discover_folders():
@@ -147,7 +147,7 @@ def scan_io(*_):
     ui.set_status("扫描中...")
     _state["clips_scanned"] = False
     try: itm[LOG_LB].Text = ""
-    except Exception: _smb_log("[ui_pipeline] 清空 LOG_LB 失败")
+    except Exception: _event_log("[ui_pipeline] 清空 LOG_LB 失败")
     try:
         _, project, timeline = connect_resolve()
         clips, report = scan_io_clips(timeline, _uw._SELECTED_COLOR)
@@ -204,11 +204,11 @@ def scan_io(*_):
         if _state["project_root"]:
             itm[PROJ_LB].Text = "③ 请点击开始处理"
         ui.set_status(f"待处理: {report.valid} 个片段")
-        _smb_log(f"扫描 — 项目: {project.GetName()} 时间线: {timeline.GetName()} IO={io_in}→{io_out} 内{report.valid}片段 需处理{need} 约{total_time}分钟 预估¥{yuan}")
+        _event_log(f"扫描 — 项目: {project.GetName()} 时间线: {timeline.GetName()} IO={io_in}→{io_out} 内{report.valid}片段 需处理{need} 约{total_time}分钟 预估¥{yuan}")
         refresh_bal()
     except Exception as e:
         ui.log_fail(f"扫描失败: {e}")
-        _smb_log(f"扫描失败: {e}")
+        _event_log(f"扫描失败: {e}")
 
 def _refresh_scan_display():
     """选完项目路径后，刷新已扫描片段的缓存状态（🟠→🟢/🟡）"""
@@ -355,7 +355,7 @@ def process(*_):
                 ui.log_fail(f"❌ 预检失败: {' / '.join(parts)} — 请稍后重试")
                 ui.set_status("预检失败")
                 ui.set_progress(0)
-                _smb_log(f"预检失败 — API={api_ok} OSS={oss_ok}")
+                _event_log(f"预检失败 — API={api_ok} OSS={oss_ok}")
                 return []
 
             # ── 并发锁 + 校验 ──
@@ -366,11 +366,11 @@ def process(*_):
                 lock_result = acquire_lock(t.name)
                 if lock_result:
                     if lock_result == "reclaimed":
-                        _smb_log(f"锁回收: {t.name}")
+                        _event_log(f"锁回收: {t.name}")
                     ok_flag, err_msg = validate_task(t)
                     if not ok_flag:
                         ui.log_warn(f"  ⚠ {t.name}: {err_msg}，跳过")
-                        _smb_log(f"校验跳过: {t.name} — {err_msg}")
+                        _event_log(f"校验跳过: {t.name} — {err_msg}")
                         release_lock(t.name)
                         continue
                     locked.append(t)
@@ -393,7 +393,7 @@ def process(*_):
                 from pipeline_utils import calc_cache_savings
                 savings = calc_cache_savings(clips, cache_hit_names)
                 pipeline.log.cache_savings(cache_hits, savings.get("yuan", 0), savings.get("secs", 0))
-                _smb_log(f"缓存省钱: ¥{savings.get('yuan', 0)} ({cache_hits}片段 {savings.get('secs', 0)}秒)")
+                _event_log(f"缓存省钱: ¥{savings.get('yuan', 0)} ({cache_hits}片段 {savings.get('secs', 0)}秒)")
             else:
                 pipeline.log.info("无可复用缓存")
 
@@ -410,7 +410,7 @@ def process(*_):
 
         # ── 执行 ──
         pipeline.run(
-            ui=DaVinciPipelineUI(itm, _st, _pg, _bal, dlg, _smb_log),
+            ui=DaVinciPipelineUI(itm, _st, _pg, _bal, dlg, _event_log),
             project_root=pr, mode=MODE,
             clips=clips, batch=True,
             stop_check=lambda: _state["stop"],
@@ -422,7 +422,7 @@ def process(*_):
 
     except Exception as e:
         ui.log_fail(f"{e}")
-        _smb_log(f"处理异常: {e}")
+        _event_log(f"处理异常: {e}")
         traceback.print_exc()
     finally:
         _state["stop"] = False
@@ -433,7 +433,7 @@ def process(*_):
         itm[BTN_START].Enabled = False
         itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
         try: itm[ST_LB].Text = ""
-        except Exception: _smb_log("[ui_pipeline] 清空 ST_LB 失败")
+        except Exception: _event_log("[ui_pipeline] 清空 ST_LB 失败")
 
 
 # ── 停止 ──
@@ -490,7 +490,7 @@ def undo(*_):
                     ui.log_ok(f"  ↩ {item.GetName()}")
                     undone += 1
                     found += 1
-                    _smb_log(f"撤销: {item.GetName()} → 原片")
+                    _event_log(f"撤销: {item.GetName()} → 原片")
 
         if found == 0:
             ui.log_info("  IO 内无已处理片段")

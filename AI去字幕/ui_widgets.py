@@ -239,13 +239,13 @@ def _ui_write_direct(msg: str):
                     pass
             else:
                 te.Append(msg + "\n")
-        except Exception:  # _smb_log 轮转失败不阻塞 UI
+        except Exception:  # _event_log 轮转失败不阻塞 UI
             _log.ui("UI 刷新失败")
         # 追加后自动滚到底部
         try:
             te.MoveCursor("End", "MoveAnchor")
             te.EnsureCursorVisible()
-        except Exception:  # _smb_log 写入失败不阻塞 UI
+        except Exception:  # _event_log 写入失败不阻塞 UI
             pass
     else:
         _log_queue.put(msg)
@@ -260,7 +260,7 @@ def _ui_write(msg: str):
     _log.ui(msg)  # 同步写 UI 日志文件
 
 # ── 关键事件日志 ──
-def _smb_log(msg: str):
+def _event_log(msg: str):
     """关键事件日志（本地持久化）"""
     _log.ui(msg)
 
@@ -274,12 +274,12 @@ def _check_smb():
         try:
             if mount_smb():
                 info("✅ SMB 已恢复")
-                _smb_log("SMB 重挂成功")
+                _event_log("SMB 重挂成功")
                 return True
         except Exception:  # SMB 状态检查失败不阻塞 UI
             pass
     fail("❌ SMB 重挂失败，插件不可用")
-    _smb_log("SMB 重挂失败 3 次")
+    _event_log("SMB 重挂失败 3 次")
     return False
 
 def _flush_log():
@@ -290,7 +290,7 @@ def _flush_log():
             msg = _log_queue.get_nowait()
             te.Append(msg + "\n")
     except Exception:  # SMB 初始化失败不阻塞 UI
-        # UI 未就绪时静默（初始化时序），真实错误由 _smb_log 覆盖
+        # UI 未就绪时静默（初始化时序），真实错误由 _event_log 覆盖
         pass
 
 # 注入日志器（所有 info/warn/fail/ok 都走 _ui_write → 入队）
@@ -358,7 +358,7 @@ def _update_countdown():
         if actual > 0:
             _pg(actual)
     except Exception as e:
-        _smb_log(f"_update_countdown 异常: {e}")
+        _event_log(f"_update_countdown 异常: {e}")
 
 _pg_last_milestone = 0  # 上次记录的进度里程碑
 
@@ -366,14 +366,14 @@ _pg_last_milestone = 0  # 上次记录的进度里程碑
 _PG_MAX_W_FALLBACK = 800  # 仅当 GetGeometry 失败时兜底
 
 def _pg(r):
-    """更新进度条（0.0=开始, 1.0=完成），里程碑时写 SMB 日志"""
+    """更新进度条（0.0=开始, 1.0=完成），里程碑时写事件日志"""
     global _pg_last_milestone
     ratio = max(0.0, min(r, 1.0))
     for m in (0.10, 0.25, 0.50, 0.75, 0.90, 1.0):
         if ratio >= m > _pg_last_milestone:
             _pg_last_milestone = m
             elapsed = int(_time_module.time() - _t_start) if _t_start > 0 else 0
-            _smb_log(f"进度 {int(m*100)}%  |  已过 {elapsed}秒  |  预估 {_t_estimated:.0f}秒")
+            _event_log(f"进度 {int(m*100)}%  |  已过 {elapsed}秒  |  预估 {_t_estimated:.0f}秒")
             break
     if ratio == 0:
         _pg_last_milestone = 0
@@ -402,7 +402,7 @@ def _pg(r):
         pass
 
 def _log_file(msg: str):
-    """写本地 + SMB 双日志"""
+    """写本地日志"""
     try:
         _log.ui(msg)
     except Exception:
@@ -413,7 +413,7 @@ def _log_action(action: str):
     _log_file(f"[操作] {action}")
 def _bal(t):
     try: itm[BAL_LB].Text = f"<div align='right'>{t}</div>"
-    except Exception: _smb_log(f"[ui_widgets] BAL_LB 赋值失败")
+    except Exception: _event_log(f"[ui_widgets] BAL_LB 赋值失败")
     with _ui_lock: _ui_pending["balance"] = f"<div align='right'>{t}</div>"  # HTML 包装也在挂起数据里
 
 def _set_btn(scan=None, start=None, pick=None, stop=None, warn=None):
@@ -424,7 +424,7 @@ def _set_btn(scan=None, start=None, pick=None, stop=None, warn=None):
         if pick is not None: itm[BTN_PICK].Enabled = pick
         if stop is not None: itm[BTN_STOP].Enabled = stop
         if warn is not None: itm["warn_lb"].Visible = warn
-    except Exception: _smb_log("[ui_widgets] _set_btn 失败")
+    except Exception: _event_log("[ui_widgets] _set_btn 失败")
     with _ui_lock:
         if scan is not None: _ui_pending["btn_scan"] = scan
         if start is not None: _ui_pending["btn_start"] = start
@@ -448,7 +448,7 @@ def _apply_ui_state():
         if b2 is not None: itm[BTN_STOP].Enabled = b2
         if wl is not None: itm["warn_lb"].Visible = wl
         if pg >= 0: _pg(pg)
-    except Exception: _smb_log("[ui_widgets] _apply_ui_state 失败")
+    except Exception: _event_log("[ui_widgets] _apply_ui_state 失败")
 
 def _set_proj(path):
     try:
@@ -460,7 +460,7 @@ def _set_proj(path):
         if len(label) > 65:
             label = label[:62] + "..."
         itm[PATH_LB].Text = label
-    except Exception: _smb_log("[ui_widgets] _set_proj 失败")
+    except Exception: _event_log("[ui_widgets] _set_proj 失败")
 
 def _guess_project_root():
     """从媒体池 01_素材 片段路径推测项目根目录（众数投票）。零磁盘 IO，纯字符串。"""

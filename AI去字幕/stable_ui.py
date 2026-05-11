@@ -21,7 +21,7 @@ from ui_widgets import (
     _CLIP_COLORS, _SELECTED_COLOR,
     _check_smb, _flush_log, _apply_ui_state,
     _st, _pg, _bal, _set_btn, _set_proj,
-    _smb_log, _log_file, _log_action,
+    _event_log, _log_file, _log_action,
     _ui_lock, _ui_pending,
     _t_start, _t_estimated, _task_count,
     _update_countdown,
@@ -50,12 +50,12 @@ def on_show(ev):
         refresh_bal()
     except Exception as e:
         warn(f"余额刷新失败: {e}")
-        _smb_log(f"余额刷新失败: {e}")
+        _event_log(f"余额刷新失败: {e}")
     try:
         refresh_oss_bal()
     except Exception as e:
         warn(f"阿里云余额刷新失败: {e}")
-        _smb_log(f"阿里云余额刷新失败: {e}")
+        _event_log(f"阿里云余额刷新失败: {e}")
 
 def on_close(ev):
     """关闭窗口清理"""
@@ -111,7 +111,7 @@ def start_process(*_):
         if hasattr(_update_countdown, '_timeout_warned') and not _update_countdown._timeout_warned:
             if _uw._t_estimated > 0 and elapsed > _uw._t_estimated * 2:
                 warn(f"⚠ 处理超时: 实际 {elapsed:.0f}秒 > 预估 {_t_estimated:.0f}秒×2，可能网络波动")
-                _smb_log(f"超时告警: elapsed={elapsed:.0f}s > estimated={_t_estimated:.0f}s×2")
+                _event_log(f"超时告警: elapsed={elapsed:.0f}s > estimated={_t_estimated:.0f}s×2")
                 _update_countdown._timeout_warned = True
 
     _flush_log()
@@ -153,12 +153,12 @@ def main():
                 refresh_bal()
             except Exception as e:
                 warn(f"余额刷新失败: {e}")
-                _smb_log(f"余额刷新失败: {e}")
+                _event_log(f"余额刷新失败: {e}")
             try:
                 refresh_oss_bal()
             except Exception as e:
                 warn(f"阿里云余额刷新失败: {e}")
-                _smb_log(f"阿里云余额刷新失败: {e}")
+                _event_log(f"阿里云余额刷新失败: {e}")
         disp.RunLoop()
     except Exception as e:
         fail(f"UI 错误: {e}")
