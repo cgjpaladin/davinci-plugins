@@ -268,10 +268,10 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
     # 按时间线位置排序
     candidates.sort(key=lambda x: x[0].GetStart())
 
-    # 第二轮：用 File Name 去重 + 过滤 + 构建 ClipEntry
-    seen_fnames = set()
-    # {file_name: [(tl_item, tl_color), ...]} — 同文件去重跳过的额外片段
-    alt_tl_by_fname: dict = {}
+    # 第二轮：用 File Path 去重 + 过滤 + 构建 ClipEntry
+    seen_paths = set()
+    # {file_path: [(tl_item, tl_color), ...]} — 同文件去重跳过的额外片段
+    alt_tl_by_path: dict = {}
     for item, t in candidates:
         stats["total"] += 1
         color = item.GetClipColor()
@@ -321,11 +321,11 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
         if "_去字幕" in display_name:
             continue
         
-        # 用 File Name 去重 — 同文件多段：首段入 clips，其余记录到 alt_tl_by_fname
-        if file_name in seen_fnames:
-            alt_tl_by_fname.setdefault(file_name, []).append((item, color or ""))
+        # 用 File Path 去重 — 同文件多段：首段入 clips，其余记录
+        if path in seen_paths:
+            alt_tl_by_path.setdefault(path, []).append((item, color or ""))
             continue
-        seen_fnames.add(file_name)
+        seen_paths.add(path)
         
         duration = get_video_duration(mp)
         resolution = mp.GetClipProperty("Resolution") or "1920x1080"
@@ -338,8 +338,8 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
         ))
 
     # 合并 alt_tl_items：同文件去重跳过的片段记入 ClipEntry，ReplaceClip 后恢复其颜色
-    if alt_tl_by_fname:
-        clips = [ce._replace(alt_tl_items=tuple(alt_tl_by_fname.get(ce.file_name, ())))
+    if alt_tl_by_path:
+        clips = [ce._replace(alt_tl_items=tuple(alt_tl_by_path.get(ce.path, ())))
                  for ce in clips]
 
     # 构造报告
