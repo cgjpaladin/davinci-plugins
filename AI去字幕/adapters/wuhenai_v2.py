@@ -601,11 +601,8 @@ class WuhenAIV21Adapter(BaseAdapter):
         records = []  # [{input_key, output_key, video_path, output_path, task_id?, result?}]
         upload_tasks = []  # [(idx, video_path, input_key)]
 
-        # 1a. 预检 + 计算 key（顺序，很快）
+        # 1a. 预检 + 计算 key（顺序，很快，不检查取消——纯元数据操作不可中断）
         for i, task in enumerate(tasks):
-            if cancel_check and cancel_check():
-                _log(f"[无痕AI 2.1] 上传阶段收到停止，已预检 {i}/{n}，取消剩余")
-                break
             video_path = task.video_path
             try:
                 fsize = os.path.getsize(video_path)
