@@ -1201,6 +1201,71 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
             detail="调色: 全部通过",
             is_summary=True)]
 
+
+_SMB_PREFIX = "/Volumes/MYJC"
+
+def _walk_media_pool(folder, depth=0):
+    """递归遍历媒体池文件夹，yield (folder_path, clip)。"""
+    if folder is None:
+        return
+    clips = folder.GetClipList()
+    if clips:
+        for clip in clips:
+            yield clip
+    subs = folder.GetSubFolderList()
+    if subs:
+        for sub in subs:
+            yield from _walk_media_pool(sub, depth + 1)
+
+
+def check_path_location(project) -> list:
+    """检查媒体池所有文件路径是否在 SMB 上。
+
+    Args:
+        project: DaVinci Resolve 项目对象
+
+    Returns:
+        list[dict]: 不在 /Volumes/MYJC 下的文件列表
+    """
+    if project is None:
+        return [_make_result("warn", detail="路径检测: 项目未加载",
+                             is_summary=True)]
+
+    issues = []
+    try:
+        pool = project.GetMediaPool()
+        root = pool.GetRootFolder()
+    except Exception as e:
+        return [_make_result("warn",
+                             detail=f"路径检测: 无法访问媒体池 ({e})",
+                             is_summary=True)]
+
+    seen = set()  # 对同一素材不同实例去重
+    for clip in _walk_media_pool(root):
+        try:
+            path = clip.GetClipProperty("File Path") or ""
+        except Exception:
+            continue
+        if not path:
+            continue
+        if path in seen:
+            continue
+        seen.add(path)
+
+        if not path.startswith(_SMB_PREFIX):
+            name = clip.GetName() or path
+            issues.append(_make_result("fail",
+                detail=f"{name}，本地路径: {path}",
+                reason="请将素材移至 SMB (/Volumes/MYJC) 后重新链接"))
+
+    if not issues:
+        return [_make_result("pass",
+                             detail="路径检测: 全部在 SMB 上",
+                             is_summary=True)]
+    return [_make_result("fail",
+                         detail=f"路径检测: {len(issues)} 处不在 SMB 上",
+                         is_summary=True)] + issues
+
     results = [_make_result("fail", detail=f"调色: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
     return results

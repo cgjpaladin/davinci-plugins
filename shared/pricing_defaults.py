@@ -7,7 +7,7 @@ pricing_defaults.py — 供应商定价默认值
 
 定价来源：
   无痕AI 2.1: wuhenapi_2_1.md 计费表（2026-04-20）
-  鬼手: GhostCut API 官方定价 VIP3
+  鬼手: GhostCut 官方定价 VIP3（2026-05-11 线上验证）
   OSS: 阿里云官方定价页（2026-05-05），杭州区域折扣价
 """
 
@@ -26,7 +26,7 @@ PRICING = {
     "ghostcut": {
         # 计费模型：按 30 秒为单位
         "unit_seconds": 30,               # 计费单位（秒）
-        "modes": {"pro_box": 5, "pro": 10},  # 积分/30秒
+        "modes": {"basic": 4, "pro_box": 6},  # 积分/30秒 (VIP3: Lite版=4, Pro框选=6)
         "point_to_yuan": 0.19,            # 每积分折合人民币（¥189=1000积分）
     },
 }

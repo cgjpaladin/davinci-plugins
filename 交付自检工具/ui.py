@@ -40,7 +40,8 @@ from check_core import (check_track_structure, check_subtitle_clamping, check_di
                           check_black_frames, check_audio_mono, check_timeline_settings,
                           check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
                           check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
-                          check_color, check_camera_on_high_tracks, check_audio_color_tracks)
+                          check_color, check_camera_on_high_tracks, check_audio_color_tracks,
+                          check_path_location)
 
 # ═══════════════════════════════════════════
 # 常量
@@ -55,6 +56,7 @@ CHK_BLACK, CHK_VIDEO_CLAMP, CHK_BORDER, CHK_SPEED, CHK_MONO, CHK_LOUDNESS, CHK_F
 CHK_CENSOR_SYSTEM, CHK_CENSOR_PERSONAL, CHK_TYPO = "chk_censor_sys", "chk_censor_personal", "chk_typo"
 CHK_CAMERA = "chk_camera"
 CHK_AUDIO_COLOR = "chk_audio_color"
+CHK_PATH = "chk_path"
 CHK_BLACK_FRAME = CHK_BLACK  # 别名
 BTN_START = "btn_start"
 BTN_CONFIG = "btn_config"
@@ -242,6 +244,10 @@ def _run_timeline_check(timeline, fps, **_kw):
     """时间线设置"""
     return check_timeline_settings(timeline, fps=fps, project=_kw.get("project"))
 
+def _run_path_check(timeline, fps, **_kw):
+    """媒体池路径检测"""
+    return check_path_location(_kw.get("project"))
+
 def _run_censor_system(timeline, fps, **_kw):
     """系统词典（合并所有启用的子词典→一次扫描）"""
     import tempfile, csv
@@ -378,6 +384,7 @@ def _filter_covered(results, personal_words):
     return kept
 CHECKS = [
     # 第零道门（无gate → 永远跑）
+    {"id": "path",          "section": "路径检测", "chk_id": CHK_PATH,           "group": "工程", "subgroup": "路径",   "run_fn": _run_path_check,          "tracks": [], "gate": ""},
     {"id": "timeline",      "section": "时间线",   "chk_id": CHK_TIMELINE,      "group": "工程", "subgroup": "时间线", "run_fn": _run_timeline_check,     "tracks": [], "gate": ""},
     {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "group": "工程", "subgroup": "轨道",   "run_fn": _run_track_check,        "tracks": ["subtitle","video","audio"], "gate": ""},
     {"id": "fragment",      "section": "启用/禁用", "chk_id": CHK_FRAGMENT,       "group": "工程", "subgroup": "启用",   "run_fn": _run_fragment_check,      "tracks": ["subtitle","video","audio"], "gate": "all"},
@@ -393,12 +400,12 @@ CHECKS = [
     {"id": "black_frame",   "section": "黑帧",     "chk_id": CHK_BLACK,          "group": "视频", "subgroup": "黑帧",   "run_fn": _run_black_frame_check,   "tracks": ["video","audio"], "gate": "video"},
     {"id": "black_border",  "section": "黑边",     "chk_id": CHK_BORDER,         "group": "视频", "subgroup": "黑边",   "run_fn": _run_black_border_check,  "tracks": ["video"], "gate": "video"},
     {"id": "speed",         "section": "变速",     "chk_id": CHK_SPEED,           "group": "视频", "subgroup": "变速",   "run_fn": _run_speed_check,         "tracks": ["video"], "gate": "video"},
+    {"id": "camera_track",  "section": "视频越轨", "chk_id": CHK_CAMERA,          "group": "视频", "subgroup": "越轨",   "run_fn": _run_camera_track_check,  "tracks": ["video"], "gate": "video"},
     {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "group": "色彩", "subgroup": "色彩",   "run_fn": _run_color_check,         "tracks": ["video"], "gate": "video"},
-    {"id": "camera_track",  "section": "视频越轨", "chk_id": CHK_CAMERA,          "group": "工程", "subgroup": "越轨",   "run_fn": _run_camera_track_check,  "tracks": ["video"], "gate": "video"},
     # 音频门
     {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "group": "音频", "subgroup": "声道",   "run_fn": _run_mono_check,          "tracks": ["audio"], "gate": "audio"},
     {"id": "audio_loudness","section": "音量",     "chk_id": CHK_LOUDNESS,       "group": "音频", "subgroup": "声道",   "run_fn": None,                     "tracks": [], "gate": "audio"},
-    {"id": "audio_color",   "section": "音频越轨", "chk_id": CHK_AUDIO_COLOR,     "group": "工程", "subgroup": "越轨",   "run_fn": _run_audio_color_check,   "tracks": ["audio"], "gate": "audio"},
+    {"id": "audio_color",   "section": "音频越轨", "chk_id": CHK_AUDIO_COLOR,     "group": "音频", "subgroup": "越轨",   "run_fn": _run_audio_color_check,   "tracks": ["audio"], "gate": "audio"},
 ]
 # 扩展指南：
 #   - gate: ""=无门永远跑, "subtitle"/"video"/"audio"=受对应结构门控制
@@ -1237,6 +1244,11 @@ def _start_check():
                 "rows": section_rows,
                 "all_ok": all_ok,
             })
+
+        # 路径检测失败 → 加入门警告
+        for s in sections:
+            if s["title"] == "路径检测" and not s["all_ok"]:
+                gate_warnings.append(f"⚠ 媒体池存在非 SMB 路径文件，详见下方检测结果")
 
         # 缓存 sections，重建左侧导航（只保留有数据的）
         global _cached_sections

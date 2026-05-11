@@ -77,13 +77,11 @@ def _auto_mask(task: SubtitleTask):
         # fallback: 假设竖屏（Seedance 默认）
         w, h = 720, 1280
 
-    if is_portrait(w, h):
-        # 竖屏：底部 50% 框选
-        return "pro_box", [{"type": "remove_only_ocr",
-                             "region": [[0, 0.50], [1, 0.50], [1, 1.0], [0, 1.0]]}], 0.50
-    else:
-        # 横屏：全屏自动检测（无 mask）
-        return "pro", None, None
+    # 鬼手字幕擦除仅两档：Lite版(basic) 和 Pro版·框选(pro_box)
+    # 无 pro_large/pro 全屏档——统一用 pro_box，mask 大小不影响计费
+    cut_y = 0.50  # 底部 50%，覆盖竖屏字幕(>90%)和横屏字幕(57-80%)
+    return "pro_box", [{"type": "remove_only_ocr",
+                         "region": [[0, cut_y], [1, cut_y], [1, 1.0], [0, 1.0]]}], cut_y
 
 
 class GhostCutAdapter(BaseAdapter):
