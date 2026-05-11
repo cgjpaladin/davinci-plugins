@@ -1207,10 +1207,16 @@ def _start_check():
                 continue
 
             _action_log(f"── {check['section']}检查 ──")
-            all_results = list(check["run_fn"](
-                timeline=timeline, fps=fps, project=project,
-                personal_enabled=itm[CHK_CENSOR_PERSONAL].Checked,
-                io_range=io_range))
+            try:
+                all_results = list(check["run_fn"](
+                    timeline=timeline, fps=fps, project=project,
+                    personal_enabled=itm[CHK_CENSOR_PERSONAL].Checked,
+                    io_range=io_range))
+            except Exception:
+                _action_log(f"❌ {check['section']}检查崩溃，详见 stderr")
+                import traceback, sys
+                traceback.print_exc(file=sys.stderr)
+                continue
             section_rows = []
             section_pass = 0
             summary_text = ""
