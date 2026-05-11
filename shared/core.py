@@ -287,9 +287,14 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
                 pass  # 警告由调用者处理
             continue
 
-        # 摄影机素材过滤：有摄影机元数据的跳过（不可能带字幕）
+        # 摄影机素材过滤：元数据 + 文件名双检测
         _cam_fields = ("ISO", "Camera Model", "Lens", "Gamma", "Color Space")
         if any(mp.GetClipProperty(f) for f in _cam_fields):
+            stats["skipped_camera"] = stats.get("skipped_camera", 0) + 1
+            continue
+        # 文件名模式：Sony [ABC]NNN / DJI_（元数据被洗掉时兜底）
+        fname = mp.GetClipProperty("File Name") or ""
+        if re.match(r'^[ABC]\d{3}', fname) or fname.startswith("DJI_"):
             stats["skipped_camera"] = stats.get("skipped_camera", 0) + 1
             continue
 
