@@ -1202,6 +1202,9 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
         return [_make_result("pass",
             detail="调色: 全部通过",
             is_summary=True)]
+    return [_make_result("fail",
+                         detail=f"调色: {len(issues)} 处",
+                         is_summary=True)] + issues
 
 
 _SMB_PREFIX = "/Volumes/MYJC"
