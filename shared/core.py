@@ -88,8 +88,6 @@ _CAM_FNAME_RE = re.compile(
     r'|L\d{7}'                      # 徕卡
     r'|[A-Z]\d{3,4}'                # 通用: 所有专业机(Sony/Canon/ARRI/RED/BMD等)
 )
-# 已处理过的文件不拦（含_去字幕/_去水印等后缀）
-_CAM_FNAME_EXCLUDE = re.compile(r'_去(字幕|水印|文字|除)')
 
 # ═══════════════════════════════════════════
 # 结构化数据类型
@@ -310,7 +308,7 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
             continue
         # 文件名模式兜底（元数据被洗掉时）— 拦截所有镜头记录的素材
         fname = mp.GetClipProperty("File Name") or ""
-        if _CAM_FNAME_RE.search(fname) and not _CAM_FNAME_EXCLUDE.search(fname):
+        if _CAM_FNAME_RE.search(fname):
             stats["skipped_camera"] = stats.get("skipped_camera", 0) + 1
             continue
 
