@@ -1217,7 +1217,7 @@ def _start_check():
                 _action_log(f"❌ {check['section']}检查异常: {e}")
                 import traceback
                 _action_log(traceback.format_exc())
-                all_results = [_make_result("fail",
+                all_results = [_make_result_passthrough("fail",
                     detail=f"{check['section']}检查异常: {e}",
                     is_summary=True)]
             section_rows = []
