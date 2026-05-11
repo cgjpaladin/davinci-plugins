@@ -1270,6 +1270,8 @@ def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
     Returns:
         list[dict]: 脱机文件列表
     """
+    _CAMERA_EXT = (".mp4", ".mxf", ".mov", ".avi", ".r3d", ".braw", ".mts", ".m2t",
+                   ".mkv", ".wmv", ".flv", ".webm", ".m4v", ".mpg", ".mpeg", ".ts")
     issues = []
     seen_mp = set()
     for vi in range(1, timeline.GetTrackCount("video") + 1):
@@ -1280,11 +1282,11 @@ def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
                 continue
             mp = _get_cached(it, "mp")
             if mp is None:
-                # 部分时间线片段（交叉叠化等）GetClipProperty 不可调用
+                # 文件扩展名检测：无 MP + 有视频扩展名 → 脱机
+                # 转场/调整片段/文本等无扩展名，正常跳过
                 name = _get_clip_name(it)
-                if any(kw in name for kw in ("交叉叠化", "叠化", "淡入淡出", "划像")):
+                if not name.lower().endswith(_CAMERA_EXT):
                     continue
-                # 无 MP → 脱机
                 smpte = _get_smpte(fps)
                 tc = smpte.gettc(_get_cached(it, "start", 0))
                 issues.append(_make_result("fail", track=f"V{vi}", timecode=tc,
