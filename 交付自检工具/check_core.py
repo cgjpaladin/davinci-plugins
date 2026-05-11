@@ -11,6 +11,7 @@ track / timecode / detail 均为干净独立字段，UI 端无需解析/截取�
 
 from timecode import SMPTE
 from config import AUDIO_TRACK_PRESET, VIDEO_TRACK_PRESET, SUBTITLE_TRACK_PRESET
+from camera_detect import is_camera_footage
 import json
 import os
 import re
@@ -1287,7 +1288,6 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
         return [_make_result("warn",
             detail=f"视频轨数 {video_count}≠{len(VIDEO_TRACK_PRESET)}，跳过视频越轨检测",
             is_summary=True)]
-    _cam_fields = ("ISO", "Camera Model", "Lens", "Gamma", "Color Space")
     _cam_cache = {}   # mp_unique_id → bool: 是否为实拍素材
     _tail_kw = ("未完待续", "定格转场", "全剧终")
     issues = []
@@ -1313,7 +1313,7 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
                 continue
             if mp_uid not in _cam_cache:
                 try:
-                    _cam_cache[mp_uid] = any(mp.GetClipProperty(f) for f in _cam_fields)
+                    _cam_cache[mp_uid] = is_camera_footage(mp)
                 except Exception:
                     _cam_cache[mp_uid] = False
             if not _cam_cache[mp_uid]:
