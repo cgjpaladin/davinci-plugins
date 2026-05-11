@@ -478,32 +478,36 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
 
     tl_start = timeline.GetStartFrame()
     tl_end = timeline.GetEndFrame()
-    gaps = []  # [(start, end, reason, track, name)]
+    gaps = []  # [(start, end, reason, track, name, clip_start)]
     prev = tl_start
     for s, e in merged:
         if s > prev:
             reason = "无片段覆盖"
             track = ""
             gap_name = ""
+            clip_tc = prev  # 间隙时码
             for is_, ie, ir, it_, in_ in invalid_intervals:
                 if is_ < s and ie > prev:
                     reason = ir
                     track = it_
                     gap_name = in_
+                    clip_tc = is_  # 特定片段导致 → 用片段的时码
                     break
-            gaps.append((prev, s, reason, track, gap_name))
+            gaps.append((prev, s, reason, track, gap_name, clip_tc))
         prev = max(prev, e)
     if prev < tl_end:
         reason = "无片段覆盖"
         track = ""
         gap_name = ""
+        clip_tc = prev
         for is_, ie, ir, it_, in_ in invalid_intervals:
             if is_ < tl_end and ie > prev:
                 reason = ir
                 track = it_
                 gap_name = in_
+                clip_tc = is_
                 break
-        gaps.append((prev, tl_end, reason, track, gap_name))
+        gaps.append((prev, tl_end, reason, track, gap_name, clip_tc))
 
     # ── 补充：音频尾部超出视频（用子帧精度，从预加载缓存读取）──
     last_video = merged[-1][1] if merged else tl_end
@@ -524,7 +528,7 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
     if audio_max_end > last_video:
         overrun = round(audio_max_end - last_video, 2)
         gaps.append((last_video, int(audio_max_end) + 1,
-                     f"音频超出视频尾 {overrun}帧", "", ""))
+                     f"音频超出视频尾 {overrun}帧", "", "", last_video))
 
     if not gaps:
         return [_make_result("pass",
@@ -539,9 +543,9 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
         detail=f"黑帧: {len(gaps)} 处",
         is_summary=True)]
 
-    for s, e, gap_reason, track, name in gaps:
+    for s, e, gap_reason, track, name, clip_tc in gaps:
         duration = e - s
-        tc = smpte.gettc(s)
+        tc = smpte.gettc(clip_tc)
         if gap_reason == "无片段覆盖":
             detail = f"空白 {duration} 帧"
             reason = "请删除大段黑场" if duration >= threshold_sec * fps else "请检查是否有夹帧"
