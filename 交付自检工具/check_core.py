@@ -1243,15 +1243,15 @@ def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list
                 smpte = _get_smpte(fps)
                 tc = smpte.gettc(_get_cached(it, "start", 0))
                 issues.append(_make_result("fail", track=f"V{vi}", timecode=tc,
-                    detail=f"{name}，非 SMB 路径: {path}",
-                    reason="请将素材移至 SMB (/Volumes/MYJC) 后重新链接"))
+                    detail=f"{name}，不在服务器路径: {path}",
+                    reason="请将素材移至服务器后重新链接"))
 
     if not issues:
         return [_make_result("pass",
-                             detail="路径检测: 全部在 SMB 上",
+                             detail="路径检测: 全部在服务器上",
                              is_summary=True)]
     return [_make_result("fail",
-                         detail=f"路径检测: {len(issues)} 处不在 SMB 上",
+                         detail=f"路径检测: {len(issues)} 处不在服务器上",
                          is_summary=True)] + issues
 
 
