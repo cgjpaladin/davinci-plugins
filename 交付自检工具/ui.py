@@ -1149,14 +1149,17 @@ def _start_check():
             gates["video"]    = gate0_ok
             gates["audio"]    = gate0_ok
 
+        # 三门合一：任意一门不通 → 后续所有检查跳过
+        gate_all_ok = gate0_ok and all(gates.values())
+
         if itm[CHK_TRACK].Checked:
             failed_gates = []
-            for gate, label in [("subtitle","字幕轨道"), ("video","视频轨道"), ("audio","音频轨道")]:
+            for gate, label in [("video","视频轨道"), ("audio","音频轨道"), ("subtitle","字幕轨道")]:
                 if not gates[gate]:
                     failed_gates.append(label)
-                    _action_log(f"⚠ {label}结构异常，相关检查已跳过")
+                    _action_log(f"⚠ {label}结构异常")
             if failed_gates:
-                gate_warnings.append(f"⚠ {'、'.join(failed_gates)}结构异常，相关检查已跳过，请先修复基础问题后重新运行")
+                gate_warnings.append(f"⚠ {'、'.join(failed_gates)}结构异常，所有检查已跳过，请先修复基础问题后重新运行")
 
         if gate_warnings:
             itm["lbl_gate_warn"].Text = "\n".join(gate_warnings)
@@ -1165,15 +1168,13 @@ def _start_check():
             itm["lbl_gate_warn"].Text = ""
             itm["lbl_gate_warn"].Visible = False
 
-        gate_labels = {"subtitle": "字幕轨道", "video": "视频轨道", "audio": "音频轨道"}
-
         # 按需预加载：只加载会实际运行的检查需要的轨道
-        # （gate 关闭的检查会跳过，对应轨道也不用预加载）
+        # （门关闭 → 对应检查跳过，轨道也不用预加载）
         needed = set()
         for check in CHECKS:
             g = check.get("gate", "")
             if check.get("run_fn") and itm[check["chk_id"]].Checked:
-                if not g or gates.get(g, True):
+                if not g or gate_all_ok:
                     needed.update(check.get("tracks", []))
         preload_timeline_items(timeline, track_types=list(needed) if needed else None)
 
@@ -1194,16 +1195,11 @@ def _start_check():
                 continue
             if not itm[check["chk_id"]].Checked:
                 continue
-            # 门关闭 → 跳过
+            # 门关闭 → 跳过（三门合一：任一不通全停）
             g = check.get("gate", "")
-            if g:
-                if g == "all":
-                    ok = all(gates.values())  # 三门全开才跑
-                else:
-                    ok = gates.get(g, True)
-                if not ok:
-                    _action_log(f"⏭ {check['section']}检查跳过（{gate_labels.get(g, g)}门未通过）")
-                    continue
+            if g and not gate_all_ok:
+                _action_log(f"⏭ {check['section']}检查跳过（门未通过）")
+                continue
 
             _action_log(f"── {check['section']}检查 ──")
             all_results = list(check["run_fn"](
