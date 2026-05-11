@@ -117,12 +117,22 @@ def find_latest(file_name: str, action: str = "completed") -> Optional[dict[str,
     return best
 
 
-def find_output(file_name: str) -> Optional[str]:
+def find_latest_by_path(original_path: str, action: str = "completed") -> Optional[dict[str, Any]]:
+    """按 original_path 查找最新记录。避免同名文件跨项目误匹配。"""
+    best = None
+    for r in _scan():
+        if r.get("original_path") == original_path and r.get("action") == action:
+            if best is None or r.get("time", "") > best.get("time", ""):
+                best = r
+    return best
+
+
+def find_output(original_path: str) -> Optional[str]:
     """
-    查缓存：看有没有对这个 file_name 处理完成过，且输出文件还存在。
-    返回 output_path 或 None。
+    查缓存：按 original_path 查找处理完成记录，输出文件还存在。
+    避免同名文件跨项目误匹配。
     """
-    r = find_latest(file_name, "completed")
+    r = find_latest_by_path(original_path, "completed")
     if r:
         path = r.get("output_path", "")
         if path and os.path.exists(path):

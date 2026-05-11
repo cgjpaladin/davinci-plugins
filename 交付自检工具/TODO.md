@@ -7,9 +7,14 @@
 | # | 事项 | 状态 |
 |---|------|------|
 | D3 | 黑边检测完善（旋转归一化 + 跳过逻辑） | ⏳ |
+| D6 | 脱机检测（离线片段 + 非 SMB 文件，当前时间线范围） | ✅ v1.6.0 |
 | D8.1 | LLM 字幕校对（ASR错字检测+剧本对齐）→ 方案: `外部调研报告/LLM字幕校对方案设计.md` | 📋 待开工 |
 | D8.2 | 「忽略」按钮——下次不检查指定条目。方向 B：`ignored.json` | ⏳ |
 | D9 | ComboBox 实测可用（AddItems/Clear/CurrentText）— 后续可改用此控件 | ✅ |
+| D10 | 推全公司验证 1.6.0 | ✅ v1.6.0 |
+| D11 | delivery-checker-dev skill 更新：共享缓存 + 扩展名判定 | ✅ |
+| D12 | `_clip_files_cache` 改成 per-session（防交叉污染） | ✅ 已隐式完成（preload 每次清缓存） |
+| D13 | launcher 模板 skill（新产品的 launcher.py 骨架） | 💭 远期 |
 
 ## API 盲区
 

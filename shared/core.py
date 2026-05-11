@@ -396,7 +396,7 @@ def prepare_tasks(
         for c in valid_clips:
             if stop_check and stop_check():
                 break  # 用户点了停止
-            cached = ledger.find_output(c.file_name)
+            cached = ledger.find_output(c.path)
             if cached:
                 replaced = False
                 try:
