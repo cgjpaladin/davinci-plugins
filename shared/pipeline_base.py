@@ -31,6 +31,8 @@ from interface import PipelineUI
 from pricing import estimate_cost, point_to_yuan, oss_tracker
 from pipeline_utils import validate_task, calc_cache_savings
 from pipeline_log import StepLogger
+from log_writer import get_logger as _get_logger
+_log_ops = _get_logger("AI去字幕")
 
 
 # ═══════════════════════════════════════════
@@ -296,10 +298,10 @@ class BasePipeline(ABC):
         if pts > 0 and pts < total_est:
             self.log.fail(f"余额不足: {pts:.1f} < {total_est}")
             self._report["error"] = "余额不足"
-            ops_logger.balance_check(pts, total_est, "blocked")
+            _log_ops.ops({"event": "balance_check", "pts": pts, "need": total_est, "result": "blocked"})
             return False
 
-        ops_logger.balance_check(pts, total_est, "proceed")
+        _log_ops.ops({"event": "balance_check", "pts": pts, "need": total_est, "result": "proceed"})
 
         # 二次余额校验（防多机器超支）
         try:
@@ -427,7 +429,10 @@ class BasePipeline(ABC):
             pts_before = self._report.get("balance", 0)
             total_est = self._report.get("cost", {}).get("points", 0)
             total_proc = t_done - self._t_start
-            ops_logger.session_end(total_success, fail_count, total_all, pts_before, total_est, int(total_proc), yuan)
+            _log_ops.ops({"event": "session_end", "success": total_success,
+                           "fail": fail_count, "total": total_all,
+                           "pts_before": pts_before, "pts_est": total_est,
+                           "proc_sec": int(total_proc), "yuan": yuan})
 
     # ═══════════════════════════════════════
     # 抽象方法（子类 MUST 实现）
@@ -510,7 +515,9 @@ class BasePipeline(ABC):
             self.log.ok(f"全部由缓存完成！({cache_hits}个)")
             self.ui.set_progress(1.0)
             self.ui.set_status("完成（缓存）")
-            ops_logger.session_end(cache_hits, 0, cache_hits)
+            _log_ops.ops({"event": "session_end", "success": 0,
+                           "fail": 0, "total": 0,
+                           "cache_hits": cache_hits})
             return [], True
 
         self.ui.set_progress(0.25)
