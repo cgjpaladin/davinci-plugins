@@ -15,9 +15,7 @@ import sys, os, shutil, argparse
 _here = os.path.dirname(os.path.abspath(__file__))
 _project_root = os.path.dirname(_here)
 
-DAVINCI_SCRIPTS = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
-SUBFOLDER = "达芬奇插件工坊"
-DAVINCI_EDIT = os.path.join(DAVINCI_SCRIPTS, SUBFOLDER)
+DAVINCI_EDIT = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
 
 
 def list_projects():
@@ -89,9 +87,9 @@ def deploy(project_name, dry_run=False):
         print(f"  [DRY RUN] {src} → {dst}")
     else:
         shutil.copy2(src, dst)
-        print(f"  ✅ launcher.py → {SUBFOLDER}/{filename}")
+        print(f"  ✅ launcher.py → {filename}")
     
-    print(f"\n🎉 已部署到 Workspace → Scripts → {SUBFOLDER}:")
+    print(f"\n🎉 已部署到 Workspace → Scripts →")
     print(f"   {filename}")
     return True
 
