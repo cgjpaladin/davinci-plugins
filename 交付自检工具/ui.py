@@ -1336,8 +1336,10 @@ def _start_check():
             pass
 
     except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
         _action_log(f"❌ 检查崩溃: {e}")
-        traceback.print_exc()
+        _action_log(tb)
         itm[HINT_LB].Text = f"❌ 检查崩溃: {e}"
     finally:
         _checking = False
