@@ -1160,7 +1160,6 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
     _lut_cache = {}
     _node_cache = {}
     video_count = timeline.GetTrackCount("video")
-    checked = 0
     for vi in range(1, video_count + 1):
         items = _get_items(timeline, "video", vi)
         if not items:
@@ -1173,9 +1172,11 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
                 continue
             if _get_cached(it, "mp") is None:
                 continue
-            checked += 1
             try:
                 uid = it.GetUniqueId()
+            except Exception:
+                continue
+            try:
                 if uid not in _node_cache:
                     graph = it.GetNodeGraph()
                     _node_cache[uid] = graph.GetNumNodes() if graph else 0
