@@ -447,10 +447,10 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
             if _get_cached(it, "enabled", True) is False:
                 invalid_intervals.append((s, e, "未启用", track, name))
                 continue
-            # 检查是否调整片段
+            # 检查是否脱机/生成片段
             mp = _get_cached(it, "mp")
             if mp is None:
-                invalid_intervals.append((s, e, "调整片段/无素材", track, name))
+                invalid_intervals.append((s, e, "脱机/无素材", track, name))
                 continue
             # 检查不透明度
             opacity = _get_cached(it, "props", {}).get("Opacity", 100)
