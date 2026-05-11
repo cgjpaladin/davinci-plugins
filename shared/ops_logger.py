@@ -258,5 +258,4 @@ def _smb_log(msg: str):
         with open(_SMB_LOG, "a", encoding="utf-8") as f:
             f.write(f"[{ts}] {msg}\n")
     except Exception:
-        import sys as _sys
-        print(f"[_smb_log FAIL] {msg}", file=_sys.stderr)
+        pass

@@ -239,7 +239,7 @@ def _ui_write_direct(msg: str):
             else:
                 te.Append(msg + "\n")
         except Exception:  # _smb_log 轮转失败不阻塞 UI
-            import sys; print(f"[ui_write] UI 刷新失败", file=sys.stderr)
+            _log.ui("UI 刷新失败")
         # 追加后自动滚到底部
         try:
             te.MoveCursor("End", "MoveAnchor")
@@ -264,8 +264,7 @@ def _smb_log(msg: str):
     try:
         _log.smb(msg)
     except Exception:
-        pass
-        print(f"[_smb_log FAIL] {msg}", file=sys.stderr)
+        _log.ui(f"SMB落盘失败: {msg}")
 
 def _check_smb():
     """全局 SMB 健康检查 + 自动重挂。返回 True=在线"""

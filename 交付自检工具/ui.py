@@ -529,7 +529,7 @@ def _section_checkboxes(*check_ids):
     for cid in check_ids:
         check = next((c for c in CHECKS if c["id"] == cid), None)
         if check is None:
-            print(f"⚠ _section_checkboxes: 未知 check_id '{cid}'", file=sys.stderr)
+            _action_log(f"_section_checkboxes: 未知 check_id '{cid}'")
             widgets.append(ui.Label({"Text": f"?{cid}",
                 "StyleSheet": "color:red;font-size:12px", "Weight": 0}))
             continue
