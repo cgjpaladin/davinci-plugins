@@ -270,17 +270,15 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
     alt_tl_by_fname: dict = {}
     for item, t in candidates:
         stats["total"] += 1
-        color = item.GetClipColor()
-
-        # 颜色过滤
-        if clip_color and color != clip_color:
-            continue
-
         mp = item.GetMediaPoolItem()
         if not mp:
             stats["skipped_nomp"] += 1
-            if clip_color and color == clip_color:
-                pass  # 警告由调用者处理
+            continue
+
+        color = mp.GetClipColor()
+
+        # 颜色过滤（读媒体池颜色，非时间线颜色——两者独立）
+        if clip_color and color != clip_color:
             continue
 
         # 摄影机素材过滤：有摄影机元数据的跳过（不可能带字幕）
