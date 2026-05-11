@@ -176,7 +176,8 @@ class BaseAdapter(ABC):
         """
         # Before: task_submit
         for task in tasks:
-            _ops.ops({"event": "task_submit", "name": task.name,
+            nm = os.path.basename(task.video_path) if hasattr(task, 'video_path') else f"task"
+            _ops.ops({"event": "task_submit", "name": nm,
                        "provider": getattr(self, 'name', 'unknown')})
         t0_global = time.time()
 
@@ -185,7 +186,7 @@ class BaseAdapter(ABC):
 
         # After: task_result / task_error
         for i, r in enumerate(results):
-            nm = tasks[i].name if i < len(tasks) else f"# {i}"
+            nm = os.path.basename(tasks[i].video_path) if i < len(tasks) and hasattr(tasks[i], 'video_path') else f"#{i}"
             if r.success:
                 _ops.ops({"event": "task_result", "name": nm, "success": True})
             else:
