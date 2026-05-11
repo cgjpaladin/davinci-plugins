@@ -40,7 +40,7 @@ from pricing import estimate_cost, point_to_yuan
 class SubtitlePipeline(BasePipeline):
     """AI去字幕 流水线。"""
 
-    PRODUCT_NAME = "AI 去字幕"
+    PRODUCT_NAME = "AI去字幕"
     SECTION_AI_PROCESSING = "AI去字幕中"
 
     def __init__(self):
