@@ -130,6 +130,11 @@ print('  ✅ SMB 可达')
             python3 -m py_compile "$f" 2>/dev/null && echo "  ✅ $f" || { echo "  ❌ $f"; fail=1; }
         done
         [ $fail -ne 0 ] && echo "❌ 语法错误" && exit 1
+
+        # 本地 launcher 部署
+        echo ""
+        echo "── launcher 部署 ──"
+        python3 "$PRODUCT_DIR/../tools/deploy.py" "$PRODUCT_NAME" 2>&1
     fi
 
     echo ""
