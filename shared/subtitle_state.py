@@ -23,7 +23,7 @@ import time
 from typing import Optional
 
 from config import get_state_dir, get_lock_dir, get_output_dir, hide_path
-from ops_logger import _smb_log
+from ops_logger import _event_log
 
 # 本机局域网 IP — 锁和状态里记录，方便排查
 def _get_lan_ip():
@@ -228,7 +228,7 @@ def is_locked(clip_name: str) -> Optional[str]:
     except Exception:
         # 锁 .info 文件损坏或 SMB 瞬时不可读，降级返回"未知同事"
         # 不影响并发正确性，仅影响UI上锁提示的用户名显示
-        _smb_log(f"[subtitle_state] is_locked 读锁信息失败: {clip_name}")
+        _event_log(f"[subtitle_state] is_locked 读锁信息失败: {clip_name}")
     return "未知同事"
 
 
@@ -239,7 +239,7 @@ def is_locked(clip_name: str) -> Optional[str]:
 def record_original(clip_name: str, original_path: str):
     """记录原片路径（处理前调用）。持写锁完成，防止多机竞态。"""
     if not _acquire_state_lock():
-        _smb_log(f"[subtitle_state] record_original 获取写锁失败: {clip_name}")
+        _event_log(f"[subtitle_state] record_original 获取写锁失败: {clip_name}")
         return
     try:
         state = _load_state()
@@ -263,7 +263,7 @@ def record_original(clip_name: str, original_path: str):
 def mark_processed(clip_name: str, processed_path: str, mode: str):
     """标记处理完成。持写锁完成，防止多机竞态。"""
     if not _acquire_state_lock():
-        _smb_log(f"[subtitle_state] mark_processed 获取写锁失败: {clip_name}")
+        _event_log(f"[subtitle_state] mark_processed 获取写锁失败: {clip_name}")
         return
     try:
         state = _load_state()

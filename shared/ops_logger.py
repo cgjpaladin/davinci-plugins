@@ -251,7 +251,7 @@ _LOG_DIR = os.path.join(os.path.expanduser("~"), ".workbuddy", "logs", "ops")
 _OP_LOG = os.path.join(_LOG_DIR, f"{socket.gethostname()}.log")
 
 
-def _smb_log(msg: str):
+def _event_log(msg: str):
     """写一行文本到本地日志（SMB 在 subprocess 中不可用，写本地靠 SSH 查看）"""
     try:
         ts = time.strftime("%m-%d %H:%M:%S")

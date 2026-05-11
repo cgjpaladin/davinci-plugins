@@ -33,21 +33,21 @@ def restore_clip_colors(mp_item, tl_item, tl_color, mp_color, alt_tl_items=None,
         try:
             tl_item.SetClipColor(tl_color) if tl_color else tl_item.ClearClipColor()
         except Exception:
-            _smb_log(f"{label}恢复 tl 颜色失败: {tl_item.GetName()}")
+            _event_log(f"{label}恢复 tl 颜色失败: {tl_item.GetName()}")
 
     for alt_tl, alt_color in (alt_tl_items or ()):
         if alt_color:
             try:
                 alt_tl.SetClipColor(alt_color)
             except Exception:
-                _smb_log(f"{label}恢复 alt tl 颜色失败")
+                _event_log(f"{label}恢复 alt tl 颜色失败")
 
     # 链接音频：精确还原 ReplaceClip 前 caller 保存的原色（包括空串=无颜色）
     for li, orig_color in (linked_colors or []):
         try:
             li.SetClipColor(orig_color)
         except Exception:
-            _smb_log(f"{label}恢复链接音频颜色失败: {li.GetName()}")
+            _event_log(f"{label}恢复链接音频颜色失败: {li.GetName()}")
 
 import os
 import math
@@ -64,7 +64,7 @@ from config import (
     ADAPTER_CONFIGS, DEBUG,
     get_output_dir, get_log_dir,
 )
-from ops_logger import _smb_log
+from ops_logger import _event_log
 from pricing import estimate_cost, point_to_yuan
 from pricing import oss_tracker
 from adapters import SubtitleTask, SubtitleResult
@@ -419,9 +419,9 @@ def prepare_tasks(
                         cache_hit_names.append(c.name)
                         continue
                 except Exception:
-                    _smb_log(f"[core] 缓存命中 ReplaceClip 异常（可能被其他用户锁定媒体池）: {c.name}")
+                    _event_log(f"[core] 缓存命中 ReplaceClip 异常（可能被其他用户锁定媒体池）: {c.name}")
                 # ReplaceClip 失败（返回 False 或异常）— 不降级，直接跳过
-                _smb_log(f"[core] 跳过 {c.name}: ReplaceClip 失败，媒体池可能被其他用户锁定")
+                _event_log(f"[core] 跳过 {c.name}: ReplaceClip 失败，媒体池可能被其他用户锁定")
                 continue
             remaining_clips.append(c)
     else:
@@ -595,7 +595,7 @@ def process_single_clip(
         est = estimate_processing_time([task])
         if elapsed > est * 2:
             factor = elapsed / est
-            _smb_log(f"[core] ⚠️ 严重超时: {task.name} 预估{est:.0f}s 实际{elapsed:.0f}s ({factor:.1f}倍)")
+            _event_log(f"[core] ⚠️ 严重超时: {task.name} 预估{est:.0f}s 实际{elapsed:.0f}s ({factor:.1f}倍)")
             _log_ops.ops({"event": "task_error", "name": task.name,
                            "error": f"超时 {factor:.1f}倍 (预估{est:.0f}s)", "attempt": 99})
     return (result, elapsed)
@@ -643,7 +643,7 @@ def download_and_apply(
             return 0, [{"name": "磁盘", "error": msg}], []
     except OSError:
         # os.statvfs 在 SMB 断连时可能失败，磁盘检查不是关键路径，失败不阻塞处理
-        _smb_log("[core] 磁盘空间预检跳过（SMB可能不可用）")
+        _event_log("[core] 磁盘空间预检跳过（SMB可能不可用）")
 
     for mp_item, name, path, result, elapsed, *rest in results:
         tl_item = rest[0] if rest else None          # TimelineItem
@@ -696,7 +696,7 @@ def download_and_apply(
             replaced = mp_item.ReplaceClipPreserveSubClip(dl)
         except Exception:
             replaced = False
-            _smb_log(f"[core] ReplaceClip 异常（可能被其他用户锁定媒体池）: {name}")
+            _event_log(f"[core] ReplaceClip 异常（可能被其他用户锁定媒体池）: {name}")
 
         # 无论 ReplaceClip 是否成功，下载已完成，记录到账本（下次可直接复用缓存）
         # 元数据从 adapter result 提取

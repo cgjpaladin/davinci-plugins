@@ -583,7 +583,7 @@ class BasePipeline(ABC):
     def _log_action(self, msg: str):
         """写 SMB 运维日志。"""
         try:
-            from ops_logger import _smb_log
-            _smb_log(f"[{self.PRODUCT_NAME}] {msg}")
+            from ops_logger import _event_log
+            _event_log(f"[{self.PRODUCT_NAME}] {msg}")
         except Exception:
             pass
