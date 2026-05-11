@@ -30,6 +30,7 @@ from ui_widgets import (
     COLOR_CB, LOG_LB, ST_LB, PG_BAR,
     pick_project, confirm_project, auto_detect_project,
 )
+import ui_widgets as _uw  # 用于跨模块读全局变量(防import拷贝陷阱)
 from ui_pipeline import (
     scan_io, refresh_bal, refresh_oss_bal, process, stop, undo,
     _refresh_scan_display,
@@ -108,7 +109,7 @@ def start_process(*_):
         # 超时保护
         elapsed = time.time() - _t_start_local
         if hasattr(_update_countdown, '_timeout_warned') and not _update_countdown._timeout_warned:
-            if _t_estimated > 0 and elapsed > _t_estimated * 2:
+            if _uw._t_estimated > 0 and elapsed > _uw._t_estimated * 2:
                 warn(f"⚠ 处理超时: 实际 {elapsed:.0f}秒 > 预估 {_t_estimated:.0f}秒×2，可能网络波动")
                 _smb_log(f"超时告警: elapsed={elapsed:.0f}s > estimated={_t_estimated:.0f}s×2")
                 _update_countdown._timeout_warned = True
