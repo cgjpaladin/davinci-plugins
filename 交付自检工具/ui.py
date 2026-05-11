@@ -1207,10 +1207,19 @@ def _start_check():
                 continue
 
             _action_log(f"── {check['section']}检查 ──")
-            all_results = list(check["run_fn"](
-                timeline=timeline, fps=fps, project=project,
-                personal_enabled=itm[CHK_CENSOR_PERSONAL].Checked,
-                io_range=io_range))
+            try:
+                raw = check["run_fn"](
+                    timeline=timeline, fps=fps, project=project,
+                    personal_enabled=itm[CHK_CENSOR_PERSONAL].Checked,
+                    io_range=io_range)
+                all_results = list(raw) if raw is not None else []
+            except Exception as e:
+                _action_log(f"❌ {check['section']}检查异常: {e}")
+                import traceback
+                _action_log(traceback.format_exc())
+                all_results = [_make_result("fail",
+                    detail=f"{check['section']}检查异常: {e}",
+                    is_summary=True)]
             section_rows = []
             section_pass = 0
             summary_text = ""
