@@ -1270,8 +1270,6 @@ def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
     Returns:
         list[dict]: 脱机文件列表
     """
-    _CAMERA_EXT = (".mp4", ".mxf", ".mov", ".avi", ".r3d", ".braw", ".mts", ".m2t",
-                   ".mkv", ".wmv", ".flv", ".webm", ".m4v", ".mpg", ".mpeg", ".ts")
     issues = []
     seen_mp = set()
     for vi in range(1, timeline.GetTrackCount("video") + 1):
@@ -1282,10 +1280,11 @@ def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
                 continue
             mp = _get_cached(it, "mp")
             if mp is None:
-                # 文件扩展名检测：无 MP + 有视频扩展名 → 脱机
-                # 转场/调整片段/文本等无扩展名，正常跳过
                 name = _get_clip_name(it)
-                if not name.lower().endswith(_CAMERA_EXT):
+                # 达芬奇生成片段无 MP，按固定中文名跳过（与相机越轨③④同逻辑）
+                if name.startswith("文本") or name in ("调整片段", "调整剪辑",
+                        "回首过去", "回忆", "交叉叠化", "浸入颜色叠化",
+                        "淡入淡出", "划像", "纯色", "Solid Color"):
                     continue
                 smpte = _get_smpte(fps)
                 tc = smpte.gettc(_get_cached(it, "start", 0))
