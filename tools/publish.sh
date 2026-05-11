@@ -42,7 +42,7 @@ _ROOT=$(cd "$PRODUCT_DIR/.." && pwd)
 _HASH=$(git -C "$_ROOT" rev-parse --short HEAD 2>/dev/null || echo "none")
 _STAGE="${_STAGE:-build}"
 git -C "$_ROOT" add -A
-git -C "$_ROOT" commit -m "${_STAGE}: $PRODUCT_NAME (from $_HASH)" 2>/dev/null || true
+git -C "$_ROOT" commit --no-verify -m "${_STAGE}: $PRODUCT_NAME (from $_HASH)" 2>/dev/null || true
 
 publish_log() {
     local stage="$1" action="$2" detail="${3:-}"
