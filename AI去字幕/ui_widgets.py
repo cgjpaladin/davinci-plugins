@@ -207,7 +207,8 @@ def _on_color_change(ev):
             f"color:rgb({r},{g},{b});font-size:14px;qproperty-alignment:AlignCenter")
         # 已选项目路径时，自动重扫
         if _state["project_root"]:
-            scan_io()
+            from ui_pipeline import scan_io as _scan_io
+            _scan_io()
 dlg.On[COLOR_CB].CurrentIndexChanged = _on_color_change
 
 # ── 线程安全的日志队列 ──
