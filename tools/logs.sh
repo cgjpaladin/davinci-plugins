@@ -5,7 +5,6 @@
 
 set -euo pipefail
 LOG_ROOT="$HOME/.workbuddy/logs"
-SMB_LOG="/Volumes/MYJC/06_Software/达芬奇脚本/日志"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MAP="$ROOT/shared/machine_map.json"
@@ -102,21 +101,10 @@ else
 fi
 
 echo ""
-echo "--- SMB (/Volumes/MYJC/.../日志/) ---"
-SMB_DIR="$SMB_LOG/$PRODUCT"
-if [ -d "$SMB_DIR" ]; then
-    for f in "$SMB_DIR"/*; do
-        if [ -f "$f" ]; then
-            FN=$(basename "$f")
-            HOST=$(_extract_host "$FN")
-            PERSON=$(_host_to_name "$HOST")
-            INFO=$(_file_info "$f")
-            printf "  %-50s %-20s %s\n" "$FN" "$PERSON" "$INFO"
-        fi
-    done
-else
-    echo "  (无 SMB 日志)"
-fi
+echo "--- 远程查看说明 ---"
+echo "  SMB 日志已废弃（达芬奇 subprocess 隔离，不可写入）"
+echo "  查看其他机器日志: ssh miniXXX tail ~/.workbuddy/logs/$PRODUCT/ui_*.log"
+echo "  查看 ops 日志:     ssh miniXXX tail ~/.workbuddy/logs/ops/*.log"
 
 # 如果有 --tail 参数，显示最新日志文件尾部
 if [ -n "${3:-}" ] && [ "$2" = "--tail" ]; then
