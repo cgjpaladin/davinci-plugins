@@ -1281,10 +1281,16 @@ def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
             mp = _get_cached(it, "mp")
             if mp is None:
                 name = _get_clip_name(it)
-                # 达芬奇生成片段无 MP，按固定中文名跳过（与相机越轨③④同逻辑）
-                if name.startswith("文本") or name in ("调整片段", "调整剪辑",
-                        "回首过去", "回忆", "交叉叠化", "浸入颜色叠化",
-                        "淡入淡出", "划像", "纯色", "Solid Color"):
+                # 文件扩展名检测：无 MP + 文件名含摄影机/图片格式 → 脱机
+                # 转场/调整片段/文本等没有扩展名，自动跳过
+                _MEDIA_EXT = {".mp4", ".mxf", ".mov", ".avi", ".r3d", ".braw",
+                    ".mts", ".m2t", ".mpg", ".mpeg", ".m4v", ".mkv",
+                    ".wmv", ".flv", ".webm", ".ts", ".3gp",
+                    ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp",
+                    ".dpx", ".exr", ".psd", ".tga", ".targa",
+                    ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2"}
+                lo = name.lower()
+                if not any(lo.endswith(ext) for ext in _MEDIA_EXT):
                     continue
                 smpte = _get_smpte(fps)
                 tc = smpte.gettc(_get_cached(it, "start", 0))
@@ -1292,6 +1298,11 @@ def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
                     detail=f"{name}，脱机文件",
                     reason="请重新链接源文件或替换素材"))
                 continue
+                # 旧方案：名字关键词匹配（2026-05-11，保留参考）
+                # if name.startswith("文本") or name in ("调整片段", "调整剪辑",
+                #         "回首过去", "回忆", "交叉叠化", "浸入颜色叠化",
+                #         "淡入淡出", "划像", "纯色", "Solid Color"):
+                #     continue
             try:
                 mp_uid = mp.GetUniqueId()
             except Exception:
