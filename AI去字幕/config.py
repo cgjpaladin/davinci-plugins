@@ -115,7 +115,6 @@ SMB_AI_PROJECT = os.path.join(SMB_MOUNT, "08_AI_Project")
 
 # 日志路径（集中管理，避免散落在多个文件）
 DEV_LOG_DIR = "/tmp/ai_subtitle_dev"                                  # dev 版本地日志目录
-SMB_LOG_DIR = os.path.join(SMB_AI_SUBTITLE, "logs")                   # SMB 运维日志
 
 # ============================================================
 # 调试模式固定路径（仅 SUBTITLE_DEBUG=1 时使用）

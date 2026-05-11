@@ -24,7 +24,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from config import hide_path, SMB_LOG_DIR
+from config import hide_path
 
 _lock = threading.Lock()
 _log_dir = None
@@ -76,14 +76,8 @@ def _file_path(log_dir=None):
 def _write(entry: dict):
     log_dir = _log_dir
     if not log_dir:
-        # fallback：没确认项目路径时写到 SMB 插件日志目录
-        log_dir = SMB_LOG_DIR
-        try:
-            os.makedirs(log_dir, exist_ok=True)
-        except Exception:
-            # 连 SMB 兜底日志目录都创建不了（SMB完全断开/权限丢失），
-            # 无路可写，静默放弃本条日志
-            return
+        # fallback：没确认项目路径时写到本地 ops 日志目录
+        log_dir = os.path.join(os.path.expanduser("~"), ".workbuddy", "logs", "ops")
     with _lock:
         import random as _random
         line = json.dumps(entry, ensure_ascii=False) + "\n"
