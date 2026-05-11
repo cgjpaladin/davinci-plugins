@@ -293,9 +293,9 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
             stats["skipped_camera"] = stats.get("skipped_camera", 0) + 1
             continue
         # 文件名模式兜底（元数据被洗掉时）
-        # Sony: A001Cxxx / C0010.D0899 等; DJI: 有/无下划线均可
+        # Sony: A002Cxxx / C0010.D0899 / 20241114_B5935; DJI
         fname = mp.GetClipProperty("File Name") or ""
-        if re.match(r'^[ABC]\d{3}', fname) or fname.startswith("DJI"):
+        if re.search(r'[ABC]\d{3}', fname) or fname.startswith("DJI"):
             stats["skipped_camera"] = stats.get("skipped_camera", 0) + 1
             continue
 
