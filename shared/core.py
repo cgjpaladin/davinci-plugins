@@ -24,10 +24,14 @@ def restore_clip_colors(mp_item, tl_item, tl_color, mp_color, alt_tl_items=None,
 
     if mp_color:
         mp_item.SetClipColor(mp_color)
+    else:
+        try: mp_item.ClearClipColor()
+        except Exception: pass
 
-    if tl_color and tl_item and tl_color != mp_color:
+    # 片段色独立还原——与媒体池色互不交叉
+    if tl_item:
         try:
-            tl_item.SetClipColor(tl_color)
+            tl_item.SetClipColor(tl_color) if tl_color else tl_item.ClearClipColor()
         except Exception:
             _smb_log(f"{label}恢复 tl 颜色失败: {tl_item.GetName()}")
 

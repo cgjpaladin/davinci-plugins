@@ -131,7 +131,7 @@ window_layout = [
                 ui.Label({"ID": "color_dot", "Text": "●",
                           "StyleSheet": "color:rgb(235,110,0);font-size:14px;"
                           "qproperty-alignment:AlignCenter", "Weight": 0}),
-                ui.ComboBox({"ID": COLOR_CB, "Weight": 0}),
+                ui.ComboBox({"ID": COLOR_CB, "Weight": 0, "FixedWidth": 100}),
                 ui.Button({"ID": BTN_SCAN, "Text": "扫描当前选区", "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Button({"ID": BTN_START, "Text": "开始处理", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
                 ui.Button({"ID": BTN_STOP, "Text": "停止", "StyleSheet": BTN_DANGER, "Weight": 0}),
