@@ -42,6 +42,7 @@ def preload_timeline_items(timeline, track_types=None):
     global _items_cache, _props_cache
     _items_cache.clear()
     _props_cache.clear()
+    _clear_clip_files_cache()
 
     if track_types is None:
         track_types = ["subtitle", "video", "audio"]
@@ -1213,42 +1214,58 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
 
 _SMB_PREFIX = "/Volumes/MYJC"
 
+# ── 片段文件信息缓存（脱机+路径检测共享，避免重复 IPC）──
+_clip_files_cache = None  # {(track, name): {"start": int, "mp": item|None, "path": str|None}}
 
-def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list:
-    """检查当前时间线素材路径是否在 SMB 上。
 
-    Args:
-        timeline: 时间线对象
-        project: 项目对象（备用）
-        fps: 帧率
-        io_range: IO 范围
-
-    Returns:
-        list[dict]: 不在 /Volumes/MYJC 下的文件列表
-    """
-    issues = []
-    seen = set()
+def _collect_clip_files(timeline, io_range=None):
+    """收集当前时间线所有视频轨片段的基本文件信息。缓存优先。"""
+    global _clip_files_cache
+    if _clip_files_cache is not None:
+        return _clip_files_cache
+    info = {}
     for vi in range(1, timeline.GetTrackCount("video") + 1):
         for it in _get_items(timeline, "video", vi):
             if not _in_io_range(it, io_range):
                 continue
+            if _get_cached(it, "enabled", True) is False:
+                continue
+            name = _get_clip_name(it)
+            start = _get_cached(it, "start", 0)
             mp = _get_cached(it, "mp")
-            if mp is None:
-                continue
-            try:
-                path = mp.GetClipProperty("File Path") or ""
-            except Exception:
-                continue
-            if not path or path in seen:
-                continue
-            seen.add(path)
-            if not path.startswith(_SMB_PREFIX):
-                name = _get_clip_name(it)
-                smpte = _get_smpte(fps)
-                tc = smpte.gettc(_get_cached(it, "start", 0))
-                issues.append(_make_result("fail", track=f"V{vi}", timecode=tc,
-                    detail=f"{name}，不在服务器路径: {path}",
-                    reason="请将素材移至服务器后重新链接"))
+            path = None
+            if mp is not None:
+                try:
+                    path = mp.GetClipProperty("File Path") or ""
+                except Exception:
+                    pass
+            key = (f"V{vi}", name)
+            if key not in info:
+                info[key] = {"start": start, "mp": mp, "path": path, "track": f"V{vi}"}
+    _clip_files_cache = info
+    return info
+
+
+def _clear_clip_files_cache():
+    global _clip_files_cache
+    _clip_files_cache = None
+
+
+def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list:
+    """检查当前时间线素材路径是否在服务器上（使用共享缓存）。"""
+    issues = []
+    seen = set()
+    for (track, name), info in _collect_clip_files(timeline, io_range).items():
+        path = info["path"]
+        if not path or path in seen:
+            continue
+        seen.add(path)
+        if not path.startswith(_SMB_PREFIX):
+            smpte = _get_smpte(fps)
+            tc = smpte.gettc(info["start"])
+            issues.append(_make_result("fail", track=track, timecode=tc,
+                detail=f"{name}，不在服务器路径: {path}",
+                reason="请将素材移至服务器后重新链接"))
 
     if not issues:
         return [_make_result("pass",
@@ -1260,75 +1277,48 @@ def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list
 
 
 def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
-    """检查当前时间线是否存在脱机文件。
+    """检查当前时间线是否存在脱机文件（使用共享缓存）。
 
     两种脱机：
       - 媒体脱机：源文件丢失，达芬奇显示红屏
       - 离线片段：右键→生成离线参考片段（故意空的占位片段）
-
-    检测：遍历时间线视频轨，通过媒体池检测文件路径缺失且非生成片段。
-
-    Args:
-        timeline: 时间线对象
-        fps: 帧率
-        io_range: IO 范围
-
-    Returns:
-        list[dict]: 脱机文件列表
     """
+    _MEDIA_EXT = {".mp4", ".mxf", ".mov", ".avi", ".r3d", ".braw",
+        ".mts", ".m2t", ".mpg", ".mpeg", ".m4v", ".mkv",
+        ".wmv", ".flv", ".webm", ".ts", ".3gp",
+        ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp",
+        ".dpx", ".exr", ".psd", ".tga", ".targa",
+        ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2"}
     issues = []
     seen_mp = set()
-    for vi in range(1, timeline.GetTrackCount("video") + 1):
-        for it in _get_items(timeline, "video", vi):
-            if not _in_io_range(it, io_range):
+    for (track, name), info in _collect_clip_files(timeline, io_range).items():
+        mp = info["mp"]
+        if mp is None:
+            # 无 MP → 按扩展名判脱机（转场/文本/调整片段无扩展名，跳过）
+            lo = name.lower()
+            if not any(lo.endswith(ext) for ext in _MEDIA_EXT):
                 continue
-            if _get_cached(it, "enabled", True) is False:
-                continue
-            mp = _get_cached(it, "mp")
-            if mp is None:
-                name = _get_clip_name(it)
-                # 文件扩展名检测：无 MP + 文件名含摄影机/图片格式 → 脱机
-                # 转场/调整片段/文本等没有扩展名，自动跳过
-                _MEDIA_EXT = {".mp4", ".mxf", ".mov", ".avi", ".r3d", ".braw",
-                    ".mts", ".m2t", ".mpg", ".mpeg", ".m4v", ".mkv",
-                    ".wmv", ".flv", ".webm", ".ts", ".3gp",
-                    ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp",
-                    ".dpx", ".exr", ".psd", ".tga", ".targa",
-                    ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2"}
-                lo = name.lower()
-                if not any(lo.endswith(ext) for ext in _MEDIA_EXT):
-                    continue
-                smpte = _get_smpte(fps)
-                tc = smpte.gettc(_get_cached(it, "start", 0))
-                issues.append(_make_result("fail", track=f"V{vi}", timecode=tc,
-                    detail=f"{name}，脱机文件",
-                    reason="请重新链接源文件或替换素材"))
-                continue
-                # 旧方案：名字关键词匹配（2026-05-11，保留参考）
-                # if name.startswith("文本") or name in ("调整片段", "调整剪辑",
-                #         "回首过去", "回忆", "交叉叠化", "浸入颜色叠化",
-                #         "淡入淡出", "划像", "纯色", "Solid Color"):
-                #     continue
-            try:
-                mp_uid = mp.GetUniqueId()
-            except Exception:
-                continue
-            if mp_uid in seen_mp:
-                continue
-            seen_mp.add(mp_uid)
-            try:
-                fpath = mp.GetClipProperty("File Path") or ""
-                fname = mp.GetClipProperty("File Name") or ""
-            except Exception:
-                continue
-            if fpath:
-                continue  # 有有效路径，不是脱机
-            name = _get_clip_name(it)
             smpte = _get_smpte(fps)
-            tc = smpte.gettc(_get_cached(it, "start", 0))
-            issues.append(_make_result("fail", track=f"V{vi}", timecode=tc,
+            tc = smpte.gettc(info["start"])
+            issues.append(_make_result("fail", track=track, timecode=tc,
                 detail=f"{name}，脱机文件",
                 reason="请重新链接源文件或替换素材"))
+            continue
+        try:
+            mp_uid = mp.GetUniqueId()
+        except Exception:
+            continue
+        if mp_uid in seen_mp:
+            continue
+        seen_mp.add(mp_uid)
+        path = info["path"]
+        if path:
+            continue
+        smpte = _get_smpte(fps)
+        tc = smpte.gettc(info["start"])
+        issues.append(_make_result("fail", track=track, timecode=tc,
+            detail=f"{name}，脱机文件",
+            reason="请重新链接源文件或替换素材"))
 
     if not issues:
         return [_make_result("pass",
