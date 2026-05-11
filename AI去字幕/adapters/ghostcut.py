@@ -63,6 +63,29 @@ def _get_resolution(task: SubtitleTask) -> str:
     return "1080p"
 
 
+def _auto_mask(task: SubtitleTask):
+    """根据分辨率自动选择鬼手处理策略（参考无痕AI设计）。
+
+    Returns:
+        (model_name: str, masks: list | None, cut_y: float | None)
+    """
+    from resolution import parse as _parse_res, is_portrait
+
+    if task.resolution:
+        w, h = _parse_res(task.resolution)
+    else:
+        # fallback: 假设竖屏（Seedance 默认）
+        w, h = 720, 1280
+
+    if is_portrait(w, h):
+        # 竖屏：底部 50% 框选
+        return "pro_box", [{"type": "remove_only_ocr",
+                             "region": [[0, 0.50], [1, 0.50], [1, 1.0], [0, 1.0]]}], 0.50
+    else:
+        # 横屏：全屏自动检测（无 mask）
+        return "pro", None, None
+
+
 class GhostCutAdapter(BaseAdapter):
     """鬼手剪辑去字幕适配器"""
 
@@ -146,15 +169,11 @@ class GhostCutAdapter(BaseAdapter):
             self._log("info", f"上传完成: {video_url}")
         
         model_name = task.model or self.default_model
-        # pro_box / pro_large: 自动计算遮罩（符合 GhostCut API: type+region 多边形格式）
-        if model_name in ("pro_box", "pro_large") and not task.mask_regions:
-            # pro_box 框面积<20%, pro_large<40%
-            max_h = 0.20 if model_name == "pro_box" else 0.40
-            cut_y = 0.85 if model_name == "pro_box" else 0.65  # 底部保留字幕常见区域
-            task.mask_regions = [{
-                "type": "remove_only_ocr",
-                "region": [[0, cut_y], [1, cut_y], [1, 1.0], [0, 1.0]]
-            }]
+        # 分辨率自适应 mask（参考无痕AI设计）
+        auto_model, auto_masks, _ = _auto_mask(task) if not task.mask_regions else (model_name, task.mask_regions, None)
+        if not task.mask_regions:
+            task.mask_regions = auto_masks
+            model_name = auto_model
         
         base_name = os.path.splitext(os.path.basename(task.video_path))[0] if task.video_path else "unknown"
         resolution = _get_resolution(task)
@@ -433,6 +452,12 @@ class GhostCutAdapter(BaseAdapter):
             return [r.get("result", SubtitleResult(success=False)) for r in records]
 
         model_name = self.default_model
+        # 分辨率自适应（取第一个任务的mask，批量统一策略）
+        if tasks and not tasks[0].mask_regions:
+            auto_model, auto_masks, _ = _auto_mask(tasks[0])
+            for t in tasks:
+                t.mask_regions = auto_masks
+            model_name = auto_model
         
         urls = [r["video_url"] for r in records]
         names = [r["base_name"] for r in records]
@@ -449,10 +474,8 @@ class GhostCutAdapter(BaseAdapter):
         elif model_name in ("pro_box", "pro_large"):
             masks = tasks[0].mask_regions if tasks else None
             if not masks:
-                # 自动计算遮罩（与 submit() 一致，GhostCut API 格式）
-                cut_y = 0.85 if model_name == "pro_box" else 0.65
                 masks = [{"type": "remove_only_ocr",
-                          "region": [[0, cut_y], [1, cut_y], [1, 1.0], [0, 1.0]]}]
+                          "region": [[0, 0.50], [1, 0.50], [1, 1.0], [0, 1.0]]}]
             model_value = self.MODEL_MAP.get(model_name, "advanced")
             payload = {
                 "urls": urls,
@@ -463,6 +486,17 @@ class GhostCutAdapter(BaseAdapter):
                 "videoInpaintMasks": json.dumps(masks),
                 "extraOptions": json.dumps({
                     "extra_inpaint_config": {"model": model_value}
+                }),
+            }
+        elif model_name == "pro":
+            payload = {
+                "urls": urls,
+                "names": names,
+                "resolution": resolution,
+                "needChineseOcclude": 1,
+                "videoInpaintLang": tasks[0].language if tasks else "zh",
+                "extraOptions": json.dumps({
+                    "extra_inpaint_config": {"model": "advanced_full"}
                 }),
             }
         else:  # pro — 全屏精修
@@ -488,7 +522,7 @@ class GhostCutAdapter(BaseAdapter):
                 records[i]["task_id"] = str(item["id"])
                 _ops.ops({"event": "task_submit", "provider": "GhostCut",
                           "clip": records[i]["base_name"], "task_id": str(item["id"]),
-                          "model": model_name})
+                          "model": model_name, "cut_y": str(_auto_mask(tasks[i])[2]) if tasks[i].mask_regions else "auto"})
         self._log("info", f"已提交 {len(data_list)} 个任务，等待处理...")
 
         # ── Phase 3: 一起轮询 ──
