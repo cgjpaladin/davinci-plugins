@@ -1240,7 +1240,9 @@ def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list
             seen.add(path)
             if not path.startswith(_SMB_PREFIX):
                 name = _get_clip_name(it)
-                issues.append(_make_result("fail",
+                smpte = _get_smpte(fps)
+                tc = smpte.gettc(_get_cached(it, "start", 0))
+                issues.append(_make_result("fail", track=f"V{vi}", timecode=tc,
                     detail=f"{name}，非 SMB 路径: {path}",
                     reason="请将素材移至 SMB (/Volumes/MYJC) 后重新链接"))
 
