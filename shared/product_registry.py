@@ -26,7 +26,7 @@ PRODUCTS = {
     # ── AI 处理类（BasePipeline 子类）──
     "subtitle": {
         "id": "subtitle",
-        "name": "AI 去字幕",
+        "name": "AI去字幕",
         "dir": "AI去字幕",
         "category": "AI 处理",
         "pipeline": "AI去字幕.pipeline:SubtitlePipeline",
