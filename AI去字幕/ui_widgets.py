@@ -248,10 +248,9 @@ def _ui_write_direct(msg: str):
             pass
     else:
         _log_queue.put(msg)
-    # 文件持久化（本地 + SMB 双写）
+    # 文件持久化（本地）
     try:
         _log.ui(msg)
-        _log.smb(msg)
     except Exception:
         pass
 
@@ -259,13 +258,10 @@ def _ui_write(msg: str):
     _ui_write_direct(msg)
     _log.ui(msg)  # 同步写 UI 日志文件
 
-# ── SMB 关键事件日志 ──
+# ── 关键事件日志 ──
 def _smb_log(msg: str):
-    """只记关键事件到 SMB"""
-    try:
-        _log.smb(msg)
-    except Exception:
-        _log.ui(f"SMB落盘失败: {msg}")
+    """关键事件日志（本地持久化）"""
+    _log.ui(msg)
 
 def _check_smb():
     """全局 SMB 健康检查 + 自动重挂。返回 True=在线"""
@@ -408,7 +404,6 @@ def _log_file(msg: str):
     """写本地 + SMB 双日志"""
     try:
         _log.ui(msg)
-        _log.smb(msg)
     except Exception:
         pass
 

@@ -8,13 +8,13 @@ log_writer.py — 统一文件日志系统（持久化，永不覆盖）
     log.ui("按钮点击")
     log.launcher("外部进程启动")
     log.ops({"action": "scan", "count": 3})
-    log.smb("远程操作记录")
 
 路径:
-    ~/.workbuddy/logs/{产品名}/ui_{date}.log
-    ~/.workbuddy/logs/{产品名}/launcher_{date}.log
-    ~/.workbuddy/logs/{产品名}/ops_{date}.jsonl
-    /Volumes/MYJC/.../日志/{产品名}/{hostname}_{date}.log  (SMB)
+    ~/.workbuddy/logs/{产品名}/ui_{hostname}_{date}.log
+    ~/.workbuddy/logs/{产品名}/launcher_{hostname}_{date}.log
+    ~/.workbuddy/logs/{产品名}/ops_{hostname}_{date}.jsonl
+
+注意: 达芬奇 subprocess 无法访问 SMB，SMB 日志需 SSH 远程读取本地文件。
 """
 
 import json, os, socket, threading
@@ -72,20 +72,17 @@ class LogWriter:
 
     def __init__(self, product: str):
         _local_root = os.path.join(os.path.expanduser("~"), ".workbuddy", "logs")
-        _smb_root = "/Volumes/MYJC/06_Software/达芬奇脚本/日志"
         _host = socket.gethostname()
 
         self.ui =       _DailyWriter(_local_root, f"ui_{_host}",       product, "log")
         self.launcher = _DailyWriter(_local_root, f"launcher_{_host}", product, "log")
         self.ops =      _DailyWriter(_local_root, f"ops_{_host}",      product, "jsonl")
-        self.smb =      _DailyWriter(_smb_root,  _host,                product, "log")
 
     def all_paths(self) -> list:
         """返回当前所有日志路径（用于 tools/logs.sh）。"""
         return [("本地-UI",       self.ui.path),
                 ("本地-Launcher", self.launcher.path),
-                ("本地-事件",     self.ops.path),
-                ("SMB-远程",      self.smb.path)]
+                ("本地-事件",     self.ops.path)]
 
 
 # ── 工厂 ──

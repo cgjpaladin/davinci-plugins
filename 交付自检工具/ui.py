@@ -498,7 +498,6 @@ def _ts():
 def _action_log(msg: str):
     try:
         _log.ui(f"[{_ts()}] {msg}")
-        _log.smb(f"[{_ts()}] {msg}")
     except Exception:
         pass
 

@@ -35,10 +35,8 @@ GRAY_CFG="$SMB_DIR/gray.json"
 
 # 日志
 LOG_DIR="$HOME/.workbuddy/logs/publish"
-LOG_SMB="/Volumes/MYJC/06_Software/达芬奇脚本/日志/publish"
 LOG_DATE=$(date "+%Y-%m-%d")
 LOG_FILE="$LOG_DIR/${HOSTNAME:-local}_${LOG_DATE}.log"
-LOG_SMB_FILE="$LOG_SMB/${HOSTNAME:-local}_${LOG_DATE}.log"
 
 # ── 自动 commit（构建/发布前存档当前状态）──
 _ROOT=$(cd "$PRODUCT_DIR/.." && pwd)
@@ -50,11 +48,8 @@ git -C "$_ROOT" commit --no-verify -m "${_STAGE}: $PRODUCT_NAME (from $_HASH)" 2
 publish_log() {
     local stage="$1" action="$2" detail="${3:-}"
     mkdir -p "$LOG_DIR"
-    mkdir -p "$LOG_SMB" 2>/dev/null || true
     local ts=$(date "+%H:%M:%S")
-    local line="[$ts] [$stage] [$action] [$PRODUCT_NAME] ${detail}"
-    echo "$line" >> "$LOG_FILE"
-    echo "$line" >> "$LOG_SMB_FILE" 2>/dev/null || true
+    echo "[$ts] [$stage] [$action] [$PRODUCT_NAME] ${detail}" >> "$LOG_FILE"
 }
 
 log_local_start()     { publish_log "local"  "start"  "$*"; }

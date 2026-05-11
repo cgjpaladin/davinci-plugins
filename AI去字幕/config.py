@@ -40,7 +40,7 @@ __version__ = "1.11.0"
 __channel__ = "dev"
 
 # ── 品牌 ──
-PRODUCT_NAME = "AI 去字幕"
+PRODUCT_NAME = "AI去字幕"
 BRAND_NAME = "裁缝老师的达芬奇插件工坊 ✂️"
 
 def version_string():
