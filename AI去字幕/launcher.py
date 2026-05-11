@@ -26,10 +26,9 @@ _PRODUCT_DIRS = [
     '/Users/bryan/WorkBuddy/达芬奇插件工坊/AI去字幕',
 ]
 
-from _dev_hosts import DEV_HOSTS
-
 # Dev 机本地优先
-if socket.gethostname() in DEV_HOSTS:
+_DEV_HOSTS = {"BryandeMac-mini.local", "BryandeMac-mini"}
+if socket.gethostname() in _DEV_HOSTS:
     _PRODUCT_DIRS.reverse()
 
 _STABLE_UI = None
