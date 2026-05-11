@@ -9,6 +9,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
+import time
+from log_writer import get_logger as _get_logger
+
+_ops = _get_logger("AI去字幕")
 
 
 class TaskStatus(Enum):
@@ -147,17 +151,29 @@ class BaseAdapter(ABC):
 
     def process_batch(self, tasks: list, timeout: int = 600,
                       cancel_check=None, progress_callback=None) -> list:
-        """批量处理多片段。默认实现：逐个调用 process()。
+        """批量处理多片段。基类默认实现：逐个调用 process()，自动写 task 事件。
 
-        适配器可以覆写以提供更高效的批量流水线（如并发上传、批量提交、统一轮询）。
-        覆写时签名保持一致，调用方只依赖本接口。
+        适配器可以覆写以提供更高效的批量流水线，但应自己负责 task 事件写入。
         """
         results = []
         for task in tasks:
             if cancel_check and cancel_check():
                 break
-            r = self.process(task, timeout=timeout, cancel_check=cancel_check)
-            results.append(r)
+            t0 = time.time()
+            _ops.ops({"event": "task_submit", "name": task.name,
+                       "provider": getattr(self, 'name', 'unknown')})
+            try:
+                r = self.process(task, timeout=timeout, cancel_check=cancel_check)
+                elapsed = time.time() - t0
+                _ops.ops({"event": "task_result", "name": task.name,
+                           "task_id": str(getattr(r, 'task_id', '')),
+                           "elapsed": round(elapsed, 1), "success": r.success})
+                results.append(r)
+            except Exception as e:
+                elapsed = time.time() - t0
+                _ops.ops({"event": "task_error", "name": task.name,
+                           "error": str(e)[:200], "elapsed": round(elapsed, 1)})
+                results.append(SubtitleResult(success=False, error_message=str(e)))
         return results
 
 
