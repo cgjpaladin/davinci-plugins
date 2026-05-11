@@ -56,7 +56,7 @@ def preload_timeline_items(timeline, track_types=None):
     for track_type in track_types:
         count = timeline.GetTrackCount(track_type)
         for ti in range(1, count + 1):
-            items = timeline.GetItemListInTrack(track_type, ti)
+            items = timeline.GetItemListInTrack(track_type, ti) or []
             _items_cache[(track_type, ti)] = items
             if items:
                 for it in items:
@@ -140,7 +140,7 @@ def _get_items(timeline, track_type, ti):
     key = (track_type, ti)
     if key in _items_cache:
         return _items_cache[key]
-    return timeline.GetItemListInTrack(track_type, ti)
+    return timeline.GetItemListInTrack(track_type, ti) or []
 
 # 轨道类型 → UI 缩写（与达芬奇界面一致：ST/V/A）
 _TRACK_LABEL = {"subtitle": "ST", "video": "V", "audio": "A"}
