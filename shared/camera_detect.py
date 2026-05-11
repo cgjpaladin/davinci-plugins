@@ -30,10 +30,26 @@ _CAM_FNAME_RE = re.compile(
 )
 
 # ═══════════════════════════════════════════
-# 达芬奇媒体池元数据字段
+# 达芬奇媒体池元数据字段（fukco/media-metadata 校验）
 # ═══════════════════════════════════════════
 
-_CAM_META_FIELDS = ("ISO", "Camera Model", "Lens", "Gamma", "Color Space")
+_CAM_META_FIELDS = (
+    # 摄影机身份
+    "Camera Type", "Camera Manufacturer", "Camera Serial #", "Camera ID",
+    "Camera Notes", "Camera Format", "Camera Firmware",
+    # 镜头
+    "Lens Type", "Lens Number", "Lens Notes",
+    # 曝光
+    "ISO", "Shutter Type", "Shutter Angle", "Shutter", "Shutter Speed",
+    "Camera Aperture Type", "Camera Aperture",
+    # 色彩
+    "White Point (Kelvin)", "White Balance Tint",
+    "Gamma", "Color Space", "Gamma Notes", "Color Space Notes",
+    # 其他
+    "Camera FPS", "Focal Point (mm)", "Distance",
+    "Filter", "ND Filter", "Compression Ratio", "Codec Bitrate",
+    "Sensor Area Captured", "Time-lapse Interval",
+)
 
 
 def is_camera_footage(mp_item) -> bool:
