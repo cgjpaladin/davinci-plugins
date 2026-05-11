@@ -18,6 +18,12 @@
 | Modules（DaVinciResolveScript） | 同上 `Modules/` | import |
 | 本地文档入口 | Resolve 菜单 `Help > Documentation > Developer` | GUI |
 
+### MediaPool 片段色彩
+
+`GetClipColor()` 17 种标准色彩对照表 → 见 `davinci-api` skill > 返回值坑位 > GetClipColor() 返回值对照表。
+
+项目使用: `check_core.py → _audio_color_detail()` 据此判断音频越轨。
+
 ### 社区
 
 | 资源 | 位置 | 怎么读 |

@@ -74,6 +74,22 @@ from log_writer import get_logger as _get_logger
 _log_ops = _get_logger("AI去字幕")
 # (record_original, find_output, session_start 等) 不加前缀容易与本地函数混淆
 
+# 摄影机素材文件名正则（拦截所有镜头记录的素材，2026-05-11 豆包调研核实）
+_CAM_FNAME_RE = re.compile(
+    r'DJI'                          # DJI 无人机/运动相机
+    r'|IMG_\d{4}'                   # iPhone
+    r'|VID_\d{8}'                   # 三星/华为/小米/OPPO
+    r'|DSC[F_]?\d{4}'               # Nikon DSC_ / Fuji DSCF
+    r'|MVI_\d{4}'                   # Canon 消费级
+    r'|GOPR\d{4}'                   # GoPro 主文件
+    r'|GP\d{2}\d{4}'                # GoPro 分段
+    r'|INSTA_\d'                    # Insta360
+    r'|P\d{7}'                      # 松下 LUMIX
+    r'|L\d{7}'                      # 徕卡
+    r'|[A-Z]\d{3,4}'                # 通用: 所有专业机(Sony/Canon/ARRI/RED/BMD等)
+)
+# 已处理过的文件不拦（含_去字幕/_去水印等后缀）
+_CAM_FNAME_EXCLUDE = re.compile(r'_去(字幕|水印|文字|除)')
 
 # ═══════════════════════════════════════════
 # 结构化数据类型
@@ -292,10 +308,9 @@ def scan_io_clips(timeline, clip_color: str = "Orange") -> tuple:
         if any(mp.GetClipProperty(f) for f in _cam_fields):
             stats["skipped_camera"] = stats.get("skipped_camera", 0) + 1
             continue
-        # 文件名模式兜底（元数据被洗掉时）
-        # Sony: A002 / C0010.MXF / D0899.MP4 / 20241114_B5935; DJI
+        # 文件名模式兜底（元数据被洗掉时）— 拦截所有镜头记录的素材
         fname = mp.GetClipProperty("File Name") or ""
-        if re.search(r'[A-Z]\d{3,4}', fname) or fname.startswith("DJI"):
+        if _CAM_FNAME_RE.search(fname) and not _CAM_FNAME_EXCLUDE.search(fname):
             stats["skipped_camera"] = stats.get("skipped_camera", 0) + 1
             continue
 
