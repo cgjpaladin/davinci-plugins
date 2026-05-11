@@ -66,7 +66,6 @@ _extract_host() {
 if [ "$PRODUCT" = "--list" ]; then
     echo "=== 有日志的产品 ==="
     ls "$LOG_ROOT" 2>/dev/null || echo "(无本地日志)"
-    ls "$SMB_LOG" 2>/dev/null || echo "(无 SMB 日志)"
     exit 0
 fi
 
