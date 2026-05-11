@@ -31,7 +31,6 @@ from interface import PipelineUI
 from pricing import estimate_cost, point_to_yuan, oss_tracker
 from pipeline_utils import validate_task, calc_cache_savings
 from pipeline_log import StepLogger
-import ops_logger
 
 
 # ═══════════════════════════════════════════
@@ -236,14 +235,6 @@ class BasePipeline(ABC):
         import ledger
         state_init(self._project_root)
         ledger.init(self._project_root)
-        if self.FEATURES.get("ops_logging", True):
-            from config import get_log_dir
-            ops_logger.init(get_log_dir(self._project_root))
-            ops_logger.session_start(
-                self._project.GetName() if self._project else "",
-                self._timeline.GetName() if self._timeline else "",
-                self._mode, 0,
-            )
 
     # ═══════════════════════════════════════
     # 通用步骤（基类实现）

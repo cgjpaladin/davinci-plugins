@@ -29,7 +29,8 @@ from subtitle_state import init as state_init, acquire_lock, release_lock, is_lo
 import ledger
 from timecode import SMPTE
 from pipeline_utils import validate_task, calc_cache_savings, estimate_processing_time, format_duration
-import ops_logger
+from log_writer import get_logger as _get_logger
+_log_ops = _get_logger("AI去字幕")
 from core import (
     connect_resolve, scan_io_clips,
     query_balance, CLIP_COLOR as _CLIP_COLOR,
@@ -191,7 +192,8 @@ def scan_io(*_):
         if need > 0 and od:
             ui.log_info(f"预估: ≤¥{yuan} (≤{pts} 积分) | 约 {total_time} 分钟")
 
-        ops_logger.cost_estimate(pts, yuan, total_time, need, stats["cache_hits"])
+        _log_ops.ops({"event": "cost_estimate", "est_points": pts, "est_yuan": yuan,
+                       "est_minutes": total_time, "need_process": need, "cache_hits": stats["cache_hits"]})
 
         # 章节尾部空行：与后续 pipeline 步骤（②复用缓存）之间的分隔
         ui.log_info("")

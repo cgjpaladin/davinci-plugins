@@ -32,7 +32,6 @@ from log_writer import get_logger
 _log = get_logger(PRODUCT_NAME)
 from subtitle_state import init as state_init, is_locked as state_is_locked, acquire_lock, release_lock, get_original_path
 import ledger
-import ops_logger
 from core import (
     connect_resolve, scan_io_clips, prepare_tasks,
     estimate_cost, query_balance, post_check, CLIP_COLOR as _CLIP_COLOR,

@@ -32,7 +32,8 @@ from core import (
     download_and_apply, post_check,
 )
 from adapters import SubtitleTask, create_preferred_adapter
-import ops_logger
+from log_writer import get_logger as _get_logger
+_log_ops = _get_logger("AI去字幕")
 from pricing import estimate_cost, point_to_yuan
 
 
@@ -93,7 +94,7 @@ class SubtitlePipeline(BasePipeline):
         self._report.setdefault("scan", {})["clips_count"] = len(clips)
 
         # 记录扫描结果到运营日志
-        ops_logger.clip_scan(len(clips), 0, [c.name for c in clips])
+        _log_ops.ops({"event": "clip_scan", "total": len(clips), "clips": [c.name for c in clips]})
 
     def _prepare(self, clips: list, mode: str) -> tuple:
         """任务准备（含缓存复用）。返回 (tasks, cache_hits, cache_hit_names)。"""
@@ -139,8 +140,6 @@ class SubtitlePipeline(BasePipeline):
         # 构造结果，task_id 只进后端
         results = []
         for t, r in zip(tasks, api_results):
-            ops_logger.task_submit(t.name, self._mode, t.duration, 0, provider=provider)
-            ops_logger.task_result(t.name, str(getattr(r, 'task_id', '')), elapsed / len(api_tasks), r.success if r else False, provider=provider)
             if r and r.success:
                 self._log_action(f"✅ {t.name} (task_id={getattr(r, 'task_id', '')})")
             else:

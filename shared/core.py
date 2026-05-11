@@ -70,8 +70,8 @@ from pricing import oss_tracker
 from adapters import SubtitleTask, SubtitleResult
 from subtitle_state import acquire_lock, release_lock
 import ledger
-import ops_logger
-# 注：ledger/ops_logger 用模块级 import 是因为它们的方法名
+from log_writer import get_logger as _get_logger
+_log_ops = _get_logger("AI去字幕")
 # (record_original, find_output, session_start 等) 不加前缀容易与本地函数混淆
 
 
@@ -563,23 +563,26 @@ def process_single_clip(
             on_attempt(attempt, task.name)
 
         try:
-            ops_logger.task_submit(task.name, mode, task.duration, attempt)
+            _log_ops.ops({"event": "task_submit", "name": task.name, "mode": mode,
+                           "duration": task.duration, "attempt": attempt})
             t0 = time.time()
             result = adapter.process(SubtitleTask(**task.kwargs), timeout=600, cancel_check=cancel_check)
             elapsed = time.time() - t0
-            ops_logger.task_result(
-                task.name, str(getattr(result, 'task_id', '')), elapsed, result.success,
-            )
+            _log_ops.ops({"event": "task_result", "name": task.name,
+                           "task_id": str(getattr(result, 'task_id', '')),
+                           "elapsed": elapsed, "success": result.success})
             if not result.success:
                 release_lock(task.name)
             break
         except Exception as e:
             if attempt < 2:
                 wait = 3 * (attempt + 1)
-                ops_logger.task_error(task.name, str(e)[:200], attempt)
+                _log_ops.ops({"event": "task_error", "name": task.name,
+                               "error": str(e)[:200], "attempt": attempt})
                 time.sleep(wait)
             else:
-                ops_logger.task_error(task.name, str(e)[:100], attempt)
+                _log_ops.ops({"event": "task_error", "name": task.name,
+                               "error": str(e)[:100], "attempt": attempt})
                 release_lock(task.name)
                 result = SubtitleResult(
                     success=False, task_id="",
@@ -594,7 +597,8 @@ def process_single_clip(
         if elapsed > est * 2:
             factor = elapsed / est
             _smb_log(f"[core] ⚠️ 严重超时: {task.name} 预估{est:.0f}s 实际{elapsed:.0f}s ({factor:.1f}倍)")
-            ops_logger.task_error(task.name, f"超时 {factor:.1f}倍 (预估{est:.0f}s)", 99)
+            _log_ops.ops({"event": "task_error", "name": task.name,
+                           "error": f"超时 {factor:.1f}倍 (预估{est:.0f}s)", "attempt": 99})
     return (result, elapsed)
 
 
