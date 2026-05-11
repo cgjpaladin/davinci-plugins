@@ -1213,10 +1213,8 @@ def _start_check():
                     personal_enabled=itm[CHK_CENSOR_PERSONAL].Checked,
                     io_range=io_range))
             except Exception:
-                _action_log(f"❌ {check['section']}检查崩溃，详见 stderr")
-                import traceback, sys
-                traceback.print_exc(file=sys.stderr)
-                continue
+                import traceback
+                _action_log(f"❌ {check['section']}检查崩溃: {traceback.format_exc()}")
             section_rows = []
             section_pass = 0
             summary_text = ""
