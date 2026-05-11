@@ -1205,19 +1205,6 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
 
 _SMB_PREFIX = "/Volumes/MYJC"
 
-def _walk_media_pool(folder, depth=0):
-    """递归遍历媒体池文件夹，yield (folder_path, clip)。"""
-    if folder is None:
-        return
-    clips = folder.GetClipList()
-    if clips:
-        for clip in clips:
-            yield clip
-    subs = folder.GetSubFolderList()
-    if subs:
-        for sub in subs:
-            yield from _walk_media_pool(sub, depth + 1)
-
 
 def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list:
     """检查当前时间线素材路径是否在 SMB 上。
