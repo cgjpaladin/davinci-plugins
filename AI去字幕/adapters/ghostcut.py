@@ -384,7 +384,7 @@ class GhostCutAdapter(BaseAdapter):
             time.sleep(poll_interval)
             poll_interval = min(poll_interval * 1.5, 30)  # 逐渐拉长到30秒
 
-    def process_batch(self, tasks: list, timeout: int = 600,
+    def _process_impl(self, tasks: list, timeout: int = 600,
                        cancel_check=None, progress_callback=None) -> list:
         """
         批量处理：上传全部 → 一次提交 → 一起轮询 → 逐个下载。
@@ -518,9 +518,6 @@ class GhostCutAdapter(BaseAdapter):
         for i, item in enumerate(data_list):
             if i < len(records):
                 records[i]["task_id"] = str(item["id"])
-                _ops.ops({"event": "task_submit", "provider": "GhostCut",
-                          "clip": records[i]["base_name"], "task_id": str(item["id"]),
-                          "model": model_name, "cut_y": str(_auto_mask(tasks[i])[2]) if tasks[i].mask_regions else "auto"})
         self._log("info", f"已提交 {len(data_list)} 个任务，等待处理...")
 
         # ── Phase 3: 一起轮询 ──
@@ -611,10 +608,6 @@ class GhostCutAdapter(BaseAdapter):
                     error_message="未知错误",
                 )
             final = r["result"]
-            _ops.ops({"event": "task_result", "provider": "GhostCut",
-                      "clip": r["base_name"], "task_id": r.get("task_id", ""),
-                      "success": final.success,
-                      "error": getattr(final, 'error_message', '') if not final.success else ""})
             results.append(final)
 
         success_count = sum(1 for r in results if r.success)

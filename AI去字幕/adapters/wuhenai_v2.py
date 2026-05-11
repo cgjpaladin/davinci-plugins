@@ -38,8 +38,6 @@ from urllib.parse import urlparse, quote
 from email.utils import formatdate
 
 from resolution import parse as parse_resolution, is_portrait
-from log_writer import get_logger as _get_logger
-_ops = _get_logger("AI去字幕")
 
 from . import BaseAdapter, SubtitleTask, SubtitleResult, TaskStatus
 
@@ -579,7 +577,7 @@ class WuhenAIV21Adapter(BaseAdapter):
 
     # ── 批量处理 ──────────────────────────────────────────────
 
-    def process_batch(self, tasks: list[SubtitleTask], timeout: int = 600,
+    def _process_impl(self, tasks: list[SubtitleTask], timeout: int = 600,
                        cancel_check=None, progress_callback=None) -> list[SubtitleResult]:
         """
         批量处理：所有片段一起上传、一起提交、一起等、一起下载。
@@ -626,10 +624,6 @@ class WuhenAIV21Adapter(BaseAdapter):
             input_key = f"input/{fhash}_{i}_{base}{ext}"
             output_key = f"output/{fhash}_{i}_{base}_clean{ext}"
             upload_tasks.append((i, video_path, input_key, output_key, task))
-
-        # 写 task_submit 事件（每个任务一条）
-        for t in tasks:
-            _ops.ops({"event": "task_submit", "name": t.name, "provider": "无痕AI"})
 
         # 1b. 并发上传（网络 I/O 密集，线程并发收益大）
         uploaded = 0
@@ -880,16 +874,6 @@ class WuhenAIV21Adapter(BaseAdapter):
                 error_message="未上传（停止）",
             ), "name": f"未上传#{len(records)}"})
         results = [rec["result"] for rec in records]
-        # 写 task_result/error 事件
-        for rec in records:
-            r = rec["result"]
-            nm = rec.get("name", f"#{rec.get('idx','?')}")
-            if r.success:
-                _ops.ops({"event": "task_result", "name": nm, "success": True})
-            else:
-                _ops.ops({"event": "task_error", "name": nm,
-                           "error": getattr(r, 'error_message', '?'),
-                           "success": False})
         success_count = sum(1 for r in results if r.success)
         total_elapsed = time.time() - start_time
         _log(f"[无痕AI 2.1] 批量完成: {success_count}/{n} 成功, 总耗时 {total_elapsed:.0f}s")

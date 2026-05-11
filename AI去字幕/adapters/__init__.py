@@ -149,31 +149,49 @@ class BaseAdapter(ABC):
         """健康检查：验证 API 凭证是否有效"""
         return True  # 子类可选覆盖
 
-    def process_batch(self, tasks: list, timeout: int = 600,
-                      cancel_check=None, progress_callback=None) -> list:
-        """批量处理多片段。基类默认实现：逐个调用 process()，自动写 task 事件。
+    def _process_impl(self, tasks: list, timeout: int, cancel_check,
+                       progress_callback) -> list:
+        """子类覆写：真正的批量处理逻辑。
 
-        适配器可以覆写以提供更高效的批量流水线，但应自己负责 task 事件写入。
+        BaseAdapter 默认为逐个调用 process()。子类可覆写为批量流水线。
+        基类的 process_batch() 自动包上 task 事件，子类只管实现。
         """
         results = []
         for task in tasks:
             if cancel_check and cancel_check():
                 break
             t0 = time.time()
-            _ops.ops({"event": "task_submit", "name": task.name,
-                       "provider": getattr(self, 'name', 'unknown')})
             try:
                 r = self.process(task, timeout=timeout, cancel_check=cancel_check)
-                elapsed = time.time() - t0
-                _ops.ops({"event": "task_result", "name": task.name,
-                           "task_id": str(getattr(r, 'task_id', '')),
-                           "elapsed": round(elapsed, 1), "success": r.success})
                 results.append(r)
             except Exception as e:
-                elapsed = time.time() - t0
-                _ops.ops({"event": "task_error", "name": task.name,
-                           "error": str(e)[:200], "elapsed": round(elapsed, 1)})
                 results.append(SubtitleResult(success=False, error_message=str(e)))
+        return results
+
+    def process_batch(self, tasks: list, timeout: int = 600,
+                      cancel_check=None, progress_callback=None) -> list:
+        """批量处理模板方法 — 自动写 task 事件，永不丢失。
+
+        子类 **禁止覆写** process_batch，只覆写 _process_impl()。
+        """
+        # Before: task_submit
+        for task in tasks:
+            _ops.ops({"event": "task_submit", "name": task.name,
+                       "provider": getattr(self, 'name', 'unknown')})
+        t0_global = time.time()
+
+        # Core: 委托子类
+        results = self._process_impl(tasks, timeout, cancel_check, progress_callback)
+
+        # After: task_result / task_error
+        for i, r in enumerate(results):
+            nm = tasks[i].name if i < len(tasks) else f"# {i}"
+            if r.success:
+                _ops.ops({"event": "task_result", "name": nm, "success": True})
+            else:
+                _ops.ops({"event": "task_error", "name": nm,
+                           "error": getattr(r, 'error_message', '?'),
+                           "success": False})
         return results
 
 
