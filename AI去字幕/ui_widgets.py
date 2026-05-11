@@ -257,6 +257,7 @@ def _ui_write_direct(msg: str):
 
 def _ui_write(msg: str):
     _ui_write_direct(msg)
+    _log.ui(msg)  # 同步写 UI 日志文件
 
 # ── SMB 关键事件日志 ──
 def _smb_log(msg: str):
