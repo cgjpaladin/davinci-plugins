@@ -1267,9 +1267,6 @@ def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
         list[dict]: 脱机文件列表
     """
     issues = []
-    # 生成类片段（无文件路径属于正常）
-    _GENERATED_TYPES = {"Generator", "Text+", "Fusion Composition", "Adjustment Clip",
-                        "Solid Color", "Title", "Subtitle"}
     seen_mp = set()
     for vi in range(1, timeline.GetTrackCount("video") + 1):
         for it in _get_items(timeline, "video", vi):
@@ -1279,15 +1276,11 @@ def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
                 continue
             mp = _get_cached(it, "mp")
             if mp is None:
-                # 复合片段、融合片段没有 media pool item → 不是脱机
-                try:
-                    ctype = it.GetClipProperty("Type") or ""
-                except Exception:
-                    continue
-                if ctype in _GENERATED_TYPES:
-                    continue
-                # 非生成类、无 MP → 可能是脱机
+                # 部分时间线片段（交叉叠化等）GetClipProperty 不可调用
                 name = _get_clip_name(it)
+                if any(kw in name for kw in ("交叉叠化", "叠化", "淡入淡出", "划像")):
+                    continue
+                # 无 MP → 脱机
                 smpte = _get_smpte(fps)
                 tc = smpte.gettc(_get_cached(it, "start", 0))
                 issues.append(_make_result("fail", track=f"V{vi}", timecode=tc,
@@ -1308,9 +1301,6 @@ def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
                 continue
             if fpath:
                 continue  # 有有效路径，不是脱机
-            # 没有文件路径，检查是否为生成类
-            if fname in _GENERATED_TYPES:
-                continue
             name = _get_clip_name(it)
             smpte = _get_smpte(fps)
             tc = smpte.gettc(_get_cached(it, "start", 0))
