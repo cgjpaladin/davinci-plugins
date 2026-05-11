@@ -42,9 +42,10 @@ from pricing import point_to_yuan, ACTIVE_PROVIDER
 from interface import DaVinciPipelineUI
 
 # 从 ui_widgets 导入所有 UI 表面元素
+import ui_widgets as _uw
 from ui_widgets import (
     itm, dlg, disp, _state, WIN_ID, MODE,
-    _CLIP_COLORS, _SELECTED_COLOR,
+    _CLIP_COLORS,
     _check_smb, _flush_log, _apply_ui_state,
     _st, _pg, _bal, _set_btn, _set_proj,
     _smb_log, _log_file, _log_action,
@@ -149,7 +150,7 @@ def scan_io(*_):
     except Exception: _smb_log("[ui_pipeline] 清空 LOG_LB 失败")
     try:
         _, project, timeline = connect_resolve()
-        clips, report = scan_io_clips(timeline, _SELECTED_COLOR)
+        clips, report = scan_io_clips(timeline, _uw._SELECTED_COLOR)
 
         if clips is None:
             ui.log_warn("请设置 IO 入出点"); ui.set_status("就绪 — 请设置 IO 入出点"); return
@@ -468,7 +469,7 @@ def undo(*_):
                     continue
                 # 只撤销当前选中颜色的片段
                 item_color = item.GetClipColor() or ""
-                if item_color != _SELECTED_COLOR:
+                if item_color != _uw._SELECTED_COLOR:
                     continue
                 path = mp.GetClipProperty("File Path") or ""
                 rec = ledger.find_completed_record(path)
