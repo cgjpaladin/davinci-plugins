@@ -6,8 +6,7 @@
 set -euo pipefail
 LOG_ROOT="$HOME/.workbuddy/logs"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-MAP="$ROOT/shared/machine_map.json"
+MAP="/Users/bryan/WorkBuddy/达芬奇运维专家/machine_registry.json"
 
 TAIL="${2:-20}"
 PRODUCT="${1:-}"

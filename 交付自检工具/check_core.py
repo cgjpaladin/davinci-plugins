@@ -1219,45 +1219,39 @@ def _walk_media_pool(folder, depth=0):
             yield from _walk_media_pool(sub, depth + 1)
 
 
-def check_path_location(project) -> list:
-    """检查媒体池所有文件路径是否在 SMB 上。
+def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list:
+    """检查当前时间线素材路径是否在 SMB 上。
 
     Args:
-        project: DaVinci Resolve 项目对象
+        timeline: 时间线对象
+        project: 项目对象（备用）
+        fps: 帧率
+        io_range: IO 范围
 
     Returns:
         list[dict]: 不在 /Volumes/MYJC 下的文件列表
     """
-    if project is None:
-        return [_make_result("warn", detail="路径检测: 项目未加载",
-                             is_summary=True)]
-
     issues = []
-    try:
-        pool = project.GetMediaPool()
-        root = pool.GetRootFolder()
-    except Exception as e:
-        return [_make_result("warn",
-                             detail=f"路径检测: 无法访问媒体池 ({e})",
-                             is_summary=True)]
-
-    seen = set()  # 对同一素材不同实例去重
-    for clip in _walk_media_pool(root):
-        try:
-            path = clip.GetClipProperty("File Path") or ""
-        except Exception:
-            continue
-        if not path:
-            continue
-        if path in seen:
-            continue
-        seen.add(path)
-
-        if not path.startswith(_SMB_PREFIX):
-            name = clip.GetName() or path
-            issues.append(_make_result("fail",
-                detail=f"{name}，本地路径: {path}",
-                reason="请将素材移至 SMB (/Volumes/MYJC) 后重新链接"))
+    seen = set()
+    for vi in range(1, timeline.GetTrackCount("video") + 1):
+        for it in _get_items(timeline, "video", vi):
+            if not _in_io_range(it, io_range):
+                continue
+            mp = _get_cached(it, "mp")
+            if mp is None:
+                continue
+            try:
+                path = mp.GetClipProperty("File Path") or ""
+            except Exception:
+                continue
+            if not path or path in seen:
+                continue
+            seen.add(path)
+            if not path.startswith(_SMB_PREFIX):
+                name = _get_clip_name(it)
+                issues.append(_make_result("fail",
+                    detail=f"{name}，非 SMB 路径: {path}",
+                    reason="请将素材移至 SMB (/Volumes/MYJC) 后重新链接"))
 
     if not issues:
         return [_make_result("pass",
@@ -1267,9 +1261,83 @@ def check_path_location(project) -> list:
                          detail=f"路径检测: {len(issues)} 处不在 SMB 上",
                          is_summary=True)] + issues
 
-    results = [_make_result("fail", detail=f"调色: {len(issues)} 处", is_summary=True)]
-    results.extend(issues)
-    return results
+
+def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
+    """检查当前时间线是否存在脱机文件。
+
+    两种脱机：
+      - 媒体脱机：源文件丢失，达芬奇显示红屏
+      - 离线片段：右键→生成离线参考片段（故意空的占位片段）
+
+    检测：遍历时间线视频轨，通过媒体池检测文件路径缺失且非生成片段。
+
+    Args:
+        timeline: 时间线对象
+        fps: 帧率
+        io_range: IO 范围
+
+    Returns:
+        list[dict]: 脱机文件列表
+    """
+    issues = []
+    # 生成类片段（无文件路径属于正常）
+    _GENERATED_TYPES = {"Generator", "Text+", "Fusion Composition", "Adjustment Clip",
+                        "Solid Color", "Title", "Subtitle"}
+    seen_mp = set()
+    for vi in range(1, timeline.GetTrackCount("video") + 1):
+        for it in _get_items(timeline, "video", vi):
+            if not _in_io_range(it, io_range):
+                continue
+            if _get_cached(it, "enabled", True) is False:
+                continue
+            mp = _get_cached(it, "mp")
+            if mp is None:
+                # 复合片段、融合片段没有 media pool item → 不是脱机
+                try:
+                    ctype = it.GetClipProperty("Type") or ""
+                except Exception:
+                    continue
+                if ctype in _GENERATED_TYPES:
+                    continue
+                # 非生成类、无 MP → 可能是脱机
+                name = _get_clip_name(it)
+                smpte = _get_smpte(fps)
+                tc = smpte.gettc(_get_cached(it, "start", 0))
+                issues.append(_make_result("fail", track=f"V{vi}", timecode=tc,
+                    detail=f"{name}，脱机文件",
+                    reason="请重新链接源文件或替换素材"))
+                continue
+            try:
+                mp_uid = mp.GetUniqueId()
+            except Exception:
+                continue
+            if mp_uid in seen_mp:
+                continue
+            seen_mp.add(mp_uid)
+            try:
+                fpath = mp.GetClipProperty("File Path") or ""
+                fname = mp.GetClipProperty("File Name") or ""
+            except Exception:
+                continue
+            if fpath:
+                continue  # 有有效路径，不是脱机
+            # 没有文件路径，检查是否为生成类
+            if fname in _GENERATED_TYPES:
+                continue
+            name = _get_clip_name(it)
+            smpte = _get_smpte(fps)
+            tc = smpte.gettc(_get_cached(it, "start", 0))
+            issues.append(_make_result("fail", track=f"V{vi}", timecode=tc,
+                detail=f"{name}，脱机文件",
+                reason="请重新链接源文件或替换素材"))
+
+    if not issues:
+        return [_make_result("pass",
+                             detail="脱机检测: 无脱机文件",
+                             is_summary=True)]
+    return [_make_result("fail",
+                         detail=f"脱机检测: {len(issues)} 处脱机",
+                         is_summary=True)] + issues
 
 
 def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:

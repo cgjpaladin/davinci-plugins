@@ -41,7 +41,7 @@ from check_core import (check_track_structure, check_subtitle_clamping, check_di
                           check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
                           check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
                           check_color, check_camera_on_high_tracks, check_audio_color_tracks,
-                          check_path_location)
+                          check_path_location, check_offline_clips)
 
 # ═══════════════════════════════════════════
 # 常量
@@ -57,6 +57,7 @@ CHK_CENSOR_SYSTEM, CHK_CENSOR_PERSONAL, CHK_TYPO = "chk_censor_sys", "chk_censor
 CHK_CAMERA = "chk_camera"
 CHK_AUDIO_COLOR = "chk_audio_color"
 CHK_PATH = "chk_path"
+CHK_OFFLINE = "chk_offline"
 CHK_BLACK_FRAME = CHK_BLACK  # 别名
 BTN_START = "btn_start"
 BTN_CONFIG = "btn_config"
@@ -245,8 +246,12 @@ def _run_timeline_check(timeline, fps, **_kw):
     return check_timeline_settings(timeline, fps=fps, project=_kw.get("project"))
 
 def _run_path_check(timeline, fps, **_kw):
-    """媒体池路径检测"""
-    return check_path_location(_kw.get("project"))
+    """当前时间线 SMB 路径检测"""
+    return check_path_location(timeline, fps=fps, io_range=_kw.get("io_range"), project=_kw.get("project"))
+
+def _run_offline_check(timeline, fps, **_kw):
+    """当前时间线脱机文件检测"""
+    return check_offline_clips(timeline, fps=fps, io_range=_kw.get("io_range"))
 
 def _run_censor_system(timeline, fps, **_kw):
     """系统词典（合并所有启用的子词典→一次扫描）"""
@@ -385,6 +390,7 @@ def _filter_covered(results, personal_words):
 CHECKS = [
     # 第零道门（无gate → 永远跑）
     {"id": "path",          "section": "路径检测", "chk_id": CHK_PATH,           "group": "工程", "subgroup": "路径",   "run_fn": _run_path_check,          "tracks": [], "gate": ""},
+    {"id": "offline",       "section": "脱机检测", "chk_id": CHK_OFFLINE,       "group": "工程", "subgroup": "路径",   "run_fn": _run_offline_check,       "tracks": [], "gate": ""},
     {"id": "timeline",      "section": "时间线",   "chk_id": CHK_TIMELINE,      "group": "工程", "subgroup": "时间线", "run_fn": _run_timeline_check,     "tracks": [], "gate": ""},
     {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "group": "工程", "subgroup": "轨道",   "run_fn": _run_track_check,        "tracks": ["subtitle","video","audio"], "gate": ""},
     {"id": "fragment",      "section": "启用/禁用", "chk_id": CHK_FRAGMENT,       "group": "工程", "subgroup": "启用",   "run_fn": _run_fragment_check,      "tracks": ["subtitle","video","audio"], "gate": "all"},
@@ -1240,7 +1246,7 @@ def _start_check():
                 "all_ok": all_ok,
             })
 
-        # 路径检测失败 → 加入门警告
+        # 路径检测失败 → 加入门警告（路径 + 脱机任一项失败全停）
         for s in sections:
             if s["title"] == "路径检测" and not s["all_ok"]:
                 gate_warnings.append(f"⚠ 媒体池存在非 SMB 路径文件，详见下方检测结果")

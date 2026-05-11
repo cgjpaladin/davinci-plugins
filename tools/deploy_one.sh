@@ -8,7 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 TRACKER="$SCRIPT_DIR/deploy_tracker.json"
-MAP="$ROOT/shared/machine_map.json"
+MAP="/Users/bryan/WorkBuddy/达芬奇运维专家/machine_registry.json"
 DAVINCI_DIR="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊"
 
 # ── --status 查看概况 ──

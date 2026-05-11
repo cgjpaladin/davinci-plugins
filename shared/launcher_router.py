@@ -8,8 +8,7 @@
 # 用法:
 #   import launcher_router; launcher_router.route("AI去字幕", ui_module="stable_ui")
 import sys, os, json, socket
-
-_DEV_HOSTS = {"BryandeMac-mini.local", "BryandeMac-mini"}  # 裁缝老师的机器
+from _dev_hosts import DEV_HOSTS
 
 
 def route(product_name: str, ui_module: str = "ui"):
@@ -26,7 +25,7 @@ def route(product_name: str, ui_module: str = "ui"):
     _host = socket.gethostname()
     _code_dir = _SMB_BASE
 
-    if _host in _DEV_HOSTS:
+    if _host in DEV_HOSTS:
         _code_dir = _DEV_DIR
         sys.path.insert(0, _SHARED_DIR)
     else:
@@ -49,7 +48,7 @@ def route(product_name: str, ui_module: str = "ui"):
         checks = []
         v = sys.version_info
         checks.append(("Python", v >= (3, 9), f"{v.major}.{v.minor}.{v.micro}"))
-        routing = "DEV" if _host in _DEV_HOSTS else "SMB"
+        routing = "DEV" if _host in DEV_HOSTS else "SMB"
         checks.append(("路由", True, f"{routing}: {_code_dir}"))
         for mod in ["config", ui_module]:
             try:

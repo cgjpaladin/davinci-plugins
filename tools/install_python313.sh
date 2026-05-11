@@ -18,7 +18,7 @@ MAP_FILE="/Users/bryan/WorkBuddy/达芬奇运维专家/machine_registry.json"
 
 if [ $# -eq 0 ]; then
     if [ ! -f "$MAP_FILE" ]; then
-        echo "❌ 找不到 machine_map.json: $MAP_FILE"
+        echo "❌ 找不到 registry: $MAP_FILE"
         exit 1
     fi
     mapfile -t TARGETS < <(jq -r 'keys[]' "$MAP_FILE" | grep -v '^200$' | sort -n)
