@@ -643,7 +643,7 @@ window_layout = [
                 ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
                             "Weight": 0, "PlaceholderText": "08 或 07-09",
                             "MinimumSize": [130, 0]}),
-                ui.Label({"ID": LBL_SCRIPT_STATUS, "Text": "",
+                ui.Label({"ID": LBL_SCRIPT_STATUS, "Text": "请点击校验",
                           "StyleSheet": "font-size:11px;color:#888",
                           "Weight": 0}),
                 ui.HGroup({"Spacing": 6, "Weight": 0}, [
@@ -1644,7 +1644,7 @@ def _validate_script_src(ev):
     _SCRIPT_SRC_VALID = ok
     _SCRIPT_CONFIRMED = False
     _CACHED_PARSED = None
-    itm[LBL_SCRIPT_STATUS].Text = ""
+    itm[LBL_SCRIPT_STATUS].Text = "请点击校验"
     itm[BTN_VALIDATE_SCRIPT].Enabled = ok and not _checking
     itm[BTN_AI_TYPO].Enabled = False
     if not ok and src:
@@ -1671,18 +1671,16 @@ def _confirm_script(ev):
         ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
         _SCRIPT_CONFIRMED = True
         _CACHED_PARSED = (parsed, ctx)
-        n_lines = len(ctx.get("lines", []))
-        n_chars = len(ctx.get("characters", []))
         # 自动填回检测到的集号
         if not ep_input:
             itm[EDIT_SCRIPT_EP].Text = f"{ctx['episode']:02d}"
-        ep_label = f"第{ctx['episode']}集" if not ep_input else ep_input
-        status = f"✅ 通过 · {ep_label}"
+        ep_label = f"第{ctx['episode']}集" if not ep_input else f"{ep_input}集（手动）"
+        status = f"🔍 识别为 EP{ctx['episode']:02d}" if not ep_input else f"📖 {ep_label}"
         itm[LBL_SCRIPT_STATUS].Text = status
-        _action_log(f"✅ 剧本校验通过 - {ep_label}（{n_lines}行对话,{n_chars}角色）")
+        _action_log(f"✅ 剧本校验通过 - {ep_label}")
     except Exception as e:
         _SCRIPT_CONFIRMED = False
-        itm[LBL_SCRIPT_STATUS].Text = f"❌ {e}"
+        itm[LBL_SCRIPT_STATUS].Text = f"✗ {e}，请手动输入"
         _action_log(f"❌ 剧本校验失败: {e}")
     finally:
         itm[BTN_VALIDATE_SCRIPT].Enabled = _SCRIPT_SRC_VALID and not _checking
