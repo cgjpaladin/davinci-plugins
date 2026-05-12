@@ -62,7 +62,6 @@ CHK_BLACK_FRAME = CHK_BLACK  # 别名
 BTN_START = "btn_start"
 BTN_CONFIG = "btn_config"
 BTN_AI_TYPO = "btn_ai_typo"
-BTN_VALIDATE_SCRIPT = "btn_validate_script"
 EDIT_SCRIPT_SRC = "edit_script_src"
 EDIT_SCRIPT_EP = "edit_script_ep"
 LBL_SCRIPT_STATUS = "lbl_script_status"
@@ -646,14 +645,9 @@ window_layout = [
                 ui.Label({"ID": LBL_SCRIPT_STATUS, "Text": "请点击校验",
                           "StyleSheet": "font-size:11px;color:#888",
                           "Weight": 0}),
-                ui.HGroup({"Spacing": 6, "Weight": 0}, [
-                    ui.Button({"ID": BTN_VALIDATE_SCRIPT, "Text": "校验剧本",
-                              "StyleSheet": BTN_PRIMARY.replace("100", "60"),
-                              "Weight": 0, "MinimumSize": [108, 36]}),
-                    ui.Button({"ID": BTN_AI_TYPO, "Text": "开始校对",
+                ui.Button({"ID": BTN_AI_TYPO, "Text": "开始校对",
                               "StyleSheet": BTN_PRIMARY.replace("100", "80"),
                               "Weight": 0, "MinimumSize": [108, 36]}),
-                ]),
             ]),
 
         ]),  # 结束上半区 HGroup
@@ -700,7 +694,6 @@ itm = dlg.GetItems()
 # ═══════════════════════════════════════════
 itm[BTN_START].Enabled = False
 itm[BTN_AI_TYPO].Enabled = False
-itm[BTN_VALIDATE_SCRIPT].Enabled = False
 itm[EDIT_SCRIPT_SRC].Text = ""
 
 # Tree 表头
@@ -1124,13 +1117,12 @@ def _process_result(r, rows_list):
 # ═══════════════════════════════════════════
 
 def _run_ai_typo():
-    """独立入口：AI 字幕校对，含多道门。"""
+    """一步到位：下载剧本 → 解析 → 集号匹配 → LLM 校对（含剧集一致性检测）。"""
     global _checking
     if _checking:
         return
     _checking = True
     itm[BTN_AI_TYPO].Enabled = False
-    itm[BTN_VALIDATE_SCRIPT].Enabled = False
     itm[BTN_START].Enabled = False
 
     def _stop(msg):
@@ -1147,7 +1139,7 @@ def _run_ai_typo():
         if not timeline:
             return _stop("❌ 未找到当前时间线")
         entries = []
-        entry_starts = []  # frame position for timecode
+        entry_starts = []
         for ti in range(1, timeline.GetTrackCount("subtitle") + 1):
             for it in (timeline.GetItemListInTrack("subtitle", ti) or []):
                 try:
@@ -1159,42 +1151,35 @@ def _run_ai_typo():
             return _stop("⚠ 当前时间线无字幕，跳过校对")
         _action_log(f"📝 字幕: {len(entries)} 条")
 
-        # ═══ 门1: 剧本读得通？（优先用缓存，免重复下载解析） ═══
-        global _CACHED_PARSED
-        if _CACHED_PARSED:
-            parsed, ctx = _CACHED_PARSED
-            _action_log(f"📖 剧本: 使用缓存 ({len(ctx.get('lines',[]))}行)")
-        else:
-            src = itm[EDIT_SCRIPT_SRC].Text.strip()
-            try:
-                parsed = parse_script(src)
-                _action_log(f"📖 剧本解析完成: {len(parsed.get('episodes',{}))} 集")
-            except Exception as e:
-                return _stop(f"❌ 剧本解析失败: {e}")
+        # ═══ 门1: 下载+解析剧本 ═══
+        src = itm[EDIT_SCRIPT_SRC].Text.strip()
+        itm[LBL_SCRIPT_STATUS].Text = "🔄 解析剧本..."
+        try:
+            parsed = parse_script(src)
+            _action_log(f"📖 剧本: {len(parsed.get('episodes',{}))} 集")
+        except Exception as e:
+            return _stop(f"❌ 剧本解析失败: {e}")
 
-            # ═══ 门2: 集号找得到？ ═══
-            tl_name = timeline.GetName()
-            ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
-            try:
-                ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
-                _action_log(f"🎯 匹配集号: EP{ctx['episode']} ({'手动' if ep_input else '自动'})")
-            except Exception as e:
-                return _stop(f"❌ 集号匹配失败: {e}")
+        # ═══ 门2: 集号匹配 ═══
+        tl_name = timeline.GetName()
+        ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
+        try:
+            ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
+            if not ep_input:
+                itm[EDIT_SCRIPT_EP].Text = f"{ctx['episode']:02d}"
+            ep_label = f"第{ctx['episode']}集" if not ep_input else f"{ep_input}集"
+            itm[LBL_SCRIPT_STATUS].Text = f"🔍 {ep_label}"
+            _action_log(f"🎯 {ep_label} ({'手动' if ep_input else '自动'})")
+        except Exception as e:
+            itm[LBL_SCRIPT_STATUS].Text = f"✗ {e}"
+            return _stop(f"❌ 集号匹配失败: {e}")
 
-        # ═══ 门3: 有对话内容？ ═══
-        if not ctx.get("lines"):
-            _action_log(f"⚠ 第 {ctx['episode']} 集剧本无对话行，校对可能不准确")
-        if not ctx.get("characters"):
-            _action_log("⚠ 未提取到人物名，人名校验将跳过")
-
-        # ═══ LLM 校对 ═══
+        # ═══ LLM 校对（含剧集一致性检测） ═══
         itm[HINT_LB].Text = "AI 校对中..."
         _action_log(f"🤖 LLM 校对开始 ({len(entries)}字幕 vs {len(ctx.get('lines',[]))}行剧本)")
         result = check_typos(entries, ctx.get("characters", []), ctx.get("lines", []))
         if result.get("error"):
             return _stop(f"❌ 校对失败: {result.get('error')}")
-        if result.get("error") == "all_failed":
-            return _stop("❌ 所有模型均不可用，请检查 API key 或网络")
 
         corrections = result.get("corrections", [])
         provider = result.get("provider", "?")
@@ -1214,7 +1199,7 @@ def _run_ai_typo():
         smpte = SMPTE(); smpte.fps = fps; smpte.df = False
 
         for c in corrections:
-            idx = c['index'] - 1  # LLM returns 1-based, list is 0-based
+            idx = c['index'] - 1
             tc_str = ""
             if 0 <= idx < len(entry_starts):
                 tc_str = smpte.gettc(entry_starts[idx])
@@ -1236,8 +1221,7 @@ def _run_ai_typo():
 
     finally:
         _checking = False
-        itm[BTN_VALIDATE_SCRIPT].Enabled = _SCRIPT_SRC_VALID
-        itm[BTN_AI_TYPO].Enabled = _SCRIPT_CONFIRMED
+        itm[BTN_AI_TYPO].Enabled = True
         itm[BTN_START].Enabled = True
 
 
@@ -1522,8 +1506,7 @@ def _start_check():
     finally:
         _checking = False
         itm[BTN_START].Enabled = True
-        itm[BTN_VALIDATE_SCRIPT].Enabled = _SCRIPT_SRC_VALID
-        itm[BTN_AI_TYPO].Enabled = _SCRIPT_CONFIRMED
+        itm[BTN_AI_TYPO].Enabled = True
 
 
 # ═══════════════════════════════════════════
@@ -1628,72 +1611,18 @@ for _c in CHECKS:
 dlg.On[BTN_START].Clicked = lambda ev: _start_check()
 dlg.On[BTN_CONFIG].Clicked = lambda ev: _show_config_dialog()
 dlg.On[BTN_AI_TYPO].Clicked = lambda ev: _run_ai_typo()
-dlg.On[BTN_VALIDATE_SCRIPT].Clicked = lambda ev: _confirm_script(ev)
 
-# 剧本链接输入框变化时校验格式
-_SCRIPT_SRC_VALID = False
-_SCRIPT_CONFIRMED = False
-_CACHED_PARSED = None  # 缓存校验结果，校对复用，免重复下载解析
-def _validate_script_src(ev):
-    global _SCRIPT_SRC_VALID, _SCRIPT_CONFIRMED, _CACHED_PARSED
+# 剧本链接格式校验 + 按钮状态
+def _on_script_src_changed(ev):
     src = itm[EDIT_SCRIPT_SRC].Text.strip()
     ok = bool(src) and any(src.startswith(p) for p in (
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
     if "feishu.cn" in src or "docs.qq.com" in src:
         ok = ok and len(src) > 30
-    _SCRIPT_SRC_VALID = ok
-    _SCRIPT_CONFIRMED = False
-    _CACHED_PARSED = None
-    itm[LBL_SCRIPT_STATUS].Text = "请点击校验"
-    itm[BTN_VALIDATE_SCRIPT].Enabled = ok and not _checking
-    itm[BTN_AI_TYPO].Enabled = False
+    itm[BTN_AI_TYPO].Enabled = ok and not _checking
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
-
-def _confirm_script(ev):
-    """验证剧本：下载+解析+集号匹配（纯 Python，不调 LLM）。"""
-    global _SCRIPT_CONFIRMED, _CACHED_PARSED
-    if _checking or not _SCRIPT_SRC_VALID:
-        return
-    _action_log("🔍 校验剧本...")
-    itm[LBL_SCRIPT_STATUS].Text = "🔄 验证中..."
-    itm[BTN_VALIDATE_SCRIPT].Enabled = False
-    itm[BTN_AI_TYPO].Enabled = False
-
-    try:
-        from script_parser import parse_script, match_timeline
-        src = itm[EDIT_SCRIPT_SRC].Text.strip()
-        parsed = parse_script(src)
-        resolve = bmd.scriptapp("Resolve")
-        timeline = resolve.GetProjectManager().GetCurrentProject().GetCurrentTimeline()
-        tl_name = timeline.GetName() if timeline else ""
-        ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
-        ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
-        _SCRIPT_CONFIRMED = True
-        _CACHED_PARSED = (parsed, ctx)
-        # 自动填回检测到的集号
-        if not ep_input:
-            itm[EDIT_SCRIPT_EP].Text = f"{ctx['episode']:02d}"
-        ep_label = f"第{ctx['episode']}集" if not ep_input else f"{ep_input}集（手动）"
-        status = f"🔍 识别为 EP{ctx['episode']:02d}" if not ep_input else f"📖 {ep_label}"
-        itm[LBL_SCRIPT_STATUS].Text = status
-        _action_log(f"✅ 剧本校验通过 - {ep_label}")
-    except Exception as e:
-        _SCRIPT_CONFIRMED = False
-        itm[LBL_SCRIPT_STATUS].Text = f"✗ {e}，请手动输入"
-        _action_log(f"❌ 剧本校验失败: {e}")
-    finally:
-        itm[BTN_VALIDATE_SCRIPT].Enabled = _SCRIPT_SRC_VALID and not _checking
-        itm[BTN_AI_TYPO].Enabled = _SCRIPT_CONFIRMED and not _checking
-dlg.On[EDIT_SCRIPT_SRC].TextChanged = _validate_script_src
-dlg.On[EDIT_SCRIPT_EP].TextChanged = lambda ev: (_reset_script_confirm(), None)
-
-
-def _reset_script_confirm():
-    global _SCRIPT_CONFIRMED, _CACHED_PARSED
-    _SCRIPT_CONFIRMED = False
-    _CACHED_PARSED = None
-    itm[BTN_AI_TYPO].Enabled = False
+dlg.On[EDIT_SCRIPT_SRC].TextChanged = _on_script_src_changed
 
 # 分组开关事件
 def _make_group_toggle(group_name):
