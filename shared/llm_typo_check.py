@@ -73,43 +73,32 @@ def _single(asr_lines, characters, context_lines, offset=0):
 
     try:
         raw = result["content"].strip()
-        if raw.startswith("```"):
+        # 清理 markdown 代码块
+        if "```" in raw:
             raw = raw.split("```")[1]
             if raw.startswith("json"):
                 raw = raw[4:]
+        raw = raw.strip()
+        # 从第一个 { 到最后一个 }，忽略前后文字
+        start = raw.find("{")
+        end = raw.rfind("}")
+        if start >= 0 and end > start:
+            raw = raw[start:end + 1]
         data = json.loads(raw)
-        # 新格式 {same_show, corrections} 或旧格式 [{index,...}]
+        # 对象格式 {same_show, corrections} 或数组 [{...}]
         if isinstance(data, dict):
             same_show = data.get("same_show", True)
             corrections = data.get("corrections", [])
-        else:
+        elif isinstance(data, list):
             same_show = True
             corrections = data
+        else:
+            raise ValueError
         if not isinstance(corrections, list):
             raise ValueError
-    except (json.JSONDecodeError, ValueError):
-        import re
-        raw2 = result["content"]
-        # 优先搜对象 {same_show, corrections}
-        m = re.search(r'\{[^{}]*"same_show"[^}]*\}', raw2, re.DOTALL)
-        if m:
-            try:
-                data = json.loads(m.group())
-                same_show = data.get("same_show", True)
-                corrections = data.get("corrections", [])
-            except json.JSONDecodeError:
-                pass
-        else:
-            # 兜底搜数组
-            m = re.search(r'\[[\s\S]*\]', raw2)
-            if m:
-                try:
-                    corrections = json.loads(m.group())
-                    same_show = True
-                except json.JSONDecodeError:
-                    return {"error": "json_parse", "raw": raw2[:500]}
-            else:
-                return {"error": "json_parse", "raw": raw2[:500]}
+    except (json.JSONDecodeError, ValueError) as e:
+        return {"error": "json_parse", "raw": result["content"][:300],
+                "detail": str(e)}
 
     valid = []
     max_idx = offset + len(asr_lines)
