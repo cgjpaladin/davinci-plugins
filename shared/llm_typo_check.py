@@ -14,15 +14,8 @@ from llm_providers import call_with_fallback
 
 _MAX_BATCH = 60
 _MAX_CONTEXT = 60
-
-# 短剧台词中常见的两可字，不报
-_FUZZY_PAIRS = {
-    ("在", "再"), ("再", "在"),
-    ("哎", "诶"), ("诶", "哎"),
-    ("哪", "那"), ("那", "哪"),
-    ("吧", "罢"), ("罢", "吧"),
-    ("她", "他"), ("他", "她"),
-}
+# (硬过滤暂关，等模型稳定后再启用)
+# _FUZZY_PAIRS = {...}
 
 
 def check_typos(asr_lines: list[str], characters: list[str],

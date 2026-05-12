@@ -35,8 +35,10 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 CACHE_DIR = os.path.expanduser("~/Library/Application Support/交付自检/script_cache")
-FEISHU_EXPORT_API = "https://open.feishu.cn/open-apis/drive/v1/export"
-FEISHU_DOWNLOAD_API = "https://open.feishu.cn/open-apis/drive/v1/medias"
+# Feishu API endpoints (tenant token based)
+_FEISHU_AUTH = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
+_FEISHU_FILES = "https://open.feishu.cn/open-apis/drive/v1/files"
+_FEISHU_EXPORT = "https://open.feishu.cn/open-apis/drive/v1/export"
 
 
 def _ensure_cache():
@@ -159,9 +161,7 @@ def _get_tenant_token() -> str:
     if not app_id or not secret:
         return ""
     body = json.dumps({"app_id": app_id, "app_secret": secret}).encode()
-    req = Request(
-        "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
-        data=body, method="POST")
+    req = Request(_FEISHU_AUTH, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
     try:
         with urlopen(req, timeout=10) as resp:
@@ -201,28 +201,6 @@ def _feishu_api(path: str, method: str = "GET", data: bytes | None = None,
         return None
 
 
-def _find_lark_cli() -> str:
-    """定位 lark-cli（达芬奇子进程 PATH 受限）。"""
-    for p in (
-        os.path.expanduser("~/.npm-global/bin/lark-cli"),
-        "/opt/homebrew/bin/lark-cli",
-        "/usr/local/bin/lark-cli",
-        shutil.which("lark-cli") or "",
-    ):
-        if p and os.path.isfile(p):
-            return p
-    raise RuntimeError("lark-cli 未找到")
-
-
-def _subprocess_env() -> dict:
-    """达芬奇子进程环境（补 PATH + HOME，确保 node/lark-cli 可访问）。"""
-    env = os.environ.copy()
-    npm_bin = os.path.expanduser("~/.npm-global/bin")
-    env["PATH"] = npm_bin + ":/opt/homebrew/bin:/usr/local/bin:" + env.get("PATH", "")
-    env["HOME"] = os.path.expanduser("~")
-    return env
-
-
 def _download_feishu_file(token: str) -> str:
     """下载飞书文件，直调 API（bot token，无需 lark-cli）。"""
     _ensure_cache()
@@ -230,7 +208,7 @@ def _download_feishu_file(token: str) -> str:
     if os.path.exists(cache_path):
         return cache_path
 
-    resp = _feishu_api(f"/open-apis/drive/v1/files/{token}/download")
+    resp = _feishu_api(f"{_FEISHU_FILES}/{token}/download")
     if resp and len(resp) > 100:
         with open(cache_path, "wb") as fh:
             fh.write(resp)
@@ -244,8 +222,7 @@ def _export_feishu_docx(token: str) -> str:
     if os.path.exists(cache_path):
         return cache_path
 
-    resp = _feishu_api(
-        f"/open-apis/drive/v1/export/{token}?file_extension=docx")
+    resp = _feishu_api(f"{_FEISHU_EXPORT}/{token}?file_extension=docx")
     if not resp:
         raise RuntimeError(f"飞书文档导出失败: {token}")
     try:
@@ -261,8 +238,7 @@ def _export_feishu_docx(token: str) -> str:
 
 def _list_feishu_folder(folder_token: str) -> list[dict]:
     """列出飞书文件夹内容。"""
-    resp = _feishu_api(
-        f"/open-apis/drive/v1/files?folder_token={folder_token}&page_size=50")
+    resp = _feishu_api(f"{_FEISHU_FILES}?folder_token={folder_token}&page_size=50")
     if not resp:
         return []
     try:
