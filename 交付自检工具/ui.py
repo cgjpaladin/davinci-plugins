@@ -1120,6 +1120,7 @@ def _run_ai_typo():
         from script_parser import parse_script, match_timeline
 
         # ═══ 门0: 有空字幕？ ═══
+        resolve = bmd.scriptapp("Resolve")
         timeline = resolve.GetProjectManager().GetCurrentProject().GetCurrentTimeline()
         if not timeline:
             return _stop("❌ 未找到当前时间线")
@@ -1196,6 +1197,10 @@ def _run_ai_typo():
             f"  |  模型: {provider}/{model}"
         )
         _action_log(f"🔍 发现 {len(corrections)} 处错别字 ({provider}/{model})")
+
+    except Exception as e:
+        _action_log(f"💥 AI校对崩溃: {e}")
+        itm[HINT_LB].Text = f"❌ 校对异常: {e}"
 
     finally:
         _checking = False
