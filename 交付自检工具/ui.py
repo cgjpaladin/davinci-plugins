@@ -1152,10 +1152,12 @@ def _run_ai_typo():
         if not timeline:
             return _stop("❌ 未找到当前时间线")
         entries = []
+        entry_starts = []  # frame position for timecode
         for ti in range(1, timeline.GetTrackCount("subtitle") + 1):
             for it in (timeline.GetItemListInTrack("subtitle", ti) or []):
                 try:
                     entries.append(it.GetName() or "")
+                    entry_starts.append(it.GetStart())
                 except Exception:
                     pass
         if not entries:
@@ -1205,15 +1207,7 @@ def _run_ai_typo():
 
         tree = itm[TREE_RESULT]
         tree.Clear()
-        # AI校对专用列
-        hdr = tree.NewItem()
-        hdr.Text[0] = "序号"
-        hdr.Text[1] = "原文 → 纠正"
-        hdr.Text[2] = "原因"
-        tree.SetHeaderItem(hdr)
-        tree.ColumnWidth[0] = 60
-        tree.ColumnWidth[1] = 260
-        tree.ColumnWidth[2] = 160
+        _setup_tree_header(tree)
 
         if not corrections:
             itm[HINT_LB].Text = f"✅ 未发现错别字  ({provider}/{model})"
@@ -1225,10 +1219,14 @@ def _run_ai_typo():
         smpte = SMPTE(); smpte.fps = fps; smpte.df = False
 
         for c in corrections:
+            idx = c['index'] - 1  # LLM returns 1-based, list is 0-based
+            tc_str = ""
+            if 0 <= idx < len(entry_starts):
+                tc_str = smpte.gettc(entry_starts[idx])
             row = tree.NewItem()
-            row.Text[0] = f"[{c['index']}]"
-            row.Text[1] = f"❌ {c['original']} → {c['correction']}"
-            row.Text[2] = c.get("reason", "")
+            _set_row(row, {"track": f"字幕[{c['index']}]", "timecode": tc_str,
+                           "detail": f"❌ {c['original']} → {c['correction']}",
+                           "reason": c.get("reason", "")})
             tree.AddTopLevelItem(row)
 
         itm[HINT_LB].Text = (
