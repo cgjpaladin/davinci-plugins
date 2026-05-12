@@ -611,12 +611,12 @@ window_layout = [
             ]),
             ]),  # 结束左区 VGroup
 
-            ui.VGroup({"Weight": 0, "MinimumSize": [10, 0]}, [
-                ui.Label({"Text": "", "Weight": 0.03}),
-                ui.Label({"Text": "", "Weight": 0.94,
+            ui.VGroup({"Weight": 0, "MinimumSize": [3, 0]}, [
+                ui.Label({"Text": "", "Weight": 0.00}),
+                ui.Label({"Text": "", "Weight": 1.00,
                           "MinimumSize": [1, 0],
                           "StyleSheet": "background-color:rgba(160,160,160,0.55);"}),
-                ui.Label({"Text": "", "Weight": 0.03}),
+                ui.Label({"Text": "", "Weight": 0.00}),
             ]),
 
             # ====== 右区：AI校对面板 ======
