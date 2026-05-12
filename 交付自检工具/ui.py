@@ -1625,6 +1625,7 @@ def _confirm_script(ev):
         from script_parser import parse_script, match_timeline
         src = itm[EDIT_SCRIPT_SRC].Text.strip()
         parsed = parse_script(src)
+        resolve = bmd.scriptapp("Resolve")
         timeline = resolve.GetProjectManager().GetCurrentProject().GetCurrentTimeline()
         tl_name = timeline.GetName() if timeline else ""
         ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
