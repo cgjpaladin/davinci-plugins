@@ -291,8 +291,8 @@ _CHINESE_NUM = {1: "一", 2: "二", 3: "三", 4: "四", 5: "五", 6: "六",
                 11: "十一", 12: "十二", 13: "十三", 14: "十四", 15: "十五",
                 16: "十六", 17: "十七", 18: "十八", 19: "十九", 20: "二十",
                 30: "三十", 40: "四十", 50: "五十"}
-_CN_EP_RE = re.compile(r"^第([一二三四五六七八九十百千\d]+)集")
-_ARABIC_EP_RE = re.compile(r"^第(\d+)集")
+_CN_EP_RE = re.compile(r"^第\s*([一二三四五六七八九十百千\d]+)\s*集")
+_ARABIC_EP_RE = re.compile(r"^第\s*(\d+)\s*集")
 _EP_PREFIX_RE = re.compile(r"^EP(\d+)")
 
 
@@ -403,6 +403,9 @@ def _split_episodes(lines: list[str]) -> dict[int, list[str]]:
         if current_ep > 0:
             if "：" in line or ":" in line:
                 episodes[current_ep].append(line)
+    if not episodes:
+        # 无分集标记，整篇作为第1集
+        episodes = {1: [l for l in lines if "：" in l or ":" in l]}
     return episodes
 
 
