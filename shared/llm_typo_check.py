@@ -89,15 +89,27 @@ def _single(asr_lines, characters, context_lines, offset=0):
             raise ValueError
     except (json.JSONDecodeError, ValueError):
         import re
-        match = re.search(r'\[[\s\S]*\]', result["content"])
-        if match:
+        raw2 = result["content"]
+        # 优先搜对象 {same_show, corrections}
+        m = re.search(r'\{[^{}]*"same_show"[^}]*\}', raw2, re.DOTALL)
+        if m:
             try:
-                corrections = json.loads(match.group())
-                same_show = True
+                data = json.loads(m.group())
+                same_show = data.get("same_show", True)
+                corrections = data.get("corrections", [])
             except json.JSONDecodeError:
-                return {"error": "json_parse", "raw": result["content"][:500]}
+                pass
         else:
-            return {"error": "json_parse", "raw": result["content"][:500]}
+            # 兜底搜数组
+            m = re.search(r'\[[\s\S]*\]', raw2)
+            if m:
+                try:
+                    corrections = json.loads(m.group())
+                    same_show = True
+                except json.JSONDecodeError:
+                    return {"error": "json_parse", "raw": raw2[:500]}
+            else:
+                return {"error": "json_parse", "raw": raw2[:500]}
 
     valid = []
     max_idx = offset + len(asr_lines)
