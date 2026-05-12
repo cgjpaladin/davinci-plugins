@@ -918,7 +918,7 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     if duration_sec < 41:
         results.append(_make_result("warn",
             detail=f"时长 {duration_sec:.0f}s（不足41s）",
-            reason="低于付费集最低时长要求，请检查是否缺尾板或未渲染完整"))
+            reason="低于付费集最低时长要求，请检查是否缺漏情节"))
     else:
         results.append(_make_result("pass", detail=f"时长: {_fmt_duration(duration_sec)} (通过)"))
 
