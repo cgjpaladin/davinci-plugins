@@ -1187,13 +1187,20 @@ def _run_ai_typo():
         provider = result.get("provider", "?")
         model = result.get("model", "?")
 
-        # 剧集一致性检测
-        if result.get("same_show") is False:
-            _action_log("⚠ LLM 判定字幕与剧本非同一部剧，校对结果仅供参考")
-
         tree = itm[TREE_RESULT]
         tree.Clear()
         _setup_tree_header(tree)
+
+        # 传错剧本：只返回一行警告
+        if result.get("same_show") is False:
+            row = tree.NewItem()
+            _set_row(row, {"track": "ST1", "tc": "00:00:00:00",
+                           "msg": "⚠ 字幕与剧本疑似不同剧集",
+                           "reason": "请检查剧本链接或手动输入正确集号"})
+            tree.AddTopLevelItem(row)
+            _action_log("⚠ LLM 判定字幕与剧本非同一部剧")
+            itm[HINT_LB].Text = "⚠ 疑似不同剧集"
+            return
 
         if not corrections:
             itm[HINT_LB].Text = f"✅ 未发现错别字  ({provider}/{model})"
@@ -1218,7 +1225,6 @@ def _run_ai_typo():
         itm[HINT_LB].Text = (
             f"🔍 发现 {len(corrections)} 处错别字"
             f"  |  模型: {provider}/{model}"
-            + ("  |  ⚠ 疑似不同剧集" if result.get("same_show") is False else "")
         )
         _action_log(f"🔍 发现 {len(corrections)} 处错别字 ({provider}/{model})")
 
