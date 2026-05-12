@@ -992,11 +992,12 @@ def check_through_edits(timeline, fps=25.0, io_range=None) -> list:
                 uid_a = uid_b = None
             if not uid_a or uid_a != uid_b:
                 continue
-            # 直通编辑：源帧连续（end+1≥start，即间隔≤1帧）
+            # 直通编辑：源帧必须连续（gap ∈ {0, 1}），负数或 ≥2 都不是
             a_se = a.GetSourceEndFrame()
             b_ss = b.GetSourceStartFrame()
-            if a_se + 1 < b_ss:
-                continue  # 同一素材的不同片段，不是直通编辑
+            gap = b_ss - a_se
+            if gap < 0 or gap > 1:
+                continue
             name = _get_clip_name(a)
             tc = smpte.gettc(_get_cached(a, "start"))
             issues.append(_make_result("warn", track=f"V{vi}", timecode=tc,
