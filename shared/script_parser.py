@@ -230,7 +230,7 @@ def _download_feishu_file(token: str) -> str:
     if os.path.exists(cache_path):
         return cache_path
 
-    resp = _feishu_api(f"/open-apis/drive/v1/medias/{token}/download")
+    resp = _feishu_api(f"/open-apis/drive/v1/files/{token}/download")
     if resp and len(resp) > 100:
         with open(cache_path, "wb") as fh:
             fh.write(resp)
