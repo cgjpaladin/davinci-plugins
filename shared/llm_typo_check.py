@@ -54,7 +54,7 @@ def _single(asr_lines, characters, context_lines, offset=0):
             "你是短剧字幕校对专家。检查 ASR 字幕中的错别字和不合理字词。\n\n"
             "规则：\n1. 只报确实有错的。同音字是重点。\n"
             "2. 人名写错是最高优先级。正确人名：" + char_list + "\n"
-            "3. 不要因和剧本不一致就报错——剧组可能改过台词。\n"
+            "3. 不要因和剧本不完全一致就报错——剧组可能改过台词。\n"
             "4. 忽略标点/断句差异/语气词增减。\n"
             "5. 方言/口音如果不是明显错字，不报。\n\n"
             "输出 JSON 对象：{\"same_show\": true或false, \"corrections\": [{index, original, correction, reason}]}。\n"
