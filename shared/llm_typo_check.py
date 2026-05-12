@@ -123,17 +123,15 @@ def _single(asr_lines, characters, context_lines, offset=0):
         corr = str(c.get("correction", ""))
         if orig == corr:
             continue
-        # 硬过滤：去空格/标点后一致
-        def _norm(s): return s.replace(" ", "").replace("……", "").replace("...", "")
-        if _norm(orig) == _norm(corr):
-            continue
-        # 硬过滤：常错两可字
-        if (orig, corr) in _FUZZY_PAIRS or (corr, orig) in _FUZZY_PAIRS:
-            continue
-        # 硬过滤：全句已含纠正词（如「怎么」含「么」，LLM 拆错）
-        full = asr_lines[idx - offset - 1] if idx - offset - 1 < len(asr_lines) else ""
-        if corr and corr in full:
-            continue
+        ## 硬过滤（暂关，先看模型能力）
+        # def _norm(s): return s.replace(" ", "").replace("……", "").replace("...", "")
+        # if _norm(orig) == _norm(corr):
+        #     continue
+        # if (orig, corr) in _FUZZY_PAIRS or (corr, orig) in _FUZZY_PAIRS:
+        #     continue
+        # full = asr_lines[idx - offset - 1] if idx - offset - 1 < len(asr_lines) else ""
+        # if corr and corr in full:
+        #     continue
         valid.append({
             "index": idx, "original": orig,
             "correction": corr,

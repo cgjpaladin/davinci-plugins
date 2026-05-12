@@ -20,24 +20,15 @@ from urllib.error import URLError, HTTPError
 # ══════════════════════════════════════
 
 _providers = [
-    # 千问系列（DashScope Bearer）
-    {"name": "qwen-turbo",     "priority": 1, "vendor": "qwen",
-     "url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
-     "key_env": "DASHSCOPE_API_KEY", "format": "dashscope"},
-    {"name": "qwen-flash",     "priority": 4, "vendor": "qwen",
-     "url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
-     "key_env": "DASHSCOPE_API_KEY", "format": "dashscope"},
-
-    # 智谱 GLM-4-Flash（免费，OpenAI 兼容）
-    {"name": "glm-4-flash",    "priority": 2, "vendor": "zhipu",
-     "url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-     "key_env": "ZHIPU_API_KEY", "format": "openai"},
-
-    # DeepSeek V4 Flash（OpenAI 兼容，禁思考模式）
-    {"name": "deepseek-v4-flash", "priority": 3, "vendor": "deepseek",
+    # DeepSeek V4 Flash（优先，纠错强 + 指令跟随好）
+    {"name": "deepseek-v4-flash", "priority": 1, "vendor": "deepseek",
      "url": "https://api.deepseek.com/v1/chat/completions",
      "key_env": "DEEPSEEK_API_KEY", "format": "openai",
      "extra_body": {"thinking": {"type": "disabled"}}},
+    # 千问 Turbo（备选）
+    {"name": "qwen-turbo",     "priority": 2, "vendor": "qwen",
+     "url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+     "key_env": "DASHSCOPE_API_KEY", "format": "dashscope"},
 
     # 千问 Plus（更准，略贵，备用）
     {"name": "qwen-plus",      "priority": 5, "vendor": "qwen",
