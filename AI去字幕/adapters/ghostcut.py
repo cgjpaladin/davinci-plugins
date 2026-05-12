@@ -30,10 +30,10 @@ from . import BaseAdapter, SubtitleTask, SubtitleResult, TaskStatus
 _SSL_CTX = ssl.create_default_context()
 
 _RESOLUTION_MAP = {
-    "1920x1080": "1080p",
-    "1080x1920": "1080p",
-    "1280x720":  "720p",
-    "720x1280":  "720p",
+    "1920x1080": "1080p", "1080x1920": "1080p",
+    "1280x720":  "720p",  "720x1280":  "720p",
+    "854x480":   "480p",  "480x854":   "480p",
+    "640x480":   "480p",  "480x640":   "480p",
 }
 
 def _get_resolution(task: SubtitleTask) -> str:
