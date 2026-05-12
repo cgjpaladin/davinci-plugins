@@ -291,19 +291,26 @@ _CHINESE_NUM = {1: "一", 2: "二", 3: "三", 4: "四", 5: "五", 6: "六",
                 11: "十一", 12: "十二", 13: "十三", 14: "十四", 15: "十五",
                 16: "十六", 17: "十七", 18: "十八", 19: "十九", 20: "二十",
                 30: "三十", 40: "四十", 50: "五十"}
-_CN_EP_RE = re.compile(r"^第\s*([一二三四五六七八九十百千\d]+)\s*集")
-_ARABIC_EP_RE = re.compile(r"^第\s*(\d+)\s*集")
-_EP_PREFIX_RE = re.compile(r"^EP(\d+)")
+_CN_EP_RE = re.compile(
+    r"^第\s*([一二三四五六七八九十百千零壹贰叁肆伍陆柒捌玖拾佰仟\d]+)\s*集")
+_EP_PREFIX_RE = re.compile(r"^[Ee][Pp](\d+)")
 
 
 def _cn_to_int(s: str) -> int | None:
-    """中文数字 → int。支持「一」到「九十九」「一百」等。"""
+    """中文数字 → int。支持「一」到「九十九」「一百」及财务大写「壹」。"""
     try:
         return int(s)
     except ValueError:
         pass
 
-    # 直接查表（常见组合）
+    # 财务大写 → 小写转换
+    fin_to_std = {
+        "壹": "一", "贰": "二", "叁": "三", "肆": "四", "伍": "五",
+        "陆": "六", "柒": "七", "捌": "八", "玖": "九", "拾": "十",
+        "佰": "百", "仟": "千", "零": "零",
+    }
+    s_std = "".join(fin_to_std.get(c, c) for c in s)
+
     direct = {
         "一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10,
         "十一": 11, "十二": 12, "十三": 13, "十四": 14, "十五": 15, "十六": 16, "十七": 17, "十八": 18, "十九": 19,
@@ -325,7 +332,7 @@ def _cn_to_int(s: str) -> int | None:
 def _parse_episode_number(title: str) -> int | None:
     """从行文本提取集号。"""
     title = title.strip()
-    m = _CN_EP_RE.match(title) or _ARABIC_EP_RE.match(title) or _EP_PREFIX_RE.match(title)
+    m = _CN_EP_RE.match(title) or _EP_PREFIX_RE.match(title)
     if m:
         return _cn_to_int(m.group(1))
     return None
