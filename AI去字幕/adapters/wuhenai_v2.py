@@ -649,11 +649,7 @@ class WuhenAIV21Adapter(BaseAdapter):
             with ThreadPoolExecutor(max_workers=3) as pool:
                 futures = [pool.submit(_do_upload, *ut) for ut in upload_tasks]
                 for _ in as_completed(futures):
-                    if cancel_check and cancel_check():
-                        _log(f"[无痕AI 2.1] 上传阶段收到停止")
-                        for f in futures:
-                            f.cancel()
-                        break
+                    pass  # 上传不可中断——最大3并发，几十秒完成
 
         # 1c. 按原始顺序重排 records（Phase 2 依赖 records[i] ↔ tasks[i] 对应）
         records.sort(key=lambda r: r.get("idx", 0))
@@ -664,9 +660,6 @@ class WuhenAIV21Adapter(BaseAdapter):
         # ── Phase 2: 提交所有 → 获取 task_id ──
         video_dims = {}  # 缓存视频分辨率，避免重复 ffprobe
         for i, rec in enumerate(records):
-            if cancel_check and cancel_check():
-                _log(f"[无痕AI 2.1] 提交阶段收到停止，已提交 {i}/{len(records)}")
-                break
             # 跳过 Phase 1 已标记失败的上传/预检
             if rec.get("result") is not None:
                 continue
