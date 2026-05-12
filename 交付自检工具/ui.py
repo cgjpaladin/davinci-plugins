@@ -1205,7 +1205,15 @@ def _run_ai_typo():
 
         tree = itm[TREE_RESULT]
         tree.Clear()
-        _setup_tree_header(tree)
+        # AI校对专用列
+        hdr = tree.NewItem()
+        hdr.Text[0] = "序号"
+        hdr.Text[1] = "原文 → 纠正"
+        hdr.Text[2] = "原因"
+        tree.SetHeaderItem(hdr)
+        tree.ColumnWidth[0] = 60
+        tree.ColumnWidth[1] = 260
+        tree.ColumnWidth[2] = 160
 
         if not corrections:
             itm[HINT_LB].Text = f"✅ 未发现错别字  ({provider}/{model})"
@@ -1218,9 +1226,9 @@ def _run_ai_typo():
 
         for c in corrections:
             row = tree.NewItem()
-            row.Text[1] = f"字幕[{c['index']}]"
-            row.Text[2] = f"❌ {c['original']} → {c['correction']}"
-            row.Text[3] = c.get("reason", "")
+            row.Text[0] = f"[{c['index']}]"
+            row.Text[1] = f"❌ {c['original']} → {c['correction']}"
+            row.Text[2] = c.get("reason", "")
             tree.AddTopLevelItem(row)
 
         itm[HINT_LB].Text = (
