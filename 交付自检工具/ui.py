@@ -1185,6 +1185,10 @@ def _run_ai_typo():
         provider = result.get("provider", "?")
         model = result.get("model", "?")
 
+        # 剧集一致性检测
+        if result.get("same_show") is False:
+            _action_log("⚠ LLM 判定字幕与剧本非同一部剧，校对结果仅供参考")
+
         tree = itm[TREE_RESULT]
         tree.Clear()
         _setup_tree_header(tree)
@@ -1212,6 +1216,7 @@ def _run_ai_typo():
         itm[HINT_LB].Text = (
             f"🔍 发现 {len(corrections)} 处错别字"
             f"  |  模型: {provider}/{model}"
+            + ("  |  ⚠ 疑似不同剧集" if result.get("same_show") is False else "")
         )
         _action_log(f"🔍 发现 {len(corrections)} 处错别字 ({provider}/{model})")
 

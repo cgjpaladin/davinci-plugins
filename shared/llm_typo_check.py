@@ -52,12 +52,14 @@ def _single(asr_lines, characters, context_lines, offset=0):
     messages = [
         {"role": "system", "content": (
             "你是短剧字幕校对专家。检查 ASR 字幕中的错别字和不合理字词。\n\n"
-            "规则：\n1. 只报确实有错的。\n2. 同音字是重点。\n"
-            "3. 人名写错是最高优先级。正确人名：" + char_list + "\n"
-            "4. 不要因和剧本不一致就报错——剧组可能改过台词。\n"
-            "5. 忽略标点/断句差异/语气词增减。\n"
-            "6. 方言/口音如果不是明显错字，不报。\n\n"
-            "输出 JSON 数组 [{index, original, correction, reason}]。无错误输出 []。只输出 JSON。"
+            "规则：\n1. 只报确实有错的。同音字是重点。\n"
+            "2. 人名写错是最高优先级。正确人名：" + char_list + "\n"
+            "3. 不要因和剧本不一致就报错——剧组可能改过台词。\n"
+            "4. 忽略标点/断句差异/语气词增减。\n"
+            "5. 方言/口音如果不是明显错字，不报。\n\n"
+            "输出 JSON 对象：{\"same_show\": true或false, \"corrections\": [{index, original, correction, reason}]}。\n"
+            "same_show=false 表示字幕与剧本明显不是同一部剧。"
+            "只输出 JSON，不要其他内容。"
         )},
         {"role": "user", "content": (
             f"剧本上下文（仅供语义参考，不逐字比对）：\n{context}\n\n"
@@ -75,16 +77,23 @@ def _single(asr_lines, characters, context_lines, offset=0):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
                 raw = raw[4:]
-        corrections = json.loads(raw)
+        data = json.loads(raw)
+        # 新格式 {same_show, corrections} 或旧格式 [{index,...}]
+        if isinstance(data, dict):
+            same_show = data.get("same_show", True)
+            corrections = data.get("corrections", [])
+        else:
+            same_show = True
+            corrections = data
         if not isinstance(corrections, list):
             raise ValueError
     except (json.JSONDecodeError, ValueError):
-        # 容错：从文本中提取 JSON 数组
         import re
         match = re.search(r'\[[\s\S]*\]', result["content"])
         if match:
             try:
                 corrections = json.loads(match.group())
+                same_show = True
             except json.JSONDecodeError:
                 return {"error": "json_parse", "raw": result["content"][:500]}
         else:
@@ -103,6 +112,7 @@ def _single(asr_lines, characters, context_lines, offset=0):
         })
 
     return {"ok": True, "corrections": valid,
+            "same_show": same_show,
             "provider": result["provider"], "model": result["model"]}
 
 
