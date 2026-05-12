@@ -625,10 +625,6 @@ window_layout = [
                           "Weight": 0, "MinimumSize": [0, 22]}),
                 ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
                           "Weight": 0, "MinimumSize": [0, 22]}),
-                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
-                          "Weight": 0, "MinimumSize": [0, 22]}),
-                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
-                          "Weight": 0, "MinimumSize": [0, 22]}),
             ]),
             ui.HGap({"Weight": 0, "MinimumSize": [8, 0]}),
 
