@@ -93,8 +93,25 @@ def _extract_text_from_doc(doc_path: str) -> list[str]:
 
 
 def _extract_text_from_pdf(path: str) -> list[str]:
-    """从 PDF 提取纯文本。优先 pdftotext，其次 macOS PDFKit。"""
-    # 方法1: pdftotext（达芬奇 subprocess PATH 受限，用完整路径）
+    """从 PDF 提取纯文本。优先 pypdf（纯 Python，零安装），其次 pdftotext。"""
+    # 方法1: pypdf（纯 Python，所有机器可用）
+    try:
+        from pypdf import PdfReader
+        lines = []
+        reader = PdfReader(path)
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                for line in text.splitlines():
+                    line = line.strip()
+                    if line:
+                        lines.append(line)
+        if lines:
+            return _clean_pdf_text(lines)
+    except Exception:
+        pass
+
+    # 方法2: pdftotext（需要 poppler）
     for pdft in ("/opt/homebrew/bin/pdftotext", "/usr/local/bin/pdftotext", "pdftotext"):
         try:
             result = subprocess.run(
