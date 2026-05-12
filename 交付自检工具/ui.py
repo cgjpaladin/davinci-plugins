@@ -1568,9 +1568,8 @@ _SCRIPT_SRC_VALID = False
 def _validate_script_src(ev):
     global _SCRIPT_SRC_VALID
     src = itm[EDIT_SCRIPT_SRC].Text.strip()
-    ok = any(src.startswith(p) for p in (
+    ok = bool(src) and any(src.startswith(p) for p in (
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
-    # 飞书/腾讯文档链接必须有完整 token
     if "feishu.cn" in src or "docs.qq.com" in src:
         ok = ok and len(src) > 30
     _SCRIPT_SRC_VALID = ok
