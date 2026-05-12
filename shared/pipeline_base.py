@@ -461,6 +461,7 @@ class BasePipeline(ABC):
         """全部失败时自动切备用 adapter 重试。"""
         current = self._get_adapter()
         current_key = "ghostcut" if current.name == "GhostCut" else "wuhenai"
+        _log_ops.ops({"event": "adapter_fallback_all_fail", "from": current.name})
         self.log.info(f"切换到备用 adapter（跳过 {current.name}）")
 
         self._adapter = None
