@@ -51,15 +51,17 @@ def _single(asr_lines, characters, context_lines, offset=0):
 
     messages = [
         {"role": "system", "content": (
-            "你是短剧字幕校对专家。检查 ASR 字幕中的错别字和不合理字词。\n\n"
-            "规则：\n1. 只报确实有错的。同音字是重点。\n"
-            "2. 人名写错是最高优先级。正确人名：" + char_list + "\n"
-            "3. 不要因和剧本不完全一致就报错——剧组可能改过台词。\n"
-            "4. 忽略标点/断句差异/语气词增减。\n"
-            "5. 方言/口音如果不是明显错字，不报。\n\n"
+            "你是短剧字幕校对专家。只找出真正的错别字，不要报其他问题。\n\n"
+            "铁律：\n"
+            "1. original 和 correction 必须不同。完全相同的不报。\n"
+            "2. 只报错别字（同音字/形近字/方言错写）。\n"
+            "3. 人名写错是最高优先级。正确人名：" + char_list + "\n"
+            "4. 不要因和剧本不完全一致就报错——剧组可能改过台词。\n"
+            "5. 字幕简短是正常的，不要推测「可能缺字」。\n"
+            "6. 「哎/诶」「哪/那」等语气词不算错。\n"
+            "7. 多余空格、标点差异不报。\n\n"
             "输出 JSON 对象：{\"same_show\": true或false, \"corrections\": [{index, original, correction, reason}]}。\n"
-            "same_show=false 表示字幕与剧本明显不是同一部剧。"
-            "只输出 JSON，不要其他内容。"
+            "same_show=false 表示字幕与剧本明显不是同一部剧。只输出 JSON。"
         )},
         {"role": "user", "content": (
             f"剧本上下文（仅供语义参考，不逐字比对）：\n{context}\n\n"
@@ -108,9 +110,13 @@ def _single(asr_lines, characters, context_lines, offset=0):
         idx = c.get("index", -1)
         if not isinstance(idx, int) or idx < offset + 1 or idx > max_idx:
             continue
+        orig = str(c.get("original", ""))
+        corr = str(c.get("correction", ""))
+        if orig == corr:
+            continue
         valid.append({
-            "index": idx, "original": str(c.get("original", "")),
-            "correction": str(c.get("correction", "")),
+            "index": idx, "original": orig,
+            "correction": corr,
             "reason": str(c.get("reason", "")),
         })
 
