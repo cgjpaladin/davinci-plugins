@@ -1673,9 +1673,10 @@ def _confirm_script(ev):
         _CACHED_PARSED = (parsed, ctx)
         n_lines = len(ctx.get("lines", []))
         n_chars = len(ctx.get("characters", []))
-        msg = f"✅ 剧本校验通过 - 第{ctx['episode']}集（{n_lines}行对话,{n_chars}角色）"
-        itm[LBL_SCRIPT_STATUS].Text = f"✅ 验证通过 - 第{ctx['episode']}集"
-        _action_log(msg)
+        ep_label = f"{ep_input}集（手动）" if ep_input else f"第{ctx['episode']}集"
+        status = f"✅ 通过 · {ep_label}"
+        itm[LBL_SCRIPT_STATUS].Text = status
+        _action_log(f"✅ 剧本校验通过 - {ep_label}（{n_lines}行对话,{n_chars}角色）")
     except Exception as e:
         _SCRIPT_CONFIRMED = False
         itm[LBL_SCRIPT_STATUS].Text = f"❌ {e}"
