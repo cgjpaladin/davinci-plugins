@@ -662,12 +662,7 @@ window_layout = [
 
         ]),  # 结束上半区 HGroup
 
-        # ── 结果区：左侧分组 + 右侧数据 ──
-        ui.VGroup({"Spacing": 4, "Weight": 0}, [
-            ui.Label({"ID": "lbl_gate_warn", "Text": "",
-                      "StyleSheet": "color:rgb(220,180,80);font-size:13px;padding:6px 10px",
-                      "Weight": 0, "WordWrap": True, "MinimumSize": [0, 48]}),
-        ]),
+        # ── 结果区：分组 + 数据 ──
         ui.HGroup({"Spacing": 4, "Weight": 1.0}, [
             ui.Tree({"ID": GROUP_TREE, "Weight": 0,
                      "Events": {"ItemClicked": True},
@@ -680,6 +675,9 @@ window_layout = [
 
         # ── 底栏 ──
         ui.VGroup({"Spacing": 2, "Weight": 0}, [
+            ui.Label({"ID": "lbl_gate_warn", "Text": "",
+                      "StyleSheet": "color:rgb(220,180,80);font-size:13px;padding:6px 10px",
+                      "Weight": 0, "WordWrap": True, "MinimumSize": [0, 48]}),
             ui.HGroup({"Spacing": 8}, [
                 ui.Label({"ID": HINT_LB, "Text": "请点击「开始检查」",
                           "StyleSheet": "color:rgb(130,130,130);font-size:10px", "Weight": 0,
