@@ -638,10 +638,10 @@ window_layout = [
                 ui.LineEdit({"ID": EDIT_SCRIPT_SRC, "Text": "",
                             "Weight": 0,
                             "PlaceholderText": "请粘贴链接或路径至此处"}),
-                ui.Label({"ID": "lbl_ai_ep", "Text": "校对集号（如 7 或 7-9）:",
+                ui.Label({"ID": "lbl_ai_ep", "Text": "EP 校对集号（如 08 或 07-09）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
-                            "Weight": 0, "PlaceholderText": "7 或 7-9",
+                            "Weight": 0, "PlaceholderText": "08 或 07-09",
                             "MinimumSize": [130, 0]}),
                 ui.Label({"ID": LBL_SCRIPT_STATUS, "Text": "",
                           "StyleSheet": "font-size:11px;color:#888",
@@ -1673,7 +1673,10 @@ def _confirm_script(ev):
         _CACHED_PARSED = (parsed, ctx)
         n_lines = len(ctx.get("lines", []))
         n_chars = len(ctx.get("characters", []))
-        ep_label = f"{ep_input}集（手动）" if ep_input else f"第{ctx['episode']}集"
+        # 自动填回检测到的集号
+        if not ep_input:
+            itm[EDIT_SCRIPT_EP].Text = f"{ctx['episode']:02d}"
+        ep_label = f"第{ctx['episode']}集" if not ep_input else ep_input
         status = f"✅ 通过 · {ep_label}"
         itm[LBL_SCRIPT_STATUS].Text = status
         _action_log(f"✅ 剧本校验通过 - {ep_label}（{n_lines}行对话,{n_chars}角色）")
