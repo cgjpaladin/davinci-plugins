@@ -30,6 +30,11 @@ _providers = [
     {"name": "qwen-plus",      "priority": 2, "vendor": "qwen",
      "url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
      "key_env": "DASHSCOPE_API_KEY", "format": "dashscope"},
+
+    # 智谱 GLM-4-Flash（第三备用，免费额度）
+    {"name": "glm-4-flash",    "priority": 3, "vendor": "zhipu",
+     "url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+     "key_env": "ZHIPU_API_KEY", "format": "openai"},
 ]
 
 # 重试错误码
