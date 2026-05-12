@@ -1166,24 +1166,18 @@ def _run_ai_typo():
         except Exception as e:
             return _stop(f"❌ 剧本解析失败: {e}")
 
-        # ═══ 门2: 集号匹配（每次从当前时间线重新检测） ═══
-        tl_name = timeline.GetName()
-        ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
-        try:
-            ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
-            itm[EDIT_SCRIPT_EP].Text = f"{ctx['episode']:02d}" if not ep_input else ep_input
-            ep_label = f"第{ctx['episode']}集" if not ep_input else f"{ep_input}集"
-            itm[LBL_SCRIPT_STATUS].Text = f"🔍 {ep_label}"
-            _action_log(f"🎯 {ep_label} ({'手动' if ep_input else '自动'})")
-        except Exception as e:
-            itm[LBL_SCRIPT_STATUS].Text = "✗ 匹配不到，请手动输入" if "匹配不到" in str(
-                e) else f"✗ {e}"
-            return _stop(f"❌ 集号匹配失败: {e}")
+        # ═══ 全文方案：所有集的台词一起传给 LLM，让 AI 自己做集号匹配 ═══
+        all_lines = []
+        for ep in sorted(parsed.get("episodes", {}).keys()):
+            all_lines.append(f"--- 第{ep}集 ---")
+            all_lines.extend(parsed["episodes"][ep])
+        itm[LBL_SCRIPT_STATUS].Text = f"📖 全文 ({len(parsed.get('episodes',{}))}集)"
+        _action_log(f"📖 剧本: {len(parsed.get('episodes',{}))}集, {len(all_lines)}行（全文）")
 
-        # ═══ LLM 校对（含剧集一致性检测） ═══
+        # ═══ LLM 校对（含剧集一致性 + 集号匹配） ═══
         itm[HINT_LB].Text = "AI 校对中..."
-        _action_log(f"🤖 LLM 校对开始 ({len(entries)}字幕 vs {len(ctx.get('lines',[]))}行剧本)")
-        result = check_typos(entries, ctx.get("characters", []), ctx.get("lines", []))
+        _action_log(f"🤖 LLM 校对开始 ({len(entries)}字幕 vs {len(all_lines)}行剧本)")
+        result = check_typos(entries, parsed.get("characters", []), all_lines)
         if result.get("error"):
             tail = result.get("raw_tail", "")
             _action_log(f"❌ 校对失败: {result['error']} (尾部: {tail})")

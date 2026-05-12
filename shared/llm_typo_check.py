@@ -13,7 +13,7 @@ import time
 from llm_providers import call_with_fallback
 
 _MAX_BATCH = 60
-_MAX_CONTEXT = 60
+_MAX_CONTEXT = 500  # 全文方案需要更大上限
 # (硬过滤暂关，等模型稳定后再启用)
 # _FUZZY_PAIRS = {...}
 
@@ -68,8 +68,9 @@ def _single(asr_lines, characters, context_lines, offset=0):
             "输出 JSON：{\"same_show\": true/false, \"corrections\": [{index, original, correction, reason}]}。只输出 JSON。"
         )},
         {"role": "user", "content": (
-            f"剧本（仅用于判断是否同一部剧，不逐行对比字幕）：\n{context}\n\n"
-            f"字幕：\n{asr_list}\n\n逐条检查每条字幕的错别字。不要改写，只报错字。"
+            f"剧本全文（包含所有集，用「--- 第N集 ---」分隔）：\n{context}\n\n"
+            f"字幕：\n{asr_list}\n\n"
+            f"自动匹配字幕对应的集号，只检查该集的错别字。不要改写，只报错字。"
         )},
     ]
 
