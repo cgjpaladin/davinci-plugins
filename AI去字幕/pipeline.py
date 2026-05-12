@@ -116,6 +116,19 @@ class SubtitlePipeline(BasePipeline):
     def _submit(self, tasks: list, batch: bool) -> list:
         """提交无痕/鬼手 API 处理。返回 [ResultItem, ...] 列表。"""
         adapter = self._get_adapter()
+        # API 健康预检——不通则立刻切备选
+        if hasattr(adapter, 'check_health') and not adapter.check_health():
+            cls_name = adapter.__class__.__name__
+            exclude = "wuhenai" if "Wuhen" in cls_name else "ghostcut" if "Ghost" in cls_name else ""
+            fallback = create_preferred_adapter(exclude=exclude)
+            if fallback and hasattr(fallback, 'check_health') and fallback.check_health():
+                adapter = fallback
+                self._adapter = fallback
+            else:
+                cls_name = adapter.__class__.__name__
+                self._adapter = None  # 清除缓存，下次重试
+                self.log.fail(f"API 不可用（{cls_name}），备选也失败")
+                return [SubtitleResult(success=False, error_message="API不可用") for _ in tasks]
         api_tasks = [SubtitleTask(**t.kwargs) for t in tasks]
         provider = adapter.name
 
