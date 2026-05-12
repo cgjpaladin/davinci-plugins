@@ -63,6 +63,7 @@ BTN_START = "btn_start"
 BTN_CONFIG = "btn_config"
 BTN_AI_TYPO = "btn_ai_typo"
 EDIT_SCRIPT_SRC = "edit_script_src"
+EDIT_SCRIPT_EP = "edit_script_ep"
 BTN_TOGGLE_GROUP = "btn_toggle_group_"  # + group_name → "btn_toggle_group_工程"
 TREE_RESULT = "tree_result"
 GROUP_TREE = "group_tree"
@@ -614,6 +615,10 @@ window_layout = [
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_SCRIPT_SRC, "Text": "",
                             "Weight": 0, "PlaceholderText": "飞书链接 / 本地路径"}),
+                ui.Label({"ID": "lbl_ai_ep", "Text": "校对集号（如 7 或 7-9）:",
+                          "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
+                ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
+                            "Weight": 0, "PlaceholderText": "留空自动检测"}),
                 ui.Button({"ID": BTN_AI_TYPO, "Text": "开始校对",
                           "StyleSheet": BTN_PRIMARY.replace("100", "80"),
                           "Weight": 0, "MinimumSize": [100, 36]}),
@@ -1120,10 +1125,11 @@ def _run_ai_typo():
             return
 
         # 解析剧本
+        # 解析集号（留空→自动，数字→指定，N-M→范围）
+        ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
         try:
             parsed = parse_script(src)
-            tl_name = timeline.GetName()
-            ctx = match_timeline(parsed, tl_name)
+            ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
         except Exception as e:
             itm[HINT_LB].Text = f"❌ 剧本解析失败: {e}"
             return

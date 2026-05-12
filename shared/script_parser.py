@@ -414,17 +414,43 @@ def _parse_docx_file_with_fallback(path: str) -> dict:
                 "episodes": _split_episodes(lines)}
 
 
-def match_timeline(parsed: dict, tl_name: str) -> dict:
+def match_timeline(parsed: dict, tl_name: str, ep_override: str | None = None) -> dict:
     """从解析结果中匹配当前时间线对应的集。
 
     Args:
         parsed: parse_script() 返回值
         tl_name: 时间线名称，如 "EP04_剪辑_v03"
+        ep_override: 手动指定集号 "7" 或范围 "7-9"，留空自动检测
 
     Returns:
         {"characters": [...], "lines": [...], "episode": int}
     """
     episodes = parsed.get("episodes", {})
+
+    # 手动指定优先
+    if ep_override:
+        # 范围 "7-9"
+        if "-" in ep_override:
+            parts = ep_override.split("-")
+            try:
+                lo, hi = int(parts[0]), int(parts[1])
+            except ValueError:
+                raise RuntimeError(f"集号格式错误: {ep_override}")
+            merged = []
+            for ep in range(lo, hi + 1):
+                merged.extend(episodes.get(ep, []))
+            return {"characters": parsed["characters"],
+                    "lines": merged, "episode": lo}
+        # 单个数字 "7"
+        try:
+            ep = int(ep_override)
+        except ValueError:
+            raise RuntimeError(f"集号格式错误: {ep_override}")
+        if ep not in episodes:
+            avail = sorted(episodes.keys())
+            raise RuntimeError(f"剧本无第 {ep} 集（可用: {avail[:5]}...）")
+        return {"characters": parsed["characters"],
+                "lines": episodes[ep], "episode": ep}
 
     # 策略1: EP04 → 4
     m = re.search(r"[Ee][Pp](\d+)", tl_name)
