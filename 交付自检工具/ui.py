@@ -640,7 +640,7 @@ window_layout = [
                             "PlaceholderText": "请粘贴链接或路径至此处"}),
                 ui.Label({"ID": "lbl_ai_ep", "Text": "校对集号（如 7 或 7-9）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
-                ui.HGroup({"Spacing": 6, "Weight": 0}, [
+                ui.HGroup({"Spacing": 10, "Weight": 0}, [
                     ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
                                 "Weight": 0, "PlaceholderText": "7 或 7-9",
                                 "MinimumSize": [72, 0]}),
