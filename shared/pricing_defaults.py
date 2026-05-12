@@ -26,7 +26,7 @@ PRICING = {
     "ghostcut": {
         # 计费模型：按 30 秒为单位
         "unit_seconds": 30,               # 计费单位（秒）
-        "modes": {"basic": 4, "pro_box": 6},  # 积分/30秒 (VIP3: Lite版=4, Pro框选=6)
+        "modes": {"basic": 2, "pro_box": 5},  # 积分/30秒 (VIP4: Lite版=2, Pro框选=5)
         "point_to_yuan": 0.19,            # 每积分折合人民币（¥189=1000积分）
     },
 }
