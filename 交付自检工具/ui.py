@@ -1162,22 +1162,27 @@ def _run_ai_typo():
             return _stop("⚠ 当前时间线无字幕，跳过校对")
         _action_log(f"📝 字幕: {len(entries)} 条")
 
-        # ═══ 门1: 剧本读得通？ ═══
-        src = itm[EDIT_SCRIPT_SRC].Text.strip()
-        try:
-            parsed = parse_script(src)
-            _action_log(f"📖 剧本解析完成: {len(parsed.get('episodes',{}))} 集")
-        except Exception as e:
-            return _stop(f"❌ 剧本解析失败: {e}")
+        # ═══ 门1: 剧本读得通？（优先用缓存，免重复下载解析） ═══
+        global _CACHED_PARSED
+        if _CACHED_PARSED:
+            parsed, ctx = _CACHED_PARSED
+            _action_log(f"📖 剧本: 使用缓存 ({len(ctx.get('lines',[]))}行)")
+        else:
+            src = itm[EDIT_SCRIPT_SRC].Text.strip()
+            try:
+                parsed = parse_script(src)
+                _action_log(f"📖 剧本解析完成: {len(parsed.get('episodes',{}))} 集")
+            except Exception as e:
+                return _stop(f"❌ 剧本解析失败: {e}")
 
-        # ═══ 门2: 集号找得到？ ═══
-        tl_name = timeline.GetName()
-        ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
-        try:
-            ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
-            _action_log(f"🎯 匹配集号: EP{ctx['episode']} ({'手动' if ep_input else '自动'})")
-        except Exception as e:
-            return _stop(f"❌ 集号匹配失败: {e}")
+            # ═══ 门2: 集号找得到？ ═══
+            tl_name = timeline.GetName()
+            ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
+            try:
+                ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
+                _action_log(f"🎯 匹配集号: EP{ctx['episode']} ({'手动' if ep_input else '自动'})")
+            except Exception as e:
+                return _stop(f"❌ 集号匹配失败: {e}")
 
         # ═══ 门3: 有对话内容？ ═══
         if not ctx.get("lines"):
@@ -1627,8 +1632,9 @@ dlg.On[BTN_VALIDATE_SCRIPT].Clicked = lambda ev: _confirm_script(ev)
 # 剧本链接输入框变化时校验格式
 _SCRIPT_SRC_VALID = False
 _SCRIPT_CONFIRMED = False
+_CACHED_PARSED = None  # 缓存校验结果，校对复用，免重复下载解析
 def _validate_script_src(ev):
-    global _SCRIPT_SRC_VALID, _SCRIPT_CONFIRMED
+    global _SCRIPT_SRC_VALID, _SCRIPT_CONFIRMED, _CACHED_PARSED
     src = itm[EDIT_SCRIPT_SRC].Text.strip()
     ok = bool(src) and any(src.startswith(p) for p in (
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
@@ -1636,6 +1642,7 @@ def _validate_script_src(ev):
         ok = ok and len(src) > 30
     _SCRIPT_SRC_VALID = ok
     _SCRIPT_CONFIRMED = False
+    _CACHED_PARSED = None
     itm[LBL_SCRIPT_STATUS].Text = ""
     itm[BTN_VALIDATE_SCRIPT].Enabled = ok and not _checking
     itm[BTN_AI_TYPO].Enabled = False
@@ -1644,7 +1651,7 @@ def _validate_script_src(ev):
 
 def _confirm_script(ev):
     """验证剧本：下载+解析+集号匹配（纯 Python，不调 LLM）。"""
-    global _SCRIPT_CONFIRMED
+    global _SCRIPT_CONFIRMED, _CACHED_PARSED
     if _checking or not _SCRIPT_SRC_VALID:
         return
     _action_log("🔍 校验剧本...")
@@ -1662,6 +1669,7 @@ def _confirm_script(ev):
         ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
         ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
         _SCRIPT_CONFIRMED = True
+        _CACHED_PARSED = (parsed, ctx)
         n_lines = len(ctx.get("lines", []))
         n_chars = len(ctx.get("characters", []))
         msg = f"✅ 剧本校验通过 - 第{ctx['episode']}集（{n_lines}行对话,{n_chars}角色）"
@@ -1679,8 +1687,9 @@ dlg.On[EDIT_SCRIPT_EP].TextChanged = lambda ev: (_reset_script_confirm(), None)
 
 
 def _reset_script_confirm():
-    global _SCRIPT_CONFIRMED
+    global _SCRIPT_CONFIRMED, _CACHED_PARSED
     _SCRIPT_CONFIRMED = False
+    _CACHED_PARSED = None
     itm[BTN_AI_TYPO].Enabled = False
 
 # 分组开关事件

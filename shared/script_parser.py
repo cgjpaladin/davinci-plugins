@@ -134,17 +134,59 @@ def _clean_pdf_text(lines: list[str]) -> list[str]:
 
 # ── 飞书集成 ──
 
+def _read_env_key(key: str) -> str:
+    """读 SMB .env → 本地 .env（与 llm_providers 相同）。"""
+    paths = [
+        "/Volumes/MYJC/06_Software/达芬奇脚本/shared/.env",
+        os.path.expanduser("~/.workbuddy/.env"),
+    ]
+    for p in paths:
+        try:
+            with open(p) as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith(f"{key}="):
+                        return line.split("=", 1)[1].strip().strip('"')
+        except FileNotFoundError:
+            continue
+    return os.environ.get(key, "")
+
+
+def _get_tenant_token() -> str:
+    """获取飞书 tenant_access_token（bot 凭据，无需 lark-cli）。"""
+    app_id = _read_env_key("FEISHU_BOT_APP_ID")
+    secret = _read_env_key("FEISHU_BOT_APP_SECRET")
+    if not app_id or not secret:
+        return ""
+    body = json.dumps({"app_id": app_id, "app_secret": secret}).encode()
+    req = Request(
+        "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+        data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        return data.get("tenant_access_token", "")
+    except Exception:
+        return ""
+
+
 def _feishu_api(path: str, method: str = "GET", data: bytes | None = None,
                 as_user: bool = True) -> bytes | None:
-    """调用飞书 API，用 lark-cli 的 token。"""
-    config_path = os.path.expanduser("~/.lark-cli/config.json")
-    try:
-        with open(config_path) as f:
-            cfg = json.load(f)
-    except Exception:
-        return None
-
-    token = cfg.get("user_access_token", "")
+    """调用飞书 API。优先 bot tenant token（免 lark-cli），fallback lark-cli user token。"""
+    # 方案1: bot tenant token（所有机器可用）
+    token = _get_tenant_token()
+    prefix = "tenant"
+    # 方案2: lark-cli user token
+    if not token:
+        config_path = os.path.expanduser("~/.lark-cli/config.json")
+        try:
+            with open(config_path) as f:
+                cfg = json.load(f)
+        except Exception:
+            cfg = {}
+        token = cfg.get("user_access_token", "")
+        prefix = "user"
     if not token:
         return None
 
@@ -182,66 +224,39 @@ def _subprocess_env() -> dict:
 
 
 def _download_feishu_file(token: str) -> str:
-    """下载飞书文件，返回本地路径。"""
+    """下载飞书文件，直调 API（bot token，无需 lark-cli）。"""
     _ensure_cache()
     cache_path = os.path.join(CACHE_DIR, f"file_{token}.docx")
     if os.path.exists(cache_path):
         return cache_path
 
-    lark_cli = _find_lark_cli()
-    tmp_path = f"file_{token}.docx"
-    try:
-        result = subprocess.run([
-            lark_cli, "drive", "+download",
-            "--file-token", token,
-            "--output", tmp_path,
-            "--as", "user",
-        ], timeout=60, capture_output=True, text=True, cwd=CACHE_DIR,
-           env=_subprocess_env())
-        if result.returncode == 0 and os.path.getsize(cache_path) > 100:
-            return cache_path
-    except Exception:
-        pass
-    # lark-cli 可能用了不同后缀
-    for f in os.listdir(CACHE_DIR):
-        if f.startswith(f"file_{token}") and os.path.getsize(
-                os.path.join(CACHE_DIR, f)) > 100:
-            if f != "file_{token}.docx":
-                os.rename(os.path.join(CACHE_DIR, f), cache_path)
-            return cache_path
+    resp = _feishu_api(f"/open-apis/drive/v1/medias/{token}/download")
+    if resp and len(resp) > 100:
+        with open(cache_path, "wb") as fh:
+            fh.write(resp)
+        return cache_path
 
     raise RuntimeError(f"飞书文件下载失败: {token}")
-
-
 def _export_feishu_docx(token: str) -> str:
-    """导出飞书原生文档为 .docx，返回本地路径。"""
+    """导出飞书原生文档为 .docx，返回本地路径。直调 API，无需 lark-cli。"""
     _ensure_cache()
     cache_path = os.path.join(CACHE_DIR, f"docx_{token}.docx")
     if os.path.exists(cache_path):
         return cache_path
 
-    # lark-cli drive +export
-    tmp_path = f"docx_{token}.docx"
+    resp = _feishu_api(
+        f"/open-apis/drive/v1/export/{token}?file_extension=docx")
+    if not resp:
+        raise RuntimeError(f"飞书文档导出失败: {token}")
     try:
-        result = subprocess.run([
-            "lark-cli", "drive", "+export",
-            "--file-token", token,
-            "--format", "docx",
-            "--output", tmp_path,
-            "--as", "user",
-        ], timeout=120, capture_output=True, text=True, cwd=CACHE_DIR)
-        if result.returncode == 0 and os.path.getsize(cache_path) > 100:
-            return cache_path
-    except Exception:
-        pass
-    for f in os.listdir(CACHE_DIR):
-        if f.startswith(f"docx_{token}") and os.path.getsize(
-                os.path.join(CACHE_DIR, f)) > 100:
-            if f != f"docx_{token}.docx":
-                os.rename(os.path.join(CACHE_DIR, f), cache_path)
-            return cache_path
+        data = json.loads(resp)
+        ticket = data.get("data", {}).get("ticket")
+    except json.JSONDecodeError:
+        raise RuntimeError(f"飞书导出响应异常: {resp[:200]}")
+    if not ticket:
+        raise RuntimeError(f"飞书导出无 ticket: {data}")
 
-    raise RuntimeError(f"飞书文档导出失败: {token}")
+    return _download_feishu_file(ticket)
 
 
 def _list_feishu_folder(folder_token: str) -> list[dict]:
