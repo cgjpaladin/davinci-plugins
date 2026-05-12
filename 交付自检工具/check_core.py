@@ -972,10 +972,11 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
 
 # ── 直通编辑 ──
 
-def check_through_edits(timeline, io_range=None) -> list:
+def check_through_edits(timeline, fps=25.0, io_range=None) -> list:
     """检测相邻同素材片段（直通编辑）。只查视频轨。"""
     import collections
     issues = []
+    smpte = _get_smpte(fps)
     for vi in range(1, timeline.GetTrackCount("video") + 1):
         items = timeline.GetItemListInTrack("video", vi) or []
         prev_uid = None
@@ -991,7 +992,7 @@ def check_through_edits(timeline, io_range=None) -> list:
                 uid = None
             if uid and uid == prev_uid:
                 name = _get_clip_name(it)
-                tc = _get_smpte(timeline).gettc(_get_cached(it, "start"))
+                tc = smpte.gettc(_get_cached(it, "start"))
                 issues.append(_make_result("warn", track=f"V{vi}", timecode=tc,
                     detail=f"直通编辑: {name}",
                     reason="建议连接片段，以减少调色镜头数"))

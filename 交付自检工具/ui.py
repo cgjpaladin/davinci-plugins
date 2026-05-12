@@ -243,8 +243,8 @@ def _run_camera_track_check(timeline, fps, **_kw):
     """实拍素材越轨"""
     return check_camera_on_high_tracks(timeline, fps=fps, io_range=_kw.get("io_range"))
 
-def _run_through_edit_check(timeline, **_kw):
-    return check_through_edits(timeline, io_range=_kw.get("io_range"))
+def _run_through_edit_check(timeline, fps, **_kw):
+    return check_through_edits(timeline, fps, io_range=_kw.get("io_range"))
 
 def _run_audio_color_check(timeline, fps, **_kw):
     """音频颜色越轨"""
