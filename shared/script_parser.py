@@ -25,6 +25,7 @@
 import os
 import re
 import json
+import shutil
 import zipfile
 import hashlib
 import tempfile
@@ -158,6 +159,28 @@ def _feishu_api(path: str, method: str = "GET", data: bytes | None = None,
         return None
 
 
+def _find_lark_cli() -> str:
+    """定位 lark-cli（达芬奇子进程 PATH 受限）。"""
+    for p in (
+        os.path.expanduser("~/.npm-global/bin/lark-cli"),
+        "/opt/homebrew/bin/lark-cli",
+        "/usr/local/bin/lark-cli",
+        shutil.which("lark-cli") or "",
+    ):
+        if p and os.path.isfile(p):
+            return p
+    raise RuntimeError("lark-cli 未找到")
+
+
+def _subprocess_env() -> dict:
+    """达芬奇子进程环境（补 PATH + HOME，确保 node/lark-cli 可访问）。"""
+    env = os.environ.copy()
+    npm_bin = os.path.expanduser("~/.npm-global/bin")
+    env["PATH"] = npm_bin + ":/opt/homebrew/bin:/usr/local/bin:" + env.get("PATH", "")
+    env["HOME"] = os.path.expanduser("~")
+    return env
+
+
 def _download_feishu_file(token: str) -> str:
     """下载飞书文件，返回本地路径。"""
     _ensure_cache()
@@ -165,14 +188,16 @@ def _download_feishu_file(token: str) -> str:
     if os.path.exists(cache_path):
         return cache_path
 
+    lark_cli = _find_lark_cli()
     tmp_path = f"file_{token}.docx"
     try:
         result = subprocess.run([
-            "lark-cli", "drive", "+download",
+            lark_cli, "drive", "+download",
             "--file-token", token,
             "--output", tmp_path,
             "--as", "user",
-        ], timeout=60, capture_output=True, text=True, cwd=CACHE_DIR)
+        ], timeout=60, capture_output=True, text=True, cwd=CACHE_DIR,
+           env=_subprocess_env())
         if result.returncode == 0 and os.path.getsize(cache_path) > 100:
             return cache_path
     except Exception:
