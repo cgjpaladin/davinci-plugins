@@ -970,6 +970,37 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     return results
 
 
+# ── 直通编辑 ──
+
+def check_through_edits(timeline, io_range=None) -> list:
+    """检测相邻同素材片段（直通编辑）。只查视频轨。"""
+    import collections
+    issues = []
+    for vi in range(1, timeline.GetTrackCount("video") + 1):
+        items = timeline.GetItemListInTrack("video", vi) or []
+        prev_uid = None
+        for i in range(len(items)):
+            it = items[i]
+            if not _in_io_range(it, io_range):
+                prev_uid = None
+                continue
+            try:
+                mp = it.GetMediaPoolItem()
+                uid = mp.GetUniqueId() if mp else None
+            except Exception:
+                uid = None
+            if uid and uid == prev_uid:
+                name = _get_clip_name(it)
+                tc = _get_smpte(timeline).gettc(_get_cached(it, "start"))
+                issues.append(_make_result("warn", track=f"V{vi}", timecode=tc,
+                    detail=f"直通编辑: {name}",
+                    reason="建议连接片段，以减少调色镜头数"))
+            prev_uid = uid
+    if not issues:
+        return [_make_result("pass", detail="直通编辑: 全部通过", is_summary=True)]
+    return [_make_result("warn", detail=f"直通编辑: {len(issues)} 处", is_summary=True)] + issues
+
+
 # ── 待开发 ──
 
 def check_subtitle_typo(timeline, fps=25.0, io_range=None) -> list:
