@@ -52,21 +52,16 @@ def _single(asr_lines, characters, context_lines, offset=0):
     messages = [
         {"role": "system", "content": (
             "你是短剧字幕校对专家。检查 ASR 字幕中的错别字和不合理字词。\n\n"
-            "规则：\n"
-            "1. 先判断字幕是否来自剧本中的同一部剧。如果角色名、场景、情节完全不匹配，"
-            "在 reason 中注明「⚠ 疑似不同剧集，请检查剧本」。\n"
-            "2. 只报确实有错的。同音字是重点。\n"
+            "规则：\n1. 只报确实有错的。\n2. 同音字是重点。\n"
             "3. 人名写错是最高优先级。正确人名：" + char_list + "\n"
             "4. 不要因和剧本不一致就报错——剧组可能改过台词。\n"
             "5. 忽略标点/断句差异/语气词增减。\n"
             "6. 方言/口音如果不是明显错字，不报。\n\n"
-            "输出 JSON 数组 [{index, original, correction, reason}]。"
-            "无错误输出 []。只输出 JSON。"
+            "输出 JSON 数组 [{index, original, correction, reason}]。无错误输出 []。只输出 JSON。"
         )},
         {"role": "user", "content": (
             f"剧本上下文（仅供语义参考，不逐字比对）：\n{context}\n\n"
             f"ASR 字幕：\n{asr_list}\n\n找出错别字。"
-            "如字幕与剧本明显非同一部剧，在第一个结果的 reason 中注明。"
         )},
     ]
 
