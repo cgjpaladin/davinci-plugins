@@ -569,7 +569,7 @@ def _build_group_rows(group_name, extras=None):
 # ── 特殊控件常量（已迁移到「配置」弹窗）──
 
 window_layout = [
-    ui.VGroup({"Spacing": 0}, [
+    ui.VGroup({"Spacing": 5}, [
 
         # ── 上半区：检查选项 + 开始按钮（左 2/3）| AI校对（右 1/3）──
         ui.HGroup({"Spacing": 8, "Weight": 0}, [
