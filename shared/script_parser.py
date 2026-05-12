@@ -294,6 +294,7 @@ _CHINESE_NUM = {1: "一", 2: "二", 3: "三", 4: "四", 5: "五", 6: "六",
 _CN_EP_RE = re.compile(
     r"^第\s*([一二三四五六七八九十百千零壹贰叁肆伍陆柒捌玖拾佰仟\d]+)\s*集")
 _EP_PREFIX_RE = re.compile(r"^[Ee][Pp](\d+)")
+_NO_RE = re.compile(r"^[Nn]o\.\s*(\d+)")
 
 
 def _cn_to_int(s: str) -> int | None:
@@ -332,7 +333,7 @@ def _cn_to_int(s: str) -> int | None:
 def _parse_episode_number(title: str) -> int | None:
     """从行文本提取集号。"""
     title = title.strip()
-    m = _CN_EP_RE.match(title) or _EP_PREFIX_RE.match(title)
+    m = _CN_EP_RE.match(title) or _EP_PREFIX_RE.match(title) or _NO_RE.match(title)
     if m:
         return _cn_to_int(m.group(1))
     return None
