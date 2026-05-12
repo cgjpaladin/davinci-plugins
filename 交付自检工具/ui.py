@@ -611,11 +611,13 @@ window_layout = [
             ]),
             ]),  # 结束左区 VGroup
 
-            ui.HGap({"Weight": 0, "MinimumSize": [6, 0]}),
-            ui.Label({"ID": "sep_main", "Text": "│",
-                      "StyleSheet": "font-size:14px;color:#555",
-                      "Weight": 1, "MinimumSize": [1, 200]}),
-            ui.HGap({"Weight": 0, "MinimumSize": [6, 0]}),
+            ui.VGroup({"Weight": 0, "MinimumSize": [10, 0]}, [
+                ui.Label({"Text": "", "Weight": 0.03}),
+                ui.Label({"Text": "", "Weight": 0.94,
+                          "MinimumSize": [1, 0],
+                          "StyleSheet": "background-color:rgba(160,160,160,0.55);"}),
+                ui.Label({"Text": "", "Weight": 0.03}),
+            ]),
 
             # ====== 右区：AI校对面板 ======
             ui.VGroup({"Spacing": 4, "Weight": 0, "MinimumSize": [220, 0]}, [
