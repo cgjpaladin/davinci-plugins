@@ -107,7 +107,7 @@ def _call_dashscope(cfg: dict, messages: list[dict],
 
     try:
         content = data["output"]["choices"][0]["message"]["content"]
-        return {"ok": True, "content": content, "model": model}
+        return {"ok": True, "content": content, "model": cfg["name"]}
     except (KeyError, IndexError):
         return {"error": "parse"}
 
