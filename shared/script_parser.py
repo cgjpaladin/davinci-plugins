@@ -74,9 +74,12 @@ def _extract_text_from_doc(doc_path: str) -> list[str]:
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         pass
     finally:
-        for f in os.listdir(out):
-            os.remove(os.path.join(out))
-        os.rmdir(out)
+        try:
+            for f in os.listdir(out):
+                os.remove(os.path.join(out, f))
+            os.rmdir(out)
+        except OSError:
+            pass
     # fallback: try python-docx or antiword
     raise RuntimeError(f"无法解析 .doc: {doc_path}，请转为 .docx 后重试")
 
