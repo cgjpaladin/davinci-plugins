@@ -922,7 +922,17 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     else:
         results.append(_make_result("pass", detail=f"时长: {_fmt_duration(duration_sec)} (通过)"))
 
-    # ── ③ 使用项目设置 ──
+    # ── ③ 命名规范 ──
+    import re
+    tl_name = timeline.GetName()
+    if re.match(r'^\d{2,3}$', tl_name):
+        results.append(_make_result("pass", detail=f"命名: {tl_name} (通过)"))
+    else:
+        results.append(_make_result("warn",
+            detail=f"命名: {tl_name}",
+            reason="建议改为 01、02、03 等两位数格式"))
+
+    # ── ④ 使用项目设置 ──
     if project is None:
         try:
             from fusionscript_loader import bmd
