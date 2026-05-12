@@ -475,7 +475,9 @@ def _parse_docx_file(path: str) -> dict:
 
 
 def _parse_docx_file_with_fallback(path: str) -> dict:
-    """.docx / .doc / .pdf → parse。根据扩展名分派。"""
+    """.docx / .doc / .pdf → parse。"""
+    if os.path.isdir(path):
+        raise RuntimeError("请选择具体文件，不要选择文件夹")
     lo = path.lower()
     if lo.endswith(".pdf"):
         lines = _extract_text_from_pdf(path)
