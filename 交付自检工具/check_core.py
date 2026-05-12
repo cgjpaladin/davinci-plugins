@@ -973,30 +973,35 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
 # ── 直通编辑 ──
 
 def check_through_edits(timeline, fps=25.0, io_range=None) -> list:
-    """检测相邻同素材片段（直通编辑）。只查视频轨。"""
-    import collections
+    """检测直通编辑：相邻同素材片段且源帧连续（间隔≤1帧）。只查视频轨。"""
     issues = []
     smpte = _get_smpte(fps)
     for vi in range(1, timeline.GetTrackCount("video") + 1):
         items = timeline.GetItemListInTrack("video", vi) or []
         prev_uid = None
-        for i in range(len(items)):
-            it = items[i]
-            if not _in_io_range(it, io_range):
+        for i in range(len(items) - 1):
+            a = items[i]; b = items[i + 1]
+            if not _in_io_range(a, io_range):
                 prev_uid = None
                 continue
             try:
-                mp = it.GetMediaPoolItem()
-                uid = mp.GetUniqueId() if mp else None
+                am = a.GetMediaPoolItem(); bm = b.GetMediaPoolItem()
+                uid_a = am.GetUniqueId() if am else None
+                uid_b = bm.GetUniqueId() if bm else None
             except Exception:
-                uid = None
-            if uid and uid == prev_uid:
-                name = _get_clip_name(it)
-                tc = smpte.gettc(_get_cached(it, "start"))
-                issues.append(_make_result("warn", track=f"V{vi}", timecode=tc,
-                    detail=f"直通编辑: {name}",
-                    reason="建议连接片段，以减少调色镜头数"))
-            prev_uid = uid
+                uid_a = uid_b = None
+            if not uid_a or uid_a != uid_b:
+                continue
+            # 直通编辑：源帧连续（end+1≥start，即间隔≤1帧）
+            a_se = a.GetSourceEndFrame()
+            b_ss = b.GetSourceStartFrame()
+            if a_se + 1 < b_ss:
+                continue  # 同一素材的不同片段，不是直通编辑
+            name = _get_clip_name(a)
+            tc = smpte.gettc(_get_cached(a, "start"))
+            issues.append(_make_result("warn", track=f"V{vi}", timecode=tc,
+                detail=f"直通编辑: {name}",
+                reason="建议连接片段，以减少调色镜头数"))
     if not issues:
         return [_make_result("pass", detail="直通编辑: 全部通过", is_summary=True)]
     return [_make_result("warn", detail=f"直通编辑: {len(issues)} 处", is_summary=True)] + issues
