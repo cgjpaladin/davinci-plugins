@@ -130,10 +130,9 @@ def _single(asr_lines, characters, context_lines, offset=0):
         # 硬过滤：常错两可字
         if (orig, corr) in _FUZZY_PAIRS or (corr, orig) in _FUZZY_PAIRS:
             continue
-        # 硬过滤：子串级两可字（如「哎...」→「诶...」）
-        if any((a, b) in _FUZZY_PAIRS
-               for a in set(orig) for b in set(corr)
-               if a in orig and b in corr and a != b):
+        # 硬过滤：全句已含纠正词（如「怎么」含「么」，LLM 拆错）
+        full = asr_lines[idx - offset - 1] if idx - offset - 1 < len(asr_lines) else ""
+        if corr and corr in full:
             continue
         valid.append({
             "index": idx, "original": orig,
