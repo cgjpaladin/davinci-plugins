@@ -66,10 +66,19 @@ def _extract_text_from_doc(doc_path: str) -> list[str]:
     """.doc → LibreOffice 转换 → 提取文本。"""
     out = tempfile.mkdtemp()
     try:
-        subprocess.run([
-            "soffice", "--headless", "--convert-to", "docx",
-            "--outdir", out, doc_path
-        ], timeout=60, check=True, capture_output=True)
+        for soffice in ("/opt/homebrew/bin/soffice",
+                        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+                        "soffice"):
+            try:
+                subprocess.run([
+                    soffice, "--headless", "--convert-to", "docx",
+                    "--outdir", out, doc_path
+                ], timeout=60, check=True, capture_output=True)
+                break
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                continue
+        else:
+            raise FileNotFoundError
         for f in os.listdir(out):
             if f.endswith(".docx"):
                 return _extract_text_from_docx(os.path.join(out, f))
