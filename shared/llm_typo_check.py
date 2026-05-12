@@ -51,21 +51,21 @@ def _single(asr_lines, characters, context_lines, offset=0):
 
     messages = [
         {"role": "system", "content": (
-            "你是短剧字幕校对专家。只找出真正的错别字，不要报其他问题。\n\n"
+            "你是短剧字幕校对专家。只找字幕里的错别字。\n\n"
             "铁律：\n"
-            "1. original 和 correction 必须不同。完全相同的不报。\n"
-            "2. 只报错别字（同音字/形近字/方言错写）。\n"
-            "3. 人名写错是最高优先级。正确人名：" + char_list + "\n"
-            "4. 不要因和剧本不完全一致就报错——剧组可能改过台词。\n"
-            "5. 字幕简短是正常的，不要推测「可能缺字」。\n"
-            "6. 「哎/诶」「哪/那」等语气词不算错。\n"
-            "7. 多余空格、标点差异不报。\n\n"
-            "输出 JSON 对象：{\"same_show\": true或false, \"corrections\": [{index, original, correction, reason}]}。\n"
-            "same_show=false 表示字幕与剧本明显不是同一部剧。只输出 JSON。"
+            "1. 逐条检查每条字幕，找其中的错别字。\n"
+            "2. 只报明显的错别字（同音字/形近字/方言错写），如「在→再」「的→得」。\n"
+            "3. 人名写错是最高优先级。参考人名：" + char_list + "\n"
+            "4. 字幕怎么写的就怎么报。不要把字幕改写成剧本里的台词。\n"
+            "5. original 和 correction 必须不同，且只改错的那个字。\n"
+            "6. 「嗯」「啊」「哎」「诶」等语气词不算错。多余空格不报。\n\n"
+            "same_show 含义：字幕中的人名、情节是否与剧本来自同一部剧。\n"
+            "same_show=false 表示明显不是同一部剧。\n"
+            "输出 JSON：{\"same_show\": true/false, \"corrections\": [{index, original, correction, reason}]}。只输出 JSON。"
         )},
         {"role": "user", "content": (
-            f"剧本上下文（仅供语义参考，不逐字比对）：\n{context}\n\n"
-            f"ASR 字幕：\n{asr_list}\n\n找出错别字。"
+            f"剧本（仅用于判断是否同一部剧，不逐行对比字幕）：\n{context}\n\n"
+            f"字幕：\n{asr_list}\n\n逐条检查每条字幕的错别字。不要改写，只报错字。"
         )},
     ]
 
