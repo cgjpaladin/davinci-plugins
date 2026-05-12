@@ -1675,6 +1675,13 @@ def _confirm_script(ev):
         itm[BTN_VALIDATE_SCRIPT].Enabled = _SCRIPT_SRC_VALID and not _checking
         itm[BTN_AI_TYPO].Enabled = _SCRIPT_CONFIRMED and not _checking
 dlg.On[EDIT_SCRIPT_SRC].TextChanged = _validate_script_src
+dlg.On[EDIT_SCRIPT_EP].TextChanged = lambda ev: (_reset_script_confirm(), None)
+
+
+def _reset_script_confirm():
+    global _SCRIPT_CONFIRMED
+    _SCRIPT_CONFIRMED = False
+    itm[BTN_AI_TYPO].Enabled = False
 
 # 分组开关事件
 def _make_group_toggle(group_name):
