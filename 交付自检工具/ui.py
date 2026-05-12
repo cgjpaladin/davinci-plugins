@@ -1179,6 +1179,8 @@ def _run_ai_typo():
         _action_log(f"🤖 LLM 校对开始 ({len(entries)}字幕 vs {len(ctx.get('lines',[]))}行剧本)")
         result = check_typos(entries, ctx.get("characters", []), ctx.get("lines", []))
         if result.get("error"):
+            tail = result.get("raw_tail", "")
+            _action_log(f"❌ 校对失败: {result['error']} (尾部: {tail})")
             return _stop(f"❌ 校对失败: {result.get('error')}")
 
         corrections = result.get("corrections", [])

@@ -67,7 +67,7 @@ def _single(asr_lines, characters, context_lines, offset=0):
         )},
     ]
 
-    result = call_with_fallback(messages, max_tokens=512, temperature=0.1)
+    result = call_with_fallback(messages, max_tokens=1024, temperature=0.1)
     if not result.get("ok"):
         return result
 
@@ -97,7 +97,9 @@ def _single(asr_lines, characters, context_lines, offset=0):
         if not isinstance(corrections, list):
             raise ValueError
     except (json.JSONDecodeError, ValueError) as e:
-        return {"error": "json_parse", "raw": result["content"][:300],
+        return {"error": "json_parse",
+                "raw": result["content"][:300],
+                "raw_tail": result["content"][-100:],
                 "detail": str(e)}
 
     valid = []
