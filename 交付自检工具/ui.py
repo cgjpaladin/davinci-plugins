@@ -575,7 +575,10 @@ window_layout = [
         ui.HGroup({"Spacing": 8, "Weight": 0}, [
 
             # ====== 左区：原始检查面板 ======
-            ui.VGroup({"Spacing": 2, "Weight": 0}, [
+            ui.VGroup({"Spacing": 4, "Weight": 0}, [
+            ui.Label({"ID": "lbl_check_title", "Text": "常规检查",
+                      "StyleSheet": "font-size:13px;font-weight:bold;color:#ccc",
+                      "Weight": 0, "Alignment": {"AlignHCenter": True}}),
             ui.HGroup({"Spacing": 10, "Weight": 0}, [
                 # 最左：5 个分组开关
                 ui.VGroup({"Spacing": 2, "Weight": 0}, list(
