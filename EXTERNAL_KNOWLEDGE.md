@@ -64,7 +64,8 @@
 
 | 资源 | 位置 |
 |------|------|
-| AI 调研报告（GPT/MiniMax/豆包） | `达芬奇学习资料/` (7份，覆盖 API 变更、内外部差异、商业分发) |
+| AI 调研报告（GPT/MiniMax/豆包/千问） | `AI去字幕/外部调研报告/` (7份) |
+| HEIBA 黑靶插件源码（Lua, 明文解密） | `达芬奇学习资料/HEIBA插件源码/` (4个脚本) |
 
 ---
 
@@ -93,7 +94,8 @@
 | 代码 | `AI去字幕/adapters/ghostcut.py` |
 | GitHub | `https://github.com/JollyToday/GhostCut_Remove_Video_Text` |
 | 认证 | AppKey + AppSecret → MD5 签名 |
-| 定价（VIP3） | 字幕擦除 Lite版=4点/30秒, Pro版·框选(pro_box)=6点/30秒（2026-05-11 官网核实） |
+| 定价（VIP4，当前） | 字幕擦除 Lite版=2点/30秒, Pro版=5点/30秒（来源：豆包翻译官方定价表，2026-05-12） |
+| VIP 等级对照 | 见 `AI去字幕/外部调研报告/豆包：鬼手定价标准.md`（VIP1-VIP8 全表） |
 | 注意 | GhostCut 字幕擦除无 pro_large/pro 全屏档——仅 Lite版 和 Pro框选两档 |
 | point_to_yuan | 0.19（¥189/1000点） |
 
