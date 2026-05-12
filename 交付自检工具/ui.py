@@ -612,9 +612,24 @@ window_layout = [
             ]),  # 结束左区 VGroup
 
             ui.HGap({"Weight": 0, "MinimumSize": [8, 0]}),
-            ui.Label({"ID": "sep_main", "Text": "┃",
-                      "StyleSheet": "font-size:20px;color:#666;font-weight:bold",
-                      "Weight": 0}),
+            ui.VGroup({"Weight": 0, "Spacing": 0}, [
+                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
+                          "Weight": 0, "MinimumSize": [0, 22]}),
+                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
+                          "Weight": 0, "MinimumSize": [0, 22]}),
+                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
+                          "Weight": 0, "MinimumSize": [0, 22]}),
+                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
+                          "Weight": 0, "MinimumSize": [0, 22]}),
+                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
+                          "Weight": 0, "MinimumSize": [0, 22]}),
+                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
+                          "Weight": 0, "MinimumSize": [0, 22]}),
+                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
+                          "Weight": 0, "MinimumSize": [0, 22]}),
+                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
+                          "Weight": 0, "MinimumSize": [0, 22]}),
+            ]),
             ui.HGap({"Weight": 0, "MinimumSize": [8, 0]}),
 
             # ====== 右区：AI校对面板 ======
