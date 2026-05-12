@@ -614,7 +614,7 @@ window_layout = [
             ui.HGap({"Weight": 0, "MinimumSize": [6, 0]}),
             ui.Label({"ID": "sep_main", "Text": "│",
                       "StyleSheet": "font-size:14px;color:#555",
-                      "Weight": 0}),
+                      "Weight": 0, "MinimumSize": [1, 300]}),
             ui.HGap({"Weight": 0, "MinimumSize": [6, 0]}),
 
             # ====== 右区：AI校对面板 ======
