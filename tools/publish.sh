@@ -184,6 +184,13 @@ publish_gray_check() {
 
 # ── 核心：推送到 SMB ──
 publish_push_all() {
+    # ═══ 硬拦截：非人工确认不得发布全公司 ═══
+    if [ "${CONFIRM_PUSH:-}" != "yes" ]; then
+        echo "⛔ 发布全公司需要人工确认！"
+        echo "   请在终端执行: CONFIRM_PUSH=yes ./push_all.sh"
+        echo "   或告诉我「确认发布全公司」，我会帮你跑。"
+        exit 1
+    fi
     local ver=$(publish_get_version)
     log_full_start "push_all v$ver"
     publish_validate_product
