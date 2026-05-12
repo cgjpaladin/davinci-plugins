@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>方案A: 达芬奇暗黑风 · 批量命名工具</title>
+<style>
+/* ======== DESIGN TOKENS ======== */
+:root {
+  --bg: #1a1a1a;
+  --panel: #252525;
+  --panel-hover: #2d2d2d;
+  --border: #3a3a3a;
+  --text: #d4d4d4;
+  --text-dim: #8a8a8a;
+  --text-bright: #ffffff;
+  --accent: #f47920;
+  --accent-hover: #ff8c3a;
+  --accent-dim: #5a3520;
+  --blue: #4da6ff;
+  --green: #6aaa3a;
+  --red: #e05555;
+  --yellow: #e0af3a;
+  --preview-bg: #1e2a1a;
+  --preview-text: #a8d88a;
+  --font-ui: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
+  --radius: 2px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0d0d0d;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+.app {
+  width: 100%; max-width: 1120px;
+  background: var(--bg);
+  border: 1px solid #222;
+  display: flex; flex-direction: column;
+}
+/* Titlebar */
+.titlebar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px;
+  background: #111;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.titlebar-left { display: flex; align-items: center; gap: 8px; }
+.titlebar-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.titlebar-dot.a { background: var(--accent); }
+.titlebar-dot.b { background: #555; }
+.titlebar-dot.c { background: #555; }
+.titlebar-title { color: var(--text-dim); letter-spacing: 0.5px; }
+/* Designer notes banner */
+.notes {
+  padding: 8px 12px; background: #111; border-bottom: 1px solid #222;
+  display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 10px;
+}
+.notes-label { color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+.notes-item { display: flex; align-items: center; gap: 4px; }
+.swatch { width: 12px; height: 12px; border-radius: 2px; border: 1px solid #333; }
+/* Main layout */
+.main { display: flex; flex-direction: column; flex: 1; }
+/* Params section */
+.params {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 4px;
+  padding: 8px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.param-group {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.param-label {
+  font-size: 9px; color: var(--text-dim); text-transform: uppercase;
+  letter-spacing: 0.5px; font-weight: 600;
+}
+.param-input {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text-bright);
+  padding: 4px 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border-radius: var(--radius);
+  outline: none;
+  width: 100%;
+}
+.param-input:focus {
+  border-color: var(--accent);
+  background: #2a2a2a;
+  box-shadow: inset 0 0 0 1px rgba(244,121,32,0.15);
+}
+.param-select {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text-bright);
+  padding: 4px 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border-radius: var(--radius);
+  outline: none;
+  width: 100%;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%238a8a8a'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  padding-right: 20px;
+}
+.param-select:focus { border-color: var(--accent); }
+/* Status tag for 通过情况 */
+.status-ok { color: var(--green); }
+.status-kp { color: var(--yellow); }
+.status-ng { color: var(--red); }
+/* Preview bar */
+.preview {
+  display: flex; align-items: center;
+  padding: 6px 12px;
+  background: var(--preview-bg);
+  border-bottom: 1px solid #2a3a2a;
+  gap: 10px;
+}
+.preview-icon { color: var(--green); font-weight: bold; font-size: 11px; }
+.preview-text {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--preview-text);
+  flex: 1;
+}
+.preview-batch {
+  font-size: 10px; color: var(--text-dim);
+  background: #1a2a1a; padding: 2px 8px; border-radius: 2px;
+  border: 1px solid #2a3a2a;
+}
+/* Content area */
+.content { display: flex; flex: 1; min-height: 0; }
+/* File list */
+.file-area {
+  flex: 1; display: flex; flex-direction: column;
+  border-right: 1px solid var(--border);
+  min-width: 0;
+}
+.file-area-header {
+  padding: 4px 10px; background: #1f1f1f;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px; color: var(--text-dim);
+  display: flex; justify-content: space-between;
+}
+.file-count { color: var(--accent); font-weight: 600; }
+.file-list {
+  flex: 1; overflow-y: auto;
+  background: var(--bg);
+  min-height: 180px;
+}
+.file-item {
+  display: flex; align-items: center; padding: 3px 10px;
+  border-bottom: 1px solid #1f1f1f;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  gap: 8px;
+  transition: background 0.08s;
+}
+.file-item:hover { background: var(--panel); }
+.file-item.selected { background: var(--accent-dim); border-left: 2px solid var(--accent); }
+.file-item.selected .file-name { color: var(--text-bright); }
+.file-icon { color: var(--text-dim); font-size: 10px; }
+.file-name { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-ext { color: var(--accent); font-size: 10px; }
+.file-preview-name {
+  font-size: 10px; color: var(--text-dim);
+  background: #1f1f1f; padding: 1px 8px; border-radius: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
+  display: none;
+}
+.file-item.selected .file-preview-name { display: block; }
+/* Drop zone indicator */
+.drop-zone {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; color: var(--text-dim); font-size: 16px;
+  border: 1px dashed var(--border); margin: 8px;
+  border-radius: var(--radius);
+  transition: border-color 0.15s;
+}
+.drop-zone.active { border-color: var(--accent); color: var(--accent); }
+/* Sidebar buttons */
+.sidebar {
+  display: flex; flex-direction: column;
+  width: 120px; padding: 8px; gap: 4px;
+  background: var(--panel);
+}
+.btn {
+  padding: 5px 10px; border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-family: var(--font-ui); font-size: 11px;
+  cursor: pointer; text-align: left;
+  border-radius: var(--radius);
+  transition: all 0.08s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--panel-hover); border-color: #555; color: var(--text-bright); }
+.btn:active { background: #333; transform: scale(0.98); }
+.btn-primary {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+  font-weight: 600; text-align: center;
+}
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-danger { text-align: center; }
+.btn-danger:hover { background: #3a2020; border-color: var(--red); color: var(--red); }
+.btn-icon { font-family: var(--font-mono); margin-right: 4px; }
+.separator { height: 1px; background: var(--border); margin: 4px 0; }
+.tk-counter {
+  text-align: center; padding: 6px; font-size: 10px; color: var(--text-dim);
+  background: #1f1f1f; border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.tk-counter span { color: var(--accent); font-family: var(--font-mono); font-weight: bold; font-size: 13px; }
+/* Status bar */
+.statusbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 12px;
+  background: #111;
+  border-top: 1px solid var(--border);
+  font-size: 10px; color: var(--text-dim);
+}
+.status-left { display: flex; align-items: center; gap: 12px; }
+.status-indicator { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.status-indicator.working { background: var(--accent); animation: pulse 0.8s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.status-right { color: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Titlebar -->
+  <div class="titlebar">
+    <div class="titlebar-left">
+      <div class="titlebar-dot a"></div>
+      <div class="titlebar-dot b"></div>
+      <div class="titlebar-dot c"></div>
+      <span class="titlebar-title">批量文件命名工具 v3.0</span>
+    </div>
+    <span style="color:#555;font-size:10px">方案A  ·  达芬奇暗黑风</span>
+  </div>
+
+  <!-- Designer Notes -->
+  <div class="notes">
+    <span class="notes-label">🎨 设计系统</span>
+    <span class="notes-item"><span class="swatch" style="background:#1a1a1a"></span> bg</span>
+    <span class="notes-item"><span class="swatch" style="background:#252525"></span> panel</span>
+    <span class="notes-item"><span class="swatch" style="background:#f47920"></span> accent</span>
+    <span class="notes-item"><span class="swatch" style="background:#4da6ff"></span> blue</span>
+    <span class="notes-item"><span class="swatch" style="background:#3a3a3a"></span> border</span>
+    <span style="color:#666;margin-left:4px">|</span>
+    <span style="color:#888">字体: Segoe UI + Consolas (Windows 系统内置)</span>
+    <span style="color:#666;margin-left:4px">|</span>
+    <span style="color:#888">tk实现: clam主题 + ttk.Style自定义</span>
+    <span style="color:#666;margin-left:4px">|</span>
+    <span style="color:#888">约 8MB .exe (PyInstaller)</span>
+  </div>
+
+  <!-- Parameter Fields -->
+  <div class="params">
+    <div class="param-group">
+      <label class="param-label">Ep 集数</label>
+      <input class="param-input" value="01" oninput="updatePreview()" id="ep" maxlength="3">
+    </div>
+    <div class="param-group">
+      <label class="param-label">Sc 场次</label>
+      <input class="param-input" value="03" oninput="updatePreview()" id="sc" maxlength="3">
+    </div>
+    <div class="param-group">
+      <label class="param-label">Gr 小场次</label>
+      <input class="param-input" value="01" oninput="updatePreview()" id="gr" maxlength="3">
+    </div>
+    <div class="param-group">
+      <label class="param-label">Tk 次数</label>
+      <input class="param-input" value="01" oninput="updatePreview()" id="tk" maxlength="3">
+    </div>
+    <div class="param-group" style="grid-column: span 2">
+      <label class="param-label">镜头描述</label>
+      <input class="param-input" value="PUSH" oninput="updatePreview()" id="desc">
+    </div>
+    <div class="param-group">
+      <label class="param-label">制作者</label>
+      <input class="param-input" value="YJ" oninput="updatePreview()" id="author">
+    </div>
+    <div class="param-group" style="grid-column: span 1">
+      <label class="param-label">制作方式</label>
+      <input class="param-input" value="AE" oninput="updatePreview()" id="method">
+    </div>
+    <div class="param-group">
+      <label class="param-label">v 版本号</label>
+      <input class="param-input" value="01" oninput="updatePreview()" id="ver">
+    </div>
+    <div class="param-group">
+      <label class="param-label">通过情况</label>
+      <select class="param-select" onchange="updatePreview()" id="status">
+        <option value="OK" class="status-ok">OK</option>
+        <option value="KP" class="status-kp">KP</option>
+        <option value="NG" class="status-ng">NG</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Preview Bar -->
+  <div class="preview">
+    <span class="preview-icon">▸</span>
+    <span class="preview-text" id="preview">Ep01_Sc03_Gr01_Tk01_PUSH_YJ_AE_v01_OK.mp4</span>
+    <span class="preview-batch" id="batch-info">选中 4/6 个文件</span>
+  </div>
+
+  <!-- File List + Sidebar -->
+  <div class="content">
+    <div class="file-area">
+      <div class="file-area-header">
+        <span>文件列表 <span class="file-count">(6)</span></span>
+        <span style="font-size:9px">拖放文件到此处</span>
+      </div>
+      <div class="file-list" id="fileList">
+        <div class="file-item" onclick="toggleFile(this)" data-idx="0">
+          <span class="file-icon">▶</span>
+          <span class="file-name">D:/项目/短片S1/成品/镜头001.mp4</span>
+          <span class="file-ext">.mp4</span>
+          <span class="file-preview-name">Ep01_Sc03_Gr01_Tk01_PUSH_YJ_AE_v01_OK.mp4</span>
+        </div>
+        <div class="file-item" onclick="toggleFile(this)" data-idx="1">
+          <span class="file-icon">▶</span>
+          <span class="file-name">D:/项目/短片S1/成品/镜头002.mp4</span>
+          <span class="file-ext">.mp4</span>
+          <span class="file-preview-name">Ep01_Sc03_Gr01_Tk02_PUSH_YJ_AE_v01_OK.mp4</span>
+        </div>
+        <div class="file-item" onclick="toggleFile(this)" data-idx="2">
+          <span class="file-icon">▶</span>
+          <span class="file-name">D:/项目/短片S1/成品/镜头003.mp4</span>
+          <span class="file-ext">.mp4</span>
+          <span class="file-preview-name">Ep01_Sc03_Gr01_Tk03_PUSH_YJ_AE_v01_OK.mp4</span>
+        </div>
+        <div class="file-item" onclick="toggleFile(this)" data-idx="3">
+          <span class="file-icon">▶</span>
+          <span class="file-name">D:/项目/短片S1/成品/镜头004.mp4</span>
+          <span class="file-ext">.mp4</span>
+          <span class="file-preview-name">Ep01_Sc03_Gr01_Tk04_PUSH_YJ_AE_v01_OK.mp4</span>
+        </div>
+        <div class="file-item" onclick="toggleFile(this)" data-idx="4">
+          <span class="file-icon">▶</span>
+          <span class="file-name">D:/项目/短片S1/成品/镜头005.mp4</span>
+          <span class="file-ext">.mp4</span>
+          <span class="file-preview-name">Ep01_Sc03_Gr01_Tk05_PUSH_YJ_AE_v01_OK.mp4</span>
+        </div>
+        <div class="file-item" onclick="toggleFile(this)" data-idx="5">
+          <span class="file-icon">▶</span>
+          <span class="file-name">D:/项目/短片S1/成品/镜头006.mp4</span>
+          <span class="file-ext">.mp4</span>
+          <span class="file-preview-name">Ep01_Sc03_Gr01_Tk06_PUSH_YJ_AE_v01_OK.mp4</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar Actions -->
+    <div class="sidebar">
+      <button class="btn" onclick="addFile()"><span class="btn-icon">+</span> 添加文件</button>
+      <button class="btn" onclick="addFolder()"><span class="btn-icon">+</span> 添加文件夹</button>
+      <button class="btn" onclick="removeSelected()"><span class="btn-icon">&times;</span> 移除选中</button>
+      <div class="separator"></div>
+      <div class="tk-counter">Tk 递增: <span id="tkDisplay">01→06</span></div>
+      <div class="separator"></div>
+      <button class="btn btn-primary" onclick="doRename()">批量重命名</button>
+      <button class="btn btn-danger" onclick="doUndo()">↩ 撤销上次</button>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="statusbar">
+    <div class="status-left">
+      <span class="status-indicator" id="statusDot"></span>
+      <span id="statusMsg">就绪</span>
+    </div>
+    <span class="status-right">批量文件命名工具 v3.0  ·  方案A: 达芬奇暗黑风</span>
+  </div>
+</div>
+
+<script>
+// Interactive preview logic
+function updatePreview() {
+  const ep = document.getElementById('ep').value.padStart(2,'0') || '01';
+  const sc = document.getElementById('sc').value.padStart(2,'0') || '01';
+  const gr = document.getElementById('gr').value.padStart(2,'0') || '01';
+  const tk = document.getElementById('tk').value.padStart(2,'0') || '01';
+  const desc = document.getElementById('desc').value || 'unnamed';
+  const author = document.getElementById('author').value || 'anon';
+  const method = document.getElementById('method').value || 'XX';
+  const ver = document.getElementById('ver').value || '01';
+  const status = document.getElementById('status').value;
+
+  const prefix = `Ep${ep}_Sc${sc}_Gr${gr}_Tk${tk}_${desc}_${author}_${method}_v${ver}_${status}`;
+  document.getElementById('preview').textContent = prefix + '.mp4';
+
+  // Update TK counter
+  const selected = document.querySelectorAll('.file-item.selected');
+  if (selected.length > 1) {
+    const start = parseInt(tk);
+    const end = start + selected.length - 1;
+    document.getElementById('tkDisplay').textContent =
+      String(start).padStart(2,'0') + '→' + String(end).padStart(2,'0');
+  } else {
+    document.getElementById('tkDisplay').textContent = tk;
+  }
+  updateBatchInfo();
+}
+
+function toggleFile(el) {
+  if (el.classList.contains('selected')) {
+    el.classList.remove('selected');
+  } else {
+    el.classList.add('selected');
+  }
+  updatePreview();
+  updateBatchInfo();
+}
+
+function updateBatchInfo() {
+  const selected = document.querySelectorAll('.file-item.selected');
+  const total = document.querySelectorAll('.file-item').length;
+  document.getElementById('batch-info').textContent =
+    selected.length > 0 ? `选中 ${selected.length}/${total} 个文件` : `无选中 (共 ${total} 个)`;
+}
+
+function addFile() {
+  const msg = document.getElementById('statusMsg');
+  msg.textContent = '已打开文件选择对话框...';
+  document.getElementById('statusDot').classList.add('working');
+  setTimeout(() => {
+    msg.textContent = '就绪';
+    document.getElementById('statusDot').classList.remove('working');
+  }, 2000);
+}
+
+function addFolder() {
+  const msg = document.getElementById('statusMsg');
+  msg.textContent = '已打开文件夹选择对话框...';
+  document.getElementById('statusDot').classList.add('working');
+  setTimeout(() => {
+    msg.textContent = '就绪';
+    document.getElementById('statusDot').classList.remove('working');
+  }, 2000);
+}
+
+function removeSelected() {
+  document.querySelectorAll('.file-item.selected').forEach(el => el.remove());
+  updatePreview();
+  updateBatchInfo();
+}
+
+function doRename() {
+  const selected = document.querySelectorAll('.file-item.selected');
+  const msg = document.getElementById('statusMsg');
+  if (selected.length === 0) {
+    msg.textContent = '⚠ 请先选择文件';
+    setTimeout(() => msg.textContent = '就绪', 3000);
+    return;
+  }
+  document.getElementById('statusDot').classList.add('working');
+  msg.textContent = `正在重命名 ${selected.length} 个文件...`;
+  setTimeout(() => {
+    msg.textContent = `✅ 已完成 ${selected.length} 个文件的重命名`;
+    document.getElementById('statusDot').classList.remove('working');
+    // Visually update file items
+    selected.forEach((el, i) => {
+      const previewEl = el.querySelector('.file-preview-name');
+      previewEl.style.display = 'block';
+    });
+  }, 1500);
+}
+
+function doUndo() {
+  document.getElementById('statusDot').classList.add('working');
+  document.getElementById('statusMsg').textContent = '↩ 正在撤销...';
+  setTimeout(() => {
+    document.getElementById('statusMsg').textContent = '↩ 已撤销上次重命名';
+    document.getElementById('statusDot').classList.remove('working');
+  }, 1000);
+}
+
+// Initial
+updatePreview();
+</script>
+</body>
+</html>
