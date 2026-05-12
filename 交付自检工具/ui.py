@@ -61,6 +61,8 @@ CHK_OFFLINE = "chk_offline"
 CHK_BLACK_FRAME = CHK_BLACK  # 别名
 BTN_START = "btn_start"
 BTN_CONFIG = "btn_config"
+BTN_AI_TYPO = "btn_ai_typo"
+EDIT_SCRIPT_SRC = "edit_script_src"
 BTN_TOGGLE_GROUP = "btn_toggle_group_"  # + group_name → "btn_toggle_group_工程"
 TREE_RESULT = "tree_result"
 GROUP_TREE = "group_tree"
@@ -566,40 +568,58 @@ def _build_group_rows(group_name, extras=None):
 window_layout = [
     ui.VGroup({"Spacing": 0}, [
 
-        # ── 上半区：检查选项 + 开始按钮 ──
-        ui.HGroup({"Spacing": 10, "Weight": 0}, [
-            # 最左：5 个分组开关
-            ui.VGroup({"Spacing": 2, "Weight": 0}, list(
-                ui.Button({"ID": f"{BTN_TOGGLE_GROUP}{gn}", "Text": gn,
-                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                           "MinimumSize": [44, 22]})
-                for gn in GROUP_ORDER
-            )),
+        # ── 上半区：检查选项 + 开始按钮（左 2/3）| AI校对（右 1/3）──
+        ui.HGroup({"Spacing": 8, "Weight": 0}, [
 
-            # 左侧：检查选项
+            # ====== 左区：原始检查面板 ======
             ui.VGroup({"Spacing": 2, "Weight": 0}, [
+            ui.HGroup({"Spacing": 10, "Weight": 0}, [
+                # 最左：5 个分组开关
+                ui.VGroup({"Spacing": 2, "Weight": 0}, list(
+                    ui.Button({"ID": f"{BTN_TOGGLE_GROUP}{gn}", "Text": gn,
+                               "StyleSheet": BTN_STYLE_SM, "Weight": 0,
+                               "MinimumSize": [44, 22]})
+                    for gn in GROUP_ORDER
+                )),
 
-            # ═══════ 检查选项（从 CHECKS 自动生成）═══════
-            *_build_group_rows("工程"),
-            *_build_group_rows("视频"),
-            *_build_group_rows("音频"),
-            *_build_group_rows("字幕"),
-            *_build_group_rows("色彩"),
+                # 左侧：检查选项
+                ui.VGroup({"Spacing": 2, "Weight": 0}, [
+                *_build_group_rows("工程"),
+                *_build_group_rows("视频"),
+                *_build_group_rows("音频"),
+                *_build_group_rows("字幕"),
+                *_build_group_rows("色彩"),
+                ]),
 
-            ]),  # 结束左侧 VGroup
+                ui.HGap({"Weight": 1}),
 
-            ui.HGap({"Weight": 1}),
-
-            # 开始检查 + 配置
-            ui.VGroup({"Spacing": 4, "Weight": 0}, [
-                ui.Button({"ID": BTN_START, "Text": "开始检查",
-                           "StyleSheet": BTN_PRIMARY, "Weight": 0,
-                           "MinimumSize": [100, 95]}),
-                ui.Button({"ID": BTN_CONFIG, "Text": "配置",
-                           "StyleSheet": BTN_STYLE, "Weight": 0,
-                           "MinimumSize": [100, 20]}),
+                # 开始检查 + 配置
+                ui.VGroup({"Spacing": 4, "Weight": 0}, [
+                    ui.Button({"ID": BTN_START, "Text": "开始检查",
+                               "StyleSheet": BTN_PRIMARY, "Weight": 0,
+                               "MinimumSize": [100, 95]}),
+                    ui.Button({"ID": BTN_CONFIG, "Text": "配置",
+                               "StyleSheet": BTN_STYLE, "Weight": 0,
+                               "MinimumSize": [100, 20]}),
+                ]),
             ]),
-        ]),
+            ]),  # 结束左区 VGroup
+
+            # ====== 右区：AI校对面板 ======
+            ui.VGroup({"Spacing": 4, "Weight": 0, "MinimumSize": [220, 0]}, [
+                ui.Label({"ID": "lbl_ai_title", "Text": "AI 字幕校对",
+                          "StyleSheet": "font-size:13px;font-weight:bold;color:#ccc",
+                          "Weight": 0, "Alignment": {"AlignHCenter": True}}),
+                ui.Label({"ID": "lbl_ai_hint", "Text": "剧本链接或本地路径:",
+                          "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
+                ui.LineEdit({"ID": EDIT_SCRIPT_SRC, "Text": "",
+                            "Weight": 0, "PlaceholderText": "飞书链接 / 本地路径"}),
+                ui.Button({"ID": BTN_AI_TYPO, "Text": "开始校对",
+                          "StyleSheet": BTN_PRIMARY.replace("100", "80"),
+                          "Weight": 0, "MinimumSize": [100, 36]}),
+            ]),
+
+        ]),  # 结束上半区 HGroup
 
         # ── 结果区：左侧分组 + 右侧数据 ──
         ui.VGroup({"Spacing": 4, "Weight": 0}, [
@@ -644,6 +664,8 @@ itm = dlg.GetItems()
 # 初始状态
 # ═══════════════════════════════════════════
 itm[BTN_START].Enabled = False
+itm[BTN_AI_TYPO].Enabled = False
+itm[EDIT_SCRIPT_SRC].Text = ""
 
 # Tree 表头
 tree = itm[TREE_RESULT]
@@ -1062,6 +1084,93 @@ def _process_result(r, rows_list):
 
 
 # ═══════════════════════════════════════════
+# AI 校对
+# ═══════════════════════════════════════════
+
+def _run_ai_typo():
+    """独立入口：AI 字幕校对。"""
+    global _checking
+    if _checking:
+        return
+    _checking = True
+    itm[BTN_AI_TYPO].Enabled = False
+    itm[BTN_START].Enabled = False
+    itm[HINT_LB].Text = "AI 校对中..."
+
+    try:
+        from llm_typo_check import check_typos
+        from script_parser import parse_script, match_timeline
+
+        src = itm[EDIT_SCRIPT_SRC].Text.strip()
+        timeline = resolve.GetProjectManager().GetCurrentProject().GetCurrentTimeline()
+        if not timeline:
+            itm[HINT_LB].Text = "❌ 未找到当前时间线"
+            return
+
+        # 读字幕
+        entries = []
+        for ti in range(1, timeline.GetTrackCount("subtitle") + 1):
+            for it in (timeline.GetItemListInTrack("subtitle", ti) or []):
+                try:
+                    entries.append(it.GetName() or "")
+                except Exception:
+                    pass
+        if not entries:
+            itm[HINT_LB].Text = "⚠ 当前时间线无字幕，跳过校对"
+            return
+
+        # 解析剧本
+        try:
+            parsed = parse_script(src)
+            tl_name = timeline.GetName()
+            ctx = match_timeline(parsed, tl_name)
+        except Exception as e:
+            itm[HINT_LB].Text = f"❌ 剧本解析失败: {e}"
+            return
+
+        # LLM 校对
+        result = check_typos(entries, ctx.get("characters", []), ctx.get("lines", []))
+        if result.get("error"):
+            itm[HINT_LB].Text = f"❌ 校对失败: {result.get('error')}"
+            return
+
+        corrections = result.get("corrections", [])
+        provider = result.get("provider", "?")
+        model = result.get("model", "?")
+
+        # 写入 Tree
+        tree = itm[TREE_RESULT]
+        tree.Clear()
+        _setup_tree_header(tree)
+        _TREE_COL_SORT.clear()
+
+        if not corrections:
+            itm[HINT_LB].Text = f"✅ 未发现错别字 ({provider}/{model})"
+            return
+
+        from timecode import SMPTE
+        fps = float(timeline.GetSetting("timelineFrameRate") or 25)
+        smpte = SMPTE(); smpte.fps = fps; smpte.df = False
+
+        for c in corrections:
+            row = tree.NewItem()
+            row.Text[1] = f"字幕[{c['index']}]"
+            row.Text[2] = f"❌ {c['original']} → {c['correction']}"
+            row.Text[3] = c.get("reason", "")
+            tree.AddTopLevelItem(row)
+
+        itm[HINT_LB].Text = (
+            f"🔍 发现 {len(corrections)} 处错别字"
+            f"  |  模型: {provider}/{model}"
+        )
+
+    finally:
+        _checking = False
+        itm[BTN_AI_TYPO].Enabled = True
+        itm[BTN_START].Enabled = True
+
+
+# ═══════════════════════════════════════════
 # 开始检查
 # ═══════════════════════════════════════════
 
@@ -1342,6 +1451,7 @@ def _start_check():
     finally:
         _checking = False
         itm[BTN_START].Enabled = True
+        itm[BTN_AI_TYPO].Enabled = _SCRIPT_SRC_VALID
 
 
 # ═══════════════════════════════════════════
@@ -1445,6 +1555,21 @@ for _c in CHECKS:
     )
 dlg.On[BTN_START].Clicked = lambda ev: _start_check()
 dlg.On[BTN_CONFIG].Clicked = lambda ev: _show_config_dialog()
+dlg.On[BTN_AI_TYPO].Clicked = lambda ev: _run_ai_typo()
+
+# 剧本链接输入框变化时校验格式
+_SCRIPT_SRC_VALID = False
+def _validate_script_src(ev):
+    global _SCRIPT_SRC_VALID
+    src = itm[EDIT_SCRIPT_SRC].Text.strip()
+    ok = any(src.startswith(p) for p in (
+        "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
+    # 飞书/腾讯文档链接必须有完整 token
+    if "feishu.cn" in src or "docs.qq.com" in src:
+        ok = ok and len(src) > 30
+    _SCRIPT_SRC_VALID = ok
+    itm[BTN_AI_TYPO].Enabled = ok and not _checking
+dlg.On[EDIT_SCRIPT_SRC].TextChanged = _validate_script_src
 
 # 分组开关事件
 def _make_group_toggle(group_name):
