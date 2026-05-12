@@ -1175,7 +1175,8 @@ def _run_ai_typo():
             itm[LBL_SCRIPT_STATUS].Text = f"🔍 {ep_label}"
             _action_log(f"🎯 {ep_label} ({'手动' if ep_input else '自动'})")
         except Exception as e:
-            itm[LBL_SCRIPT_STATUS].Text = f"✗ {e}"
+            itm[LBL_SCRIPT_STATUS].Text = "✗ 匹配不到，请手动输入" if "匹配不到" in str(
+                e) else f"✗ {e}"
             return _stop(f"❌ 集号匹配失败: {e}")
 
         # ═══ LLM 校对（含剧集一致性检测） ═══

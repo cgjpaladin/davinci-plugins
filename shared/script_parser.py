@@ -548,4 +548,4 @@ def match_timeline(parsed: dict, tl_name: str, ep_override: str | None = None) -
         return {"characters": parsed["characters"],
                 "lines": episodes[first], "episode": first}
 
-    raise RuntimeError(f"剧本无匹配集: {tl_name}")
+    raise RuntimeError("匹配不到，请手动输入集号")
