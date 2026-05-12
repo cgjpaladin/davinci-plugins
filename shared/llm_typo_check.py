@@ -114,6 +114,12 @@ def _single(asr_lines, characters, context_lines, offset=0):
         corr = str(c.get("correction", ""))
         if orig == corr:
             continue
+        # 硬过滤：纠正只是在去空格/加标点 → 跳过
+        if orig.replace(" ", "") == corr.replace(" ", "").replace("……", "").replace("...", ""):
+            continue
+        # 硬过滤：纠正差异超过原句 50% → 不是错别字是改写
+        if len(corr) > len(orig) * 1.5 or len(orig) > len(corr) * 1.5:
+            continue
         valid.append({
             "index": idx, "original": orig,
             "correction": corr,
