@@ -633,7 +633,7 @@ window_layout = [
                 ui.Label({"ID": "lbl_ai_title", "Text": "AI 字幕校对",
                           "StyleSheet": "font-size:13px;font-weight:bold;color:#ccc",
                           "Weight": 0, "Alignment": {"AlignHCenter": True}}),
-                ui.Label({"ID": "lbl_ai_hint", "Text": "剧本链接或本地路径:",
+                ui.Label({"ID": "lbl_ai_hint", "Text": "飞书文档链接",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_SCRIPT_SRC, "Text": "",
                             "Weight": 0, "PlaceholderText": "飞书链接 / 本地路径"}),
