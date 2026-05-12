@@ -123,11 +123,17 @@ def _single(asr_lines, characters, context_lines, offset=0):
         corr = str(c.get("correction", ""))
         if orig == corr:
             continue
-        # 硬过滤：纠正只是在去空格/加标点 → 跳过
-        if orig.replace(" ", "") == corr.replace(" ", "").replace("……", "").replace("...", ""):
+        # 硬过滤：去空格/标点后一致
+        def _norm(s): return s.replace(" ", "").replace("……", "").replace("...", "")
+        if _norm(orig) == _norm(corr):
             continue
         # 硬过滤：常错两可字
-        if (orig, corr) in _FUZZY_PAIRS:
+        if (orig, corr) in _FUZZY_PAIRS or (corr, orig) in _FUZZY_PAIRS:
+            continue
+        # 硬过滤：子串级两可字（如「哎...」→「诶...」）
+        if any((a, b) in _FUZZY_PAIRS
+               for a in set(orig) for b in set(corr)
+               if a in orig and b in corr and a != b):
             continue
         valid.append({
             "index": idx, "original": orig,
