@@ -165,13 +165,27 @@ def _download_feishu_file(token: str) -> str:
     if os.path.exists(cache_path):
         return cache_path
 
-    resp = _feishu_api(f"/open-apis/drive/v1/medias/{token}/download")
-    if not resp:
-        raise RuntimeError(f"飞书文件下载失败: {token}")
+    tmp_path = f"file_{token}.docx"
+    try:
+        result = subprocess.run([
+            "lark-cli", "drive", "+download",
+            "--file-token", token,
+            "--output", tmp_path,
+            "--as", "user",
+        ], timeout=60, capture_output=True, text=True, cwd=CACHE_DIR)
+        if result.returncode == 0 and os.path.getsize(cache_path) > 100:
+            return cache_path
+    except Exception:
+        pass
+    # lark-cli 可能用了不同后缀
+    for f in os.listdir(CACHE_DIR):
+        if f.startswith(f"file_{token}") and os.path.getsize(
+                os.path.join(CACHE_DIR, f)) > 100:
+            if f != "file_{token}.docx":
+                os.rename(os.path.join(CACHE_DIR, f), cache_path)
+            return cache_path
 
-    with open(cache_path, "wb") as f:
-        f.write(resp)
-    return cache_path
+    raise RuntimeError(f"飞书文件下载失败: {token}")
 
 
 def _export_feishu_docx(token: str) -> str:
@@ -181,21 +195,28 @@ def _export_feishu_docx(token: str) -> str:
     if os.path.exists(cache_path):
         return cache_path
 
-    resp = _feishu_api(
-        f"/open-apis/drive/v1/export/{token}?file_extension=docx")
-    if not resp:
-        raise RuntimeError(f"飞书文档导出失败: {token}")
-    # export returns a ticket, poll for result
+    # lark-cli drive +export
+    tmp_path = f"docx_{token}.docx"
     try:
-        data = json.loads(resp)
-        ticket = data.get("data", {}).get("ticket")
-    except json.JSONDecodeError:
-        raise RuntimeError(f"飞书导出响应异常: {resp[:200]}")
-    if not ticket:
-        raise RuntimeError(f"飞书导出无 ticket: {data}")
+        result = subprocess.run([
+            "lark-cli", "drive", "+export",
+            "--file-token", token,
+            "--format", "docx",
+            "--output", tmp_path,
+            "--as", "user",
+        ], timeout=120, capture_output=True, text=True, cwd=CACHE_DIR)
+        if result.returncode == 0 and os.path.getsize(cache_path) > 100:
+            return cache_path
+    except Exception:
+        pass
+    for f in os.listdir(CACHE_DIR):
+        if f.startswith(f"docx_{token}") and os.path.getsize(
+                os.path.join(CACHE_DIR, f)) > 100:
+            if f != f"docx_{token}.docx":
+                os.rename(os.path.join(CACHE_DIR, f), cache_path)
+            return cache_path
 
-    # Download with ticket as token
-    return _download_feishu_file(ticket)
+    raise RuntimeError(f"飞书文档导出失败: {token}")
 
 
 def _list_feishu_folder(folder_token: str) -> list[dict]:
