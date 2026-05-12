@@ -20,7 +20,7 @@ import urllib.request
 import urllib.error
 
 from log_writer import get_logger
-_ops = get_logger("AI去字幕")
+_log_ops = get_logger("AI去字幕")
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -124,7 +124,7 @@ class GhostCutAdapter(BaseAdapter):
         return hashlib.md5((body_md5 + self.app_secret).encode()).hexdigest()
 
     def _api_post(self, path: str, payload: dict) -> dict:
-        """带签名的 API POST 请求（纯 urllib，零依赖，含 SSL 兜底）"""
+        """带签名的 API POST 请求（urllib，SSL 失败时 curl fallback）"""
         body_bytes = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         headers = {
             "Content-Type": "application/json",
@@ -137,15 +137,19 @@ class GhostCutAdapter(BaseAdapter):
             headers=headers,
             method="POST",
         )
-        # 达芬奇内置 Python 可能缺 SSL 证书 — 创建宽松 context
         try:
             with urllib.request.urlopen(req, timeout=30, context=_SSL_CTX) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"API {e.code}: {body[:200]}") from e
-        except urllib.error.URLError as e:
-            raise RuntimeError(f"网络错误: {e.reason}") from e
+        except (urllib.error.URLError, OSError, ssl.SSLError) as e:
+            # SSL/网络错误 → curl fallback
+            reason = str(e.reason) if hasattr(e, 'reason') else str(e)
+            _log_ops.ops({"event": "http_fallback", "adapter": "GhostCut",
+                           "reason": reason[:100]})
+            from http_fallback import curl_post
+            return curl_post(f"{self.BASE_URL}{path}", headers, body_bytes)
 
     def submit(self, task: SubtitleTask) -> str:
         """

@@ -32,11 +32,14 @@ import threading
 import time
 import urllib.request
 import urllib.error
+import ssl
 import base64
 from typing import Optional, Any
 from urllib.parse import urlparse, quote
 from email.utils import formatdate
 
+from log_writer import get_logger as _get_logger
+_ops = _get_logger("AI去字幕")
 from resolution import parse as parse_resolution, is_portrait
 
 from . import BaseAdapter, SubtitleTask, SubtitleResult, TaskStatus
@@ -155,8 +158,12 @@ class WuhenAIV21Adapter(BaseAdapter):
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"API {e.code}: {err_body[:300]}") from e
-        except (urllib.error.URLError, OSError) as e:
-            raise RuntimeError(f"网络错误: {e.reason}") from e
+        except (urllib.error.URLError, OSError, ssl.SSLError) as e:
+            reason = str(e.reason) if hasattr(e, 'reason') else str(e)
+            _ops.ops({"event": "http_fallback", "adapter": "无痕AI",
+                       "reason": reason[:100]})
+            from http_fallback import curl_post
+            result = curl_post(url, headers, data)
 
         if result.get("code") != 0:
             raise RuntimeError(f"API 错误: {result.get('message', 'unknown')}")
@@ -177,8 +184,12 @@ class WuhenAIV21Adapter(BaseAdapter):
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"API {e.code}: {err_body[:300]}") from e
-        except (urllib.error.URLError, OSError) as e:
-            raise RuntimeError(f"网络错误: {e.reason}") from e
+        except (urllib.error.URLError, OSError, ssl.SSLError) as e:
+            reason = str(e.reason) if hasattr(e, 'reason') else str(e)
+            _ops.ops({"event": "http_fallback", "adapter": "无痕AI",
+                       "reason": reason[:100]})
+            from http_fallback import curl_get
+            result = curl_get(url, headers)
 
         if result.get("code") != 0:
             raise RuntimeError(f"API 错误: {result.get('message', 'unknown')}")

@@ -25,6 +25,7 @@ HEIBA 所有插件均使用 DaVinci Resolve 的 **Lua Fusion UI**（`fu.UIManage
 | **HTTP 重试+超时** — `https.request` + retry + timeout | TTS (line 631-676) | AI去字幕 API 调用 | 📋 待实施 |
 | **模块命名空间** — `App.Config / Storage / Services / UI` + `do...end` 隔离 | TTS | 交付自检（检查函数增多时） | 💭 远期 |
 | **JSON 持久化** — `dkjson` + `_save()` 模式 | TTS (line 578-600) | 交付自检 config.json 改进 | 💭 远期 |
+| **LLM 字幕管线** — 读时间线→LLM→双语Tree→SRT回写 | Sub Editor (line 1330-1553) | AI字幕校对（D8.1） | ✅ 可复用 |
 | **Tab 式 UI** — 编辑/翻译/设置三 Tab | Sub Editor | 交付自检（分组即隐式 Tab） | ✅ 已有 |
 | **多 LLM 提供者** — 统一接口对接多个 AI 后端 | Sub Editor | AI换口型/AI校对 | 💭 远期 |
 | **双语 UI** | Sub Editor | — | ❌ 跳过 |
