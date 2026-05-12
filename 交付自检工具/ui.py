@@ -644,12 +644,9 @@ window_layout = [
                     ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
                                 "Weight": 0, "PlaceholderText": "7 或 7-9",
                                 "MinimumSize": [72, 0]}),
-                    ui.Label({"ID": "lbl_ai_sep", "Text": "│",
-                              "StyleSheet": "font-size:13px;color:#555",
-                              "Weight": 0}),
                     ui.Label({"ID": LBL_SCRIPT_STATUS, "Text": "",
                               "StyleSheet": "font-size:11px;color:#888",
-                              "Weight": 0, "WordWrap": True}),
+                              "Weight": 0, "MinimumSize": [140, 0]}),
                 ]),
                 ui.HGroup({"Spacing": 6, "Weight": 0}, [
                     ui.Button({"ID": BTN_VALIDATE_SCRIPT, "Text": "校验剧本",
