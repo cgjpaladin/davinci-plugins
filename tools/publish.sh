@@ -263,7 +263,7 @@ publish_push_all() {
     echo "第 2 步: 同步 shared/ 到 SMB..."
     local shared_src="$(cd "$PRODUCT_DIR/../shared" && pwd)"
     if [ -d "$SMB_SHARED" ]; then
-        rsync -av --delete "$shared_src/" "$SMB_SHARED/" 2>/dev/null
+        rsync -av --delete --exclude '.env' "$shared_src/" "$SMB_SHARED/" 2>/dev/null
         echo "  ✅ shared/ 同步完成"
     else
         echo "  ⚠ SMB 未挂载, shared/ 跳过"
