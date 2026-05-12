@@ -1136,7 +1136,8 @@ def _run_ai_typo():
 
     try:
         from llm_typo_check import check_typos
-        from script_parser import parse_script, match_timeline
+        from script_parser import parse_script, match_timeline, set_log_callback
+        set_log_callback(_action_log)
 
         # ═══ 门0: 有空字幕？ ═══
         resolve = bmd.scriptapp("Resolve")

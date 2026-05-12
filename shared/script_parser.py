@@ -70,6 +70,7 @@ def _extract_text_from_doc(doc_path: str) -> list[str]:
         subprocess.run(
             ["/usr/bin/textutil", "-convert", "docx", "-output", docx_out, doc_path],
             timeout=60, check=True, capture_output=True)
+        _log(f"📄 DOC(textutil): → {os.path.getsize(docx_out)//1024}KB")
         return _extract_text_from_docx(docx_out)
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         pass
@@ -99,6 +100,7 @@ def _extract_text_from_pdf(path: str) -> list[str]:
                     if line:
                         lines.append(line)
         if lines:
+            _log(f"📄 PDF(pypdf): {len(reader.pages)}页, {len(lines)}行")
             return _clean_pdf_text(lines)
     except Exception:
         pass
@@ -231,6 +233,7 @@ def _download_feishu_file(token: str) -> str:
     if resp and len(resp) > 100:
         with open(cache_path, "wb") as fh:
             fh.write(resp)
+        _log(f"📥 飞书下载: {len(resp)//1024}KB → {os.path.basename(cache_path)}")
         return cache_path
 
     raise RuntimeError(f"飞书文件下载失败: {token}")
