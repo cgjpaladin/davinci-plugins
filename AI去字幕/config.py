@@ -260,6 +260,7 @@ ADAPTER_CONFIGS = {
         "app_key": GHOSTCUT_APP_KEY,
         "app_secret": GHOSTCUT_APP_SECRET,
         "model": DEFAULT_MODE,
+        # "crf": 15,  # 取消注释启用高画质（默认17, 15≈视觉无损+）
     },
     "wuhenai_v21": {
         "enabled": True,

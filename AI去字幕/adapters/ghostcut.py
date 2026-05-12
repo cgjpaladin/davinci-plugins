@@ -105,9 +105,17 @@ class GhostCutAdapter(BaseAdapter):
         self.app_key = config.get("app_key")
         self.app_secret = config.get("app_secret")
         self.default_model = config.get("model", "pro")
+        self._crf = config.get("crf")  # None=默认17, 15=更高画质
         
         if not self.app_key or not self.app_secret:
             raise ValueError("GhostCut 适配器需要 app_key 和 app_secret")
+
+    def _build_extra_options(self, extra_inpaint_config: dict) -> str:
+        """构建 extraOptions JSON。CRF 开关：None=跳过, 15=高画质。"""
+        opts = {"extra_inpaint_config": extra_inpaint_config}
+        if self._crf is not None:
+            opts["write_options"] = {"crf": self._crf}
+        return json.dumps(opts)
 
     def _sign(self, body: dict) -> str:
         """双重 MD5 签名: md5(md5(body_json) + AppSecret)"""
@@ -197,9 +205,7 @@ class GhostCutAdapter(BaseAdapter):
                 "needChineseOcclude": 2,
                 "videoInpaintLang": task.language,
                 "videoInpaintMasks": json.dumps(masks),
-                "extraOptions": json.dumps({
-                    "extra_inpaint_config": {"model": model_value}
-                }),
+                "extraOptions": self._build_extra_options({"model": model_value}),
             }
         else:  # pro — 全屏精修
             payload = {
@@ -208,9 +214,7 @@ class GhostCutAdapter(BaseAdapter):
                 "resolution": resolution,
                 "needChineseOcclude": 1,
                 "videoInpaintLang": task.language,
-                "extraOptions": json.dumps({
-                    "extra_inpaint_config": {"model": "advanced_full"}
-                }),
+                "extraOptions": self._build_extra_options({"model": "advanced_full"}),
             }
         
         resp = self._api_post(self.CREATE_TASK, payload)
@@ -482,9 +486,7 @@ class GhostCutAdapter(BaseAdapter):
                 "needChineseOcclude": 2,
                 "videoInpaintLang": tasks[0].language if tasks else "zh",
                 "videoInpaintMasks": json.dumps(masks),
-                "extraOptions": json.dumps({
-                    "extra_inpaint_config": {"model": model_value}
-                }),
+                "extraOptions": self._build_extra_options({"model": model_value}),
             }
         elif model_name == "pro":
             payload = {
@@ -493,9 +495,7 @@ class GhostCutAdapter(BaseAdapter):
                 "resolution": resolution,
                 "needChineseOcclude": 1,
                 "videoInpaintLang": tasks[0].language if tasks else "zh",
-                "extraOptions": json.dumps({
-                    "extra_inpaint_config": {"model": "advanced_full"}
-                }),
+                "extraOptions": self._build_extra_options({"model": "advanced_full"}),
             }
         else:  # pro — 全屏精修
             payload = {
@@ -504,9 +504,7 @@ class GhostCutAdapter(BaseAdapter):
                 "resolution": resolution,
                 "needChineseOcclude": 1,
                 "videoInpaintLang": tasks[0].language if tasks else "zh",
-                "extraOptions": json.dumps({
-                    "extra_inpaint_config": {"model": "advanced_full"}
-                }),
+                "extraOptions": self._build_extra_options({"model": "advanced_full"}),
             }
 
         resp = self._api_post(self.CREATE_TASK, payload)
