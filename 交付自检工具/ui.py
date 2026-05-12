@@ -663,7 +663,6 @@ window_layout = [
         ]),  # 结束上半区 HGroup
 
         # ── 结果区：分组 + 数据 ──
-        ui.VGap({"Weight": 0, "MinimumSize": [0, 5]}),
         ui.HGroup({"Spacing": 4, "Weight": 1.0}, [
             ui.Tree({"ID": GROUP_TREE, "Weight": 0,
                      "Events": {"ItemClicked": True},
