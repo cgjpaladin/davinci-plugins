@@ -1203,7 +1203,7 @@ def _run_ai_typo():
             return
 
         if not corrections:
-            itm[HINT_LB].Text = f"✅ 未发现错别字  ({provider}/{model})"
+            itm[HINT_LB].Text = f"✅ 未发现错别字  ({provider}/{model})  |  AI 校对结果仅供参考"
             _action_log(f"✅ 校对完成: 0处错别字 ({provider}/{model})")
             return
 
@@ -1218,13 +1218,14 @@ def _run_ai_typo():
                 tc_str = smpte.gettc(entry_starts[idx])
             row = tree.NewItem()
             _set_row(row, {"track": f"字幕[{c['index']}]", "tc": tc_str,
-                           "msg": f"❌ {c['original']} → {c['correction']}",
+                           "msg": f"⚠ {c['original']} → {c['correction']}",
                            "reason": c.get("reason", "")})
             tree.AddTopLevelItem(row)
 
         itm[HINT_LB].Text = (
             f"🔍 发现 {len(corrections)} 处错别字"
             f"  |  模型: {provider}/{model}"
+            f"  |  AI 校对结果仅供参考，请剪辑师自行甄别"
         )
         _action_log(f"🔍 发现 {len(corrections)} 处错别字 ({provider}/{model})")
 
