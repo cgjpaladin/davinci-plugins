@@ -25,13 +25,9 @@ _providers = [
      "url": "https://api.deepseek.com/v1/chat/completions",
      "key_env": "DEEPSEEK_API_KEY", "format": "openai",
      "extra_body": {"thinking": {"type": "disabled"}}},
-    # 千问 Turbo（备选）
-    {"name": "qwen-turbo",     "priority": 2, "vendor": "qwen",
-     "url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
-     "key_env": "DASHSCOPE_API_KEY", "format": "dashscope"},
 
-    # 千问 Plus（更准，略贵，备用）
-    {"name": "qwen-plus",      "priority": 5, "vendor": "qwen",
+    # 千问 Plus（备用）
+    {"name": "qwen-plus",      "priority": 2, "vendor": "qwen",
      "url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
      "key_env": "DASHSCOPE_API_KEY", "format": "dashscope"},
 ]

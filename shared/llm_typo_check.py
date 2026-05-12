@@ -61,11 +61,10 @@ def _single(asr_lines, characters, context_lines, offset=0):
             "4. 书名号《》缺失算错。专有名词缺双引号「」算错。\n"
             "5. 他/她/它 必须对应该人物/事物的真实性别或属性。\n"
             "6. 不得出现真实城市/地名（如北京、上海、杭州），应用谐音代替（如京市、沪市、杭市）。\n"
-            "5. 人名写错最高优先级。参考人名：" + char_list + "\n"
-            "6. 拿不准的也报，reason 写「建议自行检查」。\n"
-            "7. 不要把字幕改写成剧本里的台词。original 只改错的字。\n\n"
+            "7. 人名写错最高优先级。参考人名：" + char_list + "\n"
+            "8. 拿不准的也报，reason 写「建议自行检查」。\n"
+            "9. 不要把字幕改写成剧本里的台词。original 只改错的字。\n\n"
             "same_show: 人名+情节是否同一部剧。false=明显不是。\n"
-            "same_show=false 表示明显不是同一部剧。\n"
             "输出 JSON：{\"same_show\": true/false, \"corrections\": [{index, original, correction, reason}]}。只输出 JSON。"
         )},
         {"role": "user", "content": (
