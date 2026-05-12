@@ -63,25 +63,14 @@ def _extract_text_from_docx(path: str) -> list[str]:
 
 
 def _extract_text_from_doc(doc_path: str) -> list[str]:
-    """.doc → LibreOffice 转换 → 提取文本。"""
+    """.doc → textutil 转换 → 提取文本。macOS 自带，零安装。"""
     out = tempfile.mkdtemp()
     try:
-        for soffice in ("/opt/homebrew/bin/soffice",
-                        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
-                        "soffice"):
-            try:
-                subprocess.run([
-                    soffice, "--headless", "--convert-to", "docx",
-                    "--outdir", out, doc_path
-                ], timeout=60, check=True, capture_output=True)
-                break
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                continue
-        else:
-            raise FileNotFoundError
-        for f in os.listdir(out):
-            if f.endswith(".docx"):
-                return _extract_text_from_docx(os.path.join(out, f))
+        docx_out = os.path.join(out, "converted.docx")
+        subprocess.run(
+            ["/usr/bin/textutil", "-convert", "docx", "-output", docx_out, doc_path],
+            timeout=60, check=True, capture_output=True)
+        return _extract_text_from_docx(docx_out)
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         pass
     finally:
@@ -89,7 +78,7 @@ def _extract_text_from_doc(doc_path: str) -> list[str]:
             os.remove(os.path.join(out))
         os.rmdir(out)
     # fallback: try python-docx or antiword
-    raise RuntimeError(f"无法解析 .doc: {doc_path}，请安装 LibreOffice 或转为 .docx")
+    raise RuntimeError(f"无法解析 .doc: {doc_path}，请转为 .docx 后重试")
 
 
 def _extract_text_from_pdf(path: str) -> list[str]:
