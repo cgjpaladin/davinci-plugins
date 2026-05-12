@@ -1208,8 +1208,8 @@ def _run_ai_typo():
             if 0 <= idx < len(entry_starts):
                 tc_str = smpte.gettc(entry_starts[idx])
             row = tree.NewItem()
-            _set_row(row, {"track": f"字幕[{c['index']}]", "timecode": tc_str,
-                           "detail": f"❌ {c['original']} → {c['correction']}",
+            _set_row(row, {"track": f"字幕[{c['index']}]", "tc": tc_str,
+                           "msg": f"❌ {c['original']} → {c['correction']}",
                            "reason": c.get("reason", "")})
             tree.AddTopLevelItem(row)
 
