@@ -633,10 +633,11 @@ window_layout = [
                 ui.Label({"ID": "lbl_ai_title", "Text": "AI 字幕校对",
                           "StyleSheet": "font-size:13px;font-weight:bold;color:#ccc",
                           "Weight": 0, "Alignment": {"AlignHCenter": True}}),
-                ui.Label({"ID": "lbl_ai_hint", "Text": "飞书文档链接",
+                ui.Label({"ID": "lbl_ai_hint", "Text": "飞书文档链接 / 本地路径:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_SCRIPT_SRC, "Text": "",
-                            "Weight": 0, "PlaceholderText": "飞书链接 / 本地路径"}),
+                            "Weight": 0,
+                            "PlaceholderText": "请粘贴链接或路径至此处"}),
                 ui.Label({"ID": "lbl_ai_ep", "Text": "校对集号（如 7 或 7-9）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.HGroup({"Spacing": 6, "Weight": 0}, [
