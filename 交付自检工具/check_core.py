@@ -888,6 +888,11 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn
     return results
 
 
+def _fmt_duration(sec: float) -> str:
+    """格式化秒数为 m:ss。"""
+    m, s = divmod(int(sec), 60)
+    return f"{m}:{s:02d}"
+
 def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     """检查时间线级别设置：起始时码 / 是否覆盖项目设置。
 
@@ -907,7 +912,17 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     else:
         results.append(_make_result("pass", detail="起始时码: 00:00:00:00 (通过)"))
 
-    # ── ② 使用项目设置 ──
+    # ── ② 时长检测 ──
+    total_frames = timeline.GetEndFrame()
+    duration_sec = total_frames / max(fps, 1)
+    if duration_sec < 41:
+        results.append(_make_result("warn",
+            detail=f"时长 {duration_sec:.0f}s（不足41s）",
+            reason="低于付费集最低时长要求，请检查是否缺尾板或未渲染完整"))
+    else:
+        results.append(_make_result("pass", detail=f"时长: {_fmt_duration(duration_sec)} (通过)"))
+
+    # ── ③ 使用项目设置 ──
     if project is None:
         try:
             from fusionscript_loader import bmd
