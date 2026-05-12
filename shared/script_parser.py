@@ -85,16 +85,17 @@ def _extract_text_from_doc(doc_path: str) -> list[str]:
 
 def _extract_text_from_pdf(path: str) -> list[str]:
     """从 PDF 提取纯文本。优先 pdftotext，其次 macOS PDFKit。"""
-    # 方法1: pdftotext
-    try:
-        result = subprocess.run(
-            ["pdftotext", "-layout", path, "-"],
-            capture_output=True, text=True, timeout=30)
-        if result.returncode == 0 and result.stdout.strip():
-            return _clean_pdf_text(
-                [l.strip() for l in result.stdout.splitlines() if l.strip()])
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
+    # 方法1: pdftotext（达芬奇 subprocess PATH 受限，用完整路径）
+    for pdft in ("/opt/homebrew/bin/pdftotext", "/usr/local/bin/pdftotext", "pdftotext"):
+        try:
+            result = subprocess.run(
+                [pdft, "-layout", path, "-"],
+                capture_output=True, text=True, timeout=30)
+            if result.returncode == 0 and result.stdout.strip():
+                return _clean_pdf_text(
+                    [l.strip() for l in result.stdout.splitlines() if l.strip()])
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
 
     # 方法2: macOS AppKit PDFDocument
     try:
