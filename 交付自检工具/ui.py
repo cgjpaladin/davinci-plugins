@@ -62,8 +62,10 @@ CHK_BLACK_FRAME = CHK_BLACK  # 别名
 BTN_START = "btn_start"
 BTN_CONFIG = "btn_config"
 BTN_AI_TYPO = "btn_ai_typo"
+BTN_CONFIRM_SCRIPT = "btn_confirm_script"
 EDIT_SCRIPT_SRC = "edit_script_src"
 EDIT_SCRIPT_EP = "edit_script_ep"
+LBL_SCRIPT_STATUS = "lbl_script_status"
 BTN_TOGGLE_GROUP = "btn_toggle_group_"  # + group_name → "btn_toggle_group_工程"
 TREE_RESULT = "tree_result"
 GROUP_TREE = "group_tree"
@@ -615,10 +617,16 @@ window_layout = [
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_SCRIPT_SRC, "Text": "",
                             "Weight": 0, "PlaceholderText": "飞书链接 / 本地路径"}),
+                ui.Label({"ID": LBL_SCRIPT_STATUS, "Text": "",
+                          "StyleSheet": "font-size:11px;color:#888", "Weight": 0,
+                          "WordWrap": True}),
                 ui.Label({"ID": "lbl_ai_ep", "Text": "校对集号（如 7 或 7-9）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
                             "Weight": 0, "PlaceholderText": "留空自动检测"}),
+                ui.Button({"ID": BTN_CONFIRM_SCRIPT, "Text": "确认此集",
+                          "StyleSheet": BTN_PRIMARY.replace("100", "60"),
+                          "Weight": 0, "MinimumSize": [100, 36]}),
                 ui.Button({"ID": BTN_AI_TYPO, "Text": "开始校对",
                           "StyleSheet": BTN_PRIMARY.replace("100", "80"),
                           "Weight": 0, "MinimumSize": [100, 36]}),
@@ -670,6 +678,7 @@ itm = dlg.GetItems()
 # ═══════════════════════════════════════════
 itm[BTN_START].Enabled = False
 itm[BTN_AI_TYPO].Enabled = False
+itm[BTN_CONFIRM_SCRIPT].Enabled = False
 itm[EDIT_SCRIPT_SRC].Text = ""
 
 # Tree 表头
@@ -1099,6 +1108,7 @@ def _run_ai_typo():
         return
     _checking = True
     itm[BTN_AI_TYPO].Enabled = False
+    itm[BTN_CONFIRM_SCRIPT].Enabled = False
     itm[BTN_START].Enabled = False
 
     def _stop(msg):
@@ -1183,7 +1193,8 @@ def _run_ai_typo():
 
     finally:
         _checking = False
-        itm[BTN_AI_TYPO].Enabled = _SCRIPT_SRC_VALID
+        itm[BTN_CONFIRM_SCRIPT].Enabled = _SCRIPT_SRC_VALID
+        itm[BTN_AI_TYPO].Enabled = _SCRIPT_CONFIRMED
         itm[BTN_START].Enabled = True
 
 
@@ -1468,7 +1479,8 @@ def _start_check():
     finally:
         _checking = False
         itm[BTN_START].Enabled = True
-        itm[BTN_AI_TYPO].Enabled = _SCRIPT_SRC_VALID
+        itm[BTN_CONFIRM_SCRIPT].Enabled = _SCRIPT_SRC_VALID
+        itm[BTN_AI_TYPO].Enabled = _SCRIPT_CONFIRMED
 
 
 # ═══════════════════════════════════════════
@@ -1573,18 +1585,49 @@ for _c in CHECKS:
 dlg.On[BTN_START].Clicked = lambda ev: _start_check()
 dlg.On[BTN_CONFIG].Clicked = lambda ev: _show_config_dialog()
 dlg.On[BTN_AI_TYPO].Clicked = lambda ev: _run_ai_typo()
+dlg.On[BTN_CONFIRM_SCRIPT].Clicked = lambda ev: _confirm_script(ev)
 
 # 剧本链接输入框变化时校验格式
 _SCRIPT_SRC_VALID = False
+_SCRIPT_CONFIRMED = False
 def _validate_script_src(ev):
-    global _SCRIPT_SRC_VALID
+    global _SCRIPT_SRC_VALID, _SCRIPT_CONFIRMED
     src = itm[EDIT_SCRIPT_SRC].Text.strip()
     ok = bool(src) and any(src.startswith(p) for p in (
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
     if "feishu.cn" in src or "docs.qq.com" in src:
         ok = ok and len(src) > 30
     _SCRIPT_SRC_VALID = ok
-    itm[BTN_AI_TYPO].Enabled = ok and not _checking
+    _SCRIPT_CONFIRMED = False
+    itm[LBL_SCRIPT_STATUS].Text = ""
+    itm[BTN_CONFIRM_SCRIPT].Enabled = ok and not _checking
+    itm[BTN_AI_TYPO].Enabled = False
+
+def _confirm_script(ev):
+    """验证剧本：下载+解析+集号匹配（纯 Python，不调 LLM）。"""
+    global _SCRIPT_CONFIRMED
+    if _checking or not _SCRIPT_SRC_VALID:
+        return
+    itm[LBL_SCRIPT_STATUS].Text = "🔄 验证中..."
+    itm[BTN_CONFIRM_SCRIPT].Enabled = False
+    itm[BTN_AI_TYPO].Enabled = False
+
+    try:
+        from script_parser import parse_script, match_timeline
+        src = itm[EDIT_SCRIPT_SRC].Text.strip()
+        parsed = parse_script(src)
+        timeline = resolve.GetProjectManager().GetCurrentProject().GetCurrentTimeline()
+        tl_name = timeline.GetName() if timeline else ""
+        ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
+        ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
+        _SCRIPT_CONFIRMED = True
+        itm[LBL_SCRIPT_STATUS].Text = f"✅ 验证通过 - 第{ctx['episode']}集"
+    except Exception as e:
+        _SCRIPT_CONFIRMED = False
+        itm[LBL_SCRIPT_STATUS].Text = f"❌ {e}"
+    finally:
+        itm[BTN_CONFIRM_SCRIPT].Enabled = _SCRIPT_SRC_VALID and not _checking
+        itm[BTN_AI_TYPO].Enabled = _SCRIPT_CONFIRMED and not _checking
 dlg.On[EDIT_SCRIPT_SRC].TextChanged = _validate_script_src
 
 # 分组开关事件
