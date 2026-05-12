@@ -1093,26 +1093,26 @@ def _process_result(r, rows_list):
 # ═══════════════════════════════════════════
 
 def _run_ai_typo():
-    """独立入口：AI 字幕校对。"""
+    """独立入口：AI 字幕校对，含多道门。"""
     global _checking
     if _checking:
         return
     _checking = True
     itm[BTN_AI_TYPO].Enabled = False
     itm[BTN_START].Enabled = False
-    itm[HINT_LB].Text = "AI 校对中..."
+
+    def _stop(msg):
+        itm[HINT_LB].Text = msg
+        _action_log(msg)
 
     try:
         from llm_typo_check import check_typos
         from script_parser import parse_script, match_timeline
 
-        src = itm[EDIT_SCRIPT_SRC].Text.strip()
+        # ═══ 门0: 有空字幕？ ═══
         timeline = resolve.GetProjectManager().GetCurrentProject().GetCurrentTimeline()
         if not timeline:
-            itm[HINT_LB].Text = "❌ 未找到当前时间线"
-            return
-
-        # 读字幕
+            return _stop("❌ 未找到当前时间线")
         entries = []
         for ti in range(1, timeline.GetTrackCount("subtitle") + 1):
             for it in (timeline.GetItemListInTrack("subtitle", ti) or []):
@@ -1121,37 +1121,48 @@ def _run_ai_typo():
                 except Exception:
                     pass
         if not entries:
-            itm[HINT_LB].Text = "⚠ 当前时间线无字幕，跳过校对"
-            return
+            return _stop("⚠ 当前时间线无字幕，跳过校对")
 
-        # 解析剧本
-        # 解析集号（留空→自动，数字→指定，N-M→范围）
-        ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
+        # ═══ 门1: 剧本读得通？ ═══
+        src = itm[EDIT_SCRIPT_SRC].Text.strip()
         try:
             parsed = parse_script(src)
+        except Exception as e:
+            return _stop(f"❌ 剧本解析失败: {e}")
+
+        # ═══ 门2: 集号找得到？ ═══
+        tl_name = timeline.GetName()
+        ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
+        try:
             ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
         except Exception as e:
-            itm[HINT_LB].Text = f"❌ 剧本解析失败: {e}"
-            return
+            return _stop(f"❌ 集号匹配失败: {e}")
 
-        # LLM 校对
+        # ═══ 门3: 有对话内容？ ═══
+        if not ctx.get("lines"):
+            _action_log(f"⚠ 第 {ctx['episode']} 集剧本无对话行，校对可能不准确")
+        if not ctx.get("characters"):
+            _action_log("⚠ 未提取到人物名，人名校验将跳过")
+
+        # ═══ LLM 校对 ═══
+        itm[HINT_LB].Text = "AI 校对中..."
         result = check_typos(entries, ctx.get("characters", []), ctx.get("lines", []))
         if result.get("error"):
-            itm[HINT_LB].Text = f"❌ 校对失败: {result.get('error')}"
-            return
+            return _stop(f"❌ 校对失败: {result.get('error')}")
+        if result.get("error") == "all_failed":
+            return _stop("❌ 所有模型均不可用，请检查 API key 或网络")
 
         corrections = result.get("corrections", [])
         provider = result.get("provider", "?")
         model = result.get("model", "?")
 
-        # 写入 Tree
         tree = itm[TREE_RESULT]
         tree.Clear()
         _setup_tree_header(tree)
         _TREE_COL_SORT.clear()
 
         if not corrections:
-            itm[HINT_LB].Text = f"✅ 未发现错别字 ({provider}/{model})"
+            itm[HINT_LB].Text = f"✅ 未发现错别字  ({provider}/{model})"
             return
 
         from timecode import SMPTE
@@ -1172,7 +1183,7 @@ def _run_ai_typo():
 
     finally:
         _checking = False
-        itm[BTN_AI_TYPO].Enabled = True
+        itm[BTN_AI_TYPO].Enabled = _SCRIPT_SRC_VALID
         itm[BTN_START].Enabled = True
 
 
