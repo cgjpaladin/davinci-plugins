@@ -1132,11 +1132,13 @@ def _run_ai_typo():
                     pass
         if not entries:
             return _stop("⚠ 当前时间线无字幕，跳过校对")
+        _action_log(f"📝 字幕: {len(entries)} 条")
 
         # ═══ 门1: 剧本读得通？ ═══
         src = itm[EDIT_SCRIPT_SRC].Text.strip()
         try:
             parsed = parse_script(src)
+            _action_log(f"📖 剧本解析完成: {len(parsed.get('episodes',{}))} 集")
         except Exception as e:
             return _stop(f"❌ 剧本解析失败: {e}")
 
@@ -1145,6 +1147,7 @@ def _run_ai_typo():
         ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
         try:
             ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
+            _action_log(f"🎯 匹配集号: EP{ctx['episode']} ({'手动' if ep_input else '自动'})")
         except Exception as e:
             return _stop(f"❌ 集号匹配失败: {e}")
 
@@ -1156,6 +1159,7 @@ def _run_ai_typo():
 
         # ═══ LLM 校对 ═══
         itm[HINT_LB].Text = "AI 校对中..."
+        _action_log(f"🤖 LLM 校对开始 ({len(entries)}字幕 vs {len(ctx.get('lines',[]))}行剧本)")
         result = check_typos(entries, ctx.get("characters", []), ctx.get("lines", []))
         if result.get("error"):
             return _stop(f"❌ 校对失败: {result.get('error')}")
@@ -1173,6 +1177,7 @@ def _run_ai_typo():
 
         if not corrections:
             itm[HINT_LB].Text = f"✅ 未发现错别字  ({provider}/{model})"
+            _action_log(f"✅ 校对完成: 0处错别字 ({provider}/{model})")
             return
 
         from timecode import SMPTE
@@ -1190,6 +1195,7 @@ def _run_ai_typo():
             f"🔍 发现 {len(corrections)} 处错别字"
             f"  |  模型: {provider}/{model}"
         )
+        _action_log(f"🔍 发现 {len(corrections)} 处错别字 ({provider}/{model})")
 
     finally:
         _checking = False
@@ -1602,12 +1608,15 @@ def _validate_script_src(ev):
     itm[LBL_SCRIPT_STATUS].Text = ""
     itm[BTN_CONFIRM_SCRIPT].Enabled = ok and not _checking
     itm[BTN_AI_TYPO].Enabled = False
+    if not ok and src:
+        _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
 
 def _confirm_script(ev):
     """验证剧本：下载+解析+集号匹配（纯 Python，不调 LLM）。"""
     global _SCRIPT_CONFIRMED
     if _checking or not _SCRIPT_SRC_VALID:
         return
+    _action_log("🔍 校验剧本...")
     itm[LBL_SCRIPT_STATUS].Text = "🔄 验证中..."
     itm[BTN_CONFIRM_SCRIPT].Enabled = False
     itm[BTN_AI_TYPO].Enabled = False
@@ -1621,10 +1630,15 @@ def _confirm_script(ev):
         ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
         ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
         _SCRIPT_CONFIRMED = True
+        n_lines = len(ctx.get("lines", []))
+        n_chars = len(ctx.get("characters", []))
+        msg = f"✅ 剧本校验通过 - 第{ctx['episode']}集（{n_lines}行对话,{n_chars}角色）"
         itm[LBL_SCRIPT_STATUS].Text = f"✅ 验证通过 - 第{ctx['episode']}集"
+        _action_log(msg)
     except Exception as e:
         _SCRIPT_CONFIRMED = False
         itm[LBL_SCRIPT_STATUS].Text = f"❌ {e}"
+        _action_log(f"❌ 剧本校验失败: {e}")
     finally:
         itm[BTN_CONFIRM_SCRIPT].Enabled = _SCRIPT_SRC_VALID and not _checking
         itm[BTN_AI_TYPO].Enabled = _SCRIPT_CONFIRMED and not _checking
