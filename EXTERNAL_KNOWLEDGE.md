@@ -107,6 +107,47 @@
 
 ---
 
+## 其他产品线
+
+### 交付自检工具
+
+| 项目 | 值 |
+|------|-----|
+| 代码 | `交付自检工具/check_core.py` |
+| TODO | `交付自检工具/TODO.md` |
+| LLM 字幕校对方案 | `交付自检工具/外部调研报告/LLM字幕校对方案设计.md` |
+| API 盲区 | 见 TODO.md > API 盲区（黑边/关键帧/Fairlight/轨道颜色等 8 项） |
+
+### AI换口型（调研阶段）
+
+| 调研报告 | 位置 |
+|------|------|
+| GPT deep research | `AI换口型/外部调研报告/gpt：deep-research-report.md` |
+| MiniMax API 调研 | `AI换口型/外部调研报告/minimax：AI视频换口型_Lip-Sync_API调研报告.md` |
+| 豆包 中文口型同步 | `AI换口型/外部调研报告/豆包：2026年中文AI口型同步API调研与技术评估报告.md` |
+| 豆包 国内直连方案 | `AI换口型/外部调研报告/豆包：国内可直连AI视频换口型（Lip-Sync）API调研与方案对比报告.md` |
+
+### AI语音克隆（调研阶段）
+
+| 调研报告 | 位置 |
+|------|------|
+| GPT deep research | `AI语音克隆/外部调研报告/gpt：deep-research-report.md` |
+| MiniMax API 调研 | `AI语音克隆/外部调研报告/minimax：ai_voice_clone_research_report.md` |
+| 豆包 国内方案 | `AI语音克隆/外部调研报告/豆包：国内短剧后期配音场景AI声音克隆方案调研与适配评估报告.md` |
+
+### AI超分辨率（调研阶段）
+
+| 调研报告 | 位置 |
+|------|------|
+| MiniMax API 调研 | `AI超分辨率/外部调研报告/minimax：video-super-resolution-api-research.md` |
+| 豆包 短剧场景 | `AI超分辨率/外部调研报告/豆包：短剧后期场景视频超分辨率API调研与实测报告.md` |
+
+### AI加字幕
+
+> 空目录，未启动。
+
+---
+
 ## 基础设施
 
 | 项目 | 值 |
