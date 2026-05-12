@@ -1174,7 +1174,6 @@ def _run_ai_typo():
         tree = itm[TREE_RESULT]
         tree.Clear()
         _setup_tree_header(tree)
-        _TREE_COL_SORT.clear()
 
         if not corrections:
             itm[HINT_LB].Text = f"✅ 未发现错别字  ({provider}/{model})"
