@@ -62,7 +62,7 @@ CHK_BLACK_FRAME = CHK_BLACK  # 别名
 BTN_START = "btn_start"
 BTN_CONFIG = "btn_config"
 BTN_AI_TYPO = "btn_ai_typo"
-BTN_CONFIRM_SCRIPT = "btn_confirm_script"
+BTN_VALIDATE_SCRIPT = "btn_validate_script"
 EDIT_SCRIPT_SRC = "edit_script_src"
 EDIT_SCRIPT_EP = "edit_script_ep"
 LBL_SCRIPT_STATUS = "lbl_script_status"
@@ -620,16 +620,18 @@ window_layout = [
                 ui.Label({"ID": "lbl_ai_ep", "Text": "校对集号（如 7 或 7-9）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
-                            "Weight": 0, "PlaceholderText": "留空自动检测"}),
+                            "Weight": 0, "PlaceholderText": "7 或 7-9"}),
                 ui.Label({"ID": LBL_SCRIPT_STATUS, "Text": "",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0,
                           "WordWrap": True}),
-                ui.Button({"ID": BTN_CONFIRM_SCRIPT, "Text": "确认此集",
-                          "StyleSheet": BTN_PRIMARY.replace("100", "60"),
-                          "Weight": 0, "MinimumSize": [100, 36]}),
-                ui.Button({"ID": BTN_AI_TYPO, "Text": "开始校对",
-                          "StyleSheet": BTN_PRIMARY.replace("100", "80"),
-                          "Weight": 0, "MinimumSize": [100, 36]}),
+                ui.HGroup({"Spacing": 6, "Weight": 0}, [
+                    ui.Button({"ID": BTN_VALIDATE_SCRIPT, "Text": "校验剧本",
+                              "StyleSheet": BTN_PRIMARY.replace("100", "60"),
+                              "Weight": 0, "MinimumSize": [108, 36]}),
+                    ui.Button({"ID": BTN_AI_TYPO, "Text": "开始校对",
+                              "StyleSheet": BTN_PRIMARY.replace("100", "80"),
+                              "Weight": 0, "MinimumSize": [108, 36]}),
+                ]),
             ]),
 
         ]),  # 结束上半区 HGroup
@@ -678,7 +680,7 @@ itm = dlg.GetItems()
 # ═══════════════════════════════════════════
 itm[BTN_START].Enabled = False
 itm[BTN_AI_TYPO].Enabled = False
-itm[BTN_CONFIRM_SCRIPT].Enabled = False
+itm[BTN_VALIDATE_SCRIPT].Enabled = False
 itm[EDIT_SCRIPT_SRC].Text = ""
 
 # Tree 表头
@@ -1108,7 +1110,7 @@ def _run_ai_typo():
         return
     _checking = True
     itm[BTN_AI_TYPO].Enabled = False
-    itm[BTN_CONFIRM_SCRIPT].Enabled = False
+    itm[BTN_VALIDATE_SCRIPT].Enabled = False
     itm[BTN_START].Enabled = False
 
     def _stop(msg):
@@ -1203,7 +1205,7 @@ def _run_ai_typo():
 
     finally:
         _checking = False
-        itm[BTN_CONFIRM_SCRIPT].Enabled = _SCRIPT_SRC_VALID
+        itm[BTN_VALIDATE_SCRIPT].Enabled = _SCRIPT_SRC_VALID
         itm[BTN_AI_TYPO].Enabled = _SCRIPT_CONFIRMED
         itm[BTN_START].Enabled = True
 
@@ -1489,7 +1491,7 @@ def _start_check():
     finally:
         _checking = False
         itm[BTN_START].Enabled = True
-        itm[BTN_CONFIRM_SCRIPT].Enabled = _SCRIPT_SRC_VALID
+        itm[BTN_VALIDATE_SCRIPT].Enabled = _SCRIPT_SRC_VALID
         itm[BTN_AI_TYPO].Enabled = _SCRIPT_CONFIRMED
 
 
@@ -1595,7 +1597,7 @@ for _c in CHECKS:
 dlg.On[BTN_START].Clicked = lambda ev: _start_check()
 dlg.On[BTN_CONFIG].Clicked = lambda ev: _show_config_dialog()
 dlg.On[BTN_AI_TYPO].Clicked = lambda ev: _run_ai_typo()
-dlg.On[BTN_CONFIRM_SCRIPT].Clicked = lambda ev: _confirm_script(ev)
+dlg.On[BTN_VALIDATE_SCRIPT].Clicked = lambda ev: _confirm_script(ev)
 
 # 剧本链接输入框变化时校验格式
 _SCRIPT_SRC_VALID = False
@@ -1610,7 +1612,7 @@ def _validate_script_src(ev):
     _SCRIPT_SRC_VALID = ok
     _SCRIPT_CONFIRMED = False
     itm[LBL_SCRIPT_STATUS].Text = ""
-    itm[BTN_CONFIRM_SCRIPT].Enabled = ok and not _checking
+    itm[BTN_VALIDATE_SCRIPT].Enabled = ok and not _checking
     itm[BTN_AI_TYPO].Enabled = False
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
@@ -1622,7 +1624,7 @@ def _confirm_script(ev):
         return
     _action_log("🔍 校验剧本...")
     itm[LBL_SCRIPT_STATUS].Text = "🔄 验证中..."
-    itm[BTN_CONFIRM_SCRIPT].Enabled = False
+    itm[BTN_VALIDATE_SCRIPT].Enabled = False
     itm[BTN_AI_TYPO].Enabled = False
 
     try:
@@ -1645,7 +1647,7 @@ def _confirm_script(ev):
         itm[LBL_SCRIPT_STATUS].Text = f"❌ {e}"
         _action_log(f"❌ 剧本校验失败: {e}")
     finally:
-        itm[BTN_CONFIRM_SCRIPT].Enabled = _SCRIPT_SRC_VALID and not _checking
+        itm[BTN_VALIDATE_SCRIPT].Enabled = _SCRIPT_SRC_VALID and not _checking
         itm[BTN_AI_TYPO].Enabled = _SCRIPT_CONFIRMED and not _checking
 dlg.On[EDIT_SCRIPT_SRC].TextChanged = _validate_script_src
 
