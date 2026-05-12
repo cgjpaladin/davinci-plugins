@@ -676,8 +676,8 @@ window_layout = [
         # ── 底栏 ──
         ui.VGroup({"Spacing": 2, "Weight": 0}, [
             ui.Label({"ID": "lbl_gate_warn", "Text": "",
-                      "StyleSheet": "color:rgb(220,180,80);font-size:13px;padding:6px 10px",
-                      "Weight": 0, "WordWrap": True, "MinimumSize": [0, 48]}),
+                      "StyleSheet": "color:rgb(220,180,80);font-size:13px;padding:4px 10px",
+                      "Weight": 0, "WordWrap": True, "MinimumSize": [0, 22]}),
             ui.HGroup({"Spacing": 8}, [
                 ui.Label({"ID": HINT_LB, "Text": "请点击「开始检查」",
                           "StyleSheet": "color:rgb(130,130,130);font-size:10px", "Weight": 0,
@@ -1340,7 +1340,7 @@ def _start_check():
                 gate_warnings.append(f"⚠ {'、'.join(failed_gates)}结构异常，所有检查已跳过，请先修复基础问题后重新运行")
 
         if gate_warnings:
-            itm["lbl_gate_warn"].Text = "\n".join(gate_warnings)
+            itm["lbl_gate_warn"].Text = "  ⚠  ".join(gate_warnings)
             itm["lbl_gate_warn"].Visible = True
         else:
             itm["lbl_gate_warn"].Text = ""
