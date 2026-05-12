@@ -40,6 +40,20 @@ _FEISHU_AUTH = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/int
 _FEISHU_FILES = "https://open.feishu.cn/open-apis/drive/v1/files"
 _FEISHU_EXPORT = "https://open.feishu.cn/open-apis/drive/v1/export"
 
+# ── 日志回调（由调用方如 ui.py 设置）──
+_log_callback = None
+
+
+def set_log_callback(fn):
+    """设置外部日志回调，用于飞书下载/PDF 提取等操作记录。"""
+    global _log_callback
+    _log_callback = fn
+
+
+def _log(msg: str):
+    if _log_callback:
+        _log_callback(msg)
+
 
 def _ensure_cache():
     os.makedirs(CACHE_DIR, exist_ok=True)
