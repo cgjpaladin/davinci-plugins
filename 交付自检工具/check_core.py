@@ -992,12 +992,10 @@ def check_through_edits(timeline, fps=25.0, io_range=None) -> list:
                 uid_a = uid_b = None
             if not uid_a or uid_a != uid_b:
                 continue
-            # 直通编辑：源帧必须连续1帧（切点前后各一帧）
-            # gap=0：同一帧（留空待查）→ 不报
-            # gap=1：切点前后，true through edit → 报
+            # 直通编辑：源帧连续，se==ss（同一切点）
             a_se = a.GetSourceEndFrame()
             b_ss = b.GetSourceStartFrame()
-            if b_ss - a_se != 1:
+            if a_se != b_ss:
                 continue
             name = _get_clip_name(a)
             tc = smpte.gettc(_get_cached(a, "start"))
