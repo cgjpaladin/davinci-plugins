@@ -84,7 +84,16 @@ def _single(asr_lines, characters, context_lines, offset=0):
         if not isinstance(corrections, list):
             raise ValueError
     except (json.JSONDecodeError, ValueError):
-        return {"error": "json_parse", "raw": result["content"][:500]}
+        # 容错：从文本中提取 JSON 数组
+        import re
+        match = re.search(r'\[[\s\S]*\]', result["content"])
+        if match:
+            try:
+                corrections = json.loads(match.group())
+            except json.JSONDecodeError:
+                return {"error": "json_parse", "raw": result["content"][:500]}
+        else:
+            return {"error": "json_parse", "raw": result["content"][:500]}
 
     valid = []
     max_idx = offset + len(asr_lines)
