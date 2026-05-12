@@ -1170,7 +1170,7 @@ def _run_ai_typo():
         ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
         try:
             ctx = match_timeline(parsed, tl_name, ep_override=ep_input or None)
-            itm[EDIT_SCRIPT_EP].Text = f"{ctx['episode']:02d}"
+            itm[EDIT_SCRIPT_EP].Text = f"{ctx['episode']:02d}" if not ep_input else ep_input
             ep_label = f"第{ctx['episode']}集" if not ep_input else f"{ep_input}集"
             itm[LBL_SCRIPT_STATUS].Text = f"🔍 {ep_label}"
             _action_log(f"🎯 {ep_label} ({'手动' if ep_input else '自动'})")
