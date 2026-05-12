@@ -332,6 +332,32 @@ def _split_episodes(lines: list[str]) -> dict[int, list[str]]:
     return episodes
 
 
+# ── 飞书链接标准化 ──
+
+def _normalize_feishu_url(source: str) -> str:
+    """飞书原始链接 → feishu_docx: / feishu_file: / feishu_folder: 格式。"""
+    if not source.startswith(("http://", "https://")):
+        return source
+    if "feishu.cn" not in source:
+        return source
+
+    # 提取 token: /docx/TOKEN, /file/TOKEN, /folder/TOKEN, /docs/TOKEN
+    m = re.search(r'feishu\.cn/(docx|file|folder|docs)/([A-Za-z0-9]+)', source)
+    if not m:
+        return source
+
+    kind = m.group(1)
+    token = m.group(2)
+
+    if kind in ("docx", "docs"):
+        return f"feishu_docx:{token}"
+    elif kind == "file":
+        return f"feishu_file:{token}"
+    elif kind == "folder":
+        return f"feishu_folder:{token}"
+    return source
+
+
 # ── 公开接口 ──
 
 def parse_script(source: str, filename_keyword: str = "") -> dict:
@@ -347,6 +373,9 @@ def parse_script(source: str, filename_keyword: str = "") -> dict:
     # smb:// → /Volumes/
     if source.startswith("smb://"):
         source = "/Volumes/" + source.split("smb://", 1)[1].split("/", 1)[1]
+
+    # 飞书原始链接 → 自动识别类型
+    source = _normalize_feishu_url(source)
 
     if source.startswith("feishu_folder:"):
         token = source.split(":", 1)[1]
