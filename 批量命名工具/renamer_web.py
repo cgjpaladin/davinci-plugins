@@ -302,7 +302,9 @@ class RenamerAPI:
         return {"ok": ok, "fail": fail, "total": len(files)}
 
 
-HTML_FILE = os.path.join(_BASE_DIR, "renamer_web.html")
+HTML_FILE = os.path.join(_BASE_DIR, "_build.html")
+if not os.path.exists(HTML_FILE):
+    HTML_FILE = os.path.join(_BASE_DIR, "renamer_web.html")
 
 if __name__ == "__main__":
     import threading, socket

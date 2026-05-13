@@ -11,11 +11,20 @@ fi
 
 rm -rf build dist *.spec
 
+# 拼接 CSS + HTML + JS → 单文件
+python3 -c "
+css=open('app.css').read();js=open('app.js').read()
+html=open('renamer_web.html').read()
+html=html.replace('/* CSS_PLACEHOLDER */',css)
+html=html.replace('// JS_PLACEHOLDER',js)
+open('_build.html','w').write(html)
+"
+
 /Library/Frameworks/Python.framework/Versions/3.13/bin/pyinstaller \
   --onedir --windowed \
   --name "批量命名工具" \
   --icon app_icon.icns \
-  --add-data "renamer_web.html:." \
+  --add-data "_build.html:renamer_web.html" \
   --add-data "../shared:shared" \
   --collect-data webview \
   --collect-data bottle \
