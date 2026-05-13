@@ -28,7 +28,6 @@ import os
 import secrets
 import ssl
 import subprocess
-import threading
 import time
 import urllib.request
 import urllib.error
@@ -607,8 +606,7 @@ class WuhenAIV21Adapter(BaseAdapter):
         n = len(tasks)
         _log(f"[无痕AI 2.1] 批量处理 {n} 个片段")
 
-        # ── Phase 1: 上传所有 → OSS（并发）──
-        from concurrent.futures import ThreadPoolExecutor, as_completed
+        # ── Phase 1: 上传所有 → OSS（顺序）──
         records = []  # [{input_key, output_key, video_path, output_path, task_id?, result?}]
         upload_tasks = []  # [(idx, video_path, input_key)]
 
@@ -633,38 +631,24 @@ class WuhenAIV21Adapter(BaseAdapter):
             output_key = f"output/{fhash}_{i}_{base}_clean{ext}"
             upload_tasks.append((i, video_path, input_key, output_key, task))
 
-        # 1b. 并发上传（网络 I/O 密集，线程并发收益大）
-        uploaded = 0
-        _upload_lock = threading.Lock()
-        def _do_upload(idx, video_path, input_key, output_key, task):
-            nonlocal uploaded
+        # 1b. 顺序上传（达芬奇子进程+SMB挂载+线程=不可靠，改顺序执行）
+        for idx, video_path, input_key, output_key, task in upload_tasks:
             try:
                 self._upload_to_oss(video_path, input_key)
-                with _upload_lock:
-                    records.append({"idx": idx,
-                                    "input_key": input_key, "output_key": output_key,
-                                    "video_path": video_path, "output_path": task.output_path,
-                                    "task_id": None, "result": None, "duration": task.duration,
-                                    "name": task.name})
-                    uploaded += 1
-                    if progress_callback:
-                        progress_callback("upload", uploaded / n * 0.2)
+                records.append({"idx": idx,
+                                "input_key": input_key, "output_key": output_key,
+                                "video_path": video_path, "output_path": task.output_path,
+                                "task_id": None, "result": None, "duration": task.duration,
+                                "name": task.name})
+                if progress_callback:
+                    progress_callback("upload", len([r for r in records if r.get("input_key")]) / n * 0.2)
             except Exception as e:
                 _log(f"[无痕AI 2.1] 上传失败: {os.path.basename(video_path)} — {e}")
-                with _upload_lock:
-                    records.append({"idx": idx,
-                                    "result": SubtitleResult(success=False, error_message=f"上传失败: {e}"),
-                                    "video_path": video_path, "name": task.name})
+                records.append({"idx": idx,
+                                "result": SubtitleResult(success=False, error_message=f"上传失败: {e}"),
+                                "video_path": video_path, "name": task.name})
 
-        if upload_tasks:
-            with ThreadPoolExecutor(max_workers=3) as pool:
-                futures = [pool.submit(_do_upload, *ut) for ut in upload_tasks]
-                for _ in as_completed(futures):
-                    pass  # 上传不可中断——最大3并发，几十秒完成
-
-        # 1c. 按原始顺序重排 records（Phase 2 依赖 records[i] ↔ tasks[i] 对应）
-        records.sort(key=lambda r: r.get("idx", 0))
-        # 去掉 idx 字段（不暴露给下游）
+        # 1c. 去掉 idx 字段（不暴露给下游）
         for r in records:
             r.pop("idx", None)
 
