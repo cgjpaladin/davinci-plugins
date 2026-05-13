@@ -339,10 +339,11 @@ function _tryStart(){
   // 测试桥接
   window.pywebview.api.echo('hello').then(r=>{
     document.getElementById('debugMode').textContent='✔ '+r.received;
+    if(window._tryIv)clearInterval(window._tryIv);
     init();
   }).catch(()=>{init()});
 }
-setInterval(_tryStart,300);
+window._tryIv=setInterval(_tryStart,300);
 
 // ═══ Fields ═══
 function getFields(){
@@ -368,9 +369,10 @@ function onMethodChange(){
   if(cfg.mode==='locked'){descInput('text',cfg.value,true);descLocked=true}
   else if(cfg.mode==='dropdown'){descSelect(cfg.values);descLocked=false}
   else{descInput('text','',false,cfg.hint);descLocked=false}
-  // 只在跨方法时清 desc（同方法内切选项不清）
+  // 跨方法时清 desc，但 locked 模式写入固定值
   if(methodChanged&&sel.size>0){
-    for(const i of sel) files[i].fields.desc='';
+    const dv=cfg.mode==='locked'?cfg.value:'';
+    for(const i of sel) files[i].fields.desc=dv;
     renderList();updButtons();
   }
 }

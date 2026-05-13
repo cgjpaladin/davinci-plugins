@@ -515,7 +515,13 @@ function _setDescValue(v){
   const el=document.getElementById('descInput');
   if(!el||!v)return;
   if(el.tagName==='SELECT'){
-    for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;break}}
+    for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;return}}
+    // 不在选项里 → 切到「手动输入…」并填值
+    el.value='手动输入…';
+    const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');
+    ip.value=v;ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;';
+    ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};
+    el.after(ip);
   }else if(el.tagName==='INPUT'){
     el.value=v;el.style.color='var(--text-bright)';
   }
