@@ -368,7 +368,7 @@ function onMethodChange(){
   const methodChanged=m!==_prevMethod;_prevMethod=m;
   if(cfg.mode==='locked'){descInput('text',cfg.value,true);descLocked=true}
   else if(cfg.mode==='dropdown'){descSelect(cfg.values);descLocked=false}
-  else{descInput('text','',false,cfg.hint);descLocked=false}
+  else{const ro=cfg.hint.includes('请先选择');descInput('text','',ro,cfg.hint);descLocked=false}
   // 跨方法时清 desc，但 locked 模式写入固定值
   if(methodChanged&&sel.size>0){
     const dv=cfg.mode==='locked'?cfg.value:'';
