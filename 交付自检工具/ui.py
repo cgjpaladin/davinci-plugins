@@ -39,7 +39,7 @@ from config import (
 )
 from check_core import (check_track_structure, check_subtitle_clamping, check_disabled_items,
                           check_black_frames, check_audio_mono, check_timeline_settings,
-                          check_through_edits, check_tailboard,
+                          check_through_edits, check_tailboard, check_coloring_markers,
                           check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
                           check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
                           check_color, check_camera_on_high_tracks, check_audio_color_tracks,
@@ -58,6 +58,7 @@ CHK_BLACK, CHK_VIDEO_CLAMP, CHK_BORDER, CHK_SPEED, CHK_MONO, CHK_LOUDNESS, CHK_F
 CHK_CENSOR_SYSTEM, CHK_CENSOR_PERSONAL = "chk_censor_sys", "chk_censor_personal"
 CHK_CAMERA = "chk_camera"
 CHK_AUDIO_COLOR = "chk_audio_color"
+CHK_TAG_MARKERS = "chk_tag_markers"
 CHK_PATH = "chk_path"
 CHK_OFFLINE = "chk_offline"
 CHK_BLACK_FRAME = CHK_BLACK  # 别名
@@ -240,6 +241,10 @@ def _run_mono_check(timeline, fps, **_kw):
 def _run_color_check(timeline, fps, **_kw):
     """调色"""
     return check_color(timeline, project=_kw.get("project"), fps=fps, io_range=_kw.get("io_range"))
+
+def _run_tag_markers_check(timeline, fps, **_kw):
+    """调色标记"""
+    return check_coloring_markers(timeline, project=_kw.get("project"), fps=fps, io_range=_kw.get("io_range"))
 
 def _run_camera_track_check(timeline, fps, **_kw):
     """实拍素材越轨"""
@@ -424,6 +429,7 @@ CHECKS = [
     {"id": "through_edit",  "section": "直通编辑", "chk_id": CHK_THROUGH_EDITS,  "group": "视频", "subgroup": "直通",   "run_fn": None,                     "tracks": ["video"], "gate": "",  "hidden": True},
     {"id": "tailboard",     "section": "尾板",     "chk_id": CHK_TAILBOARD,     "group": "视频", "subgroup": "尾板",   "run_fn": _run_tailboard_check,     "tracks": ["video"], "gate": "video"},
     {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "group": "色彩", "subgroup": "色彩",   "run_fn": _run_color_check,         "tracks": ["video"], "gate": "video"},
+    {"id": "tag_markers",    "section": "调色标记", "chk_id": CHK_TAG_MARKERS,     "group": "色彩", "subgroup": "调色标记","run_fn": _run_tag_markers_check,    "tracks": ["video"], "gate": "video"},
     # 音频门
     {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "group": "音频", "subgroup": "声道",   "run_fn": _run_mono_check,          "tracks": ["audio"], "gate": "audio"},
     {"id": "audio_loudness","section": "音量",     "chk_id": CHK_LOUDNESS,       "group": "音频", "subgroup": "声道",   "run_fn": None,                     "tracks": [], "gate": "audio"},

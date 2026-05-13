@@ -1327,6 +1327,66 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
                          is_summary=True)] + issues
 
 
+# ── 调色标记 ──
+
+# 打码效果关键词（OFX 工具名含以下即可匹配）
+_EFFECT_BLUR = {"blur", "模糊", "高斯模糊", "mosaic", "马赛克", "mask", "遮罩", "defocus"}
+
+def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> list:
+    """检测有打码效果且节点数≤2的片段，在起始帧打红色标记「调色注意」。
+
+    不会覆盖已有标记（叠加策略）。
+    """
+    issues = []
+    marker_count = 0
+
+    for vi in range(1, timeline.GetTrackCount("video") + 1):
+        for it in _get_items(timeline, "video", vi):
+            if not _in_io_range(it, io_range):
+                continue
+            if _get_cached(it, "enabled", True) is False:
+                continue
+
+            ng = it.GetNodeGraph()
+            n = ng.GetNumNodes()
+            if n > 2:
+                continue
+
+            has_blur = False
+            for ni in range(1, n + 1):
+                tools = ng.GetToolsInNode(ni) or []
+                for t in tools:
+                    if any(kw in t.lower() for kw in _EFFECT_BLUR):
+                        has_blur = True
+                        break
+                if has_blur:
+                    break
+
+            if not has_blur:
+                continue
+
+            # 打红色标记
+            start_f = _get_cached(it, "start", 0)
+            try:
+                it.AddMarker(int(start_f), "Red", "调色注意", "打码", 1)
+                marker_count += 1
+            except Exception:
+                issues.append(_make_result("fail",
+                    track=f"V{vi}",
+                    timecode=_get_smpte(fps).gettc(start_f),
+                    detail=f"{_get_cached(it, 'name', '')}，打标记失败",
+                    reason="请手动添加调色标记"))
+
+    if issues:
+        total = marker_count + len(issues)
+        return [_make_result("fail",
+                detail=f"调色标记: {marker_count}/{total} 成功，{len(issues)} 失败",
+                is_summary=True)] + issues
+
+    detail = f"调色标记: {marker_count} 处已标记" if marker_count else "调色标记: 无需标记"
+    return [_make_result("pass", detail=detail, is_summary=True)]
+
+
 _SMB_PREFIX = "/Volumes/MYJC"
 
 # ── 片段文件信息缓存（脱机+路径检测共享，避免重复 IPC）──
