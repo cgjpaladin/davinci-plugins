@@ -1,42 +1,20 @@
-
 """
 批量文件命名工具 v3.0
-- Tk 自动递增 · 重命名+归档分两步 · 目标路径 YYYYMMDD_项目名
-- 重名检测 · 归档Tk自动顺号 · FIELD_RULES扩展引擎 · 纯归档模式
 """
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from tkinterdnd2 import DND_FILES, TkinterDnD
-import os, re, json, shutil
+import os, re, json, shutil, sys, statistics
 from datetime import datetime
 
-FIELD_CONFIG = [
-    {"key":"ep","name":"Ep","label":"Ep 集数","def":"01","regex":r"^\d{2,3}$","hint":"01"},
-    {"key":"sc","name":"Sc","label":"Sc 场次","def":"01","regex":r"^\d{2,3}$","hint":"01"},
-    {"key":"gr","name":"Gr","label":"Gr 小场次","def":"01","regex":r"^\d{2,3}$","hint":"01"},
-    {"key":"tk","name":"Tk","label":"Tk 次数","def":"01","regex":r"^\d{2,3}$","inc":True,"hint":"01"},
-    {"key":"desc","name":"","label":"镜头描述","def":"","hint":"由制作方式决定"},
-    {"key":"author","name":"","label":"制作者","def":"","hint":"张谭/温欣然"},
-    {"key":"method","name":"","label":"制作方式","def":"","dv":["请选择","智能分镜版","双轨版","角色专属版"]},
-    {"key":"ver","name":"v","label":"v 版本号","def":"01","regex":r"^\d{2,3}(\.\d+)?$","hint":"01"},
-    {"key":"status","name":"","label":"通过情况","def":"","dv":["请选择","OK","KP","NG"]},
-]
-
-METHOD_DESC_MAP = {
-    "智能分镜版":{"mode":"locked","value":"全能分镜"},
-    "双轨版":{"mode":"dropdown","values":["请选择","幽灵角色","空镜","手动输入…"]},
-    "角色专属版":{"mode":"text","hint":"温时雨过肩中景"},
-}
-
-DESC_TO_METHOD = {"全能分镜":"智能分镜版","幽灵角色":"双轨版","空镜":"双轨版"}
-
-FIELD_RULES = [
-    {"trigger":"method","targets":["desc"],"map":{
-        "智能分镜版":{"desc":{"locked":"全能分镜"}},
-        "双轨版":{"desc":{"dropdown":["请选择","幽灵角色","空镜","手动输入…"]}},
-        "角色专属版":{"desc":{"text_hint":"温时雨过肩中景"}},
-    }},
-]
+# 共享命名模块
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir))
+from shared.naming import (
+    FIELD_CONFIG, DISPLAY_FIELDS, METHOD_DESC_MAP, DESC_TO_METHOD, FIELD_RULES,
+    build_filename, parse_filename, build_folder,
+    check_zero_byte, check_double_ext, check_name_format,
+    check_field_completeness, check_size_anomaly, MEDIA_EXT,
+)
 
 T = {"bg":"#1c1c1c","surface":"#282828","border":"#3d3d3d","text":"#b8b8b8",
      "text_dim":"#707070","accent":"#e8870a","accent2":"#6a9a3a","placeholder":"#505050",
@@ -46,7 +24,6 @@ CFG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),".renamer_sav
 PATH_RE = re.compile(r"^(\d{8})_.+$")
 
 def _validate_date(v):
-    """Returns True if YYYYMMDD is a real calendar date"""
     m = PATH_RE.match(v)
     if not m: return False
     try:
@@ -54,21 +31,6 @@ def _validate_date(v):
         return True
     except ValueError:
         return False
-
-FILENAME_RE = re.compile(
-    r"^Ep(?P<ep>\d{2,3})_Sc(?P<sc>\d{2,3})_Gr(?P<gr>\d{2,3})_Tk(?P<tk>\d{2,3})_"
-    r"(?P<desc>[^_]+(?:_[^_]+)*?)_(?P<author>[^_]+)_v(?P<ver>\d{2,3}(?:\.\d+)?)_"
-    r"(?P<status>\w+)(?P<ext>\.[^.]+)$")
-
-def parse_filename(path):
-    name = os.path.basename(path)
-    m = FILENAME_RE.match(name)
-    if not m: return None
-    d = m.groupdict()
-    r = {"ep":d["ep"],"sc":d["sc"],"gr":d["gr"],"tk":d["tk"],
-         "desc":d["desc"],"author":d["author"],"ver":d["ver"],"status":d["status"]}
-    r["method"] = DESC_TO_METHOD.get(d["desc"],"角色专属版")
-    return r
 
 class FileEntry:
     __slots__=("path","fields")
@@ -115,7 +77,13 @@ def _styles(s):
     s.configure("Trees.Treeview",bg=T["bg"],fg=T["text"],fieldbg=T["bg"],borderwidth=0,rowheight=24,font=(T["ff_mono"],9))
     s.configure("Trees.Treeview.Heading",bg=T["surface"],fg=T["text_dim"],font=(T["ff_ui"],9),borderwidth=0,padding=(0,2))
     s.map("Trees.Treeview",background=[("selected","#3a2010")])
+    # check tags
+    s.configure("Trees.Treeview",bg=T["bg"],fg=T["text"],fieldbg=T["bg"],borderwidth=0,rowheight=24,font=(T["ff_mono"],9))
+    tt = ttk.Style()  # use a fresh ref for tag config
 _styles(style)
+
+# Treeview tags for check results
+file_tree = None  # will be set after creation
 
 
 # ═══ UI Construction ═══
@@ -152,8 +120,7 @@ def _mk_cb(parent,values,default_val,w=6):
     cb.set(str(default_val) if default_val in values else values[0])
     return cb
 
-_display_fields=[fd for fd in FIELD_CONFIG if fd["key"]!="tk"]
-for fd in _display_fields:
+for fd in DISPLAY_FIELDS:
     col=ttk.Frame(insp_frame,style="App.TFrame")
     if fd["key"]in("desc","author"):col.pack(side="left",fill="x",expand=True,padx=2)
     elif fd["key"]=="method":col.pack(side="left",padx=2)
@@ -303,22 +270,9 @@ ttk.Label(sb,text="裁缝老师的达芬奇插件工坊  \u00b7  v3.0",style="St
 
 # =========== Logic ===========
 
-def _build_filename(fields):
-    parts=[]
-    for fd in FIELD_CONFIG:
-        v=fields.get(fd["key"],fd["def"]);nm=fd["name"]
-        if nm=="Ep":parts.append(f"Ep{v}")
-        elif nm=="Sc":parts.append(f"Sc{v}")
-        elif nm=="Gr":parts.append(f"Gr{v}")
-        elif nm=="Tk":parts.append(f"Tk{v}")
-        elif nm=="v":parts.append(f"v{v}")
-        elif fd["key"]=="status":parts.append(v)
-        else:parts.append(v.replace("/","_").replace(" ",""))
-    return"_".join(parts)if parts else"unnamed"
-
 def _get_inspector_vals():
     v={}
-    for fd in _display_fields: wgt,_=_widgets[fd["key"]];v[fd["key"]]=wgt.get().strip()
+    for fd in DISPLAY_FIELDS: wgt,_=_widgets[fd["key"]];v[fd["key"]]=wgt.get().strip()
     return v
 
 def _get_real_val(wgt,fd):
@@ -330,7 +284,7 @@ def _get_real_val(wgt,fd):
     return v
 
 def _set_inspector_vals(vals):
-    for fd in _display_fields:
+    for fd in DISPLAY_FIELDS:
         wgt,_=_widgets[fd["key"]];k=fd["key"]
         if vals is None or vals.get(k)is None:
             if isinstance(wgt,ttk.Combobox):wgt.set((fd.get("dv")or[""])[0])
@@ -353,7 +307,7 @@ def _refresh_tree():
     sp={_entries[i].path for i in _selected_indices()}
     file_tree.delete(*file_tree.get_children())
     for i,en in enumerate(_entries):
-        nm=_build_filename(en.fields)
+        nm=build_filename(en.fields)
         iid=file_tree.insert("","end",values=("",f"{nm}{en.ext}","←",en.basename),image=_TI[i%len(_TI)])
         if en.path in sp:file_tree.selection_add(iid)
     _upd_counts();_upd_preview();_check_button_states();_refreshing=False
@@ -370,12 +324,12 @@ def _upd_preview():
     ix=_selected_indices()
     if not ix:
         if _entries:
-            vs=_get_inspector_vals();nm=_build_filename(vs)
+            vs=_get_inspector_vals();nm=build_filename(vs)
             preview_var.set(nm+_entries[0].ext+"  (未选中)")
         else:preview_var.set("添加文件后显示预览")
         meta_var.set("");return
     _apply_tk_to_selected()
-    f=_entries[ix[0]];nm=_build_filename(f.fields);preview_var.set(nm+f.ext)
+    f=_entries[ix[0]];nm=build_filename(f.fields);preview_var.set(nm+f.ext)
     ts=int(f.fields.get("tk","1"))
     meta_var.set("选中 {} 个  ·  Tk {:02d}→{:02d}".format(len(ix),ts,ts+len(ix)-1))
 
@@ -387,7 +341,7 @@ def _on_select(ev=None):
     elif len(ix)==1:_set_inspector_vals(_entries[ix[0]].fields)
     else:
         mg={}
-        for fd in _display_fields:
+        for fd in DISPLAY_FIELDS:
             k=fd["key"];vs={_entries[i].fields[k]for i in ix};mg[k]=next(iter(vs))if len(vs)==1 else""
         _set_inspector_vals(mg)
     _upd_counts();_upd_preview()
@@ -404,7 +358,7 @@ def _check_name_collision():
     if not ix:return None
     names={}
     for i in ix:
-        nm=_build_filename(_entries[i].fields)+_entries[i].ext
+        nm=build_filename(_entries[i].fields)+_entries[i].ext
         if nm in names:return(nm,_entries[i].basename,names[nm])
         names[nm]=_entries[i].basename
     return None
@@ -418,7 +372,7 @@ def _apply_to_selected():
             "“{}” 重复。已存在于 {} 和 {}。请调整字段使名称唯一。".format(col[0],col[1],col[2]))
         return
     for i in ix:
-        for fd in _display_fields:
+        for fd in DISPLAY_FIELDS:
             k=fd["key"]
             if k=="method":continue
             wgt,_=_widgets[k];v=_get_real_val(wgt,fd)
@@ -440,7 +394,7 @@ def _check_button_states():
     ix=_selected_indices()
     can_rename=bool(ix)
     if can_rename:
-        for fd in _display_fields:
+        for fd in DISPLAY_FIELDS:
             if fd["key"]=="method":continue
             wgt,_=_widgets[fd["key"]];v=_get_real_val(wgt,fd)
             if not v:can_rename=False;break
@@ -503,17 +457,17 @@ def do_rename():
                     "「{}」格式错误 (第{}个)".format(fd['label'],ix[j]+1));return
     names={}
     for en in sel:
-        nm=_build_filename(en.fields)+en.ext
+        nm=build_filename(en.fields)+en.ext
         if nm in names:
             messagebox.showwarning("重名检测",
                 "\u201c{}\u201d \u91cd\u590d ({} \u548c {})\uff0c\u8bf7\u8c03\u6574\u5b57\u6bb5\u3002".format(nm,names[nm],en.basename));return
         names[nm]=en.basename
     if len(sel)==1:
-        fn=_build_filename(sel[0].fields)+sel[0].ext
+        fn=build_filename(sel[0].fields)+sel[0].ext
         msg="确认重命名?\n{}\n→ {}".format(sel[0].basename,fn)
     else:
-        fn=_build_filename(sel[0].fields)+sel[0].ext
-        ln=_build_filename(sel[-1].fields)+sel[-1].ext
+        fn=build_filename(sel[0].fields)+sel[0].ext
+        ln=build_filename(sel[-1].fields)+sel[-1].ext
         msg="确认重命名 {} 个?\n{}\n  ...\n{}".format(len(sel),fn,ln)
     if not messagebox.askyesno("确认",msg):return
     sv=_get_inspector_vals()
@@ -523,7 +477,7 @@ def do_rename():
     except:pass
     ok=0;fail=[];_undo_stack.clear()
     for en in sel:
-        p=en.path;d=os.path.dirname(p);nm=_build_filename(en.fields)+en.ext;np=os.path.join(d,nm)
+        p=en.path;d=os.path.dirname(p);nm=build_filename(en.fields)+en.ext;np=os.path.join(d,nm)
         if os.path.exists(np)and np!=p:fail.append(en.basename+"→已存在");continue
         try:os.rename(p,np);_undo_stack.append((p,np));en.path=np;ok+=1
         except Exception as e:fail.append(en.basename+":"+str(e))
@@ -531,13 +485,6 @@ def do_rename():
     _refresh_tree();msg="● 完成 {}/{}".format(ok,len(sel))
     if fail:msg+="  ·  "+"  ·  ".join(fail[:2])
     status_var.set(msg)
-
-def _build_folder(path_root,entry):
-    f=entry.fields
-    compound = "EP{ep}_SC{sc}_GR{gr}_{method}_v{ver}".format(**f)
-    return os.path.join(path_root,
-        "EP"+f["ep"],"SC"+f["sc"],compound,
-        _build_filename(f)+entry.ext)
 
 def do_archive():
     dest=_validate_dest()
@@ -566,10 +513,10 @@ def do_archive():
     progress.place(relx=0.5,rely=0.93,anchor="center")
     status_var.set("\u25cf 归档中... 0/"+str(total));root.update()
     for idx,en in enumerate(sel):
-        target=_build_folder(dest,en)
+        target=build_folder(dest,en)
         tk_val=int(en.fields["tk"])
         while os.path.exists(target):
-            tk_val+=1;en.fields["tk"]="%02d"%tk_val;target=_build_folder(dest,en)
+            tk_val+=1;en.fields["tk"]="%02d"%tk_val;target=build_folder(dest,en)
         os.makedirs(os.path.dirname(target),exist_ok=True)
         try:shutil.copy2(en.path,target);ok+=1
         except Exception as e:fail.append(en.basename+":"+str(e))

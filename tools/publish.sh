@@ -417,6 +417,8 @@ publish_gray_promote() {
     find "$SMB_DIR" -name "*.py" -maxdepth 1 -delete 2>/dev/null || true
     cp "$gray_path"/*.py "$SMB_DIR/" 2>/dev/null
     [ -d "$gray_path/adapters" ] && cp "$gray_path/adapters"/*.py "$SMB_DIR/adapters/" 2>/dev/null || true
+    # 清除 SMB __pycache__，避免旧 .pyc 缓存旧代码
+    find "$SMB_DIR" -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
     python3 -c "
 import json
 cfg = json.load(open('$GRAY_CFG'))
