@@ -381,10 +381,10 @@ function onMethodChange(){
 function descInput(t,v,ro,ph){
   const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const el=document.getElementById('descInput');
-  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=ro?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};return}
+  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=ro?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');el.style.borderLeft=(ro||v)?'2px solid var(--accent)':'1px solid var(--border)';if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};return}
   const ip=document.createElement('input');ip.id='descInput';ip.setAttribute('data-key','desc');
   ip.value=v||'';ip.readOnly=ro||false;ip.placeholder=ph||'由制作方式决定';
-  ip.style.cssText=el?el.style.cssText:'';ip.style.color=ro?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');
+  ip.style.cssText=el?el.style.cssText:'';ip.style.color=ro?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');ip.style.borderLeft=(ro||v)?'2px solid var(--accent)':'1px solid var(--border)';
   if(!ro)ip.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};
   if(el)el.replaceWith(ip);
 }
@@ -452,7 +452,7 @@ function updButtons(){
   // 状态栏：列出缺失字段 + 点颜色
   const dot=document.querySelector('.sb-dot');
   if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');return}
-  if(hs&&af){dot.style.background='var(--green)';setStatus('✅ 字段齐全，可以重命名');return}
+  if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，可以重命名');return}
   const missing=[];
   const labels={ep:'Ep集数',sc:'Sc场次',gr:'Gr小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'Version版本号',status:'通过情况'};
   for(const k of['ep','sc','gr','desc','author','method','ver','status']){if(!fd[k])missing.push(labels[k])}
@@ -484,7 +484,7 @@ function _syncInspectorFromSelection(){
       if(!el||el.id==='descInput')continue;
       const v=f.fields[k]||'';
       if(el.tagName==='SELECT'){el.value=v}
-      else{el.value=v;el.style.color=v?'var(--text-bright)':'var(--text-dim)'}
+      else{el.value=v;const filled=!!v;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.borderLeft=filled?'2px solid var(--accent)':'1px solid var(--border)'}
     }
     document.getElementById('methodSelect').value=f.fields.method||'';
     onMethodChange();
@@ -497,7 +497,7 @@ function _syncInspectorFromSelection(){
       if(!el||el.id==='descInput')continue;
       const single=vals.size===1?[...vals][0]:'';
       if(el.tagName==='SELECT'){el.value=vals.size===1?[...vals][0]:''}
-      else{el.value=single||'';el.style.color=single?'var(--text-bright)':'var(--text-dim)'}
+      else{el.value=single||'';const filled=!!single;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.borderLeft=filled?'2px solid var(--accent)':'1px solid var(--border)'}
     }
     const mv=new Set(ix.map(i=>files[i].fields.method||''));
     document.getElementById('methodSelect').value=mv.size===1?[...mv][0]:'';
@@ -522,7 +522,7 @@ function _setDescValue(v){
     ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};
     el.after(ip);
   }else if(el.tagName==='INPUT'){
-    el.value=v;el.style.color='var(--text-bright)';
+    el.value=v;el.style.color='var(--text-bright)';el.style.borderLeft='2px solid var(--accent)';
   }
 }
 
@@ -648,8 +648,8 @@ function _applyInspectorToSelected(){
 }
 document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
   if(el.readOnly)return;
-  el.addEventListener('focus',()=>{el.style.color='var(--text-bright)'});
-  el.addEventListener('blur',()=>{if(!el.value.trim())el.style.color='var(--text-dim)'});
+  el.addEventListener('focus',()=>{el.style.color='var(--text-bright)';el.style.borderLeft='2px solid var(--accent)'});
+  el.addEventListener('blur',()=>{if(!el.value.trim()){el.style.color='var(--text-dim)';el.style.borderLeft='1px solid var(--border)'}});
   el.addEventListener('input',()=>{_applyInspectorToSelected();renderList();updButtons()});
   el.addEventListener('change',()=>{_applyInspectorToSelected();renderList();updButtons()});
 });
