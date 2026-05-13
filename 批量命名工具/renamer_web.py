@@ -189,6 +189,7 @@ class RenamerAPI:
                                 k = fd["key"]
                                 if parsed and k in parsed: fields[k] = parsed[k]
                                 elif defaults and k in defaults and k not in _EMPTY_KEYS: fields[k] = defaults.get(k, fd["def"])
+                                elif k in _EMPTY_KEYS: fields[k] = ""
                                 else: fields[k] = fd["def"]
                             files.append({"path":fp,"basename":os.path.basename(fp),"ext":os.path.splitext(os.path.basename(fp))[1],"fields":fields})
                         elif os.path.isdir(fp): subdirs += 1
