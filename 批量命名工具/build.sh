@@ -9,22 +9,23 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   git add -A && git commit -m "build: $(date '+%Y-%m-%d %H:%M')" 2>/dev/null || true
 fi
 
-rm -rf build dist *.spec
+rm -rf build dist *.spec _build
 
-# 拼接 CSS + HTML + JS → 单文件
+# 拼接 CSS + HTML 模板 + JS → _build/renamer_web.html
+mkdir -p _build
 python3 -c "
 css=open('app.css').read();js=open('app.js').read()
 html=open('renamer_web.html').read()
 html=html.replace('/* CSS_PLACEHOLDER */',css)
 html=html.replace('// JS_PLACEHOLDER',js)
-open('_build.html','w').write(html)
+open('_build/renamer_web.html','w').write(html)
 "
 
 /Library/Frameworks/Python.framework/Versions/3.13/bin/pyinstaller \
   --onedir --windowed \
   --name "批量命名工具" \
   --icon app_icon.icns \
-  --add-data "_build.html:renamer_web.html" \
+  --add-data "_build/renamer_web.html:." \
   --add-data "../shared:shared" \
   --collect-data webview \
   --collect-data bottle \
