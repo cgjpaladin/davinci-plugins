@@ -467,7 +467,6 @@ function updButtons(){
   document.getElementById('btnCheck').disabled=!hf;
   // 状态栏：列出缺失字段 + 点颜色
   const dot=document.querySelector('.sb-dot');
-  const fd=getFields();
   if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');return}
   if(hs&&af){dot.style.background='var(--green)';setStatus('✅ 字段齐全，可以重命名');return}
   const missing=[];
@@ -495,18 +494,15 @@ function _toastResult(r){let m=`已添加 ${r.total} 个文件`;if(r.duplicates)
 function _syncInspectorFromSelection(){
   const ix=[...sel].sort((a,b)=>a-b);
   if(ix.length===0)return;
-  const DEFAULT_VALS={'ep':'01','sc':'01','gr':'01','ver':'01'};
   if(ix.length===1){
     const f=files[ix[0]];
     for(const k of Object.keys(f.fields)){
       const el=document.querySelector(`[data-key="${k}"]`);
       if(!el||el.id==='descInput')continue;
       const v=f.fields[k]||'';
-      const isDefault=DEFAULT_VALS[k]===v;
       if(el.tagName==='SELECT'){el.value=v}
-      else{if(isDefault){el.value='';el.style.color='var(--text-dim)'}else{el.value=v;el.style.color='var(--text-bright)'}}
+      else{el.value=v;el.style.color=v?'var(--text-bright)':'var(--text-dim)'}
     }
-    // method 之后 desc 被重建，单独恢复 desc 值
     document.getElementById('methodSelect').value=f.fields.method||'';
     onMethodChange();
     _setDescValue(f.fields.desc||'');
@@ -516,11 +512,10 @@ function _syncInspectorFromSelection(){
       const vals=new Set(ix.map(i=>files[i].fields[k]||''));
       const el=document.querySelector(`[data-key="${k}"]`);
       if(!el||el.id==='descInput')continue;
+      const single=vals.size===1?[...vals][0]:'';
       if(el.tagName==='SELECT'){el.value=vals.size===1?[...vals][0]:''}
-      else{const single=vals.size===1?[...vals][0]:'';const isDefault=DEFAULT_VALS[k]===single;
-        if(vals.size!==1||isDefault){el.value='';el.style.color='var(--text-dim)'}else{el.value=single;el.style.color='var(--text-bright)'}}
+      else{el.value=single||'';el.style.color=single?'var(--text-bright)':'var(--text-dim)'}
     }
-    // method + desc
     const mv=new Set(ix.map(i=>files[i].fields.method||''));
     document.getElementById('methodSelect').value=mv.size===1?[...mv][0]:'';
     onMethodChange();

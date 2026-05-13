@@ -467,7 +467,6 @@ function updButtons(){
   document.getElementById('btnCheck').disabled=!hf;
   // 状态栏：列出缺失字段 + 点颜色
   const dot=document.querySelector('.sb-dot');
-  const fd=getFields();
   if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');return}
   if(hs&&af){dot.style.background='var(--green)';setStatus('✅ 字段齐全，可以重命名');return}
   const missing=[];
@@ -534,9 +533,8 @@ function _setDescValue(v){
   const el=document.getElementById('descInput');
   if(!el||!v)return;
   if(el.tagName==='SELECT'){
-    // 值必须在选项列表中
-    const opts=[...el.options].map(o=>o.value);
-    if(opts.includes(v))el.value=v;
+    // 在选项列表中查找
+    for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;break}}
   }else if(el.tagName==='INPUT'){
     el.value=v;el.style.color='var(--text-bright)';
   }
