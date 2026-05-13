@@ -83,7 +83,7 @@ def _single(asr_lines, characters, context_lines, offset=0):
         )},
     ]
 
-    result = call_with_fallback(messages, max_tokens=1024, temperature=0.1)
+    result = call_with_fallback(messages, max_tokens=2048, temperature=0.1)
     if not result.get("ok"):
         return result
 
@@ -108,6 +108,17 @@ def _single(asr_lines, characters, context_lines, offset=0):
         elif isinstance(data, list):
             same_show = True
             corrections = data
+    except json.JSONDecodeError:
+        # 截断容错：尝试补全缺失的括号
+        raw_stripped = raw.strip()
+        open_braces = raw_stripped.count("{") - raw_stripped.count("}")
+        open_brackets = raw_stripped.count("[") - raw_stripped.count("]")
+        try:
+            fixed = raw_stripped + "}" * open_braces + "]" * open_brackets
+            data = json.loads(fixed)
+            corrections = data.get("corrections", data if isinstance(data, list) else [])
+        except Exception:
+            return {"error": "json_parse", "raw_tail": raw[-80:]}
         else:
             raise ValueError
         if not isinstance(corrections, list):
