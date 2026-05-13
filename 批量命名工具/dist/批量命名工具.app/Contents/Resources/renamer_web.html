@@ -408,18 +408,13 @@ document.getElementById('methodSelect').addEventListener('change',onMethodChange
 function renderList(){
   const ct=document.getElementById('fileList');ct.innerHTML='';
   if(files.length===0){ct.innerHTML='<div class="fl-empty">拖放文件到此处 或 点击 +文件</div>';document.getElementById('fileCount').innerHTML='文件列表 · 0 个';updButtons();return}
-  const fd=getFields(),srt=[...sel].sort((a,b)=>a-b);
+  const srt=[...sel].sort((a,b)=>a-b);
   files.forEach((f,i)=>{
     const d=document.createElement('div');d.className='fl-item';
     if(sel.has(i))d.classList.add('sel');
     const tt=checkTags[i];if(tt){if(tt.includes('zero'))d.classList.add('warn-zero');else if(tt.includes('size'))d.classList.add('warn-size');if(tt.includes('fmt'))d.classList.add('warn-fmt')}
     // 选中项用 inspector 值+Tk 递增；未选中项用自己的存储字段
-    let ff,nm;
-    if(sel.has(i)){const p=srt.indexOf(i);ff={...fd,tk:_computeTK(i)};nm=buildName(ff)}
-    else{
-      ff={...f.fields,tk:_computeTK(i)};
-      nm=buildName(ff);
-    }
+    let ff={...f.fields,tk:_computeTK(i)},nm=buildName(ff);
     const th=document.createElement('div');th.className='fl-thumb';
     const tsrc=_thumbs[f.path];
     if(tsrc){th.style.backgroundImage=`url(${tsrc})`;th.style.backgroundSize='cover';th.style.backgroundPosition='center'}
@@ -655,6 +650,7 @@ document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
   el.addEventListener('change',()=>{_applyInspectorToSelected();renderList();updButtons()});
 });
 document.querySelectorAll('#inspector select[data-key]').forEach(el=>{
+  if(el.id==='descInput'||el.id==='methodSelect')return;
   el.addEventListener('change',()=>{_applyInspectorToSelected();renderList();updButtons()});
 });
 

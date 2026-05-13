@@ -6,11 +6,11 @@
 	<dict>
 		<key>Resources/app_icon.icns</key>
 		<data>
-		7cQPDHInCL708jcDYkKWFYi6peo=
+		Bu79jhQ3jsToZQ84MlrMilHqaek=
 		</data>
 		<key>Resources/base_library.zip</key>
 		<data>
-		OlwfJGOBIWY83yiOS0r2OZROmGg=
+		bSy1vtreMNZUpD/QyFgy2iLsk1Y=
 		</data>
 		<key>Resources/cryptography-46.0.5.dist-info/INSTALLER</key>
 		<data>
@@ -154,7 +154,7 @@
 		</data>
 		<key>Resources/renamer_web.html</key>
 		<data>
-		LMe10FAxsT8/DpTteR3gNxbRbQI=
+		oHC1Z0K7lBUnQpP2AeXqHWMx2Dc=
 		</data>
 		<key>Resources/shared/__pycache__/brand_template.cpython-313.pyc</key>
 		<data>
@@ -2172,14 +2172,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			mur+a/4vZUObl+8NydtdSJdQhayzURaGuF3qAaisdNQ=
+			czJd76BOghyedwBuu8VrMChB8z0hLq8fjtO+6/iirUA=
 			</data>
 		</dict>
 		<key>Resources/base_library.zip</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			raPAtGsO3A0wwMW4q+F05nwP77E2nCjP3XTj9i/sRLM=
+			4svRxMRt+3win7WYQ2SkDBxTHIXhJ3qhrslaj5BtbFI=
 			</data>
 		</dict>
 		<key>Resources/charset_normalizer</key>
@@ -2561,7 +2561,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			BPJQAJ1PpydR6cPqQtiW+Cnr5DfHS6E/fImg+tuHuDQ=
+			e7zx8FvfPKPFO/E8BSk2WIW8GHrMB7s12Kk4WTWdGqM=
 			</data>
 		</dict>
 		<key>Resources/shared/__pycache__/brand_template.cpython-313.pyc</key>
