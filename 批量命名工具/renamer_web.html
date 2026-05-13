@@ -52,7 +52,7 @@ body{
 .param{flex:1;min-width:0}
 .param.wide{flex:1.6}
 .param label{
-  display:block;font-size:var(--fs-label);color:var(--text-dim);
+  display:block;font-size:var(--fs-label);color:var(--text-bright);
   text-transform:uppercase;letter-spacing:.3px;
   font-weight:600;margin-bottom:2px;white-space:nowrap;
 }
@@ -69,6 +69,7 @@ body{
   padding-right:20px;
 }
 .param input:focus,.param select:focus{border-color:var(--yellow);outline:none}
+.param ::placeholder{color:var(--text-dim);opacity:1}
 .param input[readonly]{color:var(--text-dim);cursor:default;opacity:.7}
 .dest{
   display:flex;align-items:center;gap:var(--gap);
@@ -231,7 +232,7 @@ body{
     <div class="param"><label>Gr 小场次</label><input data-key="gr" value="" placeholder="01" style="color:var(--text-dim)"></div>
     <div class="param"><label>Tk 次数</label><input data-key="tk" value="自动排序" readonly></div>
     <div class="param wide"><label>镜头描述</label><input id="descInput" data-key="desc" value="" placeholder="由制作方式决定" readonly></div>
-    <div class="param"><label>制作者</label><input data-key="author" value="" placeholder="张谭/温欣然" style="color:var(--text-dim)"></div>
+    <div class="param"><label>制作者</label><input data-key="author" id="authorInput" value="" placeholder="请输入姓名" style="color:var(--text-dim)"></div>
     <div class="param"><label>制作方式</label><select id="methodSelect" data-key="method"><option value="">请选择</option><option value="智能分镜版">智能分镜版</option><option value="双轨版">双轨版</option><option value="角色专属版">角色专属版</option></select></div>
     <div class="param"><label>Version 版本号</label><input data-key="ver" value="" placeholder="01" style="color:var(--text-dim)"></div>
     <div class="param"><label>通过情况</label><select data-key="status"><option value="">请选择</option><option value="OK">OK</option><option value="KP">KP</option><option value="NG">NG</option></select></div>
@@ -301,7 +302,7 @@ function mock(m,...a){
   return new Promise(r=>{
     const C={ep:'01',sc:'01',gr:'01',desc:'',author:'',method:'',ver:'01',status:'OK',tk:'01'};
     switch(m){
-      case'get_config':r({fields:[{key:'ep',label:'Ep 集数',def:'01',hint:'01'},{key:'sc',label:'Sc 场次',def:'01',hint:'01'},{key:'gr',label:'Gr 小场次',def:'01',hint:'01'},{key:'desc',label:'镜头描述',def:'',hint:'由制作方式决定'},{key:'author',label:'制作者',def:'',hint:'张谭/温欣然'},{key:'method',label:'制作方式',def:'',dv:['请选择','智能分镜版','双轨版','角色专属版']},{key:'ver',label:'Version 版本号',def:'01',hint:'01'},{key:'status',label:'通过情况',def:'',dv:['请选择','OK','KP','NG']}],defaults:{},method_desc_map:{'智能分镜版':{mode:'locked',value:'全能分镜'},'双轨版':{mode:'dropdown',values:['请选择','幽灵角色','空镜','手动输入…']},'角色专属版':{mode:'text',hint:'温时雨过肩中景'}},field_rules:[{trigger:'method',targets:['desc'],map:{'智能分镜版':{desc:{locked:'全能分镜'}},'双轨版':{desc:{dropdown:['请选择','幽灵角色','空镜','手动输入…']}},'角色专属版':{desc:{text_hint:'温时雨过肩中景'}}}}]});break;
+      case'get_config':r({fields:[{key:'ep',label:'Ep 集数',def:'01',hint:'01'},{key:'sc',label:'Sc 场次',def:'01',hint:'01'},{key:'gr',label:'Gr 小场次',def:'01',hint:'01'},{key:'desc',label:'镜头描述',def:'',hint:'由制作方式决定'},{key:'author',label:'制作者',def:'',hint:'请输入姓名'},{key:'method',label:'制作方式',def:'',dv:['请选择','智能分镜版','双轨版','角色专属版']},{key:'ver',label:'Version 版本号',def:'01',hint:'01'},{key:'status',label:'通过情况',def:'',dv:['请选择','OK','KP','NG']}],defaults:{},method_desc_map:{'智能分镜版':{mode:'locked',value:'全能分镜'},'双轨版':{mode:'dropdown',values:['请选择','幽灵角色','空镜','手动输入…']},'角色专属版':{mode:'text',hint:'温时雨过肩中景'}},field_rules:[{trigger:'method',targets:['desc'],map:{'智能分镜版':{desc:{locked:'全能分镜'}},'双轨版':{desc:{dropdown:['请选择','幽灵角色','空镜','手动输入…']}},'角色专属版':{desc:{text_hint:'温时雨过肩中景'}}}}]});break;
       case'build_preview_filename':r({filename:'Ep01_Sc03_Gr01_Tk01_全能分镜_张谭_智能分镜版_v01_OK'});break;
       case'validate_dest':r({ok:true,msg:'✓ 格式正确'});break;
       case'do_rename':r({ok:1,total:1,fail:[],renamed:[]});break;
@@ -668,6 +669,9 @@ document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
   el.addEventListener('input',()=>{_applyInspectorToSelected();renderList();updButtons()});
   el.addEventListener('change',()=>{_applyInspectorToSelected();renderList();updButtons()});
 });
+// 制作者 — 仅限中文
+const ab=document.getElementById('authorInput');
+if(ab)ab.addEventListener('input',()=>{if(/[a-zA-Z]/.test(ab.value)){toast('请输入完整中文姓名');ab.value=ab.value.replace(/[a-zA-Z]/g,'')}});
 document.querySelectorAll('#inspector select[data-key]').forEach(el=>{
   if(el.id==='descInput'||el.id==='methodSelect')return;
   el.addEventListener('change',()=>{_applyInspectorToSelected();renderList();updButtons()});

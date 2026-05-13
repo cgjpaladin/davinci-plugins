@@ -155,7 +155,7 @@ def _build_filename_re():
     # Simplified: use a single comprehensive regex
     return re.compile(
         r"^Ep(?P<ep>\d{2,3})_Sc(?P<sc>\d{2,3})_Gr(?P<gr>\d{2,3})_Tk(?P<tk>\d{2,3})_"
-        r"(?P<desc>.+?)_(?P<author>[^_]+)_v(?P<ver>\d{2,3}(?:\.\d+)?)_"
+        r"(?P<desc>.+?)_(?P<author>[^_]+)_(?P<method>[^_]+)_v(?P<ver>\d{2,3}(?:\.\d+)?)_"
         r"(?P<status>\w+)(?P<ext>\.[^.]+)$")
 
 FILENAME_RE = _build_filename_re()
