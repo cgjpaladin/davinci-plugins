@@ -310,9 +310,8 @@ function mock(m,...a){
   return new Promise(r=>{
     const C={ep:'01',sc:'01',gr:'01',desc:'',author:'',method:'',ver:'01',status:'OK',tk:'01'};
     switch(m){
-      case'get_config':r({fields:[{key:'ep',label:'Ep 集数',def:'01',hint:'01'},{key:'sc',label:'Sc 场次',def:'01',hint:'01'},{key:'gr',label:'Gr 小场次',def:'01',hint:'01'},{key:'desc',label:'镜头描述',def:'',hint:'由制作方式决定'},{key:'author',label:'制作者',def:'',hint:'请输入姓名'},{key:'method',label:'制作方式',def:'',dv:['请选择','智能分镜版','双轨版','角色专属版']},{key:'ver',label:'版本号',def:'01',hint:'01'},{key:'status',label:'通过情况',def:'',dv:['请选择','OK','KP','NG']}],defaults:{},method_desc_map:{'智能分镜版':{mode:'locked',value:'全能分镜'},'双轨版':{mode:'dropdown',values:['请选择','幽灵角色','空镜','手动输入…']},'角色专属版':{mode:'text',hint:'温时雨过肩中景'}},field_rules:[{trigger:'method',targets:['desc'],map:{'智能分镜版':{desc:{locked:'全能分镜'}},'双轨版':{desc:{dropdown:['请选择','幽灵角色','空镜','手动输入…']}},'角色专属版':{desc:{text_hint:'温时雨过肩中景'}}}}]});break;
-      case'build_preview_filename':r({filename:'Ep01_Sc03_Gr01_Tk01_全能分镜_张谭_智能分镜版_v01_OK'});break;
-      case'validate_dest':r({ok:true,msg:'✓ 格式正确'});break;
+      case'get_config':r({fields:[{key:'ep',label:'Ep 集数',def:'01',hint:'01'},{key:'sc',label:'Sc 场次',def:'01',hint:'01'},{key:'gr',label:'Gr 小场次',def:'01',hint:'01'},{key:'desc',label:'镜头描述',def:'',hint:'由制作方式决定'},{key:'author',label:'制作者',def:'',hint:'请输入姓名'},{key:'method',label:'制作方式',def:'',dv:['请选择','智能分镜版','双轨版','角色专属版']},{key:'ver',label:'版本号',def:'01',hint:'01'},{key:'status',label:'通过情况',def:'',dv:['请选择','OK','KP','NG']}],defaults:{},method_desc_map:{'智能分镜版':{mode:'locked',value:'全能分镜'},'双轨版':{mode:'dropdown',values:['请选择','幽灵角色','空镜','手动输入…']},'角色专属版':{mode:'text',hint:'温时雨过肩中景'}},name_format:[{pfx:'Ep',key:'ep'},{pfx:'Sc',key:'sc'},{pfx:'Gr',key:'gr'},{pfx:'Tk',key:'tk'},{pfx:'',key:'desc'},{pfx:'',key:'author'},{pfx:'',key:'method'},{pfx:'v',key:'ver'},{pfx:'',key:'status'}],field_rules:[{trigger:'method',targets:['desc'],map:{'智能分镜版':{desc:{locked:'全能分镜'}},'双轨版':{desc:{dropdown:['请选择','幽灵角色','空镜','手动输入…']}},'角色专属版':{desc:{text_hint:'温时雨过肩中景'}}}}]});break;
+            case'validate_dest':r({ok:true,msg:'✓ 格式正确'});break;
       case'do_rename':r({ok:1,total:1,fail:[],renamed:[]});break;
       case'do_undo':r({ok:0,msg:'Mock: 无操作'});break;
       case'do_archive':r({ok:0,fail:['Mock mode'],total:1});break;
@@ -329,7 +328,7 @@ async function init(){
   dm.textContent = _isLive() ? '✔ Live' : '✖ Mock';
 
   const cfg=await call('get_config');
-  methodDescMap=cfg.method_desc_map||{};
+  methodDescMap=cfg.method_desc_map||{};_nameFmt=cfg.name_format||[];
   const d=cfg.defaults||{};
   for(const fd of cfg.fields){
     if(d[fd.key]){const el=document.querySelector(`[data-key="${fd.key}"]`);if(el){if(el.tagName==='SELECT')el.value=d[fd.key];else{el.value=d[fd.key];el.style.color='var(--text-bright)'}}}
@@ -582,11 +581,9 @@ function _computeTK(i){
   }
   return String(n).padStart(2,'0');
 }
+let _nameFmt=[];
 function buildName(f){
-  const m=f.method||'';
-  const ep=f.ep||'';const sc=f.sc||'';const gr=f.gr||'';
-  const ver=f.ver||'';const status=f.status||'';
-  const raw=`Ep${ep}_Sc${sc}_Gr${gr}_Tk${f.tk||''}_${f.desc||''}_${f.author||''}_${m}_v${ver}_${status}`;
+  const raw=_nameFmt.map(s=>s.pfx+(f[s.key]||'')).join('_');
   return raw.replace(/_+/g,'_').replace(/_$/,'');
 }
 async function doUndo(){const r=await call('do_undo');toast(r.msg);undoAvail=(r.remaining||0)>0;updButtons()}

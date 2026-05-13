@@ -648,7 +648,7 @@ document.addEventListener('keydown',e=>{
   if((e.key==='Delete'||e.key==='Backspace')&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){e.preventDefault();removeSelected()}
   // Enter → 确认输入，取消选中回到列表
   // Enter → 跳到下一个字段，最后一个跳到列表
-  if(e.key==='Enter'&&e.target.closest('#inspector')){
+  if(e.key==='Enter'&&e.target.closest('#inspector')&&sel.size){
     e.preventDefault();
     const all=[...document.querySelectorAll('#inspector input:not([readonly]), #inspector select')];
     const idx=all.indexOf(e.target);
@@ -679,19 +679,19 @@ function _applyInspectorToSelected(){
 }
 document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
   if(el.readOnly)return;
-  el.addEventListener('focus',()=>{el.style.color='var(--text-bright)';el.style.background=''});
-  el.addEventListener('blur',()=>{if(!el.value.trim()){el.style.color='var(--text-dim)';el.style.background=''}else{el.style.background='rgba(0,212,170,0.12)'}});
+  el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color='var(--text-bright)';el.style.background=''});
+  el.addEventListener('blur',()=>{if(!sel.size)return;if(!el.value.trim()){el.style.color='var(--text-dim)';el.style.background=''}else{el.style.background='rgba(0,212,170,0.12)'}});
   // 数字字段限制 — 在 input 之前运行
   const rx=DIGIT_RULES[el.getAttribute('data-key')];
   if(rx){
     el.addEventListener('input',e=>{
-      let v=el.value.replace(/[^\d.]/g,'');const dp=v.indexOf('.');if(dp>=0)v=v.slice(0,dp+1)+v.slice(dp+1).replace(/\./g,'');
+      if(!sel.size)return;let v=el.value.replace(/[^\d.]/g,'');const dp=v.indexOf('.');if(dp>=0)v=v.slice(0,dp+1)+v.slice(dp+1).replace(/\./g,'');
       while(v&&!rx.test(v))v=v.slice(0,-1);
       if(v!==el.value){el.value=v;e.stopImmediatePropagation();return}
     },true);  // capture phase — 先于泛用 handler
   }
-  el.addEventListener('input',()=>{_applyInspectorToSelected();renderList();updButtons()});
-  el.addEventListener('change',()=>{_applyInspectorToSelected();renderList();updButtons()});
+  el.addEventListener('input',()=>{if(!sel.size)return;_applyInspectorToSelected();renderList();updButtons()});
+  el.addEventListener('change',()=>{if(!sel.size)return;_applyInspectorToSelected();renderList();updButtons()});
 });
 // 制作者 — 仅限中文
 const ab=document.getElementById('authorInput');

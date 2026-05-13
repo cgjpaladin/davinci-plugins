@@ -107,11 +107,22 @@ class RenamerAPI:
         return {"thumbs": thumbs}
 
     def get_config(self):
+        fmt = []
+        for fd in FIELD_CONFIG:
+            nm = fd["name"]; k = fd["key"]
+            if nm == "Ep": fmt.append({"pfx":"Ep","key":"ep"})
+            elif nm == "Sc": fmt.append({"pfx":"Sc","key":"sc"})
+            elif nm == "Gr": fmt.append({"pfx":"Gr","key":"gr"})
+            elif nm == "Tk": fmt.append({"pfx":"Tk","key":"tk"})
+            elif nm == "v": fmt.append({"pfx":"v","key":"ver"})
+            elif k == "status": fmt.append({"pfx":"","key":"status"})
+            else: fmt.append({"pfx":"","key":k})
         return {
             "fields": DISPLAY_FIELDS,
             "defaults": _saved_defaults,
             "method_desc_map": METHOD_DESC_MAP,
             "field_rules": FIELD_RULES,
+            "name_format": fmt,
         }
 
     def add_files_via_dialog(self):
