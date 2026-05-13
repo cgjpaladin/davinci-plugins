@@ -3,500 +3,303 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>方案A: 达芬奇暗黑风 · 批量命名工具</title>
+<title>批量命名工具 · 方案A</title>
 <style>
-/* ======== DESIGN TOKENS ======== */
+/*
+ * ══════════════════════════════════════════════════════
+ *  DevTools 调参：Cmd+Option+I → Elements → 改 :root 值
+ *  调满意后复制 :root {} 整段发给我 → 我转 tkinter .exe
+ * ══════════════════════════════════════════════════════
+ *
+ *  交互规则:
+ *  - Inspector = 选中项编辑器，修改只作用于当前选中的文件
+ *  - 多选时若某字段值不一致 → 显示空白
+ *  - Tk 按选中顺序自动递增
+ *
+ *  快捷键:
+ *  - Ctrl+Z 撤销重命名    Del 移除选中文件
+ *  - Cmd+点击 追加选中    Shift+点击 范围选中
+ *  - 无提示音
+ */
 :root {
-  --bg: #1a1a1a;
-  --panel: #252525;
-  --panel-hover: #2d2d2d;
-  --border: #3a3a3a;
-  --text: #d4d4d4;
-  --text-dim: #8a8a8a;
-  --text-bright: #ffffff;
-  --accent: #f47920;
-  --accent-hover: #ff8c3a;
-  --accent-dim: #5a3520;
-  --blue: #4da6ff;
-  --green: #6aaa3a;
-  --red: #e05555;
-  --yellow: #e0af3a;
-  --preview-bg: #1e2a1a;
-  --preview-text: #a8d88a;
-  --font-ui: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --font-mono: 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
-  --radius: 2px;
+  --bg:        #1c1c1c;
+  --surface:   #282828;
+  --border:    #3d3d3d;
+  --text:      #b8b8b8;
+  --text-dim:  #707070;
+  --accent:    #e8870a;
+  --accent2:   #6a9a3a;
+
+  --fs-body:   12px;
+  --fs-label:  9px;
+  --fs-sm:     10px;
+
+  --gap:       4px;
+  --pad:       8px;
+  --pad-lg:    12px;
+  --radius:    2px;
+
+  --font-ui:   'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Consolas', 'Cascadia Code', monospace;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin:0; padding:0; box-sizing:border-box; }
 body {
-  background: #0d0d0d;
-  color: var(--text);
-  font-family: var(--font-ui);
-  font-size: 12px;
-  display: flex; align-items: center; justify-content: center;
-  min-height: 100vh;
-  padding: 20px;
+  background:#111; color:var(--text);
+  font-family:var(--font-ui); font-size:var(--fs-body);
+  display:flex; align-items:center; justify-content:center;
+  min-height:100vh; padding:24px;
 }
 .app {
-  width: 100%; max-width: 1120px;
-  background: var(--bg);
-  border: 1px solid #222;
-  display: flex; flex-direction: column;
+  width:100%; max-width:840px;
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:var(--radius); overflow:hidden;
 }
-/* Titlebar */
+
+/* ═══ Titlebar ═══ */
 .titlebar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 6px 12px;
-  background: #111;
-  border-bottom: 1px solid var(--border);
-  font-size: 11px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:4px var(--pad-lg); background:var(--surface);
+  border-bottom:1px solid var(--border);
+  font-size:var(--fs-sm); color:var(--text-dim);
 }
-.titlebar-left { display: flex; align-items: center; gap: 8px; }
-.titlebar-dot {
-  width: 6px; height: 6px; border-radius: 50%;
+.tb-dots { display:flex; gap:5px; }
+.tb-dot { width:6px; height:6px; border-radius:50%; }
+.tb-dot.a { background:var(--accent); }
+.tb-dot.b { background:#555; }
+
+/* ═══ Inspector — 9 fields, single row ═══ */
+.inspector {
+  display:flex; gap:var(--gap);
+  padding:var(--pad) var(--pad-lg);
+  border-bottom:1px solid var(--border);
 }
-.titlebar-dot.a { background: var(--accent); }
-.titlebar-dot.b { background: #555; }
-.titlebar-dot.c { background: #555; }
-.titlebar-title { color: var(--text-dim); letter-spacing: 0.5px; }
-/* Designer notes banner */
-.notes {
-  padding: 8px 12px; background: #111; border-bottom: 1px solid #222;
-  display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 10px;
+.param { flex:1; min-width:0; }
+.param.wide { flex:1.6; }
+.param label {
+  display:block; font-size:var(--fs-label); color:var(--text-dim);
+  text-transform:uppercase; letter-spacing:.3px;
+  font-weight:600; margin-bottom:2px; white-space:nowrap;
 }
-.notes-label { color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-.notes-item { display: flex; align-items: center; gap: 4px; }
-.swatch { width: 12px; height: 12px; border-radius: 2px; border: 1px solid #333; }
-/* Main layout */
-.main { display: flex; flex-direction: column; flex: 1; }
-/* Params section */
-.params {
-  display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: 4px;
-  padding: 8px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+.param input, .param select {
+  width:100%; background:var(--surface); border:1px solid var(--border);
+  color:#e0e0e0; font-family:var(--font-mono); font-size:var(--fs-body);
+  padding:3px 6px; border-radius:var(--radius); outline:none;
 }
-.param-group {
-  display: flex; flex-direction: column; gap: 3px;
+.param select {
+  cursor:pointer; -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23707070'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 7px center;
+  padding-right:20px;
 }
-.param-label {
-  font-size: 9px; color: var(--text-dim); text-transform: uppercase;
-  letter-spacing: 0.5px; font-weight: 600;
+.param input:focus, .param select:focus { border-color:var(--accent); }
+
+/* ═══ Hero — Preview + CTA ═══ */
+.hero {
+  display:flex; align-items:stretch; gap:8px;
+  padding:6px var(--pad-lg);
+  border-bottom:1px solid var(--border);
 }
-.param-input {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  color: var(--text-bright);
-  padding: 4px 6px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  border-radius: var(--radius);
-  outline: none;
-  width: 100%;
+.hero-preview {
+  flex:1; display:flex; align-items:center; gap:8px; min-width:0;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:8px 12px;
 }
-.param-input:focus {
-  border-color: var(--accent);
-  background: #2a2a2a;
-  box-shadow: inset 0 0 0 1px rgba(244,121,32,0.15);
+.hero-arrow { color:var(--accent2); font-weight:bold; font-size:14px; flex-shrink:0; }
+.hero-filename {
+  font-family:var(--font-mono); font-size:14px; color:var(--accent2);
+  flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
-.param-select {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  color: var(--text-bright);
-  padding: 4px 6px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  border-radius: var(--radius);
-  outline: none;
-  width: 100%;
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%238a8a8a'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 6px center;
-  padding-right: 20px;
+.hero-meta {
+  display:flex; align-items:center; gap:12px;
+  font-size:var(--fs-sm); color:var(--text-dim);
+  border-left:1px solid var(--border); padding-left:10px; flex-shrink:0;
 }
-.param-select:focus { border-color: var(--accent); }
-/* Status tag for 通过情况 */
-.status-ok { color: var(--green); }
-.status-kp { color: var(--yellow); }
-.status-ng { color: var(--red); }
-/* Preview bar */
-.preview {
-  display: flex; align-items: center;
-  padding: 6px 12px;
-  background: var(--preview-bg);
-  border-bottom: 1px solid #2a3a2a;
-  gap: 10px;
+.hero-meta em {
+  font-style:normal; font-family:var(--font-mono);
+  color:var(--accent2); font-weight:bold;
 }
-.preview-icon { color: var(--green); font-weight: bold; font-size: 11px; }
-.preview-text {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--preview-text);
-  flex: 1;
+.hero-btn {
+  flex-shrink:0; padding:8px 18px; background:var(--accent); color:#fff;
+  border:none; border-radius:var(--radius);
+  font-family:var(--font-ui); font-size:var(--fs-body); font-weight:600;
+  cursor:pointer; white-space:nowrap;
 }
-.preview-batch {
-  font-size: 10px; color: var(--text-dim);
-  background: #1a2a1a; padding: 2px 8px; border-radius: 2px;
-  border: 1px solid #2a3a2a;
+.hero-btn:hover { filter:brightness(1.15); }
+.hero-undo {
+  flex-shrink:0; padding:8px 12px; background:transparent; color:var(--text-dim);
+  border:1px solid var(--border); border-radius:var(--radius);
+  font-family:var(--font-ui); font-size:var(--fs-sm); cursor:pointer;
 }
-/* Content area */
-.content { display: flex; flex: 1; min-height: 0; }
-/* File list */
-.file-area {
-  flex: 1; display: flex; flex-direction: column;
-  border-right: 1px solid var(--border);
-  min-width: 0;
+.hero-undo:hover { color:var(--text); border-color:var(--text-dim); }
+
+/* ═══ File List ═══ */
+.file-section {
+  border-bottom:1px solid var(--border);
 }
-.file-area-header {
-  padding: 4px 10px; background: #1f1f1f;
-  border-bottom: 1px solid var(--border);
-  font-size: 10px; color: var(--text-dim);
-  display: flex; justify-content: space-between;
+.fl-bar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:4px var(--pad-lg); background:var(--surface);
+  border-bottom:1px solid var(--border);
+  font-size:var(--fs-sm); color:var(--text-dim);
 }
-.file-count { color: var(--accent); font-weight: 600; }
-.file-list {
-  flex: 1; overflow-y: auto;
-  background: var(--bg);
-  min-height: 180px;
+.fl-bar-right { display:flex; gap:var(--gap); }
+.fl-btn {
+  padding:2px 8px; background:transparent; border:1px solid var(--border);
+  color:var(--text); font-family:var(--font-ui); font-size:var(--fs-sm);
+  border-radius:var(--radius); cursor:pointer;
 }
-.file-item {
-  display: flex; align-items: center; padding: 3px 10px;
-  border-bottom: 1px solid #1f1f1f;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  cursor: pointer;
-  gap: 8px;
-  transition: background 0.08s;
+.fl-btn:hover { background:var(--bg); border-color:var(--text-dim); }
+.fl-body {
+  max-height:260px;
+  overflow:auto;          /* both vertical + horizontal scroll */
 }
-.file-item:hover { background: var(--panel); }
-.file-item.selected { background: var(--accent-dim); border-left: 2px solid var(--accent); }
-.file-item.selected .file-name { color: var(--text-bright); }
-.file-icon { color: var(--text-dim); font-size: 10px; }
-.file-name { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.file-ext { color: var(--accent); font-size: 10px; }
-.file-preview-name {
-  font-size: 10px; color: var(--text-dim);
-  background: #1f1f1f; padding: 1px 8px; border-radius: 2px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
-  display: none;
+.fl-item {
+  display:flex; align-items:center; gap:8px;
+  padding:4px var(--pad-lg);
+  border-bottom:1px solid rgba(255,255,255,.025);
+  cursor:pointer; min-width:max-content;  /* prevent line wrap, enable h-scroll */
 }
-.file-item.selected .file-preview-name { display: block; }
-/* Drop zone indicator */
-.drop-zone {
-  display: flex; align-items: center; justify-content: center;
-  height: 100%; color: var(--text-dim); font-size: 16px;
-  border: 1px dashed var(--border); margin: 8px;
-  border-radius: var(--radius);
-  transition: border-color 0.15s;
+.fl-item:hover { background:var(--surface); }
+.fl-item.sel {
+  background:color-mix(in srgb, var(--accent) 12%, var(--bg));
+  border-left:2px solid var(--accent);
 }
-.drop-zone.active { border-color: var(--accent); color: var(--accent); }
-/* Sidebar buttons */
-.sidebar {
-  display: flex; flex-direction: column;
-  width: 120px; padding: 8px; gap: 4px;
-  background: var(--panel);
+.fl-thumb {
+  width:28px; height:42px; border-radius:var(--radius); flex-shrink:0;
+  background:#222; border:1px solid #333;
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden; position:relative;
 }
-.btn {
-  padding: 5px 10px; border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--text);
-  font-family: var(--font-ui); font-size: 11px;
-  cursor: pointer; text-align: left;
-  border-radius: var(--radius);
-  transition: all 0.08s;
-  white-space: nowrap;
+.fl-thumb::after {
+  content:'▶'; position:absolute; font-size:6px;
+  color:rgba(255,255,255,.45); text-shadow:0 0 2px #000;
 }
-.btn:hover { background: var(--panel-hover); border-color: #555; color: var(--text-bright); }
-.btn:active { background: #333; transform: scale(0.98); }
-.btn-primary {
-  background: var(--accent); color: #fff; border-color: var(--accent);
-  font-weight: 600; text-align: center;
+.fl-thumb.a { background:linear-gradient(135deg,#2a3a1a,#1a2a10); }
+.fl-thumb.b { background:linear-gradient(135deg,#1a2a3a,#0a1a2a); }
+.fl-thumb.c { background:linear-gradient(135deg,#3a201a,#2a100a); }
+.fl-thumb.d { background:linear-gradient(135deg,#2a1a3a,#1a0a2a); }
+.fl-thumb.e { background:linear-gradient(135deg,#1a3a2a,#0a2a1a); }
+.fl-thumb.f { background:linear-gradient(135deg,#3a301a,#2a200a); }
+
+.fl-new {
+  font-family:var(--font-mono); font-size:var(--fs-body); color:var(--accent2);
+  white-space:nowrap; flex-shrink:0;
 }
-.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-.btn-danger { text-align: center; }
-.btn-danger:hover { background: #3a2020; border-color: var(--red); color: var(--red); }
-.btn-icon { font-family: var(--font-mono); margin-right: 4px; }
-.separator { height: 1px; background: var(--border); margin: 4px 0; }
-.tk-counter {
-  text-align: center; padding: 6px; font-size: 10px; color: var(--text-dim);
-  background: #1f1f1f; border-radius: var(--radius);
-  border: 1px solid var(--border);
+.fl-arrow-sym { color:var(--text-dim); flex-shrink:0; font-size:var(--fs-sm); }
+.fl-old {
+  font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--text-dim);
+  white-space:nowrap; flex-shrink:0;
 }
-.tk-counter span { color: var(--accent); font-family: var(--font-mono); font-weight: bold; font-size: 13px; }
-/* Status bar */
+
+/* ═══ Status Bar ═══ */
 .statusbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 4px 12px;
-  background: #111;
-  border-top: 1px solid var(--border);
-  font-size: 10px; color: var(--text-dim);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:3px var(--pad-lg);
+  font-size:var(--fs-sm); color:var(--text-dim);
 }
-.status-left { display: flex; align-items: center; gap: 12px; }
-.status-indicator { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
-.status-indicator.working { background: var(--accent); animation: pulse 0.8s infinite; }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-.status-right { color: var(--text-dim); }
+.sb-left { display:flex; align-items:center; gap:6px; }
+.sb-dot { width:5px; height:5px; border-radius:50%; background:var(--accent2); }
+.sb-undo {
+  cursor:pointer; color:var(--text-dim); border:none; background:none;
+  font-family:var(--font-ui); font-size:var(--fs-sm);
+}
+.sb-undo:hover { color:var(--text); }
 </style>
 </head>
 <body>
+
 <div class="app">
-  <!-- Titlebar -->
+
+  <!-- Titlebar — no v3.0 -->
   <div class="titlebar">
-    <div class="titlebar-left">
-      <div class="titlebar-dot a"></div>
-      <div class="titlebar-dot b"></div>
-      <div class="titlebar-dot c"></div>
-      <span class="titlebar-title">批量文件命名工具 v3.0</span>
-    </div>
-    <span style="color:#555;font-size:10px">方案A  ·  达芬奇暗黑风</span>
+    <span class="tb-dots">
+      <span class="tb-dot a"></span><span class="tb-dot b"></span><span class="tb-dot b"></span>
+    </span>
+    <span>批量文件命名工具</span>
+    <span style="color:#444;font-size:9px">Cmd+Option+I 调参</span>
   </div>
 
-  <!-- Designer Notes -->
-  <div class="notes">
-    <span class="notes-label">🎨 设计系统</span>
-    <span class="notes-item"><span class="swatch" style="background:#1a1a1a"></span> bg</span>
-    <span class="notes-item"><span class="swatch" style="background:#252525"></span> panel</span>
-    <span class="notes-item"><span class="swatch" style="background:#f47920"></span> accent</span>
-    <span class="notes-item"><span class="swatch" style="background:#4da6ff"></span> blue</span>
-    <span class="notes-item"><span class="swatch" style="background:#3a3a3a"></span> border</span>
-    <span style="color:#666;margin-left:4px">|</span>
-    <span style="color:#888">字体: Segoe UI + Consolas (Windows 系统内置)</span>
-    <span style="color:#666;margin-left:4px">|</span>
-    <span style="color:#888">tk实现: clam主题 + ttk.Style自定义</span>
-    <span style="color:#666;margin-left:4px">|</span>
-    <span style="color:#888">约 8MB .exe (PyInstaller)</span>
+  <!-- Inspector — 9 fields, one row -->
+  <div class="inspector">
+    <div class="param"><label>Ep 集数</label><input value="01"></div>
+    <div class="param"><label>Sc 场次</label><input value="03"></div>
+    <div class="param"><label>Gr 小场次</label><input value="01"></div>
+    <div class="param"><label>Tk 次数</label><input value="01"></div>
+    <div class="param wide"><label>镜头描述</label><input value="PUSH"></div>
+    <div class="param"><label>制作者</label><input value="YJ"></div>
+    <div class="param"><label>制作方式</label><input value="AE"></div>
+    <div class="param"><label>v 版本号</label><input value="01"></div>
+    <div class="param"><label>通过情况</label><select><option>OK</option><option>KP</option><option>NG</option><option>自定义...</option></select></div>
   </div>
 
-  <!-- Parameter Fields -->
-  <div class="params">
-    <div class="param-group">
-      <label class="param-label">Ep 集数</label>
-      <input class="param-input" value="01" oninput="updatePreview()" id="ep" maxlength="3">
+  <!-- Hero — Preview + CTA -->
+  <div class="hero">
+    <div class="hero-preview">
+      <span class="hero-arrow">▸</span>
+      <span class="hero-filename">Ep01_Sc03_Gr01_Tk01_PUSH_YJ_AE_v01_OK.mp4</span>
+      <span class="hero-meta">选中 <em>4</em> 个  ·  Tk <em>01→04</em></span>
     </div>
-    <div class="param-group">
-      <label class="param-label">Sc 场次</label>
-      <input class="param-input" value="03" oninput="updatePreview()" id="sc" maxlength="3">
-    </div>
-    <div class="param-group">
-      <label class="param-label">Gr 小场次</label>
-      <input class="param-input" value="01" oninput="updatePreview()" id="gr" maxlength="3">
-    </div>
-    <div class="param-group">
-      <label class="param-label">Tk 次数</label>
-      <input class="param-input" value="01" oninput="updatePreview()" id="tk" maxlength="3">
-    </div>
-    <div class="param-group" style="grid-column: span 2">
-      <label class="param-label">镜头描述</label>
-      <input class="param-input" value="PUSH" oninput="updatePreview()" id="desc">
-    </div>
-    <div class="param-group">
-      <label class="param-label">制作者</label>
-      <input class="param-input" value="YJ" oninput="updatePreview()" id="author">
-    </div>
-    <div class="param-group" style="grid-column: span 1">
-      <label class="param-label">制作方式</label>
-      <input class="param-input" value="AE" oninput="updatePreview()" id="method">
-    </div>
-    <div class="param-group">
-      <label class="param-label">v 版本号</label>
-      <input class="param-input" value="01" oninput="updatePreview()" id="ver">
-    </div>
-    <div class="param-group">
-      <label class="param-label">通过情况</label>
-      <select class="param-select" onchange="updatePreview()" id="status">
-        <option value="OK" class="status-ok">OK</option>
-        <option value="KP" class="status-kp">KP</option>
-        <option value="NG" class="status-ng">NG</option>
-      </select>
-    </div>
+    <button class="hero-btn">批量重命名</button>
+    <button class="hero-undo">↩ 撤销</button>
   </div>
 
-  <!-- Preview Bar -->
-  <div class="preview">
-    <span class="preview-icon">▸</span>
-    <span class="preview-text" id="preview">Ep01_Sc03_Gr01_Tk01_PUSH_YJ_AE_v01_OK.mp4</span>
-    <span class="preview-batch" id="batch-info">选中 4/6 个文件</span>
-  </div>
-
-  <!-- File List + Sidebar -->
-  <div class="content">
-    <div class="file-area">
-      <div class="file-area-header">
-        <span>文件列表 <span class="file-count">(6)</span></span>
-        <span style="font-size:9px">拖放文件到此处</span>
-      </div>
-      <div class="file-list" id="fileList">
-        <div class="file-item" onclick="toggleFile(this)" data-idx="0">
-          <span class="file-icon">▶</span>
-          <span class="file-name">D:/项目/短片S1/成品/镜头001.mp4</span>
-          <span class="file-ext">.mp4</span>
-          <span class="file-preview-name">Ep01_Sc03_Gr01_Tk01_PUSH_YJ_AE_v01_OK.mp4</span>
-        </div>
-        <div class="file-item" onclick="toggleFile(this)" data-idx="1">
-          <span class="file-icon">▶</span>
-          <span class="file-name">D:/项目/短片S1/成品/镜头002.mp4</span>
-          <span class="file-ext">.mp4</span>
-          <span class="file-preview-name">Ep01_Sc03_Gr01_Tk02_PUSH_YJ_AE_v01_OK.mp4</span>
-        </div>
-        <div class="file-item" onclick="toggleFile(this)" data-idx="2">
-          <span class="file-icon">▶</span>
-          <span class="file-name">D:/项目/短片S1/成品/镜头003.mp4</span>
-          <span class="file-ext">.mp4</span>
-          <span class="file-preview-name">Ep01_Sc03_Gr01_Tk03_PUSH_YJ_AE_v01_OK.mp4</span>
-        </div>
-        <div class="file-item" onclick="toggleFile(this)" data-idx="3">
-          <span class="file-icon">▶</span>
-          <span class="file-name">D:/项目/短片S1/成品/镜头004.mp4</span>
-          <span class="file-ext">.mp4</span>
-          <span class="file-preview-name">Ep01_Sc03_Gr01_Tk04_PUSH_YJ_AE_v01_OK.mp4</span>
-        </div>
-        <div class="file-item" onclick="toggleFile(this)" data-idx="4">
-          <span class="file-icon">▶</span>
-          <span class="file-name">D:/项目/短片S1/成品/镜头005.mp4</span>
-          <span class="file-ext">.mp4</span>
-          <span class="file-preview-name">Ep01_Sc03_Gr01_Tk05_PUSH_YJ_AE_v01_OK.mp4</span>
-        </div>
-        <div class="file-item" onclick="toggleFile(this)" data-idx="5">
-          <span class="file-icon">▶</span>
-          <span class="file-name">D:/项目/短片S1/成品/镜头006.mp4</span>
-          <span class="file-ext">.mp4</span>
-          <span class="file-preview-name">Ep01_Sc03_Gr01_Tk06_PUSH_YJ_AE_v01_OK.mp4</span>
-        </div>
+  <!-- File List — no .mp4 column, both scrolls -->
+  <div class="file-section">
+    <div class="fl-bar">
+      <span>文件列表 · <strong style="color:var(--accent);font-weight:600">6</strong> 个</span>
+      <div class="fl-bar-right">
+        <button class="fl-btn">+ 文件</button>
+        <button class="fl-btn">+ 文件夹</button>
       </div>
     </div>
-
-    <!-- Sidebar Actions -->
-    <div class="sidebar">
-      <button class="btn" onclick="addFile()"><span class="btn-icon">+</span> 添加文件</button>
-      <button class="btn" onclick="addFolder()"><span class="btn-icon">+</span> 添加文件夹</button>
-      <button class="btn" onclick="removeSelected()"><span class="btn-icon">&times;</span> 移除选中</button>
-      <div class="separator"></div>
-      <div class="tk-counter">Tk 递增: <span id="tkDisplay">01→06</span></div>
-      <div class="separator"></div>
-      <button class="btn btn-primary" onclick="doRename()">批量重命名</button>
-      <button class="btn btn-danger" onclick="doUndo()">↩ 撤销上次</button>
+    <div class="fl-body">
+      <div class="fl-item">
+        <div class="fl-thumb a"></div>
+        <span class="fl-new">Ep01_Sc03_Gr01_Tk01_PUSH_YJ_AE_v01_OK.mp4</span>
+        <span class="fl-arrow-sym">←</span>
+        <span class="fl-old">镜头001.mp4</span>
+      </div>
+      <div class="fl-item sel">
+        <div class="fl-thumb b"></div>
+        <span class="fl-new">Ep01_Sc03_Gr01_Tk02_PUSH_YJ_AE_v01_OK.mp4</span>
+        <span class="fl-arrow-sym">←</span>
+        <span class="fl-old">镜头002.mp4</span>
+      </div>
+      <div class="fl-item sel">
+        <div class="fl-thumb c"></div>
+        <span class="fl-new">Ep01_Sc03_Gr01_Tk03_PUSH_YJ_AE_v01_OK.mp4</span>
+        <span class="fl-arrow-sym">←</span>
+        <span class="fl-old">镜头003.mp4</span>
+      </div>
+      <div class="fl-item sel">
+        <div class="fl-thumb d"></div>
+        <span class="fl-new">Ep01_Sc03_Gr01_Tk04_PUSH_YJ_AE_v01_OK.mp4</span>
+        <span class="fl-arrow-sym">←</span>
+        <span class="fl-old">镜头004.mp4</span>
+      </div>
+      <div class="fl-item">
+        <div class="fl-thumb e"></div>
+        <span class="fl-new">Ep01_Sc03_Gr01_Tk05_PUSH_YJ_AE_v01_OK.mp4</span>
+        <span class="fl-arrow-sym">←</span>
+        <span class="fl-old">镜头005.mp4</span>
+      </div>
+      <div class="fl-item">
+        <div class="fl-thumb f"></div>
+        <span class="fl-new">Ep01_Sc03_Gr01_Tk06_PUSH_YJ_AE_v01_OK.mp4</span>
+        <span class="fl-arrow-sym">←</span>
+        <span class="fl-old">镜头006.mp4</span>
+      </div>
     </div>
   </div>
 
-  <!-- Status Bar -->
+  <!-- Status Bar — your layout: left=status, right=brand+version -->
   <div class="statusbar">
-    <div class="status-left">
-      <span class="status-indicator" id="statusDot"></span>
-      <span id="statusMsg">就绪</span>
-    </div>
-    <span class="status-right">批量文件命名工具 v3.0  ·  方案A: 达芬奇暗黑风</span>
+    <span class="sb-left"><span class="sb-dot"></span> 就绪  ·  Ctrl+Z 撤销  ·  Del 移除</span>
+    <span>裁缝老师的达芬奇插件工坊 ·  v3.0</span>
   </div>
+
 </div>
 
-<script>
-// Interactive preview logic
-function updatePreview() {
-  const ep = document.getElementById('ep').value.padStart(2,'0') || '01';
-  const sc = document.getElementById('sc').value.padStart(2,'0') || '01';
-  const gr = document.getElementById('gr').value.padStart(2,'0') || '01';
-  const tk = document.getElementById('tk').value.padStart(2,'0') || '01';
-  const desc = document.getElementById('desc').value || 'unnamed';
-  const author = document.getElementById('author').value || 'anon';
-  const method = document.getElementById('method').value || 'XX';
-  const ver = document.getElementById('ver').value || '01';
-  const status = document.getElementById('status').value;
-
-  const prefix = `Ep${ep}_Sc${sc}_Gr${gr}_Tk${tk}_${desc}_${author}_${method}_v${ver}_${status}`;
-  document.getElementById('preview').textContent = prefix + '.mp4';
-
-  // Update TK counter
-  const selected = document.querySelectorAll('.file-item.selected');
-  if (selected.length > 1) {
-    const start = parseInt(tk);
-    const end = start + selected.length - 1;
-    document.getElementById('tkDisplay').textContent =
-      String(start).padStart(2,'0') + '→' + String(end).padStart(2,'0');
-  } else {
-    document.getElementById('tkDisplay').textContent = tk;
-  }
-  updateBatchInfo();
-}
-
-function toggleFile(el) {
-  if (el.classList.contains('selected')) {
-    el.classList.remove('selected');
-  } else {
-    el.classList.add('selected');
-  }
-  updatePreview();
-  updateBatchInfo();
-}
-
-function updateBatchInfo() {
-  const selected = document.querySelectorAll('.file-item.selected');
-  const total = document.querySelectorAll('.file-item').length;
-  document.getElementById('batch-info').textContent =
-    selected.length > 0 ? `选中 ${selected.length}/${total} 个文件` : `无选中 (共 ${total} 个)`;
-}
-
-function addFile() {
-  const msg = document.getElementById('statusMsg');
-  msg.textContent = '已打开文件选择对话框...';
-  document.getElementById('statusDot').classList.add('working');
-  setTimeout(() => {
-    msg.textContent = '就绪';
-    document.getElementById('statusDot').classList.remove('working');
-  }, 2000);
-}
-
-function addFolder() {
-  const msg = document.getElementById('statusMsg');
-  msg.textContent = '已打开文件夹选择对话框...';
-  document.getElementById('statusDot').classList.add('working');
-  setTimeout(() => {
-    msg.textContent = '就绪';
-    document.getElementById('statusDot').classList.remove('working');
-  }, 2000);
-}
-
-function removeSelected() {
-  document.querySelectorAll('.file-item.selected').forEach(el => el.remove());
-  updatePreview();
-  updateBatchInfo();
-}
-
-function doRename() {
-  const selected = document.querySelectorAll('.file-item.selected');
-  const msg = document.getElementById('statusMsg');
-  if (selected.length === 0) {
-    msg.textContent = '⚠ 请先选择文件';
-    setTimeout(() => msg.textContent = '就绪', 3000);
-    return;
-  }
-  document.getElementById('statusDot').classList.add('working');
-  msg.textContent = `正在重命名 ${selected.length} 个文件...`;
-  setTimeout(() => {
-    msg.textContent = `✅ 已完成 ${selected.length} 个文件的重命名`;
-    document.getElementById('statusDot').classList.remove('working');
-    // Visually update file items
-    selected.forEach((el, i) => {
-      const previewEl = el.querySelector('.file-preview-name');
-      previewEl.style.display = 'block';
-    });
-  }, 1500);
-}
-
-function doUndo() {
-  document.getElementById('statusDot').classList.add('working');
-  document.getElementById('statusMsg').textContent = '↩ 正在撤销...';
-  setTimeout(() => {
-    document.getElementById('statusMsg').textContent = '↩ 已撤销上次重命名';
-    document.getElementById('statusDot').classList.remove('working');
-  }, 1000);
-}
-
-// Initial
-updatePreview();
-</script>
 </body>
 </html>

@@ -20,7 +20,7 @@
 
 ### MediaPool 片段色彩
 
-`GetClipColor()` 17 种标准色彩对照表 → `davinci-api` skill。
+`GetClipColor()` 17 种标准色彩对照表 → `达芬奇API参考` skill。
 项目使用: `check_core.py → _audio_color_detail()` 判断音频越轨。
 
 ### 社区
@@ -37,9 +37,19 @@
 | 项目 | Stars | 最后更新 | 状态 |
 |------|:--:|------|:--:|
 | davinci-resolve-mcp `samuelgursky/davinci-resolve-mcp` | 1024 | 2026-05-09 | ⭐ 活跃 |
-| nobphotographr/automation `nobphotographr/davinci-resolve-automation` | 3 | 2025-12-31 | 边缘 |
+| X-Raym/DaVinci-Resolve-Scripts | 200+ | 2026-04-16 | ⭐ 活跃（Lua） |
+| auto-subs `tmoroney/auto-subs` | 200+ | 2026 | 活跃（CLI） |
+| Useful.Resolve `ambustion/Useful.Resolve` | ~30 | 2024 | ⭐ Python UI 脚本 |
+| nobphotographr/automation | 3 | 2025-12-31 | 边缘 |
 | theia `ming-qiu/theia` | 3 | 2026-05-07 | 边缘 |
+| tynidev/davinci-resolve | ~50 | 2025-08 | Lua 脚本集 |
 | Reactor `WeSuckLess/Reactor` | 1 | **2018** | ❌ 已死 |
+
+### 社区知识（WSL 论坛）
+| 资源 | 链接 | 状态 |
+|------|------|:--:|
+| Building GUIs With Fusion's UI Manager（18页神帖） | `steakunderwater.com/wesuckless/viewtopic.php?t=1411` | ✅ 活跃 |
+| Resolve Scripting Essentials（7页置顶帖） | `steakunderwater.com/wesuckless/viewforum.php?f=46` | ✅ 活跃 |
 
 ### 在线 API 文档
 
@@ -48,13 +58,18 @@
 | X-Raym Gist | `gist.github.com/X-Raym/2f2bf453fc481b9cca624d7ca0e19de8` | 未验证 |
 | deric 非官方文档 | `deric.github.io/DaVinciResolve-API-Docs/` | 未验证 |
 
-### 本地参考代码（SMB）
+### 本地参考代码
 
 | 资源 | 位置 | 状态 |
 |------|------|:--:|
-| 张来吃 Batch_io_Pro.py | `/Volumes/MYJC/06_Software/达芬奇脚本/批量IO渲染/` | ✅ |
-| 批量替换片段 Lua | `/Volumes/MYJC/06_Software/达芬奇脚本/批量替换片段/` | ✅ |
-| TTS 语音工具 | `/Volumes/MYJC/06_Software/达芬奇脚本/TTS语音工具/` | ✅ |
+| SMB — 批量IO渲染 | `/Volumes/MYJC/06_Software/达芬奇脚本/批量IO渲染/Batch_io_Pro.py` | ✅ |
+| SMB — 批量替换片段 | `/Volumes/MYJC/06_Software/达芬奇脚本/批量替换片段/批量替换片段.lua` | ✅ |
+| SMB — 导出时间线标记 | `/Volumes/MYJC/06_Software/达芬奇脚本/时间线标记/导出时间线标记.lua` | ✅ |
+| SMB — 字幕编辑器 | `/Volumes/MYJC/06_Software/达芬奇脚本/字幕编辑器/` (HEIBA) | ✅ |
+| SMB — TTS语音工具 | `/Volumes/MYJC/06_Software/达芬奇脚本/TTS语音工具/` (HEIBA) | ✅ |
+| GitHub — ExportCDL.py (Python UI) | `达芬奇学习资料/外部插件参考/Useful-Resolve/` | ✅ |
+| GitHub — CDLConform.py (Python UI) | 同上 | ✅ |
+| GitHub — GrabStillLabel.py (Python UI) | 同上 | ✅ |
 
 ### 学习资料（本地 Git）
 
@@ -62,6 +77,8 @@
 |------|------|
 | AI 调研报告（GPT/MiniMax/豆包/千问） | `AI去字幕/外部调研报告/` (7 份) |
 | HEIBA 黑靶插件源码（Lua 明文） | `达芬奇学习资料/HEIBA插件源码/` (4 脚本) |
+| 外部开源插件参考（GitHub 5 仓库） | `达芬奇学习资料/外部插件参考/` |
+| BMD 官方示例（21 个 Python+Lua） | `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/Examples/` |
 | 摄影机文件命名规范调研 | `达芬奇学习资料/摄影机文件命名规范调研.md` |
 | fukco/media-metadata（Go 源码） | `达芬奇学习资料/media-metadata/` |
 

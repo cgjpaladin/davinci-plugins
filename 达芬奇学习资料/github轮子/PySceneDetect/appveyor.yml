@@ -1,0 +1,150 @@
+# Build signed releases for PySceneDetect Windows x64
+
+build: false
+
+cache:
+  # FFmpeg self-invalidates via %ffmpeg_version% in the filename; AdvInst MSI and
+  # Inkscape rarely need refresh and have `if not exist` install guards, so we
+  # don't tie them to appveyor.yml (any edit there would force a cold-cache
+  # reinstall of all three and blow past the 10-minute build limit).
+  - 'ffmpeg-%ffmpeg_version%-full_build.7z'
+  - 'packaging\windows\installer\advinst.msi'
+  - '%LOCALAPPDATA%\uv\cache -> pyproject.toml'
+  - 'C:\Program Files\Inkscape'
+
+# Branches applies to tags as well. We only build on tagged releases of the form vX.Y.Z-release
+branches:
+  only:
+    - main
+    - /releases\/.+/
+    - /v.+-release/
+
+skip_tags: false
+skip_non_tags: true
+
+environment:
+  matrix:
+    - PYTHON: "C:\\Python313-x64"
+  # Encrypted AdvancedInstaller License
+  ai_license_secret:
+    secure: QRCPoNYF1nqgXDn7pHgBzg==
+  ai_license_salt:
+    secure: +Gy+SRk8JUsaM+5pMEKITiJxdLilrxHpkKlrZzR3C9DPwdgYLGxt5sJn6uXuAJg7e6JsKHcT7tRks/HcSKkHPw==
+  ffmpeg_version: "8.1"
+
+# SignPath Config for Code Signing
+deploy:
+- provider: Webhook
+  url: https://app.signpath.io/API/v1/f2efa44c-5b5c-45f2-b44f-8f9dde708313/Integrations/AppVeyor?ProjectSlug=PySceneDetect&SigningPolicySlug=release-signing
+  authorization:
+     secure: FBgWCaxCCKOqc2spYf5NGWSNUGLbT5WeuC5U0k4Of1Ids9n51YWxhGlMyzLbdNBFe64RUcOSzk/N3emlQzbsJg==
+  on:
+    APPVEYOR_REPO_TAG: true # keep casing this way for Linux builds where variables are case-sensitive
+
+install:
+  - echo * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  - echo * *                      SETTING UP PYTHON ENVIRONMENT                      * *
+  - echo * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  - 'SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%'
+  - python --version
+  - python -m pip install uv
+  - uv pip install --system .[docs]
+  - uv pip install --system -r packaging/windows/requirements.txt --no-binary imageio-ffmpeg
+  - if not exist ffmpeg-%ffmpeg_version%-full_build.7z appveyor DownloadFile https://github.com/GyanD/codexffmpeg/releases/download/%ffmpeg_version%/ffmpeg-%ffmpeg_version%-full_build.7z
+  - 7z e ffmpeg-%ffmpeg_version%-full_build.7z -odist/ffmpeg ffmpeg.exe LICENSE -r
+  # moviepy.config reads FFMPEG_BINARY (which routes through imageio_ffmpeg) at import time.
+  # `--no-binary imageio-ffmpeg` strips the bundled ffmpeg, so point it at the GyanD copy
+  # we just extracted; otherwise pre_release.py and pyinstaller analysis crash on
+  # `import scenedetect`. The runtime hook (pyi_rth_scenedetect.py) does the same at exe runtime.
+  - 'SET IMAGEIO_FFMPEG_EXE=%APPVEYOR_BUILD_FOLDER%\\dist\\ffmpeg\\ffmpeg.exe'
+  # Inkscape is required by scripts/pre_release.py --release (regenerates installer JPGs
+  # from the master SVG). Not preinstalled on the AppVeyor VS2019 image; cached
+  # in `C:\Program Files\Inkscape` (see cache: section) so we only re-install when
+  # the cache is busted (appveyor.yml changes).
+  - if not exist "C:\Program Files\Inkscape\bin\inkscape.exe" choco install inkscape -y --no-progress
+  - 'SET PATH=%PATH%;C:\Program Files\Inkscape\bin'
+
+  - echo * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  - echo * *                          BUILDING WINDOWS EXE                           * *
+  - echo * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  # Build Windows .EXE and create portable .ZIP. The staging script copies
+  # ffmpeg.exe + LICENSE from --ffmpeg-dir, third-party licenses, the project
+  # LICENSE/README, and sphinx docs into dist/scenedetect/, then emits the
+  # portable .zip - keeps CI and local builds in sync (see scripts/stage_windows_dist.py).
+  - python scripts/pre_release.py --release
+  - pyinstaller packaging/windows/scenedetect.spec
+  - python scripts/stage_windows_dist.py --ffmpeg-dir dist/ffmpeg
+
+  - echo * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  - echo * *                         BUILDING MSI INSTALLER                          * *
+  - echo * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  # Download, install, and register AdvancedInstaller
+  - cd packaging/windows/installer
+  - ps: iex ((New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/appveyor/secure-file/master/install.ps1'))
+  - appveyor-tools\secure-file -decrypt license65.dat.enc -secret %ai_license_secret% -salt %ai_license_salt%
+  - if not exist advinst.msi appveyor DownloadFile https://www.advancedinstaller.com/downloads/advinst.msi
+  - msiexec /i advinst.msi /qn
+  # Resolve the installed Advanced Installer bin path dynamically - the upstream
+  # MSI is unversioned so the directory name (Advanced Installer X.Y.Z) drifts.
+  - ps: $aiBin = (Get-ChildItem 'C:\Program Files (x86)\Caphyon\Advanced Installer*\bin\x86' | Sort-Object FullName -Descending | Select-Object -First 1).FullName; Add-Content $env:APPVEYOR_BUILD_FOLDER\ai_path.txt $aiBin
+  - set /p AI_BIN=<%APPVEYOR_BUILD_FOLDER%\ai_path.txt
+  - 'SET PATH=%PATH%;%AI_BIN%'
+  # License path must be absolute
+  - AdvancedInstaller.com /RegisterOffline "%cd%\license65.dat"
+  - cd ../../..
+  # Re-sync APPDIR from CI's dist/scenedetect (handles drift between local and
+  # CI pyinstaller output - new transitive deps, Python patch updates, etc.).
+  # Does not touch version/GUID fields - those are committed to the .aip on the
+  # release tag and must stay stable across rebuilds for upgrade-chain integrity.
+  # On non-tag builds, also pass --dev so the MSI is named PySceneDetect-{ver}-dev-win64.msi
+  # (keeps dev artifacts distinguishable from signed releases).
+  - if "%APPVEYOR_REPO_TAG%"=="true" (python scripts/update_installer.py --sync-only) else (python scripts/update_installer.py --sync-only --dev)
+  # Snapshot the post-sync .aip and the actual payload tree as build artifacts.
+  # The committed .aip is a baseline; CI adapts it to its own pyinstaller output
+  # and we never write back to git, so these snapshots are the authoritative
+  # record of what each MSI was built from (for audit / release forensics).
+  - copy packaging\windows\installer\PySceneDetect.aip dist\PySceneDetect.aip
+  # Create MSI installer
+  - AdvancedInstaller.com /build packaging/windows/installer/PySceneDetect.aip
+
+  - echo * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  - echo * *                        PACKAGING BUILD ARTIFACTS                        * *
+  - echo * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  # Zip all resources together for code signing
+  - move packaging\windows\installer\PySceneDetect-*.msi dist\
+  - cd dist
+  - cp scenedetect\scenedetect.exe .
+  - 7z a scenedetect-signed.zip scenedetect.exe PySceneDetect-*.msi
+  - cd ..
+
+test_script:
+  - echo * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  - echo * *                              TESTING BUILD                              * *
+  - echo * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  # Checkout required test resources
+  - git fetch --depth=1 https://github.com/Breakthrough/PySceneDetect.git refs/heads/resources:refs/remotes/origin/resources
+  - git checkout refs/remotes/origin/resources -- tests/resources/
+  - move dist\scenedetect\ffmpeg.exe ffmpeg.exe
+  # Run unit tests
+  # TODO: We are at the new build time limit for this plan apparently, 10 mins. Figure out a
+  # strategy to deal with that (see if we can use Github as a builder?).
+  # - pytest
+  # Test Windows build
+  - move ffmpeg.exe dist\scenedetect\ffmpeg.exe
+  - cd dist/scenedetect
+  - scenedetect.exe version
+  - scenedetect.exe -i ../../tests/resources/testvideo.mp4 -b opencv detect-content time -e 2s
+  - scenedetect.exe -i ../../tests/resources/testvideo.mp4 -b pyav detect-content time -e 2s
+
+artifacts:
+  # Portable ZIP (named PySceneDetect-X.Y.Z-win64.zip by stage_windows_dist.py)
+  - path: dist/PySceneDetect-*-win64.zip
+    name: PySceneDetect-win64
+  # MSI Installer + .EXE Bundle for Signing
+  - path: dist/scenedetect-signed.zip
+    name: PySceneDetect-win64_installer
+  # Build provenance: post-sync .aip and the portable payload manifest.
+  - path: dist/PySceneDetect.aip
+    name: PySceneDetect-build-manifest-aip
+  - path: dist/PySceneDetect-*.manifest.txt
+    name: PySceneDetect-build-manifest-payload
