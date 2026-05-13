@@ -10,7 +10,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared.naming import (
     FIELD_CONFIG, DISPLAY_FIELDS, METHOD_DESC_MAP, FIELD_RULES,
     build_filename, parse_filename, build_folder,
-    check_zero_byte, check_double_ext, check_size_anomaly,
     MEDIA_EXT, sanitize_text,
 )
 
@@ -248,30 +247,6 @@ class RenamerAPI:
                 pass
         _log.info(f"do_undo: {ud}/{len(batch)} reversed, remaining batches: {len(_undo_stack)}")
         return {"ok": ud, "msg": f"已撤销 {ud} 个", "remaining": len(_undo_stack)}
-
-    def do_check(self, paths):
-        zero = 0; size_w = 0; fmt_w = 0; dbl = 0
-        anomalies = set()
-        if paths:
-            anomalies = {fp for fp, _ in check_size_anomaly(paths)}
-        results = []
-        for p in paths:
-            tags = []
-            if check_zero_byte(p):
-                tags.append("zero"); zero += 1
-            elif p in anomalies:
-                tags.append("size"); size_w += 1
-            if not parse_filename(p):
-                tags.append("fmt"); fmt_w += 1
-            if check_double_ext(os.path.basename(p)):
-                tags.append("dbl_ext"); dbl += 1
-            results.append({"path": p, "tags": tags})
-        msgs = []
-        if zero: msgs.append(f"零字节: {zero} 个")
-        if size_w: msgs.append(f"大小异常: {size_w} 个")
-        if fmt_w: msgs.append(f"命名格式不符: {fmt_w} 个")
-        if dbl: msgs.append(f"扩展名重复: {dbl} 个")
-        return {"issues": zero + size_w + fmt_w + dbl, "msgs": msgs, "per_file": results}
 
     def validate_dest(self, dest):
         v = str(dest).strip()
