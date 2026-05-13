@@ -348,7 +348,7 @@ function getFields(){
   const f={};
   for(const el of document.querySelectorAll('#inspector [data-key]')){
     const v=el.value.trim();
-    f[el.getAttribute('data-key')]=v||null;
+    f[el.getAttribute('data-key')]=v||'';
   }
   if(sel.size>0){const s=[...sel].sort((a,b)=>a-b);f.tk=String(s[0]+1).padStart(2,'0')}else f.tk='';
   return f;
@@ -415,8 +415,7 @@ function renderList(){
     let ff,nm;
     if(sel.has(i)){const p=srt.indexOf(i);ff={...fd,tk:String(srt[0]+p+1).padStart(2,'0')};nm=buildName(ff)}
     else{
-      ff=f.fields;
-      ff=f.fields;
+      ff={...f.fields,tk:String(i+1).padStart(2,'0')};
       nm=buildName(ff);
     }
     const th=document.createElement('div');th.className='fl-thumb';
@@ -444,7 +443,7 @@ function updCount(){
 }
 function updButtons(){
   const hf=files.length>0,hs=sel.size>0,fd=getFields();
-  const af=fd.ep&&fd.sc&&fd.gr&&fd.ver&&fd.status&&fd.desc;
+  const af=fd.ep&&fd.sc&&fd.gr&&fd.author&&fd.ver&&fd.status&&fd.desc;
   document.getElementById('btnRename').disabled=!(hs&&af);
   document.getElementById('btnArchive').disabled=!(hs&&af);
   document.getElementById('btnUndo').disabled=!undoAvail;
@@ -621,9 +620,8 @@ function _applyInspectorToSelected(){
   const changed=[];
   for(const i of sel){
     for(const k of Object.keys(fd)){
-      if(fd[k]===null)continue;
-      if(files[i].fields[k]!==fd[k])changed.push(k);
-      files[i].fields[k]=fd[k];
+      if(k==='tk')continue;
+      if(files[i].fields[k]!==fd[k]){changed.push(k);files[i].fields[k]=fd[k]}
     }
   }
   if(changed.length)call('debug_log','fields changed: '+[...new Set(changed)].join(',')+' on '+sel.size+' files');

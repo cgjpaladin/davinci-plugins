@@ -543,7 +543,8 @@ function buildName(f){
   const m=f.method||'';
   const ep=f.ep||'';const sc=f.sc||'';const gr=f.gr||'';
   const ver=f.ver||'';const status=f.status||'';
-  return `Ep${ep}_Sc${sc}_Gr${gr}_Tk${f.tk||''}_${f.desc||''}_${m}_v${ver}_${status}`;
+  const raw=`Ep${ep}_Sc${sc}_Gr${gr}_Tk${f.tk||''}_${f.desc||''}_${m}_v${ver}_${status}`;
+  return raw.replace(/_+/g,'_').replace(/_$/,'');
 }
 async function doUndo(){const r=await call('do_undo');toast(r.msg);undoAvail=(r.remaining||0)>0;updButtons()}
 async function doCheck(){
