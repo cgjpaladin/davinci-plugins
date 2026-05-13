@@ -679,6 +679,22 @@ document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
 // 制作者 — 仅限中文
 const ab=document.getElementById('authorInput');
 if(ab)ab.addEventListener('input',()=>{const o=ab.value;const c=o.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g,'');if(c!==o){toast('请输入完整中文姓名');ab.value=c}});
+// 数字字段限制
+const _rules={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
+document.querySelectorAll('[data-key="ep"],[data-key="sc"],[data-key="gr"],[data-key="ver"]').forEach(el=>{
+  el.addEventListener('input',()=>{
+    const rx=_rules[el.getAttribute('data-key')];
+    if(!rx)return;
+    let v=el.value;
+    // 只保留数字和小数点
+    v=v.replace(/[^\d.]/g,'');
+    // 只保留第一个小数点
+    const dp=v.indexOf('.');if(dp>=0)v=v.slice(0,dp+1)+v.slice(dp+1).replace(/\./g,'');
+    // 逐字符截断直到匹配
+    while(v&&!rx.test(v))v=v.slice(0,-1);
+    el.value=v;
+  });
+});
 document.querySelectorAll('#inspector select[data-key]').forEach(el=>{
   if(el.id==='descInput'||el.id==='methodSelect')return;
   el.addEventListener('change',()=>{_applyInspectorToSelected();renderList();updButtons()});
