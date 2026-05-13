@@ -1348,15 +1348,20 @@ def _collect_clip_files(timeline, io_range=None):
             name = _get_clip_name(it)
             start = _get_cached(it, "start", 0)
             mp = _get_cached(it, "mp")
-            path = None
+            path = ""
+            mp_type = ""
             if mp is not None:
                 try:
                     path = mp.GetClipProperty("File Path") or ""
                 except Exception:
                     pass
+                try:
+                    mp_type = mp.GetClipProperty("Type") or ""
+                except Exception:
+                    pass
             key = (f"V{vi}", name)
             if key not in info:
-                info[key] = {"start": start, "mp": mp, "path": path, "track": f"V{vi}"}
+                info[key] = {"start": start, "mp": mp, "path": path, "track": f"V{vi}", "mp_type": mp_type}
     _clip_files_cache = info
     return info
 
@@ -1426,6 +1431,10 @@ def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
         if mp_uid in seen_mp:
             continue
         seen_mp.add(mp_uid)
+        # 复合片段/内部合成无外部文件，跳过脱机检测
+        mp_type = info.get("mp_type", "")
+        if mp_type in ("复合", "合成"):
+            continue
         path = info["path"]
         if path:
             continue
