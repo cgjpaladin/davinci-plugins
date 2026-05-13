@@ -1141,22 +1141,18 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
             near_axis = any(abs(rot_360 - a) < 30.0 or abs(rot_360 - (a + 360)) < 30.0
                            for a in (0, 90, 180, 270))
             if near_axis:
-                # 找最近的标准轴，判断是否需交换宽高
+                # 近轴路径：先用轴对齐快速判断
                 nearest = min((0, 90, 180, 270), key=lambda a: min(abs(rot_360 - a), abs(rot_360 - (a + 360))))
                 if nearest in (90, 270):
                     check_w, check_h = eff_h, eff_w
                 else:
                     check_w, check_h = eff_w, eff_h
-                # 尺寸够大 AND 四角不露黑边 → 跳过
-                if check_w >= timeline_w and check_h >= timeline_h:
-                    gap_found = False
-                    hw2, hh2 = check_w / 2.0, check_h / 2.0
-                    for tx, ty in [(0, 0), (timeline_w, 0), (timeline_w, timeline_h), (0, timeline_h)]:
-                        if abs(tx - cx) > hw2 or abs(ty - cy) > hh2:
-                            gap_found = True
-                            break
-                    if not gap_found:
-                        continue
+                # 尺寸够大且中心未偏移且无旋转 → 才可安全跳过
+                if (check_w >= timeline_w and check_h >= timeline_h
+                    and abs(cx - timeline_w/2) < 0.5 and abs(cy - timeline_h/2) < 0.5
+                    and rot_360 < 0.01):
+                    continue
+            # 统一角检测（覆盖近轴 + 非近轴）
             cos_r_raw = math.cos(rot); sin_r_raw = math.sin(rot)
             hw, hh = eff_w / 2.0, eff_h / 2.0
             has_gap = False
