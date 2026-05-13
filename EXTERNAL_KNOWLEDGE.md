@@ -23,6 +23,33 @@
 `GetClipColor()` 17 种标准色彩对照表 → `达芬奇API参考` skill。
 项目使用: `check_core.py → _audio_color_detail()` 判断音频越轨。
 
+### TimelineItem 属性发现
+
+> 以下属性来自 `GetProperty()` 实测验证（非官方文档明列）。
+
+#### 动态缩放 (`DynamicZoomEase`)
+
+- **值**: 0=关闭/默认, 1=线性, 2=缓入, 3=缓出, 4=缓入缓出
+- **盲区**: 开启开关但从未调整缓动 → 值为 0，无法与未开启区分
+- **检测**：`it.GetProperty().get("DynamicZoomEase", 0) > 0`
+- 验证日期: 2026-05-13
+
+#### 其他 Inspector 属性
+
+| 属性 | 类型 | 含义 |
+|------|------|------|
+| `ZoomX` / `ZoomY` | float | X/Y 缩放倍数（1.0=无缩放） |
+| `ZoomGang` | bool | 等比缩放 |
+| `CropLeft/Right/Top/Bottom` | float | 裁剪 |
+| `RotationAngle` | float | 旋转角度 |
+| `Opacity` | float | 不透明度（0-100） |
+| `Pan` / `Tilt` | float | 平移/倾斜 |
+| `RetimeProcess` | int | 变速处理模式（3=光流法） |
+| `ResizeFilter` | int | 调整大小滤镜 |
+| `Scaling` | int | 缩放模式 |
+| `MotionEstimation` | int | 运动估计 |
+| `FlipX` / `FlipY` | bool | 水平/垂直翻转 |
+
 ### 社区
 
 | 资源 | 状态 |
