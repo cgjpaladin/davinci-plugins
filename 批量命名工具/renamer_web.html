@@ -234,21 +234,12 @@ body{
     <div class="param"><label>通过情况</label><select data-key="status"><option value="">请选择</option><option value="OK">OK</option><option value="KP">KP</option><option value="NG">NG</option></select></div>
   </div>
 
-<!-- Dest -->
-<div class="dest" id="destRow">
+<!-- Dest + Buttons -->
+<div class="dest">
   <label>目标路径</label>
   <input id="destInput" value="" placeholder="点击 📁 选择项目文件夹，或粘贴路径">
   <button class="fl-btn" id="btnBrowseDest" style="flex-shrink:0">📁</button>
   <span class="dest-ok" id="destStatus"></span>
-</div>
-
-<!-- Hero -->
-<div class="hero">
-  <div class="hero-preview">
-    <span class="hero-arrow">▸</span>
-    <span class="hero-filename" id="previewName">添加文件后显示预览</span>
-    <span class="hero-meta" id="previewMeta"></span>
-  </div>
   <button class="hero-btn" id="btnRename" disabled>批量重命名</button>
   <button class="hero-archive" id="btnArchive" disabled>批量归档</button>
   <button class="hero-check" id="btnCheck">检查</button>
@@ -410,14 +401,7 @@ function descSelect(vs){
 document.getElementById('methodSelect').addEventListener('change',onMethodChange);
 
 // ═══ Preview ═══
-async function updPreview(){
-  const fd=getFields();const r=await call('build_preview_filename',fd);
-  const pv=document.getElementById('previewName'),mt=document.getElementById('previewMeta');
-  if(files.length===0){pv.textContent='添加文件后显示预览';mt.innerHTML='';return}
-  const ext=files[0]?.ext||'.mp4';
-  if(sel.size===0){pv.textContent=r.filename+ext+'  (未选中)';mt.innerHTML=''}
-  else{const s=[...sel].sort((a,b)=>a-b);pv.textContent=r.filename+ext;mt.innerHTML=`选中 <em>${sel.size}</em> 个  ·  Tk <em>${String(s[0]+1).padStart(2,'0')}→${String(s[s.length-1]+1).padStart(2,'0')}</em>`}
-}
+function updPreview(){}  // 预览栏已移除，保留空函数兼容调用
 
 // ═══ File List ═══
 function renderList(){
