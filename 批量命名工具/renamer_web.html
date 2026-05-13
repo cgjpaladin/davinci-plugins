@@ -433,15 +433,15 @@ function renderList(){
     if(sel.has(i)){const p=srt.indexOf(i);ff={...fd,tk:String(srt[0]+p+1).padStart(2,'0')};nm=buildName(ff)}
     else{
       ff=f.fields;
-      const isDefault=(!ff.ep||!ff.sc||!ff.gr);
-      nm=isDefault?f.basename:buildName(ff);
+      ff=f.fields;
+      nm=buildName(ff);
     }
     const th=document.createElement('div');th.className='fl-thumb';
     const tsrc=_thumbs[f.path];
     if(tsrc){th.style.backgroundImage=`url(${tsrc})`;th.style.backgroundSize='cover';th.style.backgroundPosition='center'}
     else{th.style.background=`linear-gradient(135deg,${tc[i%tc.length]},${tc[(i+2)%tc.length]})`}
     const nn=document.createElement('span');nn.className='fl-new';
-    nn.textContent=nm+(nm===f.basename?'':' '+f.ext);
+    nn.textContent=nm+' '+f.ext;
     const ar=document.createElement('span');ar.className='fl-arrow-sym';ar.textContent='←';
     const on=document.createElement('span');on.className='fl-old';on.textContent=f.basename;
     d.append(th,nn,ar,on);
