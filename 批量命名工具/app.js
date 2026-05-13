@@ -174,7 +174,9 @@ function updCount(){
 function _lockInspector(lock){
   document.querySelectorAll('#inspector input:not([data-key="tk"]), #inspector select').forEach(el=>{
     if(el.id==='descInput'&&descLocked)return;
-    el.readOnly=lock;el.style.cursor=lock?'default':'';
+    if(el.tagName==='SELECT')el.disabled=lock;
+    else el.readOnly=lock;
+    el.style.cursor=lock?'default':'';
     if(lock){el.style.color='';el.style.background=''}
   });
 }

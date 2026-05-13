@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 // ═══ State ═══
 let files=[], sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
-const C={g:'var(--green)',y:'var(--yellow)',r:'var(--red)',b:'var(--text-bright)',d:'var(--text-dim)',gr:'rgba(0,212,170,0.12)'};
+const C={g:'var(--green)',y:'var(--yellow)',r:'var(--red)',b:'var(--text-bright)',d:'var(--text-dim)',gr:'rgba(52,211,153,0.12)'};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
 
 // ═══ API ═══
@@ -393,10 +393,10 @@ function onMethodChange(){
 function descInput(t,v,ro,ph){
   const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const el=document.getElementById('descInput');
-  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=(ro&&v)?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');el.style.background=v?'rgba(0,212,170,0.12)':'';if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};return}
+  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=(ro&&v)?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');el.style.background=v?'rgba(52,211,153,0.12)':'';if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};return}
   const ip=document.createElement('input');ip.id='descInput';ip.setAttribute('data-key','desc');
   ip.value=v||'';ip.readOnly=ro||false;ip.placeholder=ph||'由制作方式决定';
-  ip.style.cssText=el?el.style.cssText:'';ip.style.color=(ro&&v)?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');ip.style.background=v?'rgba(0,212,170,0.12)':'';
+  ip.style.cssText=el?el.style.cssText:'';ip.style.color=(ro&&v)?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');ip.style.background=v?'rgba(52,211,153,0.12)':'';
   if(!ro)ip.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};
   if(el)el.replaceWith(ip);
 }
@@ -465,6 +465,13 @@ function renderList(){
 function updCount(){
   document.getElementById('fileCount').innerHTML=`文件列表 · <strong style="color:var(--accent);font-weight:600">${files.length}</strong> 个  ·  选中 <strong style="color:var(--accent);font-weight:600">${sel.size}</strong>`;
 }
+function _lockInspector(lock){
+  document.querySelectorAll('#inspector input:not([data-key="tk"]), #inspector select').forEach(el=>{
+    if(el.id==='descInput'&&descLocked)return;
+    el.readOnly=lock;el.style.cursor=lock?'default':'';
+    if(lock){el.style.color='';el.style.background=''}
+  });
+}
 function updButtons(){
   const hf=files.length>0,hs=sel.size>0,fd=getFields();
   const af=fd.ep&&fd.sc&&fd.gr&&fd.author&&fd.method&&fd.ver&&fd.status&&fd.desc;
@@ -483,7 +490,8 @@ function updButtons(){
   for(const t of files){if(t.tags&&t.tags.length)warn.push(...t.tags)}
   if(warn.length){const wl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};dot.style.background='var(--red)';setStatus('⚠ '+[...new Set(warn)].map(w=>wl[w]||w).join(' · '));return}
   dot.style.background='var(--yellow)';
-  setStatus(missing.length?'缺失: '+missing.join(' · '):'就绪  ·  Ctrl+Z 撤销');
+  _lockInspector(hs);setStatus(missing.length?'缺失: '+missing.join(' · '):'就绪  ·  Ctrl+Z 撤销');
+  _lockInspector(!hs);
 }
 
 // ═══ Dialog ═══
@@ -510,7 +518,7 @@ function _syncInspectorFromSelection(){
       if(!el||el.id==='descInput')continue;
       const v=f.fields[k]||'';
       if(el.tagName==='SELECT'){el.value=v;el.style.borderLeft=''}
-      else{el.value=v;const filled=!!v;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'rgba(0,212,170,0.12)':''}
+      else{el.value=v;const filled=!!v;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'rgba(52,211,153,0.12)':''}
     }
     document.getElementById('methodSelect').value=f.fields.method||'';
     onMethodChange();
@@ -523,7 +531,7 @@ function _syncInspectorFromSelection(){
       if(!el||el.id==='descInput')continue;
       const single=vals.size===1?[...vals][0]:'';
       if(el.tagName==='SELECT'){el.value=vals.size===1?[...vals][0]:''}
-      else{el.value=single||'';const filled=!!single;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'rgba(0,212,170,0.12)':''}
+      else{el.value=single||'';const filled=!!single;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'rgba(52,211,153,0.12)':''}
     }
     const mv=new Set(ix.map(i=>files[i].fields.method||''));
     document.getElementById('methodSelect').value=mv.size===1?[...mv][0]:'';
@@ -548,7 +556,7 @@ function _setDescValue(v){
     ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};
     el.after(ip);
   }else if(el.tagName==='INPUT'){
-    el.value=v;el.style.color='var(--text-bright)';el.style.background='rgba(0,212,170,0.12)';
+    el.value=v;el.style.color='var(--text-bright)';el.style.background='rgba(52,211,153,0.12)';
   }
 }
 
@@ -680,7 +688,7 @@ function _applyInspectorToSelected(){
 document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
   if(el.readOnly)return;
   el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color='var(--text-bright)';el.style.background=''});
-  el.addEventListener('blur',()=>{if(!sel.size)return;if(!el.value.trim()){el.style.color='var(--text-dim)';el.style.background=''}else{el.style.background='rgba(0,212,170,0.12)'}});
+  el.addEventListener('blur',()=>{if(!sel.size)return;if(!el.value.trim()){el.style.color='var(--text-dim)';el.style.background=''}else{el.style.background='rgba(52,211,153,0.12)'}});
   // 数字字段限制 — 在 input 之前运行
   const rx=DIGIT_RULES[el.getAttribute('data-key')];
   if(rx){
