@@ -647,9 +647,13 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}
   if((e.key==='Delete'||e.key==='Backspace')&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){e.preventDefault();removeSelected()}
   // Enter → 确认输入，取消选中回到列表
-  if(e.key==='Enter'&&(e.target.closest('#inspector')||e.target.tagName==='SELECT')){
+  // Enter → 跳到下一个字段，最后一个跳到列表
+  if(e.key==='Enter'&&e.target.closest('#inspector')){
     e.preventDefault();
-    sel.clear();renderList();updButtons();e.target.blur();
+    const all=[...document.querySelectorAll('#inspector input:not([readonly]), #inspector select')];
+    const idx=all.indexOf(e.target);
+    if(idx>=0&&idx+1<all.length){all[idx+1].focus();all[idx+1].select()}
+    else{sel.clear();renderList();updButtons();e.target.blur()}
   }
   // Cmd+A: input 里正常全选；其他位置 → 全选文件列表
   if((e.metaKey||e.ctrlKey)&&e.key==='a'){

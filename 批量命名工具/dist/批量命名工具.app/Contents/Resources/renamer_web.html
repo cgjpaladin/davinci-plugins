@@ -648,6 +648,7 @@ document.addEventListener('keydown',e=>{
   if((e.key==='Delete'||e.key==='Backspace')&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){e.preventDefault();removeSelected()}
   // Enter → 确认输入，取消选中回到列表
   if(e.key==='Enter'&&(e.target.closest('#inspector')||e.target.tagName==='SELECT')){
+    e.preventDefault();
     sel.clear();renderList();updButtons();e.target.blur();
   }
   // Cmd+A: input 里正常全选；其他位置 → 全选文件列表
