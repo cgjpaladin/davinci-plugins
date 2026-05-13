@@ -196,6 +196,14 @@ class RenamerAPI:
                 except: pass
 
         _log.info(f"_process_paths: {len(files)} files, {duplicates} dup, {subdirs} subdirs skip, truncated={truncated}")
+        # 自动检查每个文件
+        for f in files:
+            p = f["path"]
+            tags = []
+            if check_zero_byte(p): tags.append("zero")
+            if check_double_ext(os.path.basename(p)): tags.append("dbl_ext")
+            if not parse_filename(p): tags.append("fmt")
+            f["tags"] = tags
         return {"files":files,"total":len(files),"duplicates":duplicates,"subdirs_skipped":subdirs,"truncated":truncated,"max":MAX_FILES}
 
     def build_preview_filename(self, fields):

@@ -165,6 +165,10 @@ body{
 .fl-item.sel.rdy .fl-new{color:var(--green);font-weight:600}
 .fl-item.sel.mis{background:rgba(255,180,0,0.08);border-color:var(--yellow)}
 .fl-item.sel.mis .fl-new{color:var(--yellow);font-weight:600}
+.fl-item.warn-zero{background:rgba(192,64,64,.12)}
+.fl-item.warn-size{background:rgba(192,160,64,.08)}
+.fl-item.warn-fmt{background:rgba(192,128,208,.08)}
+.fl-item.warn-dbl{background:rgba(192,128,208,.08)}
 .fl-thumb{
   width:calc(24px*var(--thumb-scale,1));height:calc(36px*var(--thumb-scale,1));border-radius:var(--radius);flex-shrink:0;
   background:#222;border:1px solid #333;
@@ -419,6 +423,8 @@ function renderList(){
     let ff={...f.fields,tk:_computeTK(i)},nm=buildName(ff);
     const ready=ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status;
     d.classList.add(ready?'rdy':'mis');
+    // 自动检查标注
+    const tt=f.tags;if(tt&&tt.length){if(tt.includes('zero'))d.classList.add('warn-zero');if(tt.includes('size'))d.classList.add('warn-size');if(tt.includes('fmt'))d.classList.add('warn-fmt');if(tt.includes('dbl_ext'))d.classList.add('warn-dbl')}
     const th=document.createElement('div');th.className='fl-thumb';
     const tsrc=_thumbs[f.path];
     if(tsrc){th.style.backgroundImage=`url(${tsrc})`;th.style.backgroundSize='cover';th.style.backgroundPosition='center'}
