@@ -430,6 +430,7 @@ function renderList(){
     d.addEventListener('click',e=>{
       if(e.metaKey||e.ctrlKey){if(sel.has(i))sel.delete(i);else sel.add(i)}
       else if(e.shiftKey&&sel.size>0){const s=[...sel].sort((a,b)=>a-b);const[l,h]=[Math.min(s[0],i),Math.max(s[0],i)];for(let j=l;j<=h;j++)sel.add(j)}
+      else if(sel.size===1&&sel.has(i))return;  // 已选中，不做任何事
       else{sel.clear();sel.add(i)}
       renderList();updButtons();
       _syncInspectorFromSelection();

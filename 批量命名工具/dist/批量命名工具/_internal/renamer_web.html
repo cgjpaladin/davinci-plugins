@@ -169,7 +169,7 @@ body{
   display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;
 }
 .fl-thumb::after{content:'▶';position:absolute;font-size:5px;color:rgba(255,255,255,.4);text-shadow:0 0 2px #000}
-.fl-new{font-family:var(--font-mono);font-size:calc(var(--fs-body)*var(--thumb-scale,1));color:var(--green);white-space:nowrap;flex-shrink:0}
+.fl-new{font-family:var(--font-mono);font-size:calc(var(--fs-body)*var(--thumb-scale,1));color:var(--text-bright);white-space:nowrap;flex-shrink:0}
 .fl-arrow-sym{color:var(--text-dim);flex-shrink:0;font-size:calc(var(--fs-sm)*var(--thumb-scale,1))}
 .fl-old{font-family:var(--font-mono);font-size:calc(var(--fs-sm)*var(--thumb-scale,1));color:var(--text-dim);white-space:nowrap;flex-shrink:0}
 .fl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:6px}
@@ -240,7 +240,7 @@ body{
 <div class="dest">
   <button class="hero-check" id="btnCheck">检查</button>
   <input id="destInput" value="" placeholder="点击 📁 选择项目文件夹，或粘贴路径">
-  <button class="fl-btn" id="btnBrowseDest" style="flex-shrink:0">📁</button>
+  <button class="fl-btn" id="btnBrowseDest" style="flex-shrink:0">🗂</button>
   <span class="dest-ok" id="destStatus"></span>
   <button class="hero-btn" id="btnRename" disabled>批量重命名</button>
   <button class="hero-archive" id="btnArchive" disabled>批量归档</button>

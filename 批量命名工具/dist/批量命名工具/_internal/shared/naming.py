@@ -120,8 +120,6 @@ def build_filename(fields):
     for fd in FIELD_CONFIG:
         v = fields.get(fd["key"], fd["def"])
         nm = fd["name"]; k = fd["key"]
-        if k == "method":  # 文件夹级字段，不出现在文件名
-            continue
         if nm == "Ep":     parts.append(f"Ep{v}")
         elif nm == "Sc":   parts.append(f"Sc{v}")
         elif nm == "Gr":   parts.append(f"Gr{v}")
@@ -180,11 +178,11 @@ def parse_filename(path):
 
 
 def build_folder(root, entry):
-    """构造归档路径: root/EP/SC/EP_SC_GR_method_ver/filename"""
+    """构造归档路径: root/EP/EP_SC_GR_method_ver/filename"""
     f = entry.fields
     compound = "EP{ep}_SC{sc}_GR{gr}_{method}_v{ver}".format(**f)
     name = build_filename(f) + entry.ext if hasattr(entry, 'ext') else build_filename(f)
-    return os.path.join(root, "EP" + f["ep"], "SC" + f["sc"], compound, name)
+    return os.path.join(root, "EP" + f["ep"], compound, name)
 
 
 # ============================================================
