@@ -1135,6 +1135,77 @@ def _process_result(r, rows_list):
 # AI 校对
 # ═══════════════════════════════════════════
 
+def _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
+                       script_src, result):
+    """每次 LLM 校对后完整存档（输入+输出），复盘时对比交付 SRT 使用。
+
+    路径: ~/Library/Application Support/交付自检/typo_sessions/{项目}/{时间线}/{时间戳}.json
+    """
+    import json as _json, shutil as _shutil, hashlib as _hashlib, datetime as _dt
+    try:
+        proj = timeline.GetProject() if hasattr(timeline, 'GetProject') else None
+        proj_name = proj.GetName() if proj else "未知项目"
+        tl_name = timeline.GetName() or "未命名时间线"
+    except Exception:
+        proj_name, tl_name = "未知", "未知"
+
+    # sanitize: 替换文件名不安全字符
+    safe_proj = "".join(c if c.isalnum() or c in "_-." else "_" for c in proj_name)[:80]
+    safe_tl = "".join(c if c.isalnum() or c in "_-." else "_" for c in tl_name)[:60]
+
+    base = os.path.expanduser("~/Library/Application Support/交付自检/typo_sessions")
+    session_dir = os.path.join(base, safe_proj, safe_tl)
+    os.makedirs(session_dir, exist_ok=True)
+
+    ts = _dt.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    model = result.get("model", "unknown")
+    fname = f"{ts}_{model}.json"
+    path = os.path.join(session_dir, fname)
+
+    # 组装 session 数据
+    session = {
+        "meta": {
+            "project": proj_name,
+            "timeline": tl_name,
+            "timestamp": _dt.datetime.now().isoformat(),
+            "model": model,
+            "provider": result.get("provider", "?"),
+            "entry_count": len(entries),
+            "script_source": script_src,
+            "character_count": len(parsed.get("characters", [])),
+            "episode_count": len(parsed.get("episodes", {})),
+        },
+        "entries": [
+            {"index": i, "start_frame": int(entry_starts[i]) if i < len(entry_starts) else 0,
+             "text": entries[i]}
+            for i in range(len(entries))
+        ],
+        "prompt": {
+            "characters": parsed.get("characters", []),
+            "script_preview": all_lines[:3] if all_lines else [],
+            "script_line_count": len(all_lines),
+        },
+        "result": {
+            "same_show": result.get("same_show"),
+            "corrections": result.get("corrections", []),
+            "error": result.get("error"),
+            "raw_tail": result.get("raw_tail"),
+        },
+    }
+
+    with open(path, "w", encoding="utf-8") as f:
+        _json.dump(session, f, ensure_ascii=False, indent=2)
+
+    _action_log(f"📁 校对存档: {os.path.join(safe_proj, safe_tl, fname)}")
+
+    # 清理：同时间线保留最近 20 份，删旧
+    existing = sorted([f for f in os.listdir(session_dir) if f.endswith(".json")])
+    if len(existing) > 20:
+        for old in existing[:-20]:
+            os.remove(os.path.join(session_dir, old))
+
+
+
 def _run_ai_typo():
     """一步到位：下载剧本 → 解析 → 集号匹配 → LLM 校对（含剧集一致性检测）。"""
     global _checking
@@ -1196,6 +1267,10 @@ def _run_ai_typo():
             tail = result.get("raw_tail", "")
             _action_log(f"❌ 校对失败: {result['error']} (尾部: {tail})")
             return _stop(f"❌ 校对失败: {result.get('error')}")
+
+        # ═══ 存档：完整保存本次校对的输入+输出（复盘用）═══
+        _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
+                           itm[EDIT_SCRIPT_SRC].Text.strip(), result)
 
         corrections = result.get("corrections", [])
         provider = result.get("provider", "?")
