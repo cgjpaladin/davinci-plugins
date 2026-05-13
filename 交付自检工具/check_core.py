@@ -1383,8 +1383,11 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
                 detail=f"调色标记: {marker_count}/{total} 成功，{len(issues)} 失败",
                 is_summary=True)] + issues
 
-    detail = f"调色标记: {marker_count} 处已标记" if marker_count else "调色标记: 无需标记"
-    return [_make_result("pass", detail=detail, is_summary=True)]
+    detail = f"已完成: {marker_count} 处标记" if marker_count else "无需标记"
+    return [
+        _make_result("pass", detail=f"调色标记: {detail}", is_summary=True),
+        _make_result("pass", detail=detail, reason="已自动打红色标记，请在时间线确认")
+    ]
 
 
 _SMB_PREFIX = "/Volumes/MYJC"
