@@ -1690,6 +1690,10 @@ dlg.On[WIN_ID].Close = _on_close
 
 def main():
     _action_log("═══ 交付自检 启动 v" + version_string() + " ═══")
+    # 防重复窗口（外部进程独有，pgrep 扫描同名进程）
+    _result = subprocess.run(["pgrep", "-f", os.path.basename(__file__)], capture_output=True, text=True)
+    if len(_result.stdout.strip().split("\n")) > 1:
+        sys.exit(0)
     dlg.Show()
     dlg.RecalcLayout()
     _init_connection()

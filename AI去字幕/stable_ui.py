@@ -142,6 +142,10 @@ dlg.On[WIN_ID].Close = on_close
 
 def main():
     """显示 UI 窗口并进入事件循环（阻塞直到用户关闭）。窗口打开后刷余额。"""
+    # 防重复窗口（外部进程独有，pgrep 扫描同名进程）
+    _result = subprocess.run(["pgrep", "-f", os.path.basename(__file__)], capture_output=True, text=True)
+    if len(_result.stdout.strip().split("\n")) > 1:
+        sys.exit(0)
     try:
         dlg.Show()
         dlg.RecalcLayout()
