@@ -1132,7 +1132,7 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
             cy = timeline_h / 2.0 + tilt
             src_ratio = src_w / src_h if src_h else 1
             tl_ratio = timeline_w / timeline_h if timeline_h else 1
-            fit_scale = min(timeline_w / src_w, timeline_h / src_h) if abs(src_ratio - tl_ratio) < 0.02 else 1.0
+            fit_scale = min(timeline_w / src_w, timeline_h / src_h)
             eff_w = src_w * fit_scale * zoom_x
             eff_h = src_h * fit_scale * zoom_y
             # 素材够大且轴对齐（旋转 ≈ 90° 倍数）→ 偏位是故意的构图选择
