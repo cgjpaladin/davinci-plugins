@@ -436,10 +436,10 @@ function renderList(){
     const ar=document.createElement('span');ar.className='fl-arrow-sym';ar.textContent='←';
     const on=document.createElement('span');on.className='fl-old';on.textContent=f.basename;
     const dot=document.createElement('span');dot.className='fl-dot';
-    dot.style.background=ready?'var(--green)':'var(--yellow)';
+    const tags=f.tags||[];
+    dot.style.background=tags.length?'var(--red)':(ready?'var(--green)':'var(--yellow)');
     // 缺失字段 / 检查警告
     const tag=document.createElement('span');tag.className='fl-tag';
-    const tags=f.tags||[];
     if(tags.length){const lbl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};tag.textContent=tags.map(t=>lbl[t]||t).join(' · ');tag.style.color='var(--red)'}
     else if(!ready){
       const m=[];const lb={ep:'Ep集数',sc:'Sc场次',gr:'Gr小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'版本号',status:'通过情况'};

@@ -475,6 +475,10 @@ function updButtons(){
   const missing=[];
   const labels={ep:'Ep集数',sc:'Sc场次',gr:'Gr小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'版本号',status:'通过情况'};
   for(const k of['ep','sc','gr','desc','author','method','ver','status']){if(!fd[k])missing.push(labels[k])}
+  // 检查警告
+  let warn=[];
+  for(const t of files){if(t.tags&&t.tags.length)warn.push(...t.tags)}
+  if(warn.length){const wl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};dot.style.background='var(--red)';setStatus('⚠ '+[...new Set(warn)].map(w=>wl[w]||w).join(' · '));return}
   dot.style.background='var(--yellow)';
   setStatus(missing.length?'缺失: '+missing.join(' · '):'就绪  ·  Ctrl+Z 撤销');
 }
