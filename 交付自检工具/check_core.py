@@ -429,7 +429,7 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
     video_count = timeline.GetTrackCount("video")
 
     if video_count == 0:
-        return [_make_result("warn", detail="无视频轨道", is_summary=True)]
+        return [_make_result("fail", detail="无视频轨道", is_summary=True)]
 
     for vi in range(1, video_count + 1):
         items = _get_items(timeline, "video", vi)
@@ -688,12 +688,12 @@ def check_subtitle_glyph(timeline, fps=25.0, io_range=None) -> list:
     glyph_re = _censor_cache[range_path]
 
     if glyph_re is None:
-        return [_make_result("warn", detail="不规范字符范围为为空", is_summary=True)]
+        return [_make_result("fail", detail="不规范字符范围为为空", is_summary=True)]
 
     issues = []
     subtitle_count = timeline.GetTrackCount("subtitle")
     if subtitle_count == 0:
-        return [_make_result("warn", detail="无字幕轨道", is_summary=True)]
+        return [_make_result("fail", detail="无字幕轨道", is_summary=True)]
 
     smpte = _get_smpte(fps)
 
@@ -711,7 +711,7 @@ def check_subtitle_glyph(timeline, fps=25.0, io_range=None) -> list:
 
             m = glyph_re.search(text)
             if m:
-                issues.append(_make_result("fail", track=track, timecode=tc,
+                issues.append(_make_result("warn", track=track, timecode=tc,
                     detail=f"{text}，含不规范字符「{m.group()}」",
                     reason="请替换为规范汉字"))
 
@@ -732,7 +732,7 @@ def check_subtitle_linebreak(timeline, fps=25.0, io_range=None) -> list:
     issues = []
     subtitle_count = timeline.GetTrackCount("subtitle")
     if subtitle_count == 0:
-        return [_make_result("warn", detail="无字幕轨道", is_summary=True)]
+        return [_make_result("fail", detail="无字幕轨道", is_summary=True)]
 
     try:
         cpl = int(timeline.GetSetting().get("limitSubtitleCPL", 0))
@@ -829,7 +829,7 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn
 
     censor_words, pattern, suggestion_map, category_map = _censor_cache[dict_path]
     if not pattern:
-        return [_make_result("warn", detail="违禁词字典为空", is_summary=True)]
+        return [_make_result("fail", detail="违禁词字典为空", is_summary=True)]
 
     # ── 白名单（缓存）──
     wl_pattern = None
@@ -851,7 +851,7 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn
     issues = []
     subtitle_count = timeline.GetTrackCount("subtitle")
     if subtitle_count == 0:
-        return [_make_result("warn", detail="无字幕轨道", is_summary=True)]
+        return [_make_result("fail", detail="无字幕轨道", is_summary=True)]
 
     smpte = _get_smpte(fps)
     for si in range(1, subtitle_count + 1):
@@ -916,7 +916,7 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     total_frames = timeline.GetEndFrame()
     duration_sec = total_frames / max(fps, 1)
     if duration_sec < 41:
-        results.append(_make_result("warn",
+        results.append(_make_result("fail",
             detail=f"时长 {duration_sec:.0f}s（不足41s）",
             reason="低于付费集最低时长要求，请检查是否缺漏情节"))
     else:
@@ -928,9 +928,9 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     if re.match(r'^\d{2,3}$', tl_name):
         results.append(_make_result("pass", detail=f"命名: {tl_name} (通过)"))
     else:
-        results.append(_make_result("warn",
+        results.append(_make_result("fail",
             detail=f"命名: {tl_name}",
-            reason="建议改为 01、02、03 等两位数格式"))
+            reason="请改为 01、02、03 等两位数格式"))
 
     # ── ④ 使用项目设置 ──
     if project is None:
@@ -965,7 +965,7 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
         else:
             results.append(_make_result("pass", detail="使用项目设置 (通过)"))
     else:
-        results.append(_make_result("warn", detail="无法对比项目设置"))
+        results.append(_make_result("fail", detail="无法对比项目设置"))
 
     return results
 
@@ -1076,7 +1076,7 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
     issues = []
     video_count = timeline.GetTrackCount("video")
     if video_count == 0:
-        return [_make_result("warn", detail="无视频轨道", is_summary=True)]
+        return [_make_result("fail", detail="无视频轨道", is_summary=True)]
     timeline_w, timeline_h = 1920, 1080
     if project:
         try:
@@ -1179,7 +1179,7 @@ def check_speed(timeline, project_fps=25.0, io_range=None) -> list:
     issues = []
     video_count = timeline.GetTrackCount("video")
     if video_count == 0:
-        return [_make_result("warn", detail="无视频轨道", is_summary=True)]
+        return [_make_result("fail", detail="无视频轨道", is_summary=True)]
     for vi in range(1, video_count + 1):
         items = _get_items(timeline, "video", vi)
         if not items: continue
@@ -1228,7 +1228,7 @@ def check_video_clamping(timeline, threshold_frames=1, fps=25.0, io_range=None) 
     issues = []
     video_count = timeline.GetTrackCount("video")
     if video_count == 0:
-        return [_make_result("warn", detail="无视频轨道", is_summary=True)]
+        return [_make_result("fail", detail="无视频轨道", is_summary=True)]
     smpte = _get_smpte(fps)
     checked = 0
     for vi in range(1, video_count + 1):
@@ -1250,7 +1250,7 @@ def check_video_clamping(timeline, threshold_frames=1, fps=25.0, io_range=None) 
     if not issues:
         return [_make_result("pass",
             detail="视频夹帧: 全部通过", is_summary=True)]
-    results = [_make_result("fail", detail=f"夹帧: {len(issues)} 处", is_summary=True)]
+    results = [_make_result("warn", detail=f"夹帧: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
     return results
 
@@ -1314,7 +1314,7 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
                 name = _get_clip_name(it)
                 smpte = _get_smpte(fps)
                 tc = smpte.gettc(_get_cached(it, "start", 0))
-                issues.append(_make_result("warn", track=track, timecode=tc,
+                issues.append(_make_result("fail", track=track, timecode=tc,
                     detail=f"{name}，在唯一节点上应用了索尼 LUT",
                     reason="请检查是否漏掉了调色"))
 
@@ -1466,7 +1466,7 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
     # ── 前置：视频轨数必须为 5 ──
     video_count = timeline.GetTrackCount("video")
     if video_count != len(VIDEO_TRACK_PRESET):
-        return [_make_result("warn",
+        return [_make_result("fail",
             detail=f"视频轨数 {video_count}≠{len(VIDEO_TRACK_PRESET)}，跳过视频越轨检测",
             is_summary=True)]
     _cam_cache = {}   # mp_unique_id → bool: 是否为实拍素材
@@ -1663,7 +1663,7 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None) -> list:
     # ── 前置①：音轨数必须为 10 ──
     audio_count = timeline.GetTrackCount("audio")
     if audio_count != len(AUDIO_TRACK_PRESET):
-        return [_make_result("warn",
+        return [_make_result("fail",
             detail=f"音轨数 {audio_count}≠{len(AUDIO_TRACK_PRESET)}，跳过音频越轨检测",
             is_summary=True)]
 
@@ -1676,7 +1676,7 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None) -> list:
             names_ok = False
             break
     if not names_ok:
-        return [_make_result("warn",
+        return [_make_result("fail",
             detail="音频轨名称与预设不符，跳过音频越轨检测",
             is_summary=True)]
 
