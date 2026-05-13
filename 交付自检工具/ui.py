@@ -8,6 +8,7 @@
 import os
 import socket
 import sys
+import subprocess
 import time
 import traceback
 import json
@@ -1690,10 +1691,18 @@ dlg.On[WIN_ID].Close = _on_close
 
 def main():
     _action_log("═══ 交付自检 启动 v" + version_string() + " ═══")
-    # 防重复窗口（外部进程独有，pgrep 扫描同名进程）
-    _result = subprocess.run(["pgrep", "-f", os.path.basename(__file__)], capture_output=True, text=True)
-    if len(_result.stdout.strip().split("\n")) > 1:
-        sys.exit(0)
+    # 防重复窗口（PID 锁文件，跨进程可用）
+    _lock_file = os.path.join(os.path.dirname(__file__), ".ui_instance.lock")
+    if os.path.exists(_lock_file):
+        try:
+            with open(_lock_file) as f:
+                _old_pid = int(f.read().strip())
+            os.kill(_old_pid, 0)  # 进程存在 → 已有一个窗口
+            sys.exit(0)
+        except (ProcessLookupError, PermissionError, ValueError):
+            pass  # 锁文件残留，清理后继续
+    with open(_lock_file, "w") as f:
+        f.write(str(os.getpid()))
     dlg.Show()
     dlg.RecalcLayout()
     _init_connection()

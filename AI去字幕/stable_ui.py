@@ -142,10 +142,18 @@ dlg.On[WIN_ID].Close = on_close
 
 def main():
     """显示 UI 窗口并进入事件循环（阻塞直到用户关闭）。窗口打开后刷余额。"""
-    # 防重复窗口（外部进程独有，pgrep 扫描同名进程）
-    _result = subprocess.run(["pgrep", "-f", os.path.basename(__file__)], capture_output=True, text=True)
-    if len(_result.stdout.strip().split("\n")) > 1:
-        sys.exit(0)
+    # 防重复窗口（PID 锁文件，跨进程可用）
+    _lock_file = os.path.join(os.path.dirname(__file__), ".ui_instance.lock")
+    if os.path.exists(_lock_file):
+        try:
+            with open(_lock_file) as f:
+                _old_pid = int(f.read().strip())
+            os.kill(_old_pid, 0)
+            sys.exit(0)
+        except (ProcessLookupError, PermissionError, ValueError):
+            pass
+    with open(_lock_file, "w") as f:
+        f.write(str(os.getpid()))
     try:
         dlg.Show()
         dlg.RecalcLayout()
