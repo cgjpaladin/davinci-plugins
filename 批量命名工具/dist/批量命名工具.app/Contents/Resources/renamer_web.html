@@ -440,7 +440,8 @@ function renderList(){
     const tsrc=_thumbs[f.path];
     if(tsrc){th.style.backgroundImage=`url(${tsrc})`;th.style.backgroundSize='cover';th.style.backgroundPosition='center'}
     else{th.style.background=`linear-gradient(135deg,${tc[i%tc.length]},${tc[(i+2)%tc.length]})`}
-    const nn=document.createElement('span');nn.className='fl-new';nn.textContent=nm+f.ext;
+    const nn=document.createElement('span');nn.className='fl-new';
+    nn.textContent=nm+(nm===f.basename?'':' '+f.ext);
     const ar=document.createElement('span');ar.className='fl-arrow-sym';ar.textContent='←';
     const on=document.createElement('span');on.className='fl-old';on.textContent=f.basename;
     d.append(th,nn,ar,on);

@@ -156,6 +156,8 @@ class RenamerAPI:
         MAX_FILES = 500
         files = []; duplicates = 0; subdirs = 0; truncated = False
         defaults = _saved_defaults
+        # 用户必须手动填，不给默认值
+        _EMPTY_KEYS = {'ep','sc','gr','ver'}
 
         for p_ in paths_[:MAX_FILES + 500]:
             if len(files) >= MAX_FILES: truncated = True; break
@@ -170,7 +172,7 @@ class RenamerAPI:
                 for fd in FIELD_CONFIG:
                     k = fd["key"]
                     if parsed and k in parsed: fields[k] = parsed[k]
-                    elif defaults and k in defaults: fields[k] = defaults.get(k, fd["def"])
+                    elif defaults and k in defaults and k not in _EMPTY_KEYS: fields[k] = defaults.get(k, fd["def"])
                     else: fields[k] = fd["def"]
                 files.append({"path":p,"basename":os.path.basename(p),"ext":os.path.splitext(os.path.basename(p))[1],"fields":fields})
             elif os.path.isdir(p):
@@ -185,7 +187,7 @@ class RenamerAPI:
                             for fd in FIELD_CONFIG:
                                 k = fd["key"]
                                 if parsed and k in parsed: fields[k] = parsed[k]
-                                elif defaults and k in defaults: fields[k] = defaults.get(k, fd["def"])
+                                elif defaults and k in defaults and k not in _EMPTY_KEYS: fields[k] = defaults.get(k, fd["def"])
                                 else: fields[k] = fd["def"]
                             files.append({"path":fp,"basename":os.path.basename(fp),"ext":os.path.splitext(os.path.basename(fp))[1],"fields":fields})
                         elif os.path.isdir(fp): subdirs += 1
