@@ -262,8 +262,7 @@ body{
     <div class="fl-bar-right">
       <span class="zoom-label" id="zoomLabel">100%</span>
       <input type="range" class="zoom-slider" id="zoomSlider" min="50" max="200" value="100" step="1">
-      <button class="fl-btn" id="btnAddFile">+ 文件</button>
-      <button class="fl-btn" id="btnAddFolder">+ 文件夹</button>
+      <button class="fl-btn" id="btnAdd">+ 添加</button>
     </div>
   </div>
   <div class="fl-body" id="fileList">
@@ -685,8 +684,7 @@ document.getElementById('btnBrowseDest').addEventListener('click',async ()=>{
 });
 
 // ═══ Buttons + Zoom ═══
-document.getElementById('btnAddFile').addEventListener('click',addFiles);
-document.getElementById('btnAddFolder').addEventListener('click',addFolder);
+document.getElementById('btnAdd').addEventListener('click',addFiles);
 document.getElementById('btnRename').addEventListener('click',doRename);
 document.getElementById('btnArchive').addEventListener('click',doArchive);
 document.getElementById('btnCheck').addEventListener('click',doCheck);

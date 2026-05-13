@@ -534,9 +534,8 @@ function _setDescValue(v){
   const el=document.getElementById('descInput');
   if(!el||!v)return;
   if(el.tagName==='SELECT'){
-    // 值必须在选项列表中
-    const opts=[...el.options].map(o=>o.value);
-    if(opts.includes(v))el.value=v;
+    // 在选项列表中查找
+    for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;break}}
   }else if(el.tagName==='INPUT'){
     el.value=v;el.style.color='var(--text-bright)';
   }
