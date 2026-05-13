@@ -1307,8 +1307,8 @@ def _run_ai_typo():
                 tc_str = smpte.gettc(entry_starts[idx])
             row = tree.NewItem()
             _set_row(row, {"track": f"字幕[{c['index']}]", "tc": tc_str,
-                           "msg": f"⚠ {c['original']} → {c['correction']}",
-                           "reason": c.get("reason", "")})
+                           "msg": f"{c['original']}——{c.get('reason', '')}",
+                           "reason": f"应改为「{c['correction']}」"})
             tree.AddTopLevelItem(row)
 
         itm[HINT_LB].Text = (
