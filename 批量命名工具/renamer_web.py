@@ -313,6 +313,9 @@ if __name__ == "__main__":
     # 用 bottle HTTP 服务绕过 WKWebView 沙箱限制
     @route('/')
     def index():
+        build = os.path.join(_BASE_DIR, '_build.html')
+        if os.path.exists(build):
+            return static_file('_build.html', root=_BASE_DIR)
         return static_file('renamer_web.html', root=_BASE_DIR)
 
     # 找空闲端口
