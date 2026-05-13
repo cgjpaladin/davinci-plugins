@@ -299,6 +299,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 // ═══ State ═══
 let files=[], sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
+const C={g:'var(--green)',y:'var(--yellow)',r:'var(--red)',b:'var(--text-bright)',d:'var(--text-dim)',gr:'rgba(0,212,170,0.12)'};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
 
 // ═══ API ═══
