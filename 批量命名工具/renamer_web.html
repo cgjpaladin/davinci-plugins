@@ -57,7 +57,8 @@ body{
   font-weight:600;margin-bottom:2px;white-space:nowrap;
 }
 .param input,.param select{
-  width:100%;background:var(--surface2);border:1px solid var(--border);
+  width:100%;height:26px;box-sizing:border-box;
+  background:var(--surface2);border:1px solid var(--border);
   color:var(--text-bright);font-family:var(--font-mono);font-size:var(--fs-body);
   padding:3px 5px;border-radius:var(--radius);outline:none;
 }
@@ -375,6 +376,7 @@ function onMethodChange(){
 }
 // 获取选中文件的存储 desc（单文件返回该值，多文件不一致返回空，无选中返回空）
 function descInput(t,v,ro,ph){
+  const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const el=document.getElementById('descInput');
   if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=ro?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updPreview();updButtons()}};return}
   const ip=document.createElement('input');ip.id='descInput';ip.setAttribute('data-key','desc');
@@ -513,7 +515,13 @@ function _setDescValue(v){
   const el=document.getElementById('descInput');
   if(!el||!v)return;
   if(el.tagName==='SELECT'){
-    for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;break}}
+    for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;return}}
+    // 不在选项里 → 切到「手动输入…」并填值
+    el.value='手动输入…';
+    const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');
+    ip.value=v;ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;';
+    ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};
+    el.after(ip);
   }else if(el.tagName==='INPUT'){
     el.value=v;el.style.color='var(--text-bright)';
   }

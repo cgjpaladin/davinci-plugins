@@ -57,7 +57,8 @@ body{
   font-weight:600;margin-bottom:2px;white-space:nowrap;
 }
 .param input,.param select{
-  width:100%;background:var(--surface2);border:1px solid var(--border);
+  width:100%;height:26px;box-sizing:border-box;
+  background:var(--surface2);border:1px solid var(--border);
   color:var(--text-bright);font-family:var(--font-mono);font-size:var(--fs-body);
   padding:3px 5px;border-radius:var(--radius);outline:none;
 }
@@ -348,6 +349,8 @@ function getFields(){
   const PLACEHOLDERS=['请选择','手动输入…'];
   const f={};
   for(const el of document.querySelectorAll('#inspector [data-key]')){
+    // descCustomInput 和 descInput 并存时，取自定义输入的值
+    if(el.id==='descInput'&&document.getElementById('descCustomInput'))continue;
     let v=el.value.trim();
     if(PLACEHOLDERS.includes(v))v='';
     f[el.getAttribute('data-key')]=v||'';
@@ -357,20 +360,23 @@ function getFields(){
 }
 
 // ═══ Method → Desc ═══
+let _prevMethod='';
 function onMethodChange(){
   const m=document.getElementById('methodSelect').value;
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
+  const methodChanged=m!==_prevMethod;_prevMethod=m;
   if(cfg.mode==='locked'){descInput('text',cfg.value,true);descLocked=true}
   else if(cfg.mode==='dropdown'){descSelect(cfg.values);descLocked=false}
   else{descInput('text','',false,cfg.hint);descLocked=false}
-  // 制作方式变了 → 清空所有选中文件的旧 desc
-  if(sel.size>0){
+  // 只在跨方法时清 desc（同方法内切选项不清）
+  if(methodChanged&&sel.size>0){
     for(const i of sel) files[i].fields.desc='';
     renderList();updButtons();
   }
 }
 // 获取选中文件的存储 desc（单文件返回该值，多文件不一致返回空，无选中返回空）
 function descInput(t,v,ro,ph){
+  const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const el=document.getElementById('descInput');
   if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=ro?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updPreview();updButtons()}};return}
   const ip=document.createElement('input');ip.id='descInput';ip.setAttribute('data-key','desc');
@@ -381,12 +387,15 @@ function descInput(t,v,ro,ph){
 }
 function descSelect(vs){
   const el=document.getElementById('descInput');
+  const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const s=document.createElement('select');s.id='descInput';s.setAttribute('data-key','desc');
   s.style.cssText=el?el.style.cssText:'';
-  vs.forEach(v=>{const o=document.createElement('option');o.text=v;o.value=v;if(v==='手动输入…')o.setAttribute('data-custom','1');s.add(o)});
+  vs.forEach(v=>{const o=document.createElement('option');o.text=v;o.value=v;s.add(o)});
   s.onchange=function(){
-    if(s.value==='手动输入…')descInput('text','',false,'输入自定义描述');
-    else{_applyInspectorToSelected();renderList();updPreview();updButtons();}
+    const ci2=document.getElementById('descCustomInput');
+    if(s.value==='手动输入…'){
+      if(!ci2){const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;';ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};s.after(ip)}
+    }else{if(ci2)ci2.remove();_applyInspectorToSelected();renderList();updButtons()}
   };
   if(el)el.replaceWith(s);
 }
@@ -501,10 +510,11 @@ function _syncInspectorFromSelection(){
   if(tkEl){tkEl.value=sel.size?'自动排序':'';tkEl.style.color='var(--text-dim)'}
 }
 function _setDescValue(v){
+  const ci=document.getElementById('descCustomInput');
+  if(ci){ci.value=v||'';return}
   const el=document.getElementById('descInput');
   if(!el||!v)return;
   if(el.tagName==='SELECT'){
-    // 在选项列表中查找
     for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;break}}
   }else if(el.tagName==='INPUT'){
     el.value=v;el.style.color='var(--text-bright)';
