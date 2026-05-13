@@ -196,13 +196,22 @@ class RenamerAPI:
                 except: pass
 
         _log.info(f"_process_paths: {len(files)} files, {duplicates} dup, {subdirs} subdirs skip, truncated={truncated}")
-        # 自动检查每个文件
+        # 自动检查
+        anomalies = set()
+        try:
+            from statistics import mean, stdev
+            sp = [(f,p) for f in files for p in [f["path"]] if os.path.getsize(p) > 0]
+            vals = [s for _,s in sp]
+            if len(vals) >= 3:
+                mu = mean(vals); sd = stdev(vals)
+                if sd > 0 and mu > 0 and sd/mu > 1.0:
+                    anomalies = {fp for fp,_ in sp if abs(os.path.getsize(fp)-mu) > 2*sd}
+        except: pass
         for f in files:
-            p = f["path"]
             tags = []
-            if check_zero_byte(p): tags.append("zero")
-            if check_double_ext(os.path.basename(p)): tags.append("dbl_ext")
-            if not parse_filename(p): tags.append("fmt")
+            if check_zero_byte(f["path"]): tags.append("zero")
+            if check_double_ext(f["basename"]): tags.append("dbl_ext")
+            if f["path"] in anomalies: tags.append("size")
             f["tags"] = tags
         return {"files":files,"total":len(files),"duplicates":duplicates,"subdirs_skipped":subdirs,"truncated":truncated,"max":MAX_FILES}
 
