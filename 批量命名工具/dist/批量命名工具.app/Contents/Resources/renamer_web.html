@@ -74,10 +74,6 @@ body{
   display:flex;align-items:center;gap:var(--gap);
   padding:4px var(--pad-lg);border-bottom:1px solid var(--border);flex-shrink:0;
 }
-.dest label{
-  font-size:var(--fs-label);color:var(--text-dim);
-  text-transform:uppercase;font-weight:600;white-space:nowrap;margin-right:2px;
-}
 .dest input{
   flex:1;background:var(--surface2);border:1px solid var(--border);
   color:var(--text-bright);font-family:var(--font-mono);font-size:var(--fs-body);
@@ -160,6 +156,10 @@ body{
   background:color-mix(in srgb,var(--accent) 12%,var(--bg));
   border-left:2px solid var(--accent);padding-left:calc(var(--pad-lg) - 2px);
 }
+.fl-item.sel.rdy{background:rgba(0,212,170,0.08);border-color:var(--green)}
+.fl-item.sel.rdy .fl-new{color:var(--green);font-weight:600}
+.fl-item.sel.mis{background:rgba(255,180,0,0.08);border-color:var(--yellow)}
+.fl-item.sel.mis .fl-new{color:var(--yellow);font-weight:600}
 .fl-item.warn-zero{background:rgba(192,64,64,.12)}
 .fl-item.warn-size{background:rgba(192,160,64,.08)}
 .fl-item.warn-fmt{background:rgba(192,128,208,.08)}
@@ -238,13 +238,12 @@ body{
 
 <!-- Dest + Buttons -->
 <div class="dest">
-  <label>目标路径</label>
+  <button class="hero-check" id="btnCheck">检查</button>
   <input id="destInput" value="" placeholder="点击 📁 选择项目文件夹，或粘贴路径">
   <button class="fl-btn" id="btnBrowseDest" style="flex-shrink:0">📁</button>
   <span class="dest-ok" id="destStatus"></span>
   <button class="hero-btn" id="btnRename" disabled>批量重命名</button>
   <button class="hero-archive" id="btnArchive" disabled>批量归档</button>
-  <button class="hero-check" id="btnCheck">检查</button>
   <button class="hero-undo" id="btnUndo" disabled>↩ 撤销</button>
 </div>
 
@@ -414,8 +413,9 @@ function renderList(){
     const d=document.createElement('div');d.className='fl-item';
     if(sel.has(i))d.classList.add('sel');
     const tt=checkTags[i];if(tt){if(tt.includes('zero'))d.classList.add('warn-zero');else if(tt.includes('size'))d.classList.add('warn-size');if(tt.includes('fmt'))d.classList.add('warn-fmt')}
-    // 选中项用 inspector 值+Tk 递增；未选中项用自己的存储字段
     let ff={...f.fields,tk:_computeTK(i)},nm=buildName(ff);
+    const ready=ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status;
+    d.classList.add(ready?'rdy':'mis');
     const th=document.createElement('div');th.className='fl-thumb';
     const tsrc=_thumbs[f.path];
     if(tsrc){th.style.backgroundImage=`url(${tsrc})`;th.style.backgroundSize='cover';th.style.backgroundPosition='center'}
@@ -425,7 +425,6 @@ function renderList(){
     const ar=document.createElement('span');ar.className='fl-arrow-sym';ar.textContent='←';
     const on=document.createElement('span');on.className='fl-old';on.textContent=f.basename;
     const dot=document.createElement('span');dot.className='fl-dot';
-    const ready=ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status;
     dot.style.background=ready?'var(--green)':'var(--yellow)';
     d.append(th,nn,ar,on,dot);
     d.addEventListener('click',e=>{

@@ -1,8 +1,13 @@
 #!/bin/bash
 # 批量命名工具 — 打包脚本
-# 每次执行自动重建 app 并放到桌面
+# 每次执行自动 commit 变更 + 重建 app 并放到桌面
 set -e
 cd "$(dirname "$0")"
+
+# 自动 commit 变更
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  git add -A && git commit -m "build: $(date '+%Y-%m-%d %H:%M')" 2>/dev/null || true
+fi
 
 rm -rf build dist *.spec
 
