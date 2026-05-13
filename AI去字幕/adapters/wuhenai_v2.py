@@ -616,13 +616,13 @@ class WuhenAIV21Adapter(BaseAdapter):
             try:
                 fsize = os.path.getsize(video_path)
                 if fsize == 0:
-                    records.append({"idx": i, "result": SubtitleResult(success=False, error_message="零字节文件"), "video_path": video_path, "name": task.name})
+                    records.append({"idx": i, "result": SubtitleResult(success=False, error_message="零字节文件"), "video_path": video_path, "name": os.path.basename(video_path)})
                     continue
                 if fsize > self._MAX_FILE_SIZE:
-                    records.append({"idx": i, "result": SubtitleResult(success=False, error_message=f"文件过大 ({fsize/1024/1024:.0f}MB > 100MB)"), "video_path": video_path, "name": task.name})
+                    records.append({"idx": i, "result": SubtitleResult(success=False, error_message=f"文件过大 ({fsize/1024/1024:.0f}MB > 100MB)"), "video_path": video_path, "name": os.path.basename(video_path)})
                     continue
             except OSError as e:
-                records.append({"idx": i, "result": SubtitleResult(success=False, error_message=f"无法访问: {e}"), "video_path": video_path, "name": task.name})
+                records.append({"idx": i, "result": SubtitleResult(success=False, error_message=f"无法访问: {e}"), "video_path": video_path, "name": os.path.basename(video_path)})
                 continue
             filename = os.path.basename(video_path)
             base, ext = os.path.splitext(filename)
@@ -639,14 +639,14 @@ class WuhenAIV21Adapter(BaseAdapter):
                                 "input_key": input_key, "output_key": output_key,
                                 "video_path": video_path, "output_path": task.output_path,
                                 "task_id": None, "result": None, "duration": task.duration,
-                                "name": task.name})
+                                "name": os.path.basename(video_path)})
                 if progress_callback:
                     progress_callback("upload", len([r for r in records if r.get("input_key")]) / n * 0.2)
             except Exception as e:
                 _log(f"[无痕AI 2.1] 上传失败: {os.path.basename(video_path)} — {e}")
                 records.append({"idx": idx,
                                 "result": SubtitleResult(success=False, error_message=f"上传失败: {e}"),
-                                "video_path": video_path, "name": task.name})
+                                "video_path": video_path, "name": os.path.basename(video_path)})
 
         # 1c. 去掉 idx 字段（不暴露给下游）
         for r in records:

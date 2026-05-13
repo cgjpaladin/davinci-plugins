@@ -77,12 +77,7 @@ def _styles(s):
     s.configure("Trees.Treeview",bg=T["bg"],fg=T["text"],fieldbg=T["bg"],borderwidth=0,rowheight=24,font=(T["ff_mono"],9))
     s.configure("Trees.Treeview.Heading",bg=T["surface"],fg=T["text_dim"],font=(T["ff_ui"],9),borderwidth=0,padding=(0,2))
     s.map("Trees.Treeview",background=[("selected","#3a2010")])
-    # check tags
-    s.configure("Trees.Treeview",bg=T["bg"],fg=T["text"],fieldbg=T["bg"],borderwidth=0,rowheight=24,font=(T["ff_mono"],9))
-    tt = ttk.Style()  # use a fresh ref for tag config
 _styles(style)
-
-# Treeview tags for check results
 file_tree = None  # will be set after creation
 
 
@@ -223,6 +218,7 @@ ttk.Label(pf,textvariable=meta_var,style="HeroMeta.TLabel").pack(side="right",pa
 btns=ttk.Frame(hi,style="Surface.TFrame");btns.pack(side="right",padx=(0,8),pady=6)
 go_btn=ttk.Button(btns,text="批量重命名",style="HeroBtnDisabled.TButton");go_btn.pack(side="left",padx=(0,4))
 archive_btn=ttk.Button(btns,text="批量归档",style="ArchiveBtnDisabled.TButton");archive_btn.pack(side="left",padx=(0,4))
+check_btn=ttk.Button(btns,text="检查",style="UndoBtn.TButton");check_btn.pack(side="left",padx=(0,4))
 undo_btn=ttk.Button(btns,text="↩ 撤销",style="UndoBtn.TButton",state="disabled");undo_btn.pack(side="left")
 
 # File list
@@ -245,6 +241,11 @@ file_tree.heading("old_name",text="");file_tree.column("old_name",width=200,stre
 vsb=ttk.Scrollbar(tvf,orient="vertical",command=file_tree.yview);hsb=ttk.Scrollbar(tvf,orient="horizontal",command=file_tree.xview)
 file_tree.configure(yscrollcommand=vsb.set,xscrollcommand=hsb.set)
 file_tree.grid(row=0,column=0,sticky="nsew");vsb.grid(row=0,column=1,sticky="ns");hsb.grid(row=1,column=0,sticky="ew")
+
+# Check tags
+file_tree.tag_configure("zerobyte",background="#4a1515",foreground="#f06060")
+file_tree.tag_configure("size_warn",background="#3a3010",foreground="#e0c040")
+file_tree.tag_configure("fmt_warn",background="#2a1a30",foreground="#c080d0")
 
 # Thumbnails
 _TW,_TH=24,40;_TC=["#2a3a1a","#1a2a3a","#3a201a","#2a1a3a","#1a3a2a","#3a301a","#1a3a3a","#302a1a"];_TI=[]
@@ -424,7 +425,7 @@ def _add_paths(paths):
         else:_entries.append(FileEntry(p,_saved_defaults))
         ex.add(p);added+=1
     if added:
-        _apply_tk_to_selected();_refresh_tree()
+        _apply_tk_to_selected();_refresh_tree();_annotate_checks()
         status_var.set("● 已添加 {} 个文件".format(added))
 
 def add_files():_add_paths(filedialog.askopenfilenames(title="选择文件"))
@@ -553,9 +554,49 @@ def on_drop(ev):
                 if os.path.isfile(sfp):paths.append(sfp)
     if paths:_add_paths(paths)
 
+# =========== Check ===========
+
+def _annotate_checks():
+    """给文件列表标注检查结果 (运行时标注)"""
+    # 清除旧标签
+    for iid in file_tree.get_children():
+        file_tree.item(iid,tags=())
+    zero_count=0;size_count=0;fmt_count=0;dbl_count=0
+    filepaths=[e.path for e in _entries]
+    anomalies=set(fp for fp,_ in check_size_anomaly(filepaths))
+    for i,en in enumerate(_entries):
+        iid=file_tree.get_children()[i]
+        tags=[]
+        if check_zero_byte(en.path):tags.append("zerobyte");zero_count+=1
+        elif en.path in anomalies:tags.append("size_warn");size_count+=1
+        if not check_name_format(en.path):
+            # 未命名文件不报错 (可能是新拖入未命名的)
+            if parse_filename(en.path) is None:
+                tags.append("fmt_warn");fmt_count+=1
+        if check_double_ext(en.basename):dbl_count+=1
+        if tags:file_tree.item(iid,tags=tuple(tags))
+    return zero_count,size_count,fmt_count,dbl_count
+
+def do_check():
+    """运行全套检查并弹窗"""
+    zero,size_w,fmt,dbl=_annotate_checks()
+    issues=0
+    msgs=[]
+    if zero:msgs.append(f"零字节: {zero} 个");issues+=zero
+    if size_w:msgs.append(f"大小异常: {size_w} 个");issues+=size_w
+    if fmt:msgs.append(f"命名格式不符: {fmt} 个");issues+=fmt
+    if dbl:msgs.append(f"扩展名重复: {dbl} 个");issues+=dbl
+    if issues:
+        messagebox.showwarning("检查结果","\n".join(msgs))
+    else:
+        messagebox.showinfo("检查结果","全部通过")
+    status_var.set("● 检查完成: {} 项问题".format(issues) if issues else "● 检查通过")
+    _refresh_tree()
+
 # =========== Bindings ===========
 go_btn.configure(command=do_rename)
 archive_btn.configure(command=do_archive)
+check_btn.configure(command=do_check)
 undo_btn.configure(command=do_undo)
 add_f_btn.configure(command=add_files)
 add_d_btn.configure(command=add_folder)

@@ -56,13 +56,15 @@ def build_filename(fields):
     parts = []
     for fd in FIELD_CONFIG:
         v = fields.get(fd["key"], fd["def"])
-        nm = fd["name"]
+        nm = fd["name"]; k = fd["key"]
+        if k == "method":  # 文件夹级字段，不出现在文件名
+            continue
         if nm == "Ep":     parts.append(f"Ep{v}")
         elif nm == "Sc":   parts.append(f"Sc{v}")
         elif nm == "Gr":   parts.append(f"Gr{v}")
         elif nm == "Tk":   parts.append(f"Tk{v}")
         elif nm == "v":    parts.append(f"v{v}")
-        elif fd["key"] == "status": parts.append(v)
+        elif k == "status": parts.append(v)
         else:              parts.append(v.replace("/","_").replace(" ",""))
     return "_".join(parts) if parts else "unnamed"
 
