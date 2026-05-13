@@ -366,7 +366,9 @@ let _prevMethod='';
 function onMethodChange(){
   const m=document.getElementById('methodSelect').value;
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
-  const methodChanged=m!==_prevMethod;_prevMethod=m;
+  const methodChanged=m!==_prevMethod;
+  call('debug_log','onMethodChange '+_prevMethod+'→'+m+' changed='+methodChanged+' locked='+(cfg.mode==='locked'));
+  _prevMethod=m;
   if(cfg.mode==='locked'){descInput('text',cfg.value,true);descLocked=true}
   else if(cfg.mode==='dropdown'){descSelect(cfg.values);descLocked=false}
   else{const ro=cfg.hint.includes('请先选择');descInput('text','',ro,cfg.hint);descLocked=false}
@@ -429,10 +431,12 @@ function renderList(){
     dot.style.background=ready?'var(--green)':'var(--yellow)';
     d.append(th,nn,ar,on,dot);
     d.addEventListener('click',e=>{
+      const prevSel=sel.size,prevHas=sel.has(i);
       if(e.metaKey||e.ctrlKey){if(sel.has(i))sel.delete(i);else sel.add(i)}
       else if(e.shiftKey&&sel.size>0){const s=[...sel].sort((a,b)=>a-b);const[l,h]=[Math.min(s[0],i),Math.max(s[0],i)];for(let j=l;j<=h;j++)sel.add(j)}
-      else if(sel.size===1&&sel.has(i))return;  // 已选中，不做任何事
+      else if(sel.size===1&&sel.has(i)){call('debug_log','click-skip #'+i);return}  // 已选中，不做任何事
       else{sel.clear();sel.add(i)}
+      call('debug_log','click #'+i+' sel='+prevSel+'→'+sel.size);
       renderList();updButtons();
       _syncInspectorFromSelection();
     });
@@ -459,6 +463,7 @@ function updButtons(){
   for(const k of['ep','sc','gr','desc','author','method','ver','status']){if(!fd[k])missing.push(labels[k])}
   dot.style.background='var(--yellow)';
   setStatus(missing.length?'缺失: '+missing.join(' · '):'就绪  ·  Ctrl+Z 撤销');
+  call('debug_log','status: '+(missing.length?'missing:'+missing.join(','):'ready')+' sel='+sel.size);
 }
 
 // ═══ Dialog ═══
@@ -479,6 +484,7 @@ function _syncInspectorFromSelection(){
   const ix=[...sel].sort((a,b)=>a-b);
   if(ix.length===0)return;
   if(ix.length===1){
+    call('debug_log','sync #'+ix[0]+' method='+(files[ix[0]].fields.method||'?')+' desc='+(files[ix[0]].fields.desc||'?'));
     const f=files[ix[0]];
     for(const k of Object.keys(f.fields)){
       const el=document.querySelector(`[data-key="${k}"]`);

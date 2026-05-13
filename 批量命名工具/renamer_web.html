@@ -239,7 +239,7 @@ body{
 <!-- Dest + Buttons -->
 <div class="dest">
   <button class="hero-check" id="btnCheck">检查</button>
-  <input id="destInput" value="" placeholder="点击 📁 选择项目文件夹，或粘贴路径">
+  <input id="destInput" value="" placeholder="点击 🗂 选择项目文件夹，或粘贴路径">
   <button class="fl-btn" id="btnBrowseDest" style="flex-shrink:0">🗂</button>
   <span class="dest-ok" id="destStatus"></span>
   <button class="hero-btn" id="btnRename" disabled>批量重命名</button>
@@ -383,10 +383,10 @@ function onMethodChange(){
 function descInput(t,v,ro,ph){
   const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const el=document.getElementById('descInput');
-  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=ro?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');el.style.borderLeft=(ro||v)?'2px solid var(--accent)':'1px solid var(--border)';if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};return}
+  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=(ro&&v)?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');el.style.borderLeft=(v&&(ro||!ro))?'2px solid var(--green)':'1px solid var(--border)';if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};return}
   const ip=document.createElement('input');ip.id='descInput';ip.setAttribute('data-key','desc');
   ip.value=v||'';ip.readOnly=ro||false;ip.placeholder=ph||'由制作方式决定';
-  ip.style.cssText=el?el.style.cssText:'';ip.style.color=ro?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');ip.style.borderLeft=(ro||v)?'2px solid var(--accent)':'1px solid var(--border)';
+  ip.style.cssText=el?el.style.cssText:'';ip.style.color=(ro&&v)?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');ip.style.borderLeft=v?'2px solid var(--green)':'1px solid var(--border)';
   if(!ro)ip.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};
   if(el)el.replaceWith(ip);
 }
@@ -491,7 +491,7 @@ function _syncInspectorFromSelection(){
       if(!el||el.id==='descInput')continue;
       const v=f.fields[k]||'';
       if(el.tagName==='SELECT'){el.value=v}
-      else{el.value=v;const filled=!!v;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.borderLeft=filled?'2px solid var(--accent)':'1px solid var(--border)'}
+      else{el.value=v;const filled=!!v;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.borderLeft=filled?'2px solid var(--green)':'1px solid var(--border)'}
     }
     document.getElementById('methodSelect').value=f.fields.method||'';
     onMethodChange();
@@ -504,7 +504,7 @@ function _syncInspectorFromSelection(){
       if(!el||el.id==='descInput')continue;
       const single=vals.size===1?[...vals][0]:'';
       if(el.tagName==='SELECT'){el.value=vals.size===1?[...vals][0]:''}
-      else{el.value=single||'';const filled=!!single;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.borderLeft=filled?'2px solid var(--accent)':'1px solid var(--border)'}
+      else{el.value=single||'';const filled=!!single;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.borderLeft=filled?'2px solid var(--green)':'1px solid var(--border)'}
     }
     const mv=new Set(ix.map(i=>files[i].fields.method||''));
     document.getElementById('methodSelect').value=mv.size===1?[...mv][0]:'';
@@ -529,7 +529,7 @@ function _setDescValue(v){
     ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};
     el.after(ip);
   }else if(el.tagName==='INPUT'){
-    el.value=v;el.style.color='var(--text-bright)';el.style.borderLeft='2px solid var(--accent)';
+    el.value=v;el.style.color='var(--text-bright)';el.style.borderLeft='2px solid var(--green)';
   }
 }
 
@@ -655,7 +655,7 @@ function _applyInspectorToSelected(){
 }
 document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
   if(el.readOnly)return;
-  el.addEventListener('focus',()=>{el.style.color='var(--text-bright)';el.style.borderLeft='2px solid var(--accent)'});
+  el.addEventListener('focus',()=>{el.style.color='var(--text-bright)';el.style.borderLeft='2px solid var(--green)'});
   el.addEventListener('blur',()=>{if(!el.value.trim()){el.style.color='var(--text-dim)';el.style.borderLeft='1px solid var(--border)'}});
   el.addEventListener('input',()=>{_applyInspectorToSelected();renderList();updButtons()});
   el.addEventListener('change',()=>{_applyInspectorToSelected();renderList();updButtons()});
