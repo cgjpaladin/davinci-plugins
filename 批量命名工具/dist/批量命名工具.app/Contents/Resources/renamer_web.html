@@ -671,7 +671,7 @@ document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
 });
 // 制作者 — 仅限中文
 const ab=document.getElementById('authorInput');
-if(ab)ab.addEventListener('input',()=>{if(/[a-zA-Z]/.test(ab.value)){toast('请输入完整中文姓名');ab.value=ab.value.replace(/[a-zA-Z]/g,'')}});
+if(ab)ab.addEventListener('input',()=>{const o=ab.value;const c=o.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g,'');if(c!==o){toast('请输入完整中文姓名');ab.value=c}});
 document.querySelectorAll('#inspector select[data-key]').forEach(el=>{
   if(el.id==='descInput'||el.id==='methodSelect')return;
   el.addEventListener('change',()=>{_applyInspectorToSelected();renderList();updButtons()});

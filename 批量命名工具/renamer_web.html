@@ -583,10 +583,12 @@ function buildName(f){
 }
 async function doUndo(){const r=await call('do_undo');toast(r.msg);undoAvail=(r.remaining||0)>0;updButtons()}
 async function doCheck(){
+  call('debug_log','doCheck clicked, paths='+files.length);
   const paths=files.map(f=>f.path);const r=await call('do_check',paths);
+  call('debug_log','doCheck result: '+JSON.stringify(r));
   checkTags={};r.per_file.forEach((pf,i)=>{if(pf.tags.length)checkTags[i]=pf.tags});
   renderList();
-  if(r.passed)toast('全部通过 ✓');else toast(r.msgs.join(' · '));
+  if(r.issues===0)toast('全部通过');else toast(r.msgs.join(' · '));
 }
 function removeSelected(){if(sel.size===0)return;files=files.filter((_,i)=>!sel.has(i));sel.clear();renderList();toast('已移除')}
 async function doArchive(){
