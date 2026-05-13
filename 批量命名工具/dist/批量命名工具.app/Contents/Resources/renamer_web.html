@@ -75,6 +75,10 @@ body{
   display:flex;align-items:center;gap:var(--gap);
   padding:4px var(--pad-lg);border-bottom:1px solid var(--border);flex-shrink:0;
 }
+.dest label{
+  font-size:var(--fs-label);color:var(--text-dim);
+  text-transform:uppercase;font-weight:600;white-space:nowrap;margin-right:2px;
+}
 .dest input{
   flex:1;background:var(--surface2);border:1px solid var(--border);
   color:var(--text-bright);font-family:var(--font-mono);font-size:var(--fs-body);
@@ -161,9 +165,6 @@ body{
 .fl-item.sel.rdy .fl-new{color:var(--green);font-weight:600}
 .fl-item.sel.mis{background:rgba(255,180,0,0.08);border-color:var(--yellow)}
 .fl-item.sel.mis .fl-new{color:var(--yellow);font-weight:600}
-.fl-item.warn-zero{background:rgba(192,64,64,.12)}
-.fl-item.warn-size{background:rgba(192,160,64,.08)}
-.fl-item.warn-fmt{background:rgba(192,128,208,.08)}
 .fl-thumb{
   width:calc(24px*var(--thumb-scale,1));height:calc(36px*var(--thumb-scale,1));border-radius:var(--radius);flex-shrink:0;
   background:#222;border:1px solid #333;
@@ -240,7 +241,7 @@ body{
 
 <!-- Dest + Buttons -->
 <div class="dest">
-  <button class="hero-check" id="btnCheck">检查</button>
+  <label>目标路径</label>
   <input id="destInput" value="" placeholder="点击 🗂 选择项目文件夹，或粘贴路径">
   <button class="fl-btn" id="btnBrowseDest" style="flex-shrink:0">🗂</button>
   <span class="dest-ok" id="destStatus"></span>
@@ -290,7 +291,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('debugMode').textContent='JS ✓';
 });
 // ═══ State ═══
-let files=[], sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, checkTags={}, _thumbs={};
+let files=[], sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
 
 // ═══ API ═══
@@ -307,7 +308,6 @@ function mock(m,...a){
       case'validate_dest':r({ok:true,msg:'✓ 格式正确'});break;
       case'do_rename':r({ok:1,total:1,fail:[],renamed:[]});break;
       case'do_undo':r({ok:0,msg:'Mock: 无操作'});break;
-      case'do_check':r({issues:0,msgs:[],per_file:[]});break;
       case'do_archive':r({ok:0,fail:['Mock mode'],total:1});break;
       case'debug_log':r('ok');break;
       default:r({});
@@ -369,7 +369,6 @@ function onMethodChange(){
   const m=document.getElementById('methodSelect').value;
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
   const methodChanged=m!==_prevMethod;
-  call('debug_log','onMethodChange '+_prevMethod+'→'+m+' changed='+methodChanged+' locked='+(cfg.mode==='locked'));
   _prevMethod=m;
   if(cfg.mode==='locked'){descInput('text',cfg.value,true);descLocked=true}
   else if(cfg.mode==='dropdown'){descSelect(cfg.values);descLocked=false}
@@ -417,7 +416,6 @@ function renderList(){
   files.forEach((f,i)=>{
     const d=document.createElement('div');d.className='fl-item';
     if(sel.has(i))d.classList.add('sel');
-    const tt=checkTags[i];if(tt){if(tt.includes('zero'))d.classList.add('warn-zero');else if(tt.includes('size'))d.classList.add('warn-size');if(tt.includes('fmt'))d.classList.add('warn-fmt')}
     let ff={...f.fields,tk:_computeTK(i)},nm=buildName(ff);
     const ready=ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status;
     d.classList.add(ready?'rdy':'mis');
@@ -440,12 +438,10 @@ function renderList(){
     }else{tag.textContent='✓'}
     d.append(th,nn,ar,on,dot,tag);
     d.addEventListener('click',e=>{
-      const prevSel=sel.size,prevHas=sel.has(i);
       if(e.metaKey||e.ctrlKey){if(sel.has(i))sel.delete(i);else sel.add(i)}
       else if(e.shiftKey&&sel.size>0){const s=[...sel].sort((a,b)=>a-b);const[l,h]=[Math.min(s[0],i),Math.max(s[0],i)];for(let j=l;j<=h;j++)sel.add(j)}
-      else if(sel.size===1&&sel.has(i)){call('debug_log','click-skip #'+i);return}  // 已选中，不做任何事
+      else if(sel.size===1&&sel.has(i))return;
       else{sel.clear();sel.add(i)}
-      call('debug_log','click #'+i+' sel='+prevSel+'→'+sel.size);
       renderList();updButtons();
       _syncInspectorFromSelection();
     });
@@ -462,7 +458,6 @@ function updButtons(){
   document.getElementById('btnRename').disabled=!(hs&&af);
   document.getElementById('btnArchive').disabled=!(hs&&af);
   document.getElementById('btnUndo').disabled=!undoAvail;
-  document.getElementById('btnCheck').disabled=!hf;
   // 状态栏：列出缺失字段 + 点颜色
   const dot=document.querySelector('.sb-dot');
   if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');return}
@@ -472,7 +467,6 @@ function updButtons(){
   for(const k of['ep','sc','gr','desc','author','method','ver','status']){if(!fd[k])missing.push(labels[k])}
   dot.style.background='var(--yellow)';
   setStatus(missing.length?'缺失: '+missing.join(' · '):'就绪  ·  Ctrl+Z 撤销');
-  call('debug_log','status: '+(missing.length?'missing:'+missing.join(','):'ready')+' sel='+sel.size);
 }
 
 // ═══ Dialog ═══
@@ -493,7 +487,6 @@ function _syncInspectorFromSelection(){
   const ix=[...sel].sort((a,b)=>a-b);
   if(ix.length===0)return;
   if(ix.length===1){
-    call('debug_log','sync #'+ix[0]+' method='+(files[ix[0]].fields.method||'?')+' desc='+(files[ix[0]].fields.desc||'?'));
     const f=files[ix[0]];
     for(const k of Object.keys(f.fields)){
       const el=document.querySelector(`[data-key="${k}"]`);
@@ -582,16 +575,7 @@ function buildName(f){
   return raw.replace(/_+/g,'_').replace(/_$/,'');
 }
 async function doUndo(){const r=await call('do_undo');toast(r.msg);undoAvail=(r.remaining||0)>0;updButtons()}
-async function doCheck(){
-  try{
-  call('debug_log','doCheck clicked, paths='+files.length);
-  const paths=files.map(f=>f.path);const r=await call('do_check',paths);
-  call('debug_log','doCheck result: '+JSON.stringify(r));
-  checkTags={};r.per_file.forEach((pf,i)=>{if(pf.tags.length)checkTags[i]=pf.tags});
-  renderList();
-  if(r.issues===0)toast('全部通过');else toast(r.msgs.join(' · '));
-  }catch(e){call('debug_log','doCheck error: '+e.message)}
-}
+
 function removeSelected(){if(sel.size===0)return;files=files.filter((_,i)=>!sel.has(i));sel.clear();renderList();toast('已移除')}
 async function doArchive(){
   if(sel.size===0){toast('未选中文件');return}
@@ -718,7 +702,6 @@ document.getElementById('btnBrowseDest').addEventListener('click',async ()=>{
 document.getElementById('btnAdd').addEventListener('click',addFiles);
 document.getElementById('btnRename').addEventListener('click',doRename);
 document.getElementById('btnArchive').addEventListener('click',doArchive);
-document.getElementById('btnCheck').addEventListener('click',doCheck);
 document.getElementById('btnUndo').addEventListener('click',doUndo);
 
 // 缩放滑块

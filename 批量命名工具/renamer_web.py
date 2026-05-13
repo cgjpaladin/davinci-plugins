@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared.naming import (
     FIELD_CONFIG, DISPLAY_FIELDS, METHOD_DESC_MAP, FIELD_RULES,
     build_filename, parse_filename, build_folder,
+    check_zero_byte, check_double_ext, check_size_anomaly,
     MEDIA_EXT, sanitize_text,
 )
 
