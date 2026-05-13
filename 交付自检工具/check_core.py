@@ -1333,7 +1333,7 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
 # ── 调色标记 ──
 
 # 打码效果关键词（OFX 工具名含以下即可匹配）
-_EFFECT_BLUR = {"blur", "模糊", "高斯模糊", "mosaic", "马赛克", "mask", "遮罩", "defocus"}
+_EFFECT_BLUR = {"径向模糊", "方向模糊", "方形模糊", "缩放模糊", "镜头模糊", "马赛克模糊", "高斯模糊"}
 
 def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> list:
     """检测有打码效果且节点数≤2的片段，在起始帧打红色标记「调色注意」。
