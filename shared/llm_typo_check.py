@@ -69,7 +69,7 @@ def _single(asr_lines, characters, context_lines, offset=0):
             "- 不要把字幕改写成剧本台词 → original 只改错的字\n"
             "- 断句/换行是剪辑师的设计选择 → 不要报「应合并为一句」\n\n"
             "### reason 规范\n"
-            "reason 写：应改为 XXX。或用简短的说明（如「的应为地」「人名写错」）。不要写长句子。\n\n"
+            "reason 写：应改为「XXX」。重点突出要改成的字。简短，一句话。\n\n"
             "### 输出\n"
             "JSON：{\"same_show\": true/false, \"corrections\": [{index, original, correction, reason}]}\n"
             "same_show: 人名+情节是否明显不属于同一部剧。false=明显不是。\n"
