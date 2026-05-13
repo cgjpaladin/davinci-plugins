@@ -276,5 +276,7 @@ if __name__ == "__main__":
         width=880, height=620,
         min_size=(680, 400),
         resizable=True,
+        background_color='#151515',
+        text_select=True,
     )
     webview.start(debug=False)
