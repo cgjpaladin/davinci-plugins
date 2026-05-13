@@ -433,9 +433,9 @@ function renderList(){
     // 缺失字段提示
     const tag=document.createElement('span');tag.className='fl-tag';
     if(!ready){
-      const m=[];const lb={ep:'Ep',sc:'Sc',gr:'Gr',desc:'描述',author:'作者',method:'方式',ver:'Version',status:'通过'};
+      const m=[];const lb={ep:'Ep集数',sc:'Sc场次',gr:'Gr小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'Version版本号',status:'通过情况'};
       for(const k of['ep','sc','gr','desc','author','method','ver','status']){if(!ff[k])m.push(lb[k])}
-      tag.textContent=m.slice(0,3).join('·')+(m.length>3?' +'+(m.length-3):'');
+      tag.textContent='缺失: '+m.join(' · ');
     }else{tag.textContent='✓'}
     d.append(th,nn,ar,on,dot,tag);
     d.addEventListener('click',e=>{
