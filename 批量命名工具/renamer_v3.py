@@ -8,7 +8,7 @@ import os, re, json, shutil, sys, statistics
 from datetime import datetime
 
 # 共享命名模块
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared.naming import (
     FIELD_CONFIG, DISPLAY_FIELDS, METHOD_DESC_MAP, DESC_TO_METHOD, FIELD_RULES,
     build_filename, parse_filename, build_folder,
@@ -78,8 +78,6 @@ def _styles(s):
     s.configure("Trees.Treeview.Heading",bg=T["surface"],fg=T["text_dim"],font=(T["ff_ui"],9),borderwidth=0,padding=(0,2))
     s.map("Trees.Treeview",background=[("selected","#3a2010")])
 _styles(style)
-file_tree = None  # will be set after creation
-
 
 # ═══ UI Construction ═══
 
@@ -396,11 +394,10 @@ def _check_button_states():
     can_rename=bool(ix)
     if can_rename:
         for fd in DISPLAY_FIELDS:
-            if fd["key"]=="method":continue
             wgt,_=_widgets[fd["key"]];v=_get_real_val(wgt,fd)
             if not v:can_rename=False;break
     dest=_validate_dest()
-    can_archive=bool(dest)
+    can_archive=bool(dest) and bool(ix)
     if can_rename:go_btn.configure(style="HeroBtn.TButton")
     else:go_btn.configure(style="HeroBtnDisabled.TButton")
     if can_archive:archive_btn.configure(style="ArchiveBtn.TButton")
@@ -471,7 +468,8 @@ def do_rename():
         ln=build_filename(sel[-1].fields)+sel[-1].ext
         msg="确认重命名 {} 个?\n{}\n  ...\n{}".format(len(sel),fn,ln)
     if not messagebox.askyesno("确认",msg):return
-    sv=_get_inspector_vals()
+    sv={};_apply_tk_to_selected()
+    for e in sel:sv.update(e.fields)
     try:
         with open(CFG_FILE,"w",encoding="utf-8")as f:json.dump(sv,f,ensure_ascii=False,indent=2)
         global _saved_defaults;_saved_defaults=sv
@@ -569,10 +567,8 @@ def _annotate_checks():
         tags=[]
         if check_zero_byte(en.path):tags.append("zerobyte");zero_count+=1
         elif en.path in anomalies:tags.append("size_warn");size_count+=1
-        if not check_name_format(en.path):
-            # 未命名文件不报错 (可能是新拖入未命名的)
-            if parse_filename(en.path) is None:
-                tags.append("fmt_warn");fmt_count+=1
+        if _entries and not parse_filename(en.path):
+            tags.append("fmt_warn");fmt_count+=1
         if check_double_ext(en.basename):dbl_count+=1
         if tags:file_tree.item(iid,tags=tuple(tags))
     return zero_count,size_count,fmt_count,dbl_count
