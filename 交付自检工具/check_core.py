@@ -1365,10 +1365,12 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
             if not has_blur:
                 continue
 
-            # 打红色标记
+            # 打红色标记（timeine 级，尺子上可见）
             start_f = _get_cached(it, "start", 0)
+            end_f = _get_cached(it, "end", start_f + 1)
+            mid_f = (int(start_f) + int(end_f)) // 2
             try:
-                it.AddMarker(int(start_f), "Red", "调色注意", "打码", 1)
+                timeline.AddMarker(mid_f, "Red", "调色注意: 打码", "", 1)
                 marker_count += 1
             except Exception:
                 issues.append(_make_result("fail",
