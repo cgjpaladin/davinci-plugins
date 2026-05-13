@@ -2,7 +2,7 @@
 批量命名工具 · WebView 生产版
 Python 后端 + HTML/CSS 前端
 """
-import os, sys, json, re, shutil
+import os, sys, json, re, shutil, statistics
 from datetime import datetime
 from urllib.parse import unquote
 
@@ -210,11 +210,10 @@ class RenamerAPI:
         # 自动检查
         anomalies = set()
         try:
-            from statistics import mean, stdev
             sp = [(f,p) for f in files for p in [f["path"]] if os.path.getsize(p) > 0]
             vals = [s for _,s in sp]
             if len(vals) >= 3:
-                mu = mean(vals); sd = stdev(vals)
+                mu = statistics.mean(vals); sd = statistics.stdev(vals)
                 if sd > 0 and mu > 0 and sd/mu > 1.0:
                     anomalies = {fp for fp,_ in sp if abs(os.path.getsize(fp)-mu) > 2*sd}
         except: pass
