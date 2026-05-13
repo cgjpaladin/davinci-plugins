@@ -1044,17 +1044,20 @@ def check_tailboard(timeline, fps=25.0, io_range=None) -> list:
     if has_freeze and has_text:
         return [_make_result("pass", detail="尾板: 定格转场 + 结尾文字 (通过)", is_summary=True)]
 
-    msgs = []
     if not has_freeze and not has_text:
-        msgs.append("结尾缺少尾板（定格转场 + 未完待续/全剧终）")
+        detail = "结尾缺少定格转场和结尾文字"
     elif not has_freeze:
-        msgs.append("结尾缺少定格转场")
-    elif not has_text:
-        msgs.append("结尾缺少文字（未完待续/全剧终）")
+        detail = "结尾缺少定格转场"
+    else:
+        detail = "结尾缺少文字（未完待续/全剧终）"
 
-    return [_make_result("warn", detail=msgs[0],
-                         reason="请在时间线末尾添加定格转场和未完待续（或全剧终）",
-                         is_summary=True)]
+    return [
+        _make_result("warn", detail=detail,
+                     reason="请在时间线末尾添加定格转场和未完待续（或全剧终）",
+                     is_summary=True),
+        _make_result("warn", detail=detail,
+                     reason="请在时间线末尾添加定格转场和未完待续（或全剧终）"),
+    ]
 
 
 # ── 待开发 ──
