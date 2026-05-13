@@ -68,7 +68,7 @@ body{
   background-repeat:no-repeat;background-position:right 7px center;
   padding-right:20px;
 }
-.param input:focus,.param select:focus{border-color:var(--accent)}
+.param input:focus,.param select:focus{border-color:var(--green);outline:none}
 .param input[readonly]{color:var(--text-dim);cursor:default;opacity:.7}
 .dest{
   display:flex;align-items:center;gap:var(--gap);
@@ -490,7 +490,7 @@ function _syncInspectorFromSelection(){
       const el=document.querySelector(`[data-key="${k}"]`);
       if(!el||el.id==='descInput')continue;
       const v=f.fields[k]||'';
-      if(el.tagName==='SELECT'){el.value=v}
+      if(el.tagName==='SELECT'){el.value=v;el.style.borderLeft=''}
       else{el.value=v;const filled=!!v;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.borderLeft=filled?'2px solid var(--green)':'1px solid var(--border)'}
     }
     document.getElementById('methodSelect').value=f.fields.method||'';
