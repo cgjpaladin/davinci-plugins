@@ -155,8 +155,9 @@ body{
   display:flex;align-items:center;gap:8px;
   padding:3px var(--pad-lg);border-bottom:1px solid rgba(255,255,255,.02);
   cursor:pointer;min-width:max-content;transition:background .1s;
+  background:rgba(192,128,208,.05);
 }
-.fl-item:hover{background:var(--surface)}
+.fl-item:hover{background:rgba(192,128,208,.1)}
 .fl-item.sel{
   background:color-mix(in srgb,var(--accent) 12%,var(--bg));
   border-left:2px solid var(--accent);padding-left:calc(var(--pad-lg) - 2px);
@@ -296,6 +297,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 // ═══ State ═══
 let files=[], sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
+const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
 
 // ═══ API ═══
@@ -424,7 +426,7 @@ function renderList(){
     const ready=ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status;
     d.classList.add(ready?'rdy':'mis');
     // 自动检查标注
-    const tt=f.tags;if(tt&&tt.length){if(tt.includes('zero'))d.classList.add('warn-zero');if(tt.includes('size'))d.classList.add('warn-size');if(tt.includes('fmt'))d.classList.add('warn-fmt');if(tt.includes('dbl_ext'))d.classList.add('warn-dbl')}
+    const tt=f.tags;if(tt&&tt.length){if(tt.includes('zero'))d.classList.add('warn-zero');if(tt.includes('size'))d.classList.add('warn-size');if(tt.includes('dbl_ext'))d.classList.add('warn-dbl')}
     const th=document.createElement('div');th.className='fl-thumb';
     const tsrc=_thumbs[f.path];
     if(tsrc){th.style.backgroundImage=`url(${tsrc})`;th.style.backgroundSize='cover';th.style.backgroundPosition='center'}
@@ -435,9 +437,11 @@ function renderList(){
     const on=document.createElement('span');on.className='fl-old';on.textContent=f.basename;
     const dot=document.createElement('span');dot.className='fl-dot';
     dot.style.background=ready?'var(--green)':'var(--yellow)';
-    // 缺失字段提示
+    // 缺失字段 / 检查警告
     const tag=document.createElement('span');tag.className='fl-tag';
-    if(!ready){
+    const tags=f.tags||[];
+    if(tags.length){const lbl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};tag.textContent=tags.map(t=>lbl[t]||t).join(' · ');tag.style.color='var(--red)'}
+    else if(!ready){
       const m=[];const lb={ep:'Ep集数',sc:'Sc场次',gr:'Gr小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'版本号',status:'通过情况'};
       for(const k of['ep','sc','gr','desc','author','method','ver','status']){if(!ff[k])m.push(lb[k])}
       tag.textContent='请填写: '+m.join(' · ');
@@ -663,28 +667,22 @@ document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
   if(el.readOnly)return;
   el.addEventListener('focus',()=>{el.style.color='var(--text-bright)';el.style.borderLeft=''});
   el.addEventListener('blur',()=>{if(!el.value.trim()){el.style.color='var(--text-dim)';el.style.borderLeft='1px solid var(--border)'}else{el.style.borderLeft='2px solid var(--green)'}});
+  // 数字字段限制 — 在 input 之前运行
+  const rx=DIGIT_RULES[el.getAttribute('data-key')];
+  if(rx){
+    el.addEventListener('input',e=>{
+      let v=el.value.replace(/[^\d.]/g,'');const dp=v.indexOf('.');if(dp>=0)v=v.slice(0,dp+1)+v.slice(dp+1).replace(/\./g,'');
+      while(v&&!rx.test(v))v=v.slice(0,-1);
+      if(v!==el.value){el.value=v;e.stopImmediatePropagation();return}
+    },true);  // capture phase — 先于泛用 handler
+  }
   el.addEventListener('input',()=>{_applyInspectorToSelected();renderList();updButtons()});
   el.addEventListener('change',()=>{_applyInspectorToSelected();renderList();updButtons()});
 });
 // 制作者 — 仅限中文
 const ab=document.getElementById('authorInput');
 if(ab)ab.addEventListener('input',()=>{const o=ab.value;const c=o.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g,'');if(c!==o){toast('请输入完整中文姓名');ab.value=c}});
-// 数字字段限制
-const _rules={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
-document.querySelectorAll('[data-key="ep"],[data-key="sc"],[data-key="gr"],[data-key="ver"]').forEach(el=>{
-  el.addEventListener('input',()=>{
-    const rx=_rules[el.getAttribute('data-key')];
-    if(!rx)return;
-    let v=el.value;
-    // 只保留数字和小数点
-    v=v.replace(/[^\d.]/g,'');
-    // 只保留第一个小数点
-    const dp=v.indexOf('.');if(dp>=0)v=v.slice(0,dp+1)+v.slice(dp+1).replace(/\./g,'');
-    // 逐字符截断直到匹配
-    while(v&&!rx.test(v))v=v.slice(0,-1);
-    el.value=v;
-  });
-});
+// 数字字段限制 — 已并入泛用 input handler 的 capture 阶段，此处移除重复
 document.querySelectorAll('#inspector select[data-key]').forEach(el=>{
   if(el.id==='descInput'||el.id==='methodSelect')return;
   el.addEventListener('change',()=>{_applyInspectorToSelected();renderList();updButtons()});
