@@ -350,10 +350,11 @@ function getFields(){
   const PLACEHOLDERS=['请选择','手动输入…'];
   const f={};
   for(const el of document.querySelectorAll('#inspector [data-key]')){
-    // descCustomInput 和 descInput 并存时，取自定义输入的值
     if(el.id==='descInput'&&document.getElementById('descCustomInput'))continue;
     let v=el.value.trim();
     if(PLACEHOLDERS.includes(v))v='';
+    // 手动输入模式下空值不返回（防止_applyInspector误清）
+    if(el.getAttribute('data-key')==='desc'&&!v&&document.getElementById('descCustomInput'))continue;
     f[el.getAttribute('data-key')]=v||'';
   }
   if(sel.size>0){const s=[...sel].sort((a,b)=>a-b);f.tk=String(s[0]+1).padStart(2,'0')}else f.tk='';
