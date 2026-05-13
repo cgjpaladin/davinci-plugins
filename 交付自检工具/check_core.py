@@ -1007,6 +1007,56 @@ def check_through_edits(timeline, fps=25.0, io_range=None) -> list:
     return [_make_result("warn", detail=f"直通编辑: {len(issues)} 处", is_summary=True)] + issues
 
 
+# ── 尾板检测 ──
+
+def check_tailboard(timeline, fps=25.0, io_range=None) -> list:
+    """检测结尾是否有尾板（定格转场 + 未完待续/全剧终）。
+
+    规则：最后 10 秒内，所有视频轨中必须同时存在：
+    - 名称含"定格转场"的片段
+    - 名称含"未完待续"或"全剧终"的片段
+    """
+    total_frames = timeline.GetEndFrame()
+    tail_start = max(0, total_frames - int(fps * 10))
+    has_freeze = False
+    has_text = False
+    text_names = []  # 记录已找到的文字尾板名称（性能优化：找到一个就够）
+
+    for vi in range(1, timeline.GetTrackCount("video") + 1):
+        if has_freeze and has_text:
+            break
+        for it in _get_items(timeline, "video", vi):
+            if int(_get_cached(it, "end", 0)) < tail_start:
+                continue
+            name = _get_cached(it, "name", "") or ""
+            if not name:
+                try:
+                    name = it.GetName() or ""
+                except Exception:
+                    continue
+            if not has_freeze and "定格转场" in name:
+                has_freeze = True
+            if not has_text and ("未完待续" in name or "全剧终" in name):
+                has_text = True
+                text_names.append(name)
+
+    # 生成结果
+    if has_freeze and has_text:
+        return [_make_result("pass", detail="尾板: 定格转场 + 结尾文字 (通过)", is_summary=True)]
+
+    msgs = []
+    if not has_freeze and not has_text:
+        msgs.append("结尾缺少尾板（定格转场 + 未完待续/全剧终）")
+    elif not has_freeze:
+        msgs.append("结尾缺少定格转场")
+    elif not has_text:
+        msgs.append("结尾缺少文字（未完待续/全剧终）")
+
+    return [_make_result("warn", detail=msgs[0],
+                         reason="请在时间线末尾添加定格转场和未完待续（或全剧终）",
+                         is_summary=True)]
+
+
 # ── 待开发 ──
 
 def check_subtitle_typo(timeline, fps=25.0, io_range=None) -> list:

@@ -38,7 +38,7 @@ from config import (
 )
 from check_core import (check_track_structure, check_subtitle_clamping, check_disabled_items,
                           check_black_frames, check_audio_mono, check_timeline_settings,
-                          check_through_edits,
+                          check_through_edits, check_tailboard,
                           check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
                           check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
                           check_color, check_camera_on_high_tracks, check_audio_color_tracks,
@@ -61,6 +61,7 @@ CHK_PATH = "chk_path"
 CHK_OFFLINE = "chk_offline"
 CHK_BLACK_FRAME = CHK_BLACK  # 别名
 CHK_THROUGH_EDITS = "chk_through_edits"
+CHK_TAILBOARD = "chk_tailboard"
 BTN_START = "btn_start"
 BTN_CONFIG = "btn_config"
 BTN_AI_TYPO = "btn_ai_typo"
@@ -246,6 +247,10 @@ def _run_camera_track_check(timeline, fps, **_kw):
 def _run_through_edit_check(timeline, fps, **_kw):
     return check_through_edits(timeline, fps, io_range=_kw.get("io_range"))
 
+def _run_tailboard_check(timeline, fps, **_kw):
+    """尾板检测"""
+    return check_tailboard(timeline, fps, io_range=_kw.get("io_range"))
+
 def _run_audio_color_check(timeline, fps, **_kw):
     """音频颜色越轨"""
     return check_audio_color_tracks(timeline, fps=fps, io_range=_kw.get("io_range"))
@@ -416,6 +421,7 @@ CHECKS = [
     {"id": "speed",         "section": "变速",     "chk_id": CHK_SPEED,           "group": "视频", "subgroup": "变速",   "run_fn": _run_speed_check,         "tracks": ["video"], "gate": "video"},
     {"id": "camera_track",  "section": "视频越轨", "chk_id": CHK_CAMERA,          "group": "视频", "subgroup": "越轨",   "run_fn": _run_camera_track_check,  "tracks": ["video"], "gate": "video"},
     {"id": "through_edit",  "section": "直通编辑", "chk_id": CHK_THROUGH_EDITS,  "group": "视频", "subgroup": "直通",   "run_fn": None,                     "tracks": ["video"], "gate": ""},  # 已隐藏，待API完善
+    {"id": "tailboard",     "section": "尾板",     "chk_id": CHK_TAILBOARD,     "group": "视频", "subgroup": "尾板",   "run_fn": _run_tailboard_check,     "tracks": ["video"], "gate": "video"},
     {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "group": "色彩", "subgroup": "色彩",   "run_fn": _run_color_check,         "tracks": ["video"], "gate": "video"},
     # 音频门
     {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "group": "音频", "subgroup": "声道",   "run_fn": _run_mono_check,          "tracks": ["audio"], "gate": "audio"},
