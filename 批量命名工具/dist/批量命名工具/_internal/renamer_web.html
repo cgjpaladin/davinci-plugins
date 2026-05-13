@@ -435,7 +435,7 @@ function renderList(){
     if(!ready){
       const m=[];const lb={ep:'Ep集数',sc:'Sc场次',gr:'Gr小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'Version版本号',status:'通过情况'};
       for(const k of['ep','sc','gr','desc','author','method','ver','status']){if(!ff[k])m.push(lb[k])}
-      tag.textContent='缺失: '+m.join(' · ');
+      tag.textContent='请填写: '+m.join(' · ');
     }else{tag.textContent='✓'}
     d.append(th,nn,ar,on,dot,tag);
     d.addEventListener('click',e=>{
