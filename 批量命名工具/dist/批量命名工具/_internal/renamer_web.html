@@ -485,9 +485,9 @@ function showDialog(title,msg){return new Promise(r=>{
 })}
 
 // ═══ Actions ═══
-async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){files=r.files;sel.clear();checkTags={};renderList();_toastResult(r);loadThumbs()}}
-async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){files=r.files;sel.clear();checkTags={};renderList();_toastResult(r);loadThumbs()}}
-function _toastResult(r){let m=`已添加 ${r.total} 个文件`;if(r.duplicates)m+=` · ${r.duplicates} 个重复跳过`;if(r.subdirs_skipped)m+=` · ${r.subdirs_skipped} 个子文件夹跳过`;if(r.truncated)m+=` (上限${r.max}个)`;toast(m)}
+async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){files=files.concat(r.files);renderList();_toastResult(r);loadThumbs()}}
+async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){files=files.concat(r.files);renderList();_toastResult(r);loadThumbs()}}
+function _toastResult(r){let m=`已追加 ${r.total} 个文件`;if(r.duplicates)m+=` · ${r.duplicates} 个重复跳过`;if(r.subdirs_skipped)m+=` · ${r.subdirs_skipped} 个子文件夹跳过`;if(r.truncated)m+=` (上限${r.max}个)`;toast(m)}
 // 选中文件时，把它们的字段反映到 inspector
 function _syncInspectorFromSelection(){
   const ix=[...sel].sort((a,b)=>a-b);
@@ -630,8 +630,8 @@ dropZone.addEventListener('drop',e=>{e.preventDefault();dg=0;overlay.classList.r
 // ═══ Drop results from Python ═══
 function onDropResult(result){
   if(result&&result.files){
-    files=result.files;sel.clear();checkTags={};
-    let msg=`已添加 ${result.total} 个文件`;
+    files=files.concat(result.files);
+    let msg=`已追加 ${result.total} 个文件`;
     if(result.duplicates) msg+=` · ${result.duplicates} 个重复跳过`;
     if(result.subdirs_skipped) msg+=` · ${result.subdirs_skipped} 个子文件夹跳过`;
     if(result.truncated) msg+=` (上限${result.max}个)`;
