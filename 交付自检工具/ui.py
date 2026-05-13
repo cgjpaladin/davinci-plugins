@@ -1136,15 +1136,14 @@ def _process_result(r, rows_list):
 # ═══════════════════════════════════════════
 
 def _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
-                       script_src, result):
+                       script_src, result, project=None):
     """每次 LLM 校对后完整存档（输入+输出），复盘时对比交付 SRT 使用。
 
     路径: ~/Library/Application Support/交付自检/typo_sessions/{项目}/{时间线}/{时间戳}.json
     """
     import json as _json, shutil as _shutil, hashlib as _hashlib, datetime as _dt
     try:
-        proj = timeline.GetProject() if hasattr(timeline, 'GetProject') else None
-        proj_name = proj.GetName() if proj else "未知项目"
+        proj_name = project.GetName() if project else "未知项目"
         tl_name = timeline.GetName() or "未命名时间线"
     except Exception:
         proj_name, tl_name = "未知", "未知"
@@ -1270,7 +1269,8 @@ def _run_ai_typo():
 
         # ═══ 存档：完整保存本次校对的输入+输出（复盘用）═══
         _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
-                           itm[EDIT_SCRIPT_SRC].Text.strip(), result)
+                           itm[EDIT_SCRIPT_SRC].Text.strip(), result,
+                           project=resolve.GetProjectManager().GetCurrentProject())
 
         corrections = result.get("corrections", [])
         provider = result.get("provider", "?")
