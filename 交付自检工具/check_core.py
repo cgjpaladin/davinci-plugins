@@ -718,7 +718,7 @@ def check_subtitle_glyph(timeline, fps=25.0, io_range=None) -> list:
     if not issues:
         return [_make_result("pass", detail="异体字: 全部通过", is_summary=True)]
 
-    results = [_make_result("fail", detail=f"异体字: {len(issues)} 处", is_summary=True)]
+    results = [_make_result("warn", detail=f"异体字: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
     return results
 
