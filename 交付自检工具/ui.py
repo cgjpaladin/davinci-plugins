@@ -420,7 +420,7 @@ CHECKS = [
     {"id": "black_border",  "section": "黑边",     "chk_id": CHK_BORDER,         "group": "视频", "subgroup": "黑边",   "run_fn": _run_black_border_check,  "tracks": ["video"], "gate": "video"},
     {"id": "speed",         "section": "变速",     "chk_id": CHK_SPEED,           "group": "视频", "subgroup": "变速",   "run_fn": _run_speed_check,         "tracks": ["video"], "gate": "video"},
     {"id": "camera_track",  "section": "视频越轨", "chk_id": CHK_CAMERA,          "group": "视频", "subgroup": "越轨",   "run_fn": _run_camera_track_check,  "tracks": ["video"], "gate": "video"},
-    {"id": "through_edit",  "section": "直通编辑", "chk_id": CHK_THROUGH_EDITS,  "group": "视频", "subgroup": "直通",   "run_fn": None,                     "tracks": ["video"], "gate": ""},  # 已隐藏，待API完善
+    {"id": "through_edit",  "section": "直通编辑", "chk_id": CHK_THROUGH_EDITS,  "group": "视频", "subgroup": "直通",   "run_fn": None,                     "tracks": ["video"], "gate": "",  "hidden": True},
     {"id": "tailboard",     "section": "尾板",     "chk_id": CHK_TAILBOARD,     "group": "视频", "subgroup": "尾板",   "run_fn": _run_tailboard_check,     "tracks": ["video"], "gate": "video"},
     {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "group": "色彩", "subgroup": "色彩",   "run_fn": _run_color_check,         "tracks": ["video"], "gate": "video"},
     # 音频门
@@ -542,8 +542,7 @@ def _disabled_cb(id_, text):
 
 def _section_checkboxes(*check_ids):
     """从 CHECKS 查找指定 ID 生成 CheckBox 列表。
-    自动区分：run_fn 有效的 → 正常勾选框，run_fn=None → 灰色 disabled。
-    ID 不存在 → 红色错误标记。
+    自动区分：hidden → 不生成, run_fn=None → 灰色 disabled, 正常 → 勾选框。
     """
     widgets = []
     for cid in check_ids:
@@ -552,6 +551,8 @@ def _section_checkboxes(*check_ids):
             _action_log(f"_section_checkboxes: 未知 check_id '{cid}'")
             widgets.append(ui.Label({"Text": f"?{cid}",
                 "StyleSheet": "color:red;font-size:12px", "Weight": 0}))
+            continue
+        if check.get("hidden"):
             continue
         if check.get("run_fn") is None:
             widgets.append(_disabled_cb(check["chk_id"], check["section"]))
@@ -1361,6 +1362,8 @@ def _start_check():
         # （门关闭 → 对应检查跳过，轨道也不用预加载）
         needed = set()
         for check in CHECKS:
+            if check.get("hidden"):
+                continue
             g = check.get("gate", "")
             if check.get("run_fn") and itm[check["chk_id"]].Checked:
                 if not g or gate_all_ok:
