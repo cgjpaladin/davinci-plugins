@@ -347,7 +347,6 @@ setInterval(_tryStart,300);
 function getFields(){
   const f={};
   for(const el of document.querySelectorAll('#inspector [data-key]')){
-    if(el.id==='descInput'&&descLocked)continue;
     const v=el.value.trim();
     f[el.getAttribute('data-key')]=v||null;
   }
@@ -445,7 +444,7 @@ function updCount(){
 }
 function updButtons(){
   const hf=files.length>0,hs=sel.size>0,fd=getFields();
-  const af=fd.ep&&fd.sc&&fd.gr&&fd.ver&&fd.status&&(descLocked||fd.desc);
+  const af=fd.ep&&fd.sc&&fd.gr&&fd.ver&&fd.status&&fd.desc;
   document.getElementById('btnRename').disabled=!(hs&&af);
   document.getElementById('btnArchive').disabled=!(hs&&af);
   document.getElementById('btnUndo').disabled=!undoAvail;
@@ -456,8 +455,7 @@ function updButtons(){
   if(hs&&af){dot.style.background='var(--green)';setStatus('✅ 字段齐全，可以重命名');return}
   const missing=[];
   const labels={ep:'Ep集数',sc:'Sc场次',gr:'Gr小场次',desc:'镜头描述',ver:'版本号',status:'通过情况'};
-  for(const k of['ep','sc','gr','ver','status']){if(!fd[k])missing.push(labels[k])}
-  if(!descLocked&&!fd.desc)missing.push(labels.desc);
+  for(const k of['ep','sc','gr','ver','status','desc']){if(!fd[k])missing.push(labels[k])}
   dot.style.background='var(--yellow)';
   setStatus(missing.length?'缺失: '+missing.join(' · '):'就绪  ·  Ctrl+Z 撤销');
 }
@@ -626,12 +624,6 @@ function _applyInspectorToSelected(){
       if(fd[k]===null)continue;
       if(files[i].fields[k]!==fd[k])changed.push(k);
       files[i].fields[k]=fd[k];
-    }
-    // desc 锁定时从 DOM 直接读（descInput 有实际值）
-    if(descLocked){
-      const descEl=document.getElementById('descInput');
-      const dv=(descEl&&descEl.value||'').trim();
-      if(dv&&files[i].fields.desc!==dv){changed.push('desc');files[i].fields.desc=dv}
     }
   }
   if(changed.length)call('debug_log','fields changed: '+[...new Set(changed)].join(',')+' on '+sel.size+' files');
