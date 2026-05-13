@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_data_files
 
-datas = [('_build.html', 'renamer_web.html'), ('../shared', 'shared')]
+datas = [('_build/renamer_web.html', '.'), ('../shared', 'shared')]
 datas += collect_data_files('webview')
 datas += collect_data_files('bottle')
 

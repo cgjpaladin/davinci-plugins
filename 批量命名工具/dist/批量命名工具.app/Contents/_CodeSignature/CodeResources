@@ -10,7 +10,7 @@
 		</data>
 		<key>Resources/base_library.zip</key>
 		<data>
-		Hw8prJ7hW19hWGvejqhVYqCtIgc=
+		lxdAZfKqI20g6Rg5SFoa3nN3HV0=
 		</data>
 		<key>Resources/cryptography-46.0.5.dist-info/INSTALLER</key>
 		<data>
@@ -152,7 +152,7 @@
 		<data>
 		yrTiaNIC2eaFhNXbcnSiR1lDtTI=
 		</data>
-		<key>Resources/renamer_web.html/_build.html</key>
+		<key>Resources/renamer_web.html</key>
 		<data>
 		YxJ2y/zS/8QuGBlcokRQSbjwxt4=
 		</data>
@@ -2179,7 +2179,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			iKSSzIClX1inXfT7PxPXxl/q5Gz03lGINWVLlyLtWWo=
+			WoIuMvLaIIm1XafgnaR5Sgu6kbJdMeVPSgvcrBMU7Js=
 			</data>
 		</dict>
 		<key>Resources/charset_normalizer</key>
@@ -2557,7 +2557,7 @@
 			<key>symlink</key>
 			<string>../Frameworks/python3.13</string>
 		</dict>
-		<key>Resources/renamer_web.html/_build.html</key>
+		<key>Resources/renamer_web.html</key>
 		<dict>
 			<key>hash2</key>
 			<data>

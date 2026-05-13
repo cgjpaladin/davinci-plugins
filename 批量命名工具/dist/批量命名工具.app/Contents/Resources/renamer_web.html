@@ -1,3 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+:root {
+  --bg:        #151515;
+  --surface:   #1e1e1e;
+  --surface2:  #282828;
+  --border:    #3d3d3d;
+  --border-hi: #555555;
+  --text:      #c0c0c0;
+  --text-bright:#e8e8e8;
+  --text-dim:  #707070;
+  --accent:    #e8870a;
+  --accent-dim:#8a5000;
+  --green:     #6a9a3a;
+  --red:       #c04040;
+  --yellow:    #c0a040;
+  --fs-body:   10px;
+  --fs-label:  10px;
+  --fs-sm:     10px;
+  --fs-preview:11px;
+  --gap:       4px;
+  --pad:       6px;
+  --pad-lg:    8px;
+  --radius:    2px;
+  --font-ui:   'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Consolas', 'Cascadia Code', monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:var(--font-ui);font-size:var(--fs-body);
+  display:flex;flex-direction:column;height:100vh;overflow:hidden;
+}
+.titlebar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:3px var(--pad-lg);background:var(--surface);
+  border-bottom:1px solid var(--border);
+  font-size:var(--fs-sm);color:var(--text-dim);flex-shrink:0;
+}
+.tb-dots{display:flex;gap:5px}
+.tb-dot{width:6px;height:6px;border-radius:50%}
+.tb-dot.a{background:var(--accent)}
+.tb-dot.b{background:#555}
+.inspector{
+  display:flex;gap:var(--gap);
+  padding:var(--pad) var(--pad-lg);
+  border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.param{flex:1;min-width:0}
+.param.wide{flex:1.6}
+.param label{
+  display:block;font-size:var(--fs-label);color:var(--text-bright);
+  text-transform:uppercase;letter-spacing:.3px;
+  font-weight:600;margin-bottom:2px;white-space:nowrap;
+}
+.param input,.param select{
+  width:100%;height:26px;box-sizing:border-box;
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text-bright);font-family:var(--font-mono);font-size:var(--fs-body);
+  padding:3px 5px;border-radius:var(--radius);outline:none;
+}
+.param select{
+  cursor:pointer;-webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23707070'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 7px center;
+  padding-right:20px;
+}
+.param input:not([readonly]):focus,.param select:focus{border-color:var(--yellow);outline:none}
+.param input[readonly]:focus{border-color:var(--border);outline:none}
+.param ::placeholder{color:var(--text-dim);opacity:1}
+.param input[readonly]{color:var(--text-dim);cursor:default;opacity:.7}
+.dest{
+  display:flex;align-items:center;gap:var(--gap);
+  padding:4px var(--pad-lg);border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.dest label{
+  font-size:var(--fs-label);color:var(--text-dim);
+  text-transform:uppercase;font-weight:600;white-space:nowrap;margin-right:2px;
+}
+.dest input{
+  flex:1;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text-bright);font-family:var(--font-mono);font-size:var(--fs-body);
+  padding:3px 6px;border-radius:var(--radius);outline:none;min-width:0;
+}
+.dest input:focus{border-color:var(--accent)}
+#btnBrowseDest{font-size:12px;padding:3px 6px;flex-shrink:0}
+.dest-ok{font-size:var(--fs-sm);white-space:nowrap;flex-shrink:0}
+.hero{
+  display:flex;align-items:stretch;gap:6px;
+  padding:5px var(--pad-lg);border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.hero-preview{
+  flex:1;display:flex;align-items:center;gap:8px;min-width:0;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius);padding:5px 10px;
+}
+.hero-arrow{color:var(--green);font-weight:bold;font-size:14px;flex-shrink:0}
+.hero-filename{
+  font-family:var(--font-mono);font-size:var(--fs-preview);color:var(--green);
+  flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.hero-meta{
+  display:flex;align-items:center;gap:10px;
+  font-size:var(--fs-sm);color:var(--text-dim);
+  border-left:1px solid var(--border);padding-left:10px;flex-shrink:0;
+}
+.hero-meta em{font-style:normal;font-family:var(--font-mono);color:var(--green);font-weight:bold}
+.hero-btn{
+  flex-shrink:0;padding:6px 12px;background:var(--accent);color:#fff;
+  border:none;border-radius:var(--radius);
+  font-family:var(--font-ui);font-size:var(--fs-body);font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:filter .1s;
+}
+.hero-btn:hover{filter:brightness(1.15)}
+.hero-btn:disabled{background:#3d3d3d;color:#707070;cursor:not-allowed;filter:none}
+.hero-archive{
+  flex-shrink:0;padding:6px 12px;background:transparent;color:var(--green);
+  border:1px solid var(--green);border-radius:var(--radius);
+  font-family:var(--font-ui);font-size:var(--fs-body);font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:background .15s;
+}
+.hero-archive:hover{background:rgba(106,154,58,.12)}
+.hero-archive:disabled{color:var(--text-dim);border-color:#3d3d3d;cursor:not-allowed}
+.hero-archive:disabled:hover{background:transparent}
+.hero-check,.hero-undo{
+  flex-shrink:0;padding:6px 8px;background:transparent;color:var(--text-dim);
+  border:1px solid var(--border);border-radius:var(--radius);
+  font-family:var(--font-ui);font-size:var(--fs-sm);cursor:pointer;
+  white-space:nowrap;transition:all .15s;
+}
+.hero-check:hover,.hero-undo:hover{color:var(--text);border-color:var(--text-dim)}
+.hero-undo:disabled{color:#4a4a4a;cursor:not-allowed}
+.hero-undo:disabled:hover{color:#4a4a4a;border-color:var(--border)}
+.file-section{flex:1;display:flex;flex-direction:column;border-bottom:1px solid var(--border);min-height:0;position:relative;-webkit-user-select:none;user-select:none}
+.fl-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:3px var(--pad-lg);background:var(--surface);
+  border-bottom:1px solid var(--border);font-size:var(--fs-sm);color:var(--text-dim);flex-shrink:0;
+}
+.fl-bar-right{display:flex;gap:var(--gap);align-items:center}
+.zoom-slider{-webkit-appearance:none;appearance:none;width:60px;height:3px;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
+.zoom-slider::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:var(--accent);cursor:pointer}
+.zoom-label{color:var(--text-dim);font-size:9px;width:24px;text-align:center;flex-shrink:0}
+.fl-btn{
+  padding:2px 8px;background:transparent;border:1px solid var(--border);
+  color:var(--text);font-family:var(--font-ui);font-size:var(--fs-sm);
+  border-radius:var(--radius);cursor:pointer;transition:all .15s;
+}
+.fl-btn:hover{background:var(--bg);border-color:var(--text-dim)}
+.fl-body{flex:1;overflow:auto}
+.fl-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:18px}
+.fl-item{
+  display:flex;align-items:center;gap:8px;
+  padding:3px var(--pad-lg);border-bottom:1px solid rgba(255,255,255,.02);
+  cursor:pointer;min-width:max-content;transition:background .1s;
+  background:rgba(192,128,208,.05);
+}
+.fl-item:hover{background:rgba(192,128,208,.1)}
+.fl-item.sel{
+  background:color-mix(in srgb,var(--accent) 12%,var(--bg));
+  border-left:2px solid var(--accent);padding-left:calc(var(--pad-lg) - 2px);
+}
+.fl-item.sel.rdy{background:rgba(0,212,170,0.08);border-color:var(--green)}
+.fl-item.sel.rdy .fl-new{color:var(--green);font-weight:600}
+.fl-item.sel.mis{background:rgba(255,180,0,0.08);border-color:var(--yellow)}
+.fl-item.sel.mis .fl-new{color:var(--yellow);font-weight:600}
+.fl-item.warn-zero{background:rgba(192,64,64,.12)}
+.fl-item.warn-size{background:rgba(192,160,64,.08)}
+.fl-item.warn-fmt{background:rgba(192,128,208,.08)}
+.fl-item.warn-dbl{background:rgba(192,128,208,.08)}
+.fl-thumb{
+  width:calc(24px*var(--thumb-scale,1));height:calc(36px*var(--thumb-scale,1));border-radius:var(--radius);flex-shrink:0;
+  background:#222;border:1px solid #333;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;
+}
+.fl-thumb::after{content:'▶';position:absolute;font-size:5px;color:rgba(255,255,255,.4);text-shadow:0 0 2px #000}
+.fl-new{font-family:var(--font-mono);font-size:calc(var(--fs-body)*var(--thumb-scale,1));color:var(--text-bright);white-space:nowrap;flex-shrink:0}
+.fl-arrow-sym{color:var(--text-dim);flex-shrink:0;font-size:calc(var(--fs-sm)*var(--thumb-scale,1))}
+.fl-old{font-family:var(--font-mono);font-size:calc(var(--fs-sm)*var(--thumb-scale,1));color:var(--text-dim);white-space:nowrap;flex-shrink:0}
+.fl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:6px}
+.fl-tag{font-size:calc(var(--fs-xs)*var(--thumb-scale,1));color:var(--yellow);white-space:nowrap;flex-shrink:0;margin-left:4px}
+.statusbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:3px var(--pad-lg);font-size:var(--fs-sm);color:var(--text-dim);flex-shrink:0;
+}
+.sb-left{display:flex;align-items:center;gap:6px}
+.sb-dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+.drop-overlay{
+  position:absolute;inset:0;background:rgba(232,135,10,.08);
+  border:2px dashed var(--accent);display:none;align-items:center;justify-content:center;
+  z-index:10;pointer-events:none;
+}
+.drop-overlay.show{display:flex}
+.drop-overlay span{font-size:14px;color:var(--accent);font-weight:600}
+.fl-body::-webkit-scrollbar{width:5px}
+.fl-body::-webkit-scrollbar-track{background:transparent}
+.fl-body::-webkit-scrollbar-thumb{background:#3d3d3d;border-radius:3px}
+
+/* dialog */
+.dialog-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;
+  display:none;align-items:center;justify-content:center;
+}
+.dialog-overlay.show{display:flex}
+.dialog{
+  background:var(--surface);border:1px solid var(--border);border-radius:4px;
+  padding:16px 20px;max-width:480px;min-width:320px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.dialog h3{font-size:11px;color:var(--text);margin-bottom:8px}
+.dialog p{font-size:var(--fs-body);color:var(--text-dim);margin-bottom:10px;font-family:var(--font-mono);word-break:break-all}
+.dialog-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.dialog-btns button{
+  padding:5px 14px;border-radius:var(--radius);font-size:var(--fs-body);
+  font-family:var(--font-ui);cursor:pointer;
+}
+.dialog-btns .ok{background:var(--accent);color:#fff;border:none}
+.dialog-btns .cancel{background:transparent;color:var(--text-dim);border:1px solid var(--border)}
+.toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 16px;border-radius:var(--radius);font-size:var(--fs-body);z-index:300;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- Titlebar -->
+<div class="titlebar">
+  <span class="tb-dots"><span class="tb-dot a"></span><span class="tb-dot b"></span><span class="tb-dot b"></span></span>
+  <span>批量文件命名工具</span>
+  <span style="color:#444;font-size:9px" id="debugMode">loading...</span>
+</div>
+
+  <!-- Inspector — 占位符提示，无预填值 -->
+  <div class="inspector" id="inspector">
+    <div class="param"><label>Ep 集数</label><input data-key="ep" value="" placeholder="01" style="color:var(--text-dim)"></div>
+    <div class="param"><label>Sc 场次</label><input data-key="sc" value="" placeholder="01" style="color:var(--text-dim)"></div>
+    <div class="param"><label>Gr 小场次</label><input data-key="gr" value="" placeholder="01" style="color:var(--text-dim)"></div>
+    <div class="param"><label>Tk 次数</label><input data-key="tk" value="自动排序" readonly></div>
+    <div class="param wide"><label>镜头描述</label><input id="descInput" data-key="desc" value="" placeholder="由制作方式决定" readonly></div>
+    <div class="param"><label>制作者</label><input data-key="author" id="authorInput" value="" placeholder="请输入姓名" style="color:var(--text-dim)"></div>
+    <div class="param"><label>制作方式</label><select id="methodSelect" data-key="method"><option value="">请选择</option><option value="智能分镜版">智能分镜版</option><option value="双轨版">双轨版</option><option value="角色专属版">角色专属版</option></select></div>
+    <div class="param"><label>版本号</label><input data-key="ver" value="" placeholder="01" style="color:var(--text-dim)"></div>
+    <div class="param"><label>通过情况</label><select data-key="status"><option value="">请选择</option><option value="OK">OK</option><option value="KP">KP</option><option value="NG">NG</option></select></div>
+  </div>
+
+<!-- Dest + Buttons -->
+<div class="dest">
+  <label>目标路径</label>
+  <input id="destInput" value="" placeholder="点击 🗂 选择项目文件夹，或粘贴路径">
+  <button class="fl-btn" id="btnBrowseDest" style="flex-shrink:0">🗂</button>
+  <span class="dest-ok" id="destStatus"></span>
+  <button class="hero-btn" id="btnRename" disabled>批量重命名</button>
+  <button class="hero-archive" id="btnArchive" disabled>批量归档</button>
+  <button class="hero-undo" id="btnUndo" disabled>↩ 撤销</button>
+</div>
+
+<!-- File List -->
+<div class="file-section">
+  <div class="fl-bar">
+    <span id="fileCount">文件列表 · 0 个</span>
+    <div class="fl-bar-right">
+      <span class="zoom-label" id="zoomLabel">100%</span>
+      <input type="range" class="zoom-slider" id="zoomSlider" min="50" max="200" value="100" step="1">
+      <button class="fl-btn" id="btnAdd">+ 添加</button>
+    </div>
+  </div>
+  <div class="fl-body" id="fileList">
+    <div class="fl-empty">拖放文件到此处 或 点击 +文件</div>
+  </div>
+  <div class="drop-overlay" id="dropOverlay"><span>释放以添加文件</span></div>
+</div>
+
+<!-- Status Bar -->
+<div class="statusbar">
+  <span class="sb-left"><span class="sb-dot"></span> <span id="statusText">就绪  ·  Ctrl+Z 撤销  ·  Del 移除</span></span>
+  <span>裁缝老师的达芬奇插件工坊 · v3.0</span>
+</div>
+
+<!-- Overlays -->
+<div class="toast" id="toast"></div>
+<div class="dialog-overlay" id="dialogOverlay">
+  <div class="dialog">
+    <h3 id="dialogTitle">确认</h3>
+    <p id="dialogMsg"></p>
+    <div class="dialog-btns">
+      <button class="cancel" id="dialogCancel">取消</button>
+      <button class="ok" id="dialogOk">确认</button>
+    </div>
+  </div>
+</div>
+
+<script>
 // ═══ 立即执行 — 确认脚本加载 ═══
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('debugMode').textContent='JS ✓';
@@ -5,7 +299,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 // ═══ State ═══
 let files=[], sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
-const C={g:'var(--green)',y:'var(--yellow)',r:'var(--red)',b:'var(--text-bright)',d:'var(--text-dim)',gr:'rgba(52,211,153,0.12)'};
+const C={g:'var(--green)',y:'var(--yellow)',r:'var(--red)',b:'var(--text-bright)',d:'var(--text-dim)',gr:'rgba(0,212,170,0.12)'};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
 
 // ═══ API ═══
@@ -99,10 +393,10 @@ function onMethodChange(){
 function descInput(t,v,ro,ph){
   const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const el=document.getElementById('descInput');
-  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=(ro&&v)?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');el.style.background=v?'rgba(52,211,153,0.12)':'';if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};return}
+  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=(ro&&v)?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');el.style.background=v?'rgba(0,212,170,0.12)':'';if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};return}
   const ip=document.createElement('input');ip.id='descInput';ip.setAttribute('data-key','desc');
   ip.value=v||'';ip.readOnly=ro||false;ip.placeholder=ph||'由制作方式决定';
-  ip.style.cssText=el?el.style.cssText:'';ip.style.color=(ro&&v)?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');ip.style.background=v?'rgba(52,211,153,0.12)':'';
+  ip.style.cssText=el?el.style.cssText:'';ip.style.color=(ro&&v)?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');ip.style.background=v?'rgba(0,212,170,0.12)':'';
   if(!ro)ip.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};
   if(el)el.replaceWith(ip);
 }
@@ -171,13 +465,6 @@ function renderList(){
 function updCount(){
   document.getElementById('fileCount').innerHTML=`文件列表 · <strong style="color:var(--accent);font-weight:600">${files.length}</strong> 个  ·  选中 <strong style="color:var(--accent);font-weight:600">${sel.size}</strong>`;
 }
-function _lockInspector(lock){
-  document.querySelectorAll('#inspector input:not([data-key="tk"]), #inspector select').forEach(el=>{
-    if(el.id==='descInput'&&descLocked)return;
-    el.readOnly=lock;el.style.cursor=lock?'default':'';
-    if(lock){el.style.color='';el.style.background=''}
-  });
-}
 function updButtons(){
   const hf=files.length>0,hs=sel.size>0,fd=getFields();
   const af=fd.ep&&fd.sc&&fd.gr&&fd.author&&fd.method&&fd.ver&&fd.status&&fd.desc;
@@ -196,8 +483,7 @@ function updButtons(){
   for(const t of files){if(t.tags&&t.tags.length)warn.push(...t.tags)}
   if(warn.length){const wl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};dot.style.background='var(--red)';setStatus('⚠ '+[...new Set(warn)].map(w=>wl[w]||w).join(' · '));return}
   dot.style.background='var(--yellow)';
-  _lockInspector(hs);setStatus(missing.length?'缺失: '+missing.join(' · '):'就绪  ·  Ctrl+Z 撤销');
-  _lockInspector(!hs);
+  setStatus(missing.length?'缺失: '+missing.join(' · '):'就绪  ·  Ctrl+Z 撤销');
 }
 
 // ═══ Dialog ═══
@@ -224,7 +510,7 @@ function _syncInspectorFromSelection(){
       if(!el||el.id==='descInput')continue;
       const v=f.fields[k]||'';
       if(el.tagName==='SELECT'){el.value=v;el.style.borderLeft=''}
-      else{el.value=v;const filled=!!v;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'rgba(52,211,153,0.12)':''}
+      else{el.value=v;const filled=!!v;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'rgba(0,212,170,0.12)':''}
     }
     document.getElementById('methodSelect').value=f.fields.method||'';
     onMethodChange();
@@ -237,7 +523,7 @@ function _syncInspectorFromSelection(){
       if(!el||el.id==='descInput')continue;
       const single=vals.size===1?[...vals][0]:'';
       if(el.tagName==='SELECT'){el.value=vals.size===1?[...vals][0]:''}
-      else{el.value=single||'';const filled=!!single;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'rgba(52,211,153,0.12)':''}
+      else{el.value=single||'';const filled=!!single;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'rgba(0,212,170,0.12)':''}
     }
     const mv=new Set(ix.map(i=>files[i].fields.method||''));
     document.getElementById('methodSelect').value=mv.size===1?[...mv][0]:'';
@@ -262,7 +548,7 @@ function _setDescValue(v){
     ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};
     el.after(ip);
   }else if(el.tagName==='INPUT'){
-    el.value=v;el.style.color='var(--text-bright)';el.style.background='rgba(52,211,153,0.12)';
+    el.value=v;el.style.color='var(--text-bright)';el.style.background='rgba(0,212,170,0.12)';
   }
 }
 
@@ -394,7 +680,7 @@ function _applyInspectorToSelected(){
 document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
   if(el.readOnly)return;
   el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color='var(--text-bright)';el.style.background=''});
-  el.addEventListener('blur',()=>{if(!sel.size)return;if(!el.value.trim()){el.style.color='var(--text-dim)';el.style.background=''}else{el.style.background='rgba(52,211,153,0.12)'}});
+  el.addEventListener('blur',()=>{if(!sel.size)return;if(!el.value.trim()){el.style.color='var(--text-dim)';el.style.background=''}else{el.style.background='rgba(0,212,170,0.12)'}});
   // 数字字段限制 — 在 input 之前运行
   const rx=DIGIT_RULES[el.getAttribute('data-key')];
   if(rx){
@@ -456,3 +742,6 @@ document.getElementById('fileList').addEventListener('wheel',e=>{
 let tt;function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2500)}
 
 setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');
+</script>
+</body>
+</html>
