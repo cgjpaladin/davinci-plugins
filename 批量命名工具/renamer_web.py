@@ -39,11 +39,72 @@ if os.path.exists(CFG_FILE):
     except:
         pass
 
-_undo_stack = []
+_undo_stack = []  # list of lists: [[(old,new),...], [(old,new),...]]
 _window = None  # 存引用
 
 
 class RenamerAPI:
+
+    def on_drop_files(self, paths_json):
+        """JS 通知 Python 处理拖放路径（从 Python 端 DOM 事件拿到完整路径）"""
+        try:
+            paths = json.loads(paths_json)
+        except:
+            return {"files": [], "total": 0}
+        _log.info(f"on_drop_files: {paths[:5]}")
+        result = self._process_paths(paths)
+        # 通知 JS 更新 UI
+        if _window:
+            _window.evaluate_js(f"onDropResult({json.dumps(result)})")
+        return result
+
+    def pick_dest_folder(self):
+        """打开文件夹选择框，返回路径"""
+        result = _window.create_file_dialog(webview.FOLDER_DIALOG)
+        if result and len(result) > 0:
+            return {"path": result[0]}
+        return {"path": ""}
+
+    def normalize_path(self, path):
+        """转换粘贴的路径：smb:// → /Volumes/，去掉尾部文件名"""
+        import re as _re
+        v = str(path).strip()
+        # SMB URL → 本地挂载路径
+        v = _re.sub(r'^smb://[\d.]+/', '/Volumes/', v)
+        # 尾部有扩展名 → 可能是文件路径，取父目录
+        if '.' in os.path.basename(v) and not os.path.isdir(v):
+            parent = os.path.dirname(v)
+            if parent and os.path.isdir(parent):
+                v = parent
+        return {"normalized": v, "exists": os.path.isdir(v)}
+
+    def generate_thumbnails(self, paths):
+        """用 ffmpeg 提取视频第一帧，返回 base64 data URI"""
+        import subprocess, base64, tempfile, shutil as _shutil
+        ffmpeg = _shutil.which('ffmpeg') or '/opt/homebrew/bin/ffmpeg'
+        _log.info(f"generate_thumbnails: {len(paths)} files, ffmpeg={ffmpeg}")
+        thumbs = {}
+        for p in paths:
+            try:
+                tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
+                tmp.close()
+                result = subprocess.run(
+                    [ffmpeg, '-y', '-i', p, '-vframes', '1', '-s', '48x72', '-q:v', '5', tmp.name],
+                    capture_output=True, timeout=5
+                )
+                if result.returncode != 0:
+                    _log.info(f"  ffmpeg fail: {result.stderr[:200]}")
+                if os.path.isfile(tmp.name) and os.path.getsize(tmp.name) > 100:
+                    with open(tmp.name, 'rb') as f:
+                        b64 = base64.b64encode(f.read()).decode()
+                    thumbs[p] = f"data:image/jpg;base64,{b64}"
+                os.unlink(tmp.name)
+            except Exception as e:
+                _log.info(f"  thumb error: {e}")
+                try: os.unlink(tmp.name)
+                except: pass
+        _log.info(f"generate_thumbnails done: {len(thumbs)} thumbs")
+        return {"thumbs": thumbs}
 
     def get_config(self):
         return {
@@ -90,62 +151,55 @@ class RenamerAPI:
         _log.info(f"ECHO: {x!r}")
         return {"received": x}
 
-    def _process_paths(self, paths):
-        _log.info(f"_process_paths received {len(paths)} paths")
-        for i, p in enumerate(paths[:5]):
-            _log.info(f"  [{i}] raw={p!r}")
-        files = []
+    def _process_paths(self, paths_):
+        _log.info(f"_process_paths received {len(paths_)} paths")
+        MAX_FILES = 500
+        files = []; duplicates = 0; subdirs = 0; truncated = False
         defaults = _saved_defaults
-        home = os.path.expanduser("~")
-        desktop = os.path.join(home, "Desktop")
-        downloads = os.path.join(home, "Downloads")
-        for p in paths:
-            p = str(p).strip()
-            if p.startswith("file://"):
-                p = unquote(p[7:])
+
+        for p_ in paths_[:MAX_FILES + 500]:
+            if len(files) >= MAX_FILES: truncated = True; break
+            p = str(p_).strip()
+            if p.startswith("file://"): p = unquote(p[7:])
             p = os.path.expanduser(p)
 
-            # 只有文件名 → 搜索常用位置
-            if os.path.basename(p) == p and not os.path.isabs(p):
-                found = False
-                for d in [desktop, downloads, home]:
-                    candidate = os.path.join(d, p)
-                    if os.path.isfile(candidate):
-                        p = candidate; found = True; break
-                if not found:
-                    _log.info(f"  SKIP cannot resolve: {p!r}")
-                    continue
+            if os.path.isfile(p):
+                if p in {f["path"] for f in files}: duplicates += 1; continue
+                parsed = parse_filename(p)
+                fields = {}
+                for fd in FIELD_CONFIG:
+                    k = fd["key"]
+                    if parsed and k in parsed: fields[k] = parsed[k]
+                    elif defaults and k in defaults: fields[k] = defaults.get(k, fd["def"])
+                    else: fields[k] = fd["def"]
+                files.append({"path":p,"basename":os.path.basename(p),"ext":os.path.splitext(os.path.basename(p))[1],"fields":fields})
+            elif os.path.isdir(p):
+                try:
+                    for f in sorted(os.listdir(p)):
+                        fp = os.path.join(p, f)
+                        if os.path.isfile(fp):
+                            if fp in {x["path"] for x in files}: duplicates += 1; continue
+                            if len(files) >= MAX_FILES: truncated = True; break
+                            parsed = parse_filename(fp)
+                            fields = {}
+                            for fd in FIELD_CONFIG:
+                                k = fd["key"]
+                                if parsed and k in parsed: fields[k] = parsed[k]
+                                elif defaults and k in defaults: fields[k] = defaults.get(k, fd["def"])
+                                else: fields[k] = fd["def"]
+                            files.append({"path":fp,"basename":os.path.basename(fp),"ext":os.path.splitext(os.path.basename(fp))[1],"fields":fields})
+                        elif os.path.isdir(fp): subdirs += 1
+                except: pass
 
-            if not os.path.isfile(p):
-                _log.info(f"  SKIP not a file: {p!r}")
-                continue
-            parsed = parse_filename(p)
-            fields = {}
-            for fd in FIELD_CONFIG:
-                k = fd["key"]
-                if parsed and k in parsed:
-                    fields[k] = parsed[k]
-                elif defaults and k in defaults:
-                    fields[k] = defaults.get(k, fd["def"])
-                else:
-                    fields[k] = fd["def"]
-            files.append({
-                "path": p,
-                "basename": os.path.basename(p),
-                "ext": os.path.splitext(os.path.basename(p))[1],
-                "fields": fields,
-            })
-        return {"files": files, "total": len(files)}
+        _log.info(f"_process_paths: {len(files)} files, {duplicates} dup, {subdirs} subdirs skip, truncated={truncated}")
+        return {"files":files,"total":len(files),"duplicates":duplicates,"subdirs_skipped":subdirs,"truncated":truncated,"max":MAX_FILES}
 
     def build_preview_filename(self, fields):
         return {"filename": build_filename(fields)}
 
     def do_rename(self, files):
         global _undo_stack
-        ok = 0
-        fail = []
-        _undo_stack.clear()
-        renamed = []
+        ok = 0; fail = []; batch = []; renamed = []
         for f in files:
             p = f["path"]
             d = os.path.dirname(p)
@@ -157,7 +211,7 @@ class RenamerAPI:
                 continue
             try:
                 os.rename(p, np)
-                _undo_stack.append((p, np))
+                batch.append((p, np))
                 renamed.append({"old_path": p, "new_path": np})
                 ok += 1
             except Exception as e:
@@ -171,21 +225,25 @@ class RenamerAPI:
                 _saved_defaults = sv
             except:
                 pass
-        return {"ok": ok, "fail": fail, "total": len(files), "renamed": renamed}
+        if batch:
+            _undo_stack.append(batch)
+        _log.info(f"do_rename: {ok} ok, batch={len(batch)}, stack_depth={len(_undo_stack)}")
+        return {"ok": ok, "fail": fail, "total": len(files), "renamed": renamed, "stack_depth": len(_undo_stack)}
 
     def do_undo(self):
         global _undo_stack
         if not _undo_stack:
             return {"ok": 0, "msg": "没有可撤销的操作"}
+        batch = _undo_stack.pop()
         ud = 0
-        for op, np in _undo_stack:
+        for op, np in batch:
             try:
                 os.rename(np, op)
                 ud += 1
             except:
                 pass
-        _undo_stack.clear()
-        return {"ok": ud, "msg": f"已撤销 {ud} 个"}
+        _log.info(f"do_undo: {ud}/{len(batch)} reversed, remaining batches: {len(_undo_stack)}")
+        return {"ok": ud, "msg": f"已撤销 {ud} 个", "remaining": len(_undo_stack)}
 
     def do_check(self, paths):
         zero = 0; size_w = 0; fmt_w = 0; dbl = 0
@@ -212,9 +270,11 @@ class RenamerAPI:
         return {"issues": zero + size_w + fmt_w + dbl, "msgs": msgs, "per_file": results}
 
     def validate_dest(self, dest):
-        v = dest.strip()
+        v = str(dest).strip()
         if not v: return {"ok": False, "msg": ""}
-        m = PATH_RE.match(v)
+        # smb:// → /Volumes/ 静默转换
+        v = re.sub(r'^smb://[\d.]+/', '/Volumes/', v)
+        m = PATH_RE.match(os.path.basename(v))
         if not m: return {"ok": False, "msg": "✗ 格式: YYYYMMDD_项目名"}
         try: datetime.strptime(m.group(1), "%Y%m%d")
         except ValueError: return {"ok": False, "msg": "✗ 无效日期"}
@@ -226,12 +286,12 @@ class RenamerAPI:
         return {"ok": True, "msg": "✓ 格式正确"}
 
     def do_archive(self, files, dest):
-        ok = 0; fail = []
+        _log.info(f"do_archive: {len(files)} files, dest={dest}")
+        ok = 0; fail = []; dest = re.sub(r'^smb://[\d.]+/', '/Volumes/', str(dest).strip())
         for f in files:
-            target = build_folder(dest, {
-                "path": f["path"], "fields": f["fields"],
-                "ext": os.path.splitext(f["basename"])[1],
-            })
+            fd = f.get("fields", {})
+            ext = f.get("ext", ".mp4")
+            target = build_folder(dest, type('E',(),{'fields':fd,'ext':ext})())
             os.makedirs(os.path.dirname(target), exist_ok=True)
             try: shutil.copy2(f["path"], target); ok += 1
             except Exception as e: fail.append(os.path.basename(f["path"]) + ": " + str(e))
@@ -279,4 +339,34 @@ if __name__ == "__main__":
         background_color='#151515',
         text_select=True,
     )
+
+    # 拖放：用 loaded 事件在 DOM 就绪后绑定 Python 端 handler
+    def _bind_drop():
+        from webview.dom import DOMEventHandler
+        def _on_drop(e):
+            files = e['dataTransfer']['files']
+            paths = []
+            for f in files:
+                fp = f.get('pywebviewFullPath', '')
+                if not fp: continue
+                if os.path.isfile(fp):
+                    paths.append(fp)
+                elif os.path.isdir(fp):
+                    # 展开文件夹内容
+                    try:
+                        for sf in sorted(os.listdir(fp)):
+                            sfp = os.path.join(fp, sf)
+                            if os.path.isfile(sfp):
+                                paths.append(sfp)
+                    except: pass
+            if paths:
+                _log.info(f"DOM drop: {len(paths)} items")
+                result = api._process_paths(paths)
+                _window.evaluate_js(f"onDropResult({json.dumps(result)})")
+        _window.dom.document.events.dragover += DOMEventHandler(lambda e: e, True, True)
+        _window.dom.document.events.drop += DOMEventHandler(_on_drop, True, True)
+        _log.info("DOM drop handler bound")
+
+    _window.events.loaded += _bind_drop
+
     webview.start(debug=False)
