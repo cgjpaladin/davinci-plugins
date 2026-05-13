@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+:root {
+  --bg:        #151515;
+  --surface:   #1e1e1e;
+  --surface2:  #282828;
+  --border:    #3d3d3d;
+  --border-hi: #555555;
+  --text:      #c0c0c0;
+  --text-bright:#e8e8e8;
+  --text-dim:  #707070;
+  --accent:    #e8870a;
+  --accent-dim:#8a5000;
+  --green:     #6a9a3a;
+  --red:       #c04040;
+  --yellow:    #c0a040;
+  --fs-body:   10px;
+  --fs-label:  8px;
+  --fs-sm:     9px;
+  --fs-preview:11px;
+  --gap:       4px;
+  --pad:       6px;
+  --pad-lg:    8px;
+  --radius:    2px;
+  --font-ui:   'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Consolas', 'Cascadia Code', monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:var(--font-ui);font-size:var(--fs-body);
+  display:flex;flex-direction:column;height:100vh;overflow:hidden;
+  -webkit-user-select:none;user-select:none;
+}
+.titlebar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:3px var(--pad-lg);background:var(--surface);
+  border-bottom:1px solid var(--border);
+  font-size:var(--fs-sm);color:var(--text-dim);flex-shrink:0;
+}
+.tb-dots{display:flex;gap:5px}
+.tb-dot{width:6px;height:6px;border-radius:50%}
+.tb-dot.a{background:var(--accent)}
+.tb-dot.b{background:#555}
+.inspector{
+  display:flex;gap:var(--gap);
+  padding:var(--pad) var(--pad-lg);
+  border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.param{flex:1;min-width:0}
+.param.wide{flex:1.6}
+.param label{
+  display:block;font-size:var(--fs-label);color:var(--text-dim);
+  text-transform:uppercase;letter-spacing:.3px;
+  font-weight:600;margin-bottom:2px;white-space:nowrap;
+}
+.param input,.param select{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text-bright);font-family:var(--font-mono);font-size:var(--fs-body);
+  padding:3px 5px;border-radius:var(--radius);outline:none;
+}
+.param select{
+  cursor:pointer;-webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23707070'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 7px center;
+  padding-right:20px;
+}
+.param input:focus,.param select:focus{border-color:var(--accent)}
+.param input[readonly]{color:var(--text-dim);cursor:default;opacity:.7}
+.dest{
+  display:flex;align-items:center;gap:var(--gap);
+  padding:4px var(--pad-lg);border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.dest label{
+  font-size:var(--fs-label);color:var(--text-dim);
+  text-transform:uppercase;font-weight:600;white-space:nowrap;margin-right:2px;
+}
+.dest input{
+  flex:1;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text-bright);font-family:var(--font-mono);font-size:var(--fs-body);
+  padding:3px 6px;border-radius:var(--radius);outline:none;min-width:0;
+}
+.dest input:focus{border-color:var(--accent)}
+.dest-ok{font-size:var(--fs-sm);white-space:nowrap;flex-shrink:0}
+.hero{
+  display:flex;align-items:stretch;gap:6px;
+  padding:5px var(--pad-lg);border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.hero-preview{
+  flex:1;display:flex;align-items:center;gap:8px;min-width:0;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius);padding:5px 10px;
+}
+.hero-arrow{color:var(--green);font-weight:bold;font-size:14px;flex-shrink:0}
+.hero-filename{
+  font-family:var(--font-mono);font-size:var(--fs-preview);color:var(--green);
+  flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.hero-meta{
+  display:flex;align-items:center;gap:10px;
+  font-size:var(--fs-sm);color:var(--text-dim);
+  border-left:1px solid var(--border);padding-left:10px;flex-shrink:0;
+}
+.hero-meta em{font-style:normal;font-family:var(--font-mono);color:var(--green);font-weight:bold}
+.hero-btn{
+  flex-shrink:0;padding:6px 12px;background:var(--accent);color:#fff;
+  border:none;border-radius:var(--radius);
+  font-family:var(--font-ui);font-size:var(--fs-body);font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:filter .1s;
+}
+.hero-btn:hover{filter:brightness(1.15)}
+.hero-btn:disabled{background:#3d3d3d;color:#707070;cursor:not-allowed;filter:none}
+.hero-archive{
+  flex-shrink:0;padding:6px 12px;background:transparent;color:var(--green);
+  border:1px solid var(--green);border-radius:var(--radius);
+  font-family:var(--font-ui);font-size:var(--fs-body);font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:background .15s;
+}
+.hero-archive:hover{background:rgba(106,154,58,.12)}
+.hero-archive:disabled{color:var(--text-dim);border-color:#3d3d3d;cursor:not-allowed}
+.hero-archive:disabled:hover{background:transparent}
+.hero-check,.hero-undo{
+  flex-shrink:0;padding:6px 8px;background:transparent;color:var(--text-dim);
+  border:1px solid var(--border);border-radius:var(--radius);
+  font-family:var(--font-ui);font-size:var(--fs-sm);cursor:pointer;
+  white-space:nowrap;transition:all .15s;
+}
+.hero-check:hover,.hero-undo:hover{color:var(--text);border-color:var(--text-dim)}
+.hero-undo:disabled{color:#4a4a4a;cursor:not-allowed}
+.hero-undo:disabled:hover{color:#4a4a4a;border-color:var(--border)}
+.file-section{flex:1;display:flex;flex-direction:column;border-bottom:1px solid var(--border);min-height:0}
+.fl-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:3px var(--pad-lg);background:var(--surface);
+  border-bottom:1px solid var(--border);font-size:var(--fs-sm);color:var(--text-dim);flex-shrink:0;
+}
+.fl-bar-right{display:flex;gap:var(--gap)}
+.fl-btn{
+  padding:2px 8px;background:transparent;border:1px solid var(--border);
+  color:var(--text);font-family:var(--font-ui);font-size:var(--fs-sm);
+  border-radius:var(--radius);cursor:pointer;transition:all .15s;
+}
+.fl-btn:hover{background:var(--bg);border-color:var(--text-dim)}
+.fl-body{flex:1;overflow:auto}
+.fl-item{
+  display:flex;align-items:center;gap:8px;
+  padding:3px var(--pad-lg);border-bottom:1px solid rgba(255,255,255,.02);
+  cursor:pointer;min-width:max-content;transition:background .1s;
+}
+.fl-item:hover{background:var(--surface)}
+.fl-item.sel{
+  background:color-mix(in srgb,var(--accent) 12%,var(--bg));
+  border-left:2px solid var(--accent);padding-left:calc(var(--pad-lg) - 2px);
+}
+.fl-item.warn-zero{background:rgba(192,64,64,.12)}
+.fl-item.warn-size{background:rgba(192,160,64,.08)}
+.fl-item.warn-fmt{background:rgba(192,128,208,.08)}
+.fl-thumb{
+  width:24px;height:36px;border-radius:var(--radius);flex-shrink:0;
+  background:#222;border:1px solid #333;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;
+}
+.fl-thumb::after{content:'▶';position:absolute;font-size:5px;color:rgba(255,255,255,.4);text-shadow:0 0 2px #000}
+.fl-new{font-family:var(--font-mono);font-size:var(--fs-body);color:var(--green);white-space:nowrap;flex-shrink:0}
+.fl-arrow-sym{color:var(--text-dim);flex-shrink:0;font-size:var(--fs-sm)}
+.fl-old{font-family:var(--font-mono);font-size:var(--fs-sm);color:var(--text-dim);white-space:nowrap;flex-shrink:0}
+.statusbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:3px var(--pad-lg);font-size:var(--fs-sm);color:var(--text-dim);flex-shrink:0;
+}
+.sb-left{display:flex;align-items:center;gap:6px}
+.sb-dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+.drop-overlay{
+  position:fixed;inset:0;background:rgba(232,135,10,.08);
+  border:2px dashed var(--accent);display:none;align-items:center;justify-content:center;
+  z-index:100;pointer-events:none;
+}
+.drop-overlay.show{display:flex}
+.drop-overlay span{font-size:14px;color:var(--accent);font-weight:600}
+.fl-body::-webkit-scrollbar{width:5px}
+.fl-body::-webkit-scrollbar-track{background:transparent}
+.fl-body::-webkit-scrollbar-thumb{background:#3d3d3d;border-radius:3px}
+
+/* dialog */
+.dialog-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;
+  display:none;align-items:center;justify-content:center;
+}
+.dialog-overlay.show{display:flex}
+.dialog{
+  background:var(--surface);border:1px solid var(--border);border-radius:4px;
+  padding:16px 20px;max-width:480px;min-width:320px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.dialog h3{font-size:11px;color:var(--text);margin-bottom:8px}
+.dialog p{font-size:var(--fs-body);color:var(--text-dim);margin-bottom:10px;font-family:var(--font-mono);word-break:break-all}
+.dialog-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.dialog-btns button{
+  padding:5px 14px;border-radius:var(--radius);font-size:var(--fs-body);
+  font-family:var(--font-ui);cursor:pointer;
+}
+.dialog-btns .ok{background:var(--accent);color:#fff;border:none}
+.dialog-btns .cancel{background:transparent;color:var(--text-dim);border:1px solid var(--border)}
+.toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 16px;border-radius:var(--radius);font-size:var(--fs-body);z-index:300;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- Titlebar -->
+<div class="titlebar">
+  <span class="tb-dots"><span class="tb-dot a"></span><span class="tb-dot b"></span><span class="tb-dot b"></span></span>
+  <span>批量文件命名工具</span>
+  <span style="color:#444;font-size:9px" id="debugMode">loading...</span>
+</div>
+
+<!-- Inspector -->
+<div class="inspector" id="inspector">
+  <div class="param"><label>Ep 集数</label><input data-key="ep" value="01" placeholder="01"></div>
+  <div class="param"><label>Sc 场次</label><input data-key="sc" value="01" placeholder="01"></div>
+  <div class="param"><label>Gr 小场次</label><input data-key="gr" value="01" placeholder="01"></div>
+  <div class="param"><label>Tk 次数</label><input data-key="tk" value="自动" readonly></div>
+  <div class="param wide"><label>镜头描述</label><input id="descInput" data-key="desc" value="" placeholder="由制作方式决定" readonly></div>
+  <div class="param"><label>制作者</label><input data-key="author" value="" placeholder="张谭/温欣然"></div>
+  <div class="param"><label>制作方式</label><select id="methodSelect" data-key="method"><option value="">请选择</option><option value="智能分镜版">智能分镜版</option><option value="双轨版">双轨版</option><option value="角色专属版">角色专属版</option></select></div>
+  <div class="param"><label>v 版本号</label><input data-key="ver" value="01" placeholder="01"></div>
+  <div class="param"><label>通过情况</label><select data-key="status"><option value="">请选择</option><option value="OK">OK</option><option value="KP">KP</option><option value="NG">NG</option></select></div>
+</div>
+
+<!-- Dest -->
+<div class="dest">
+  <label>目标路径</label>
+  <input id="destInput" value="" placeholder="YYYYMMDD_项目名">
+  <span class="dest-ok" id="destStatus"></span>
+</div>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-preview">
+    <span class="hero-arrow">▸</span>
+    <span class="hero-filename" id="previewName">添加文件后显示预览</span>
+    <span class="hero-meta" id="previewMeta"></span>
+  </div>
+  <button class="hero-btn" id="btnRename" disabled>批量重命名</button>
+  <button class="hero-archive" id="btnArchive" disabled>批量归档</button>
+  <button class="hero-check" id="btnCheck">检查</button>
+  <button class="hero-undo" id="btnUndo" disabled>↩ 撤销</button>
+</div>
+
+<!-- File List -->
+<div class="file-section">
+  <div class="fl-bar">
+    <span id="fileCount">文件列表 · 0 个</span>
+    <div class="fl-bar-right">
+      <button class="fl-btn" id="btnAddFile">+ 文件</button>
+      <button class="fl-btn" id="btnAddFolder">+ 文件夹</button>
+    </div>
+  </div>
+  <div class="fl-body" id="fileList">
+    <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:var(--fs-sm)">拖放文件到此处 或 点击 +文件</div>
+  </div>
+</div>
+
+<!-- Status Bar -->
+<div class="statusbar">
+  <span class="sb-left"><span class="sb-dot"></span> <span id="statusText">就绪  ·  Ctrl+Z 撤销  ·  Del 移除</span></span>
+  <span>裁缝老师的达芬奇插件工坊 · v3.0</span>
+</div>
+
+<!-- Overlays -->
+<div class="drop-overlay" id="dropOverlay"><span>释放以添加文件</span></div>
+<div class="toast" id="toast"></div>
+<div class="dialog-overlay" id="dialogOverlay">
+  <div class="dialog">
+    <h3 id="dialogTitle">确认</h3>
+    <p id="dialogMsg"></p>
+    <div class="dialog-btns">
+      <button class="cancel" id="dialogCancel">取消</button>
+      <button class="ok" id="dialogOk">确认</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ State ═══
+let files=[], sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, checkTags={};
+const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
+
+// ═══ API ═══
+function call(m,...a){
+  if(window.pywebview&&window.pywebview.api)return window.pywebview.api[m](...a);
+  return mock(m,...a);
+}
+function mock(m,...a){
+  return new Promise(r=>{
+    const C={ep:'01',sc:'01',gr:'01',desc:'',author:'',method:'',ver:'01',status:'OK',tk:'01'};
+    switch(m){
+      case'get_config':r({fields:[{key:'ep',label:'Ep 集数',def:'01',hint:'01'},{key:'sc',label:'Sc 场次',def:'01',hint:'01'},{key:'gr',label:'Gr 小场次',def:'01',hint:'01'},{key:'desc',label:'镜头描述',def:'',hint:'由制作方式决定'},{key:'author',label:'制作者',def:'',hint:'张谭/温欣然'},{key:'method',label:'制作方式',def:'',dv:['请选择','智能分镜版','双轨版','角色专属版']},{key:'ver',label:'v 版本号',def:'01',hint:'01'},{key:'status',label:'通过情况',def:'',dv:['请选择','OK','KP','NG']}],defaults:{},method_desc_map:{'智能分镜版':{mode:'locked',value:'全能分镜'},'双轨版':{mode:'dropdown',values:['请选择','幽灵角色','空镜','手动输入…']},'角色专属版':{mode:'text',hint:'温时雨过肩中景'}},field_rules:[{trigger:'method',targets:['desc'],map:{'智能分镜版':{desc:{locked:'全能分镜'}},'双轨版':{desc:{dropdown:['请选择','幽灵角色','空镜','手动输入…']}},'角色专属版':{desc:{text_hint:'温时雨过肩中景'}}}}]});break;
+      case'build_preview_filename':r({filename:'Ep01_Sc03_Gr01_Tk01_全能分镜_LS_v01_OK'});break;
+      case'validate_dest':r({ok:true,msg:'✓ 格式正确'});break;
+      case'do_rename':r({ok:1,total:1,fail:[],renamed:[]});break;
+      case'do_undo':r({ok:0,msg:'Mock: 无操作'});break;
+      case'do_check':r({issues:0,msgs:[],per_file:[]});break;
+      default:r({});
+    }
+  });
+}
+
+// ═══ Load ═══
+async function init(){
+  // 调试：显示当前运行模式
+  const dm = document.getElementById('debugMode');
+  dm.textContent = _isLive() ? '✔ Live' : '✖ Mock';
+
+  const cfg=await call('get_config');
+  methodDescMap=cfg.method_desc_map||{};
+  const d=cfg.defaults||{};
+  for(const fd of cfg.fields){
+    if(d[fd.key]){const el=document.querySelector(`[data-key="${fd.key}"]`);if(el){if(el.tagName==='SELECT')el.value=d[fd.key];else{el.value=d[fd.key];el.style.color='var(--text-bright)'}}}
+  }
+  document.getElementById('methodSelect').value=d.method||'';
+  onMethodChange();
+}
+// ═══ init — 必须等 pywebviewready ═══
+window.addEventListener('pywebviewready',()=>{
+  const dm=document.getElementById('debugMode');
+  dm.textContent=_isLive()?'✔ Live':'✖ Mock';
+  init();
+});
+
+// ═══ Fields ═══
+function getFields(){
+  const f={};
+  for(const el of document.querySelectorAll('#inspector [data-key]')){
+    if(el.id==='descInput'&&descLocked)continue;
+    const v=el.value.trim();
+    if(el.tagName==='INPUT'&&el.placeholder&&v===el.placeholder&&el.style.color.includes('var(--text-dim)')){f[el.getAttribute('data-key')]='';continue}
+    f[el.getAttribute('data-key')]=v;
+  }
+  if(sel.size>0){const s=[...sel].sort((a,b)=>a-b);f.tk=String(s[0]+1).padStart(2,'0')}else f.tk='01';
+  return f;
+}
+
+// ═══ Method → Desc ═══
+function onMethodChange(){
+  const m=document.getElementById('methodSelect').value;
+  const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
+  if(cfg.mode==='locked'){descInput('text',cfg.value,true);descLocked=true}
+  else if(cfg.mode==='dropdown'){descSelect(cfg.values);descLocked=false}
+  else{descInput('text','',false,cfg.hint);descLocked=false}
+  updPreview();updButtons();
+}
+function descInput(t,v,ro,ph){
+  const el=document.getElementById('descInput');
+  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=ro?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');if(!ro)el.oninput=()=>{if(!descLocked){updPreview();updButtons()}};return}
+  const ip=document.createElement('input');ip.id='descInput';ip.setAttribute('data-key','desc');
+  ip.value=v||'';ip.readOnly=ro||false;ip.placeholder=ph||'由制作方式决定';
+  ip.style.cssText=el?el.style.cssText:'';ip.style.color=ro?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');
+  if(!ro)ip.oninput=()=>{if(!descLocked){updPreview();updButtons()}};
+  if(el)el.replaceWith(ip);
+}
+function descSelect(vs){
+  const el=document.getElementById('descInput');
+  const s=document.createElement('select');s.id='descInput';s.setAttribute('data-key','desc');
+  s.style.cssText=el?el.style.cssText:'';
+  vs.forEach(v=>{const o=document.createElement('option');o.text=v;o.value=v;if(v==='手动输入…')o.setAttribute('data-custom','1');s.add(o)});
+  s.onchange=function(){if(s.value==='手动输入…')descInput('text','',false,'输入自定义描述');else{updPreview();updButtons()}};
+  if(el)el.replaceWith(s);
+}
+document.getElementById('methodSelect').addEventListener('change',onMethodChange);
+
+// ═══ Preview ═══
+async function updPreview(){
+  const fd=getFields();const r=await call('build_preview_filename',fd);
+  const pv=document.getElementById('previewName'),mt=document.getElementById('previewMeta');
+  if(files.length===0){pv.textContent='添加文件后显示预览';mt.innerHTML='';return}
+  const ext=files[0]?.ext||'.mp4';
+  if(sel.size===0){pv.textContent=r.filename+ext+'  (未选中)';mt.innerHTML=''}
+  else{const s=[...sel].sort((a,b)=>a-b);pv.textContent=r.filename+ext;mt.innerHTML=`选中 <em>${sel.size}</em> 个  ·  Tk <em>${String(s[0]+1).padStart(2,'0')}→${String(s[s.length-1]+1).padStart(2,'0')}</em>`}
+}
+
+// ═══ File List ═══
+function renderList(){
+  const ct=document.getElementById('fileList');ct.innerHTML='';
+  if(files.length===0){ct.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:var(--fs-sm)">拖放文件到此处 或 点击 +文件</div>';document.getElementById('fileCount').innerHTML='文件列表 · 0 个';updPreview();updButtons();return}
+  const fd=getFields(),srt=[...sel].sort((a,b)=>a-b);
+  files.forEach((f,i)=>{
+    const d=document.createElement('div');d.className='fl-item';
+    if(sel.has(i))d.classList.add('sel');
+    const tt=checkTags[i];if(tt){if(tt.includes('zero'))d.classList.add('warn-zero');else if(tt.includes('size'))d.classList.add('warn-size');if(tt.includes('fmt'))d.classList.add('warn-fmt')}
+    let tk='01';
+    if(sel.has(i)){const p=srt.indexOf(i);tk=String(srt[0]+p+1).padStart(2,'0')}else{const s=[...sel].sort((a,b)=>a-b);if(s.length>0)tk=String(s[0]+1).padStart(2,'0')}
+    const ff={...fd,tk};
+    const m=fd.method||'';const ms={'智能分镜版':'LS','双轨版':'Dual','角色专属版':'Char'}[m]||'';
+    const nm=`Ep${ff.ep||'01'}_Sc${ff.sc||'01'}_Gr${ff.gr||'01'}_Tk${tk}_${ff.desc||''}_${ms}_v${ff.ver||'01'}_${ff.status||'OK'}`;
+    const th=document.createElement('div');th.className='fl-thumb';
+    th.style.background=`linear-gradient(135deg,${tc[i%tc.length]},${tc[(i+2)%tc.length]})`;
+    const nn=document.createElement('span');nn.className='fl-new';nn.textContent=nm+f.ext;
+    const ar=document.createElement('span');ar.className='fl-arrow-sym';ar.textContent='←';
+    const on=document.createElement('span');on.className='fl-old';on.textContent=f.basename;
+    d.append(th,nn,ar,on);
+    d.addEventListener('click',e=>{
+      if(e.metaKey||e.ctrlKey){if(sel.has(i))sel.delete(i);else sel.add(i)}
+      else if(e.shiftKey&&sel.size>0){const s=[...sel].sort((a,b)=>a-b);const[l,h]=[Math.min(s[0],i),Math.max(s[0],i)];for(let j=l;j<=h;j++)sel.add(j)}
+      else{sel.clear();sel.add(i)}
+      renderList();updPreview();updButtons();
+    });
+    ct.appendChild(d);
+  });
+  updCount();updPreview();updButtons();
+}
+function updCount(){
+  document.getElementById('fileCount').innerHTML=`文件列表 · <strong style="color:var(--accent);font-weight:600">${files.length}</strong> 个  ·  选中 <strong style="color:var(--accent);font-weight:600">${sel.size}</strong>`;
+}
+function updButtons(){
+  const hf=files.length>0,hs=sel.size>0,fd=getFields();
+  const af=fd.ep&&fd.sc&&fd.gr&&fd.ver&&fd.status&&(descLocked||fd.desc);
+  document.getElementById('btnRename').disabled=!(hs&&af);
+  document.getElementById('btnArchive').disabled=!(hs&&af);
+  document.getElementById('btnUndo').disabled=!undoAvail;
+  document.getElementById('btnCheck').disabled=!hf;
+}
+
+// ═══ Dialog ═══
+function showDialog(title,msg){return new Promise(r=>{
+  document.getElementById('dialogTitle').textContent=title;
+  document.getElementById('dialogMsg').textContent=msg;
+  document.getElementById('dialogOverlay').classList.add('show');
+  document.getElementById('dialogOk').onclick=()=>{document.getElementById('dialogOverlay').classList.remove('show');r(true)};
+  document.getElementById('dialogCancel').onclick=()=>{document.getElementById('dialogOverlay').classList.remove('show');r(false)};
+})}
+
+// ═══ Actions ═══
+async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){files=r.files;sel.clear();checkTags={};renderList();toast(`已添加 ${r.total} 个文件`)}}
+async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){files=r.files;sel.clear();checkTags={};renderList();toast(`已添加 ${r.total} 个文件`)}}
+async function doRename(){
+  if(sel.size===0)return;
+  const fd=getFields(),srt=[...sel].sort((a,b)=>a-b);
+  const sfs=srt.map((i,p)=>{const f={...files[i]};f.fields={...fd,tk:String(srt[0]+p+1).padStart(2,'0')};return f});
+  const nm=buildName(sfs[0].fields)+sfs[0].ext;
+  const msg=sfs.length===1?`确认重命名?\n${sfs[0].basename}\n→ ${nm}`:`确认重命名 ${sfs.length} 个?\n${buildName(sfs[0].fields)+sfs[0].ext}\n  ...\n${buildName(sfs[sfs.length-1].fields)+sfs[sfs.length-1].ext}`;
+  if(!await showDialog('确认重命名',msg))return;
+  const r=await call('do_rename',sfs);
+  if(r.ok>0){undoAvail=true;
+    r.renamed.forEach(rn=>{const f=files.find(x=>x.path===rn.old_path);if(f)f.path=rn.new_path});
+    toast(`完成 ${r.ok}/${r.total}`)}
+  if(r.fail&&r.fail.length){setTimeout(()=>toast('失败: '+r.fail.join('; ')),2000)}
+  renderList();updButtons();
+}
+function buildName(f){const m=f.method||'';const ms={'智能分镜版':'LS','双轨版':'Dual','角色专属版':'Char'}[m]||'';return`Ep${f.ep||'01'}_Sc${f.sc||'01'}_Gr${f.gr||'01'}_Tk${f.tk||'01'}_${f.desc||''}_${ms}_v${f.ver||'01'}_${f.status||'OK'}`}
+async function doUndo(){const r=await call('do_undo');toast(r.msg);undoAvail=false;updButtons()}
+async function doCheck(){
+  const paths=files.map(f=>f.path);const r=await call('do_check',paths);
+  checkTags={};r.per_file.forEach((pf,i)=>{if(pf.tags.length)checkTags[i]=pf.tags});
+  renderList();
+  if(r.passed)toast('全部通过 ✓');else toast(r.msgs.join(' · '));
+}
+function removeSelected(){if(sel.size===0)return;files=files.filter((_,i)=>!sel.has(i));sel.clear();renderList();toast('已移除')}
+async function doArchive(){
+  if(sel.size===0)return;
+  const dest=document.getElementById('destInput').value.trim();
+  if(!dest){toast('请先输入目标路径');return}
+  const fd=getFields(),srt=[...sel].sort((a,b)=>a-b);
+  const sfs=srt.map((i,p)=>{const f={...files[i]};f.fields={...fd,tk:String(srt[0]+p+1).padStart(2,'0')};return f});
+  if(!await showDialog('确认归档',`确认归档 ${sfs.length} 个文件到?\n${dest}/EP${sfs[0].fields.ep}/SC${sfs[0].fields.sc}/...`))return;
+  const r=await call('do_archive',sfs,dest);
+  if(r.ok>0)toast(`归档完成 ${r.ok}/${r.total}`);
+  if(r.fail&&r.fail.length){setTimeout(()=>toast('失败: '+r.fail.join('; ')),2000)}
+}
+function setStatus(s){document.getElementById('statusText').textContent=s}
+
+// ═══ Drag & Drop ═══
+function _isLive(){return!!(window.pywebview&&window.pywebview.api)}
+let dg=0;
+document.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();if(e.dataTransfer)e.dataTransfer.dropEffect='copy'});
+document.addEventListener('dragenter',e=>{e.preventDefault();dg++;document.getElementById('dropOverlay').classList.add('show')});
+document.addEventListener('dragleave',e=>{e.preventDefault();dg--;if(dg<=0){dg=0;document.getElementById('dropOverlay').classList.remove('show')}});
+document.addEventListener('drop',async e=>{
+  e.preventDefault();e.stopPropagation();dg=0;document.getElementById('dropOverlay').classList.remove('show');
+  const dt=e.dataTransfer;if(!dt||!dt.files||!dt.files.length)return;
+  const paths=[];
+  for(const f of dt.files){
+    // pywebview gives f.path, browser gives f.name
+    const p=f.path||f.name||'';
+    if(p)paths.push(p);
+  }
+  if(!paths.length)return;
+  if(_isLive()){call('debug_log','Drop paths: '+JSON.stringify(paths.slice(0,5)));
+    const r=await call('add_files_by_paths',paths);
+    const r=await call('add_files_by_paths',paths);
+    if(r&&r.files){files=r.files;sel.clear();checkTags={};renderList();toast(`已添加 ${r.total} 个文件`)}
+  }else{
+    // Browser mock: 不能用真实路径，跳过
+    toast('请在桌面应用中拖放文件');
+  }
+});
+
+// ═══ Keyboard ═══
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}
+  if((e.key==='Delete'||e.key==='Backspace')&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){e.preventDefault();removeSelected()}
+});
+
+// ═══ Inspector listeners ═══
+document.querySelectorAll('#inspector [data-key]').forEach(el=>{
+  if(el.id==='descInput'||el.id==='methodSelect')return;
+  el.addEventListener('input',()=>{updPreview();updButtons()});
+  el.addEventListener('change',()=>{updPreview();updButtons()});
+});
+
+// ═══ Dest validation ═══
+const di=document.getElementById('destInput'),ds=document.getElementById('destStatus');
+di.addEventListener('input',async ()=>{
+  const r=await call('validate_dest',di.value);
+  ds.textContent=r.msg||'';ds.style.color=r.ok?'var(--green)':'var(--red)';
+  updButtons();
+});
+
+// ═══ Buttons ═══
+document.getElementById('btnAddFile').addEventListener('click',addFiles);
+document.getElementById('btnAddFolder').addEventListener('click',addFolder);
+document.getElementById('btnRename').addEventListener('click',doRename);
+document.getElementById('btnArchive').addEventListener('click',doArchive);
+document.getElementById('btnCheck').addEventListener('click',doCheck);
+document.getElementById('btnUndo').addEventListener('click',doUndo);
+
+// ═══ Toast ═══
+let tt;function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2500)}
+
+setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');
+</script>
+</body>
+</html>

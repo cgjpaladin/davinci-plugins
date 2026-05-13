@@ -13,7 +13,7 @@ from shared.naming import (
     FIELD_CONFIG, DISPLAY_FIELDS, METHOD_DESC_MAP, DESC_TO_METHOD, FIELD_RULES,
     build_filename, parse_filename, build_folder,
     check_zero_byte, check_double_ext, check_name_format,
-    check_field_completeness, check_size_anomaly, MEDIA_EXT,
+    check_field_completeness, check_size_anomaly, MEDIA_EXT, sanitize_text,
 )
 
 T = {"bg":"#1c1c1c","surface":"#282828","border":"#3d3d3d","text":"#b8b8b8",
@@ -21,7 +21,19 @@ T = {"bg":"#1c1c1c","surface":"#282828","border":"#3d3d3d","text":"#b8b8b8",
      "ff_ui":"Segoe UI","ff_mono":"Consolas"}
 
 CFG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),".renamer_saved.json")
-PATH_RE = re.compile(r"^(\d{8})_.+$")
+PATH_RE = re.compile(r"^(\d{8})_(.+)$")
+
+def _validate_project_name(path):
+    """返回 (ok: bool, error_msg: str). 日期 + 项目名 完整校验."""
+    m = PATH_RE.match(path)
+    if not m: return False,"格式: YYYYMMDD_项目名"
+    if not _validate_date(path): return False,"无效日期"
+    name = m.group(2)
+    cleaned, warns = sanitize_text(name, for_filename=True)
+    if not cleaned: return False,"项目名不能为空"
+    if warns: return False,"; ".join(warns)
+    if len(cleaned) > 50: return False,"项目名过长 (≤50字)"
+    return True,""
 
 def _validate_date(v):
     m = PATH_RE.match(v)
@@ -123,6 +135,17 @@ for fd in DISPLAY_FIELDS:
     dv=fd.get("dv")
     wgt=_mk_cb(col,dv,default,6) if dv else _mk_entry(col,fd,default)
     wgt.pack(fill="x");_widgets[fd["key"]]=(wgt,fd)
+    # Tk 插在 Gr 之后
+    if fd["key"]=="gr":
+        tk_col=ttk.Frame(insp_frame,style="App.TFrame");tk_col.pack(side="left",padx=2)
+        ttk.Label(tk_col,text="Tk 次数",style="Param.TLabel").pack(anchor="w")
+        tk_display=tk.Entry(tk_col,font=(T["ff_mono"],10),width=3,fg=T["placeholder"],bg=T["surface"],
+            relief="flat",borderwidth=1,
+            highlightbackground=T["border"],highlightthickness=1)
+        tk_display.insert(0,"自动")
+        tk_display.configure(state="readonly",readonlybackground=T["surface"])
+        tk_display.pack()
+        _widgets["tk_display"]=(tk_display,{"key":"tk","hint":"","dv":None})
 
 # 制作方式 → 镜头描述 (FIELD_RULES)
 _desc_locked=[False]
@@ -130,9 +153,11 @@ def _reconfig_desc(cfg):
     old_wgt,fd=_widgets["desc"];parent=old_wgt.master;old_wgt.destroy()
     if cfg.get("locked"):
         e=tk.Entry(parent,font=(T["ff_mono"],10),width=16,fg="#e0e0e0",bg=T["surface"],
-                   state="readonly",readonlybackground=T["surface"],relief="flat",
-                   borderwidth=1,highlightbackground=T["border"],highlightthickness=1)
-        e.insert(0,cfg["locked"]);e.pack(fill="x");_widgets["desc"]=(e,fd);_desc_locked[0]=True
+                   relief="flat",borderwidth=1,
+                   highlightbackground=T["border"],highlightthickness=1)
+        e.insert(0,cfg["locked"])
+        e.configure(state="readonly",readonlybackground=T["surface"])
+        e.pack(fill="x");_widgets["desc"]=(e,fd);_desc_locked[0]=True
     elif cfg.get("dropdown"):
         cb=ttk.Combobox(parent,values=cfg["dropdown"],state="readonly",width=16,font=(T["ff_mono"],10))
         cb.set(cfg["dropdown"][0])
@@ -193,13 +218,9 @@ def _validate_dest():
     v=dest_entry.get().strip()
     if not v or dest_entry.cget("fg")==T["placeholder"]:
         dest_ok_var.set("");return None
-    if PATH_RE.match(v):
-        if _validate_date(v):
-            dest_ok_var.set("\u2713 格式正确");return v
-        else:
-            dest_ok_var.set("\u2717 无效日期 (如 20250230 不存在)");return None
-    else:
-        dest_ok_var.set("✗ 格式: YYYYMMDD_项目名");return None
+    ok,err=_validate_project_name(v)
+    if ok: dest_ok_var.set("\u2713 格式正确");return v
+    else: dest_ok_var.set("\u2717 "+err);return None
 
 dest_entry.bind("<FocusIn>",_dest_focus_in);dest_entry.bind("<FocusOut>",_dest_focus_out)
 dest_entry.bind("<KeyRelease>",lambda e:(_validate_dest(),_check_button_states()))
@@ -208,7 +229,7 @@ dest_entry.bind("<KeyRelease>",lambda e:(_validate_dest(),_check_button_states()
 hero=ttk.Frame(root,style="App.TFrame");hero.pack(fill="x",padx=8,pady=(4,0))
 hi=ttk.Frame(hero,style="Surface.TFrame");hi.pack(fill="x")
 pf=ttk.Frame(hi,style="Surface.TFrame");pf.pack(side="left",fill="x",expand=True,padx=(8,4),pady=6)
-ttk.Label(pf,text="▸",fg=T["accent2"],bg=T["surface"],font=(T["ff_ui"],13,"bold")).pack(side="left",padx=(0,6))
+ttk.Label(pf,text="▸",foreground=T["accent2"],background=T["surface"],font=(T["ff_ui"],13,"bold")).pack(side="left",padx=(0,6))
 preview_var=tk.StringVar(value="添加文件后显示预览")
 ttk.Label(pf,textvariable=preview_var,style="Preview.TLabel").pack(side="left",fill="x",expand=True)
 meta_var=tk.StringVar(value="")
@@ -285,6 +306,7 @@ def _get_real_val(wgt,fd):
 def _set_inspector_vals(vals):
     for fd in DISPLAY_FIELDS:
         wgt,_=_widgets[fd["key"]];k=fd["key"]
+        if k=="desc" and _desc_locked[0]:continue  # 锁定时不覆盖
         if vals is None or vals.get(k)is None:
             if isinstance(wgt,ttk.Combobox):wgt.set((fd.get("dv")or[""])[0])
             else:
@@ -331,6 +353,12 @@ def _upd_preview():
     f=_entries[ix[0]];nm=build_filename(f.fields);preview_var.set(nm+f.ext)
     ts=int(f.fields.get("tk","1"))
     meta_var.set("选中 {} 个  ·  Tk {:02d}→{:02d}".format(len(ix),ts,ts+len(ix)-1))
+    # 更新 Tk 显示
+    try:
+        tk_display.configure(state="normal");tk_display.delete(0,tk.END)
+        tk_display.insert(0,"自动" if not ix else "%02d"%ts)
+        tk_display.configure(state="readonly",readonlybackground=T["surface"],fg=T["placeholder"] if not ix else "#e0e0e0")
+    except:pass
 
 def _on_select(ev=None):
     if _refreshing:return
@@ -375,7 +403,11 @@ def _apply_to_selected():
             k=fd["key"]
             if k=="method":continue
             wgt,_=_widgets[k];v=_get_real_val(wgt,fd)
-            if v:_entries[i].fields[k]=v
+            if v:
+                # 清洗文件系统禁字 (desc/author 等手动输入字段)
+                if k in ("desc","author","ver","ep","sc","gr"):
+                    v,_=sanitize_text(v)
+                _entries[i].fields[k]=v
     dwgt,_=_widgets["desc"];dcfg=METHOD_DESC_MAP.get(_widgets["method"][0].get(),{})
     for i in ix:
         if dcfg.get("mode")=="locked":_entries[i].fields["desc"]=dcfg["value"]
@@ -468,8 +500,7 @@ def do_rename():
         ln=build_filename(sel[-1].fields)+sel[-1].ext
         msg="确认重命名 {} 个?\n{}\n  ...\n{}".format(len(sel),fn,ln)
     if not messagebox.askyesno("确认",msg):return
-    sv={};_apply_tk_to_selected()
-    for e in sel:sv.update(e.fields)
+    sv=_get_inspector_vals()
     try:
         with open(CFG_FILE,"w",encoding="utf-8")as f:json.dump(sv,f,ensure_ascii=False,indent=2)
         global _saved_defaults;_saved_defaults=sv

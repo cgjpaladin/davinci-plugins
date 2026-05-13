@@ -22,30 +22,47 @@
  *  - 无提示音
  */
 :root {
-  --bg:        #1c1c1c;
-  --surface:   #282828;
-  --border:    #3d3d3d;
-  --text:      #b8b8b8;
-  --text-dim:  #707070;
-  --accent:    #e8870a;
-  --accent2:   #6a9a3a;
+  /* ═══ 三层背景 — 由深到浅 ═══ */
+  --bg:        #151515;  /* 最深底 (窗口背景) */
+  --surface:   #1e1e1e;  /* 一级面板 (标题栏/卡片) */
+  --surface2:  #282828;  /* 二级面板 (输入框/选中行) */
 
-  --fs-body:   12px;
-  --fs-label:  9px;
-  --fs-sm:     10px;
+  /* ═══ 边框 — 只用细线，不用阴影 ═══ */
+  --border:    #3d3d3d;  /* 标准边框 */
+  --border-hi: #555555;  /* 强调边框 (hover/focus) */
 
-  --gap:       4px;
-  --pad:       8px;
-  --pad-lg:    12px;
-  --radius:    2px;
+  /* ═══ 文字层级 ═══ */
+  --text:       #c0c0c0;  /* 主文字 (柔和不刺眼) */
+  --text-bright:#e8e8e8;  /* 高亮/输入中 */
+  --text-dim:   #707070;  /* 次要/标签/占位 */
 
-  --font-ui:   'Segoe UI', system-ui, -apple-system, sans-serif;
-  --font-mono: 'Consolas', 'Cascadia Code', monospace;
+  /* ═══ 品牌色 — 达芬奇的橙色灵魂 ═══ */
+  --accent:     #e8870a;  /* 主高亮 (按钮/焦点/选中) */
+  --accent-dim: #8a5000;  /* 暗橙色 (选中行背景) */
+
+  /* ═══ 功能语义色 ═══ */
+  --green:      #6a9a3a;  /* 成功/预览/通过 OK */
+  --red:        #c04040;  /* 错误/NG/警告 */
+  --yellow:     #c0a040;  /* KP/待处理 */
+
+  /* ═══ 排版 ═══ */
+  --fs-body:    10px;
+  --fs-label:   8px;
+  --fs-sm:      9px;
+  --fs-preview: 11px;
+
+  --gap:        4px;
+  --pad:        6px;
+  --pad-lg:     8px;
+  --radius:     2px;
+
+  --font-ui:    'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono:  'Consolas', 'Cascadia Code', monospace;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-  background:#111; color:var(--text);
+  background:#0a0a0a; color:var(--text);
   font-family:var(--font-ui); font-size:var(--fs-body);
   display:flex; align-items:center; justify-content:center;
   min-height:100vh; padding:24px;
@@ -59,7 +76,7 @@ body {
 /* ═══ Titlebar ═══ */
 .titlebar {
   display:flex; align-items:center; justify-content:space-between;
-  padding:4px var(--pad-lg); background:var(--surface);
+  padding:3px var(--pad-lg); background:var(--surface);
   border-bottom:1px solid var(--border);
   font-size:var(--fs-sm); color:var(--text-dim);
 }
@@ -82,9 +99,9 @@ body {
   font-weight:600; margin-bottom:2px; white-space:nowrap;
 }
 .param input, .param select {
-  width:100%; background:var(--surface); border:1px solid var(--border);
-  color:#e0e0e0; font-family:var(--font-mono); font-size:var(--fs-body);
-  padding:3px 6px; border-radius:var(--radius); outline:none;
+  width:100%; background:var(--surface2); border:1px solid var(--border);
+  color:var(--text-bright); font-family:var(--font-mono); font-size:var(--fs-body);
+  padding:3px 5px; border-radius:var(--radius); outline:none;
 }
 .param select {
   cursor:pointer; -webkit-appearance:none;
@@ -94,6 +111,25 @@ body {
 }
 .param input:focus, .param select:focus { border-color:var(--accent); }
 
+/* ═══ Destination Path ═══ */
+.dest {
+  display:flex; align-items:center; gap:var(--gap);
+  padding:4px var(--pad-lg);
+  border-bottom:1px solid var(--border);
+}
+.dest label {
+  font-size:var(--fs-label); color:var(--text-dim);
+  text-transform:uppercase; font-weight:600; white-space:nowrap;
+  margin-right:2px;
+}
+.dest input {
+  flex:1; background:var(--surface2); border:1px solid var(--border);
+  color:var(--text-bright); font-family:var(--font-mono); font-size:var(--fs-body);
+  padding:3px 6px; border-radius:var(--radius); outline:none;
+}
+.dest input:focus { border-color:var(--accent); }
+.dest-ok { color:var(--green); font-size:var(--fs-sm); white-space:nowrap; flex-shrink:0; }
+
 /* ═══ Hero — Preview + CTA ═══ */
 .hero {
   display:flex; align-items:stretch; gap:8px;
@@ -102,12 +138,12 @@ body {
 }
 .hero-preview {
   flex:1; display:flex; align-items:center; gap:8px; min-width:0;
-  background:var(--surface); border:1px solid var(--border);
-  border-radius:var(--radius); padding:8px 12px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:6px 10px;
 }
-.hero-arrow { color:var(--accent2); font-weight:bold; font-size:14px; flex-shrink:0; }
+.hero-arrow { color:var(--green); font-weight:bold; font-size:14px; flex-shrink:0; }
 .hero-filename {
-  font-family:var(--font-mono); font-size:14px; color:var(--accent2);
+  font-family:var(--font-mono); font-size:var(--fs-preview); color:var(--green);
   flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .hero-meta {
@@ -117,21 +153,44 @@ body {
 }
 .hero-meta em {
   font-style:normal; font-family:var(--font-mono);
-  color:var(--accent2); font-weight:bold;
+  color:var(--green); font-weight:bold;
 }
 .hero-btn {
-  flex-shrink:0; padding:8px 18px; background:var(--accent); color:#fff;
+  flex-shrink:0; padding:7px 14px; background:var(--accent); color:#fff;
   border:none; border-radius:var(--radius);
   font-family:var(--font-ui); font-size:var(--fs-body); font-weight:600;
   cursor:pointer; white-space:nowrap;
 }
 .hero-btn:hover { filter:brightness(1.15); }
+.hero-btn.disabled {
+  background:#3d3d3d; color:#707070; cursor:default;
+}
+.hero-btn.disabled:hover { filter:none; }
+.hero-archive {
+  flex-shrink:0; padding:7px 14px; background:transparent; color:var(--green);
+  border:1px solid var(--green); border-radius:var(--radius);
+  font-family:var(--font-ui); font-size:var(--fs-body); font-weight:600;
+  cursor:pointer; white-space:nowrap;
+}
+.hero-archive:hover { background:rgba(106,154,58,.12); }
+.hero-archive.disabled {
+  color:var(--text-dim); border-color:#3d3d3d; cursor:default;
+}
+.hero-archive.disabled:hover { background:transparent; }
 .hero-undo {
-  flex-shrink:0; padding:8px 12px; background:transparent; color:var(--text-dim);
+  flex-shrink:0; padding:7px 10px; background:transparent; color:var(--text-dim);
   border:1px solid var(--border); border-radius:var(--radius);
   font-family:var(--font-ui); font-size:var(--fs-sm); cursor:pointer;
 }
 .hero-undo:hover { color:var(--text); border-color:var(--text-dim); }
+.hero-undo.disabled { color:#4a4a4a; cursor:default; }
+.hero-undo.disabled:hover { color:#4a4a4a; border-color:var(--border); }
+.hero-check {
+  flex-shrink:0; padding:7px 10px; background:transparent; color:var(--text-dim);
+  border:1px solid var(--border); border-radius:var(--radius);
+  font-family:var(--font-ui); font-size:var(--fs-sm); cursor:pointer;
+}
+.hero-check:hover { color:var(--text); border-color:var(--text-dim); }
 
 /* ═══ File List ═══ */
 .file-section {
@@ -183,7 +242,7 @@ body {
 .fl-thumb.f { background:linear-gradient(135deg,#3a301a,#2a200a); }
 
 .fl-new {
-  font-family:var(--font-mono); font-size:var(--fs-body); color:var(--accent2);
+  font-family:var(--font-mono); font-size:var(--fs-body); color:var(--green);
   white-space:nowrap; flex-shrink:0;
 }
 .fl-arrow-sym { color:var(--text-dim); flex-shrink:0; font-size:var(--fs-sm); }
@@ -199,7 +258,7 @@ body {
   font-size:var(--fs-sm); color:var(--text-dim);
 }
 .sb-left { display:flex; align-items:center; gap:6px; }
-.sb-dot { width:5px; height:5px; border-radius:50%; background:var(--accent2); }
+.sb-dot { width:5px; height:5px; border-radius:50%; background:var(--green); }
 .sb-undo {
   cursor:pointer; color:var(--text-dim); border:none; background:none;
   font-family:var(--font-ui); font-size:var(--fs-sm);
@@ -225,7 +284,7 @@ body {
     <div class="param"><label>Ep 集数</label><input value="01" placeholder="01"></div>
     <div class="param"><label>Sc 场次</label><input value="03" placeholder="01"></div>
     <div class="param"><label>Gr 小场次</label><input value="01" placeholder="01"></div>
-    <div class="param"><label>Tk 次数</label><input value="01" placeholder="01"></div>
+    <div class="param"><label>Tk 次数</label><input value="自动" style="color:var(--text-dim)" readonly></div>
     <div class="param wide"><label>镜头描述</label><input id="descInput" value="全能分镜" placeholder="由制作方式决定" readonly></div>
     <div class="param"><label>制作者</label><input value="" placeholder="张谭/温欣然" style="color:var(--text-dim)"></div>
     <div class="param"><label>制作方式</label><select id="methodSelect" onchange="onMethodChange()"><option>请选择</option><option selected>智能分镜版</option><option>双轨版</option><option>角色专属版</option></select></div>
@@ -233,7 +292,14 @@ body {
     <div class="param"><label>通过情况</label><select><option>请选择</option><option selected>OK</option><option>KP</option><option>NG</option></select></div>
   </div>
 
-  <!-- Hero — Preview + CTA -->
+  <!-- Destination Path -->
+  <div class="dest">
+    <label>目标路径</label>
+    <input value="20260404_废墟的约定" placeholder="YYYYMMDD_项目名">
+    <span class="dest-ok">✓ 格式正确</span>
+  </div>
+
+  <!-- Hero — Preview + 4 buttons -->
   <div class="hero">
     <div class="hero-preview">
       <span class="hero-arrow">▸</span>
@@ -241,13 +307,15 @@ body {
       <span class="hero-meta">选中 <em>4</em> 个  ·  Tk <em>01→04</em></span>
     </div>
     <button class="hero-btn">批量重命名</button>
-    <button class="hero-undo">↩ 撤销</button>
+    <button class="hero-archive">批量归档</button>
+    <button class="hero-check">检查</button>
+    <button class="hero-undo disabled">↩ 撤销</button>
   </div>
 
   <!-- File List — no .mp4 column, both scrolls -->
   <div class="file-section">
     <div class="fl-bar">
-      <span>文件列表 · <strong style="color:var(--accent);font-weight:600">6</strong> 个</span>
+      <span>文件列表 · <strong style="color:var(--accent);font-weight:600">6</strong> 个  ·  选中 <strong style="color:var(--accent);font-weight:600">3</strong></span>
       <div class="fl-bar-right">
         <button class="fl-btn">+ 文件</button>
         <button class="fl-btn">+ 文件夹</button>
