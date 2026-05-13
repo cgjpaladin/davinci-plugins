@@ -413,9 +413,9 @@ function renderList(){
     const tt=checkTags[i];if(tt){if(tt.includes('zero'))d.classList.add('warn-zero');else if(tt.includes('size'))d.classList.add('warn-size');if(tt.includes('fmt'))d.classList.add('warn-fmt')}
     // 选中项用 inspector 值+Tk 递增；未选中项用自己的存储字段
     let ff,nm;
-    if(sel.has(i)){const p=srt.indexOf(i);ff={...fd,tk:String(srt[0]+p+1).padStart(2,'0')};nm=buildName(ff)}
+    if(sel.has(i)){const p=srt.indexOf(i);ff={...fd,tk:_computeTK(i)};nm=buildName(ff)}
     else{
-      ff={...f.fields,tk:String(i+1).padStart(2,'0')};
+      ff={...f.fields,tk:_computeTK(i)};
       nm=buildName(ff);
     }
     const th=document.createElement('div');th.className='fl-thumb';
@@ -538,6 +538,17 @@ async function doRename(){
     toast(`完成 ${r.ok}/${r.total}`)}
   if(r.fail&&r.fail.length){setTimeout(()=>toast('失败: '+r.fail.join('; ')),2000)}
   renderList();updButtons();
+}
+function _computeTK(i){
+  const fs=files[i].fields;
+  const k=fs.ep+'|'+fs.sc+'|'+fs.gr+'|'+fs.desc+'|'+(fs.method||'')+'|'+fs.ver;
+  let n=0;
+  for(let j=0;j<=i;j++){
+    const g=files[j].fields;
+    const jk=g.ep+'|'+g.sc+'|'+g.gr+'|'+g.desc+'|'+(g.method||'')+'|'+g.ver;
+    if(jk===k)n++;
+  }
+  return String(n).padStart(2,'0');
 }
 function buildName(f){
   const m=f.method||'';
