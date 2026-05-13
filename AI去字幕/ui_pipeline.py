@@ -97,7 +97,7 @@ def _show_clip_stats(clips, od, fps, df, start_frame, allow_unknown=False):
     cache_hits = 0; need_secs = 0; need_pts = 0
     for c in clips:
         pos_str = _format_tc(c.start_frame + start_frame, fps, df)
-        is_cached = bool(od and ledger.find_output(c.file_name))
+        is_cached = bool(od and ledger.find_output(c.path))
         if allow_unknown and not od:
             label, emoji = "未知", "🟠"
         else:
