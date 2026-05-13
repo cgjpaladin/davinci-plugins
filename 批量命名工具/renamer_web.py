@@ -226,9 +226,6 @@ class RenamerAPI:
             f["tags"] = tags
         return {"files":files,"total":len(files),"duplicates":duplicates,"subdirs_skipped":subdirs,"truncated":truncated,"max":MAX_FILES}
 
-    def build_preview_filename(self, fields):
-        return {"filename": build_filename(fields)}
-
     def do_rename(self, files):
         global _undo_stack
         ok = 0; fail = []; batch = []; renamed = []
