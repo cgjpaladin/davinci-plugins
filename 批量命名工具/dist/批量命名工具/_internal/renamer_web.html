@@ -173,6 +173,7 @@ body{
 .fl-arrow-sym{color:var(--text-dim);flex-shrink:0;font-size:calc(var(--fs-sm)*var(--thumb-scale,1))}
 .fl-old{font-family:var(--font-mono);font-size:calc(var(--fs-sm)*var(--thumb-scale,1));color:var(--text-dim);white-space:nowrap;flex-shrink:0}
 .fl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:6px}
+.fl-tag{font-size:calc(var(--fs-xs)*var(--thumb-scale,1));color:var(--yellow);white-space:nowrap;flex-shrink:0;margin-left:4px}
 .statusbar{
   display:flex;align-items:center;justify-content:space-between;
   padding:3px var(--pad-lg);font-size:var(--fs-sm);color:var(--text-dim);flex-shrink:0;
@@ -429,7 +430,14 @@ function renderList(){
     const on=document.createElement('span');on.className='fl-old';on.textContent=f.basename;
     const dot=document.createElement('span');dot.className='fl-dot';
     dot.style.background=ready?'var(--green)':'var(--yellow)';
-    d.append(th,nn,ar,on,dot);
+    // 缺失字段提示
+    const tag=document.createElement('span');tag.className='fl-tag';
+    if(!ready){
+      const m=[];const lb={ep:'Ep',sc:'Sc',gr:'Gr',desc:'描述',author:'作者',method:'方式',ver:'Version',status:'通过'};
+      for(const k of['ep','sc','gr','desc','author','method','ver','status']){if(!ff[k])m.push(lb[k])}
+      tag.textContent=m.slice(0,3).join('·')+(m.length>3?' +'+(m.length-3):'');
+    }else{tag.textContent='✓'}
+    d.append(th,nn,ar,on,dot,tag);
     d.addEventListener('click',e=>{
       const prevSel=sel.size,prevHas=sel.has(i);
       if(e.metaKey||e.ctrlKey){if(sel.has(i))sel.delete(i);else sel.add(i)}
