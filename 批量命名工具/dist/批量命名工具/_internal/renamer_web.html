@@ -360,25 +360,16 @@ function getFields(){
 function onMethodChange(){
   const m=document.getElementById('methodSelect').value;
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
-  const wasLocked=descLocked;
   if(cfg.mode==='locked'){descInput('text',cfg.value,true);descLocked=true}
   else if(cfg.mode==='dropdown'){descSelect(cfg.values);descLocked=false}
   else{descInput('text','',false,cfg.hint);descLocked=false}
-  // 从锁定切到非锁定 → desc 值不再有效，清除
-  if(wasLocked&&!descLocked&&sel.size>0){
+  // 制作方式变了 → 清空所有选中文件的旧 desc
+  if(sel.size>0){
     for(const i of sel) files[i].fields.desc='';
+    renderList();updButtons();
   }
-  // 恢复选中文件的 desc 值
-  const saved=_getSelectedDescValue();
-  if(saved) _setDescValue(saved);
-  updPreview();updButtons();
 }
 // 获取选中文件的存储 desc（单文件返回该值，多文件不一致返回空，无选中返回空）
-function _getSelectedDescValue(){
-  const ix=[...sel];if(!ix.length)return'';
-  const vs=new Set(ix.map(i=>files[i].fields.desc||''));
-  return vs.size===1?[...vs][0]:'';
-}
 function descInput(t,v,ro,ph){
   const el=document.getElementById('descInput');
   if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=ro?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updPreview();updButtons()}};return}
