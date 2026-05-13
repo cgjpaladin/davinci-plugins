@@ -222,22 +222,22 @@ body {
 
   <!-- Inspector — 9 fields, one row -->
   <div class="inspector">
-    <div class="param"><label>Ep 集数</label><input value="01"></div>
-    <div class="param"><label>Sc 场次</label><input value="03"></div>
-    <div class="param"><label>Gr 小场次</label><input value="01"></div>
-    <div class="param"><label>Tk 次数</label><input value="01"></div>
-    <div class="param wide"><label>镜头描述</label><input value="PUSH"></div>
-    <div class="param"><label>制作者</label><input value="YJ"></div>
-    <div class="param"><label>制作方式</label><input value="AE"></div>
-    <div class="param"><label>v 版本号</label><input value="01"></div>
-    <div class="param"><label>通过情况</label><select><option>OK</option><option>KP</option><option>NG</option><option>自定义...</option></select></div>
+    <div class="param"><label>Ep 集数</label><input value="01" placeholder="01"></div>
+    <div class="param"><label>Sc 场次</label><input value="03" placeholder="01"></div>
+    <div class="param"><label>Gr 小场次</label><input value="01" placeholder="01"></div>
+    <div class="param"><label>Tk 次数</label><input value="01" placeholder="01"></div>
+    <div class="param wide"><label>镜头描述</label><input id="descInput" value="全能分镜" placeholder="由制作方式决定" readonly></div>
+    <div class="param"><label>制作者</label><input value="" placeholder="张谭/温欣然" style="color:var(--text-dim)"></div>
+    <div class="param"><label>制作方式</label><select id="methodSelect" onchange="onMethodChange()"><option>请选择</option><option selected>智能分镜版</option><option>双轨版</option><option>角色专属版</option></select></div>
+    <div class="param"><label>v 版本号</label><input value="01" placeholder="01"></div>
+    <div class="param"><label>通过情况</label><select><option>请选择</option><option selected>OK</option><option>KP</option><option>NG</option></select></div>
   </div>
 
   <!-- Hero — Preview + CTA -->
   <div class="hero">
     <div class="hero-preview">
       <span class="hero-arrow">▸</span>
-      <span class="hero-filename">Ep01_Sc03_Gr01_Tk01_PUSH_YJ_AE_v01_OK.mp4</span>
+      <span class="hero-filename">Ep01_Sc03_Gr01_Tk01_全能分镜_LS_v01_OK.mp4</span>
       <span class="hero-meta">选中 <em>4</em> 个  ·  Tk <em>01→04</em></span>
     </div>
     <button class="hero-btn">批量重命名</button>
@@ -256,37 +256,37 @@ body {
     <div class="fl-body">
       <div class="fl-item">
         <div class="fl-thumb a"></div>
-        <span class="fl-new">Ep01_Sc03_Gr01_Tk01_PUSH_YJ_AE_v01_OK.mp4</span>
+        <span class="fl-new">Ep01_Sc03_Gr01_Tk01_全能分镜_LS_v01_OK.mp4</span>
         <span class="fl-arrow-sym">←</span>
         <span class="fl-old">镜头001.mp4</span>
       </div>
       <div class="fl-item sel">
         <div class="fl-thumb b"></div>
-        <span class="fl-new">Ep01_Sc03_Gr01_Tk02_PUSH_YJ_AE_v01_OK.mp4</span>
+        <span class="fl-new">Ep01_Sc03_Gr01_Tk02_全能分镜_LS_v01_OK.mp4</span>
         <span class="fl-arrow-sym">←</span>
         <span class="fl-old">镜头002.mp4</span>
       </div>
       <div class="fl-item sel">
         <div class="fl-thumb c"></div>
-        <span class="fl-new">Ep01_Sc03_Gr01_Tk03_PUSH_YJ_AE_v01_OK.mp4</span>
+        <span class="fl-new">Ep01_Sc03_Gr01_Tk03_全能分镜_LS_v01_OK.mp4</span>
         <span class="fl-arrow-sym">←</span>
         <span class="fl-old">镜头003.mp4</span>
       </div>
       <div class="fl-item sel">
         <div class="fl-thumb d"></div>
-        <span class="fl-new">Ep01_Sc03_Gr01_Tk04_PUSH_YJ_AE_v01_OK.mp4</span>
+        <span class="fl-new">Ep01_Sc03_Gr01_Tk04_全能分镜_LS_v01_OK.mp4</span>
         <span class="fl-arrow-sym">←</span>
         <span class="fl-old">镜头004.mp4</span>
       </div>
       <div class="fl-item">
         <div class="fl-thumb e"></div>
-        <span class="fl-new">Ep01_Sc03_Gr01_Tk05_PUSH_YJ_AE_v01_OK.mp4</span>
+        <span class="fl-new">Ep01_Sc03_Gr01_Tk05_全能分镜_LS_v01_OK.mp4</span>
         <span class="fl-arrow-sym">←</span>
         <span class="fl-old">镜头005.mp4</span>
       </div>
       <div class="fl-item">
         <div class="fl-thumb f"></div>
-        <span class="fl-new">Ep01_Sc03_Gr01_Tk06_PUSH_YJ_AE_v01_OK.mp4</span>
+        <span class="fl-new">Ep01_Sc03_Gr01_Tk06_全能分镜_LS_v01_OK.mp4</span>
         <span class="fl-arrow-sym">←</span>
         <span class="fl-old">镜头006.mp4</span>
       </div>
@@ -300,6 +300,48 @@ body {
   </div>
 
 </div>
+
+<script>
+const descMap={
+  "智能分镜版":{mode:"locked",value:"全能分镜"},
+  "双轨版":{mode:"dropdown",values:["请选择","幽灵角色","空镜","手动输入…"]},
+  "角色专属版":{mode:"text",hint:"温时雨过肩中景"}
+};
+function onMethodChange(){
+  const m=document.getElementById("methodSelect").value;
+  const d=document.getElementById("descInput");
+  const cfg=descMap[m]||{mode:"text",hint:"请先选择制作方式"};
+  if(cfg.mode==="locked"){
+    d.value=cfg.value;d.readOnly=true;d.style.color="var(--text-bright)";
+  }else if(cfg.mode==="dropdown"){
+    // replace with select
+    const sel=document.createElement("select");sel.id="descInput";sel.className=d.className;
+    sel.style.cssText=d.style.cssText;
+    cfg.values.forEach(v=>{
+      const o=document.createElement("option");o.text=v;sel.add(o);
+      if(v==="手动输入…")o.setAttribute("data-custom","1");
+    });
+    sel.onchange=function(){
+      if(sel.value==="手动输入…"){
+        const inp=document.createElement("input");inp.id="descInput";
+        inp.className=d.className;inp.style.cssText=sel.style.cssText;
+        inp.value="";inp.placeholder="输入自定义描述";inp.readOnly=false;
+        sel.replaceWith(inp);inp.focus();
+      }
+    };
+    d.replaceWith(sel);
+  }else{
+    if(d.tagName==="SELECT"){
+      const inp=document.createElement("input");inp.id="descInput";
+      inp.className=d.className;inp.style.cssText=d.tagName==="SELECT"?d.style.cssText:"";
+      inp.placeholder=cfg.hint;inp.readOnly=false;inp.style.color="var(--text-dim)";
+      d.replaceWith(inp);
+    }else{
+      d.value="";d.placeholder=cfg.hint;d.readOnly=false;d.style.color="var(--text-dim)";
+    }
+  }
+}
+</script>
 
 </body>
 </html>
