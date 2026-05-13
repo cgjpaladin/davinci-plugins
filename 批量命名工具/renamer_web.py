@@ -4,6 +4,7 @@ Python 后端 + HTML/CSS 前端
 """
 import os, sys, json, re, shutil
 from datetime import datetime
+from urllib.parse import unquote
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared.naming import (
@@ -17,7 +18,7 @@ import webview
 import logging
 _log = logging.getLogger("renamer_web")
 _log.setLevel(logging.DEBUG)
-_hdlr = logging.FileHandler(os.path.join(os.path.dirname(os.path.abspath(__file__)), "renamer_debug.log"))
+_hdlr = logging.FileHandler("/tmp/renamer_web.log")
 _hdlr.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
 _log.addHandler(_hdlr)
 
@@ -85,14 +86,38 @@ class RenamerAPI:
         _log.info(f"[JS] {msg}")
         return "ok"
 
+    def echo(self, x):
+        _log.info(f"ECHO: {x!r}")
+        return {"received": x}
+
     def _process_paths(self, paths):
         _log.info(f"_process_paths received {len(paths)} paths")
         for i, p in enumerate(paths[:5]):
-            _log.info(f"  [{i}] raw={p!r}  isfile={os.path.isfile(p)}  exists={os.path.exists(p)}")
+            _log.info(f"  [{i}] raw={p!r}")
         files = []
         defaults = _saved_defaults
+        home = os.path.expanduser("~")
+        desktop = os.path.join(home, "Desktop")
+        downloads = os.path.join(home, "Downloads")
         for p in paths:
+            p = str(p).strip()
+            if p.startswith("file://"):
+                p = unquote(p[7:])
+            p = os.path.expanduser(p)
+
+            # 只有文件名 → 搜索常用位置
+            if os.path.basename(p) == p and not os.path.isabs(p):
+                found = False
+                for d in [desktop, downloads, home]:
+                    candidate = os.path.join(d, p)
+                    if os.path.isfile(candidate):
+                        p = candidate; found = True; break
+                if not found:
+                    _log.info(f"  SKIP cannot resolve: {p!r}")
+                    continue
+
             if not os.path.isfile(p):
+                _log.info(f"  SKIP not a file: {p!r}")
                 continue
             parsed = parse_filename(p)
             fields = {}
@@ -233,6 +258,15 @@ if __name__ == "__main__":
     # 后台启动 bottle
     t = threading.Thread(target=lambda: run(host='127.0.0.1', port=port, quiet=True), daemon=True)
     t.start()
+
+    # 等 bottle 就绪
+    import time, urllib.request
+    for _ in range(20):
+        try:
+            urllib.request.urlopen(f"http://127.0.0.1:{port}", timeout=0.5)
+            break
+        except:
+            time.sleep(0.1)
 
     api = RenamerAPI()
     _window = webview.create_window(

@@ -285,6 +285,10 @@ body{
 </div>
 
 <script>
+// ═══ 立即执行 — 确认脚本加载 ═══
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('debugMode').textContent='JS ✓';
+});
 // ═══ State ═══
 let files=[], sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, checkTags={};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
@@ -324,12 +328,21 @@ async function init(){
   document.getElementById('methodSelect').value=d.method||'';
   onMethodChange();
 }
-// ═══ init — 必须等 pywebviewready ═══
-window.addEventListener('pywebviewready',()=>{
-  const dm=document.getElementById('debugMode');
-  dm.textContent=_isLive()?'✔ Live':'✖ Mock';
-  init();
-});
+// ═══ init — 轮询等待 pywebview 桥接 ═══
+let _ready=false;
+function _tryStart(){
+  if(_ready)return;
+  const live=!!(window.pywebview&&window.pywebview.api);
+  if(!live){document.getElementById('debugMode').textContent='⏳'+Math.floor(Date.now()/1000)%100;return}
+  _ready=true;
+  document.getElementById('debugMode').textContent='✔ Live';
+  // 测试桥接
+  window.pywebview.api.echo('hello').then(r=>{
+    document.getElementById('debugMode').textContent='✔ '+r.received;
+    init();
+  }).catch(()=>{init()});
+}
+setInterval(_tryStart,300);
 
 // ═══ Fields ═══
 function getFields(){
@@ -480,22 +493,29 @@ document.addEventListener('dragenter',e=>{e.preventDefault();dg++;document.getEl
 document.addEventListener('dragleave',e=>{e.preventDefault();dg--;if(dg<=0){dg=0;document.getElementById('dropOverlay').classList.remove('show')}});
 document.addEventListener('drop',async e=>{
   e.preventDefault();e.stopPropagation();dg=0;document.getElementById('dropOverlay').classList.remove('show');
-  const dt=e.dataTransfer;if(!dt||!dt.files||!dt.files.length)return;
-  const paths=[];
-  for(const f of dt.files){
-    // pywebview gives f.path, browser gives f.name
-    const p=f.path||f.name||'';
-    if(p)paths.push(p);
+  // macOS: 通过 dataTransfer.getData 拿 file:// URL，再转路径
+  const dt=e.dataTransfer;if(!dt)return;
+  let paths=[];
+  try{
+    // pywebview 拖放：数据在 public.file-url 类型里
+    const urls=dt.getData('text/uri-list')||dt.getData('public.file-url')||'';
+    if(urls){
+      paths=urls.split(/[\r\n]+/).filter(u=>u).map(u=>{
+        try{return decodeURI(new URL(u.trim()).pathname)}catch(e){return u.trim()}
+      }).filter(p=>p);
+    }
+  }catch(err){}
+  // 回退：通过 pywebview 注入的完整路径
+  if(!paths.length&&dt.files){
+    for(const f of dt.files){
+      const p=f.pywebviewFullPath||f.path||f.name||'';if(p)paths.push(p);
+    }
   }
   if(!paths.length)return;
-  if(_isLive()){call('debug_log','Drop paths: '+JSON.stringify(paths.slice(0,5)));
-    const r=await call('add_files_by_paths',paths);
-    const r=await call('add_files_by_paths',paths);
-    if(r&&r.files){files=r.files;sel.clear();checkTags={};renderList();toast(`已添加 ${r.total} 个文件`)}
-  }else{
-    // Browser mock: 不能用真实路径，跳过
-    toast('请在桌面应用中拖放文件');
-  }
+  if(!_isLive()){toast('请在桌面应用中拖放文件');return}
+  call('debug_log','Drop raw: '+JSON.stringify(paths.slice(0,5)));
+  const r=await call('add_files_by_paths',paths);
+  if(r&&r.files){files=r.files;sel.clear();checkTags={};renderList();toast(`已添加 ${r.total} 个文件`)}
 });
 
 // ═══ Keyboard ═══
