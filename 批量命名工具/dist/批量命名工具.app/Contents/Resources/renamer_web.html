@@ -369,9 +369,14 @@ function getFields(){
 function onMethodChange(){
   const m=document.getElementById('methodSelect').value;
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
+  const wasLocked=descLocked;
   if(cfg.mode==='locked'){descInput('text',cfg.value,true);descLocked=true}
   else if(cfg.mode==='dropdown'){descSelect(cfg.values);descLocked=false}
   else{descInput('text','',false,cfg.hint);descLocked=false}
+  // 从锁定切到非锁定 → desc 值不再有效，清除
+  if(wasLocked&&!descLocked&&sel.size>0){
+    for(const i of sel) files[i].fields.desc='';
+  }
   // 恢复选中文件的 desc 值
   const saved=_getSelectedDescValue();
   if(saved) _setDescValue(saved);
@@ -529,8 +534,13 @@ function _syncInspectorFromSelection(){
 function _setDescValue(v){
   const el=document.getElementById('descInput');
   if(!el||!v)return;
-  if(el.tagName==='SELECT'){el.value=v}
-  else if(el.tagName==='INPUT'){el.value=v;el.style.color='var(--text-bright)'}
+  if(el.tagName==='SELECT'){
+    // 值必须在选项列表中
+    const opts=[...el.options].map(o=>o.value);
+    if(opts.includes(v))el.value=v;
+  }else if(el.tagName==='INPUT'){
+    el.value=v;el.style.color='var(--text-bright)';
+  }
 }
 
 async function doRename(){
