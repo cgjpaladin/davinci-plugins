@@ -326,7 +326,7 @@ class RenamerAPI:
                 max_tk = 0
                 if os.path.isdir(folder):
                     for fn in os.listdir(folder):
-                        m = re.search(r'\bTk(\d{2})(?:_|\.)', fn)
+                        m = re.search(r'Tk(\d{2})(?!\d)', fn)
                         if m:
                             max_tk = max(max_tk, int(m.group(1)))
                 nxt = max_tk + 1
