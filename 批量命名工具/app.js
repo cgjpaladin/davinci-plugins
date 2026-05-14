@@ -356,7 +356,7 @@ function _setDescValue(v){
   const el=document.getElementById('descInput');
       if(!el)return;
       // 锁定模式：直接跳过，不碰 desc DOM（值由 method 决定）
-      if(descLocked){el.value=v;_setVisual(el,v);return}
+      if(descLocked){_setVisual(el,el.value);return}
       if(!v)return;
   if(el.tagName==='SELECT'){
     for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;_setVisual(el,v);return}}
