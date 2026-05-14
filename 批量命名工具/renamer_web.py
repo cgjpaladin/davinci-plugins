@@ -281,16 +281,26 @@ if __name__ == "__main__":
         js_api=api, width=900, height=700,
     )
 
-    # 注册 DOM 事件处理器（获取文件拖放的完整路径）
-    class DOMEventHandler:
-        def on_drop(self, x, y, paths):
-            if paths:
-                result = api._process_paths(paths)
-                _window.evaluate_js(f"onDropResult({json.dumps(result)})")
-    def on_loaded():
+    # 注册 DOM 事件处理器（pywebview 6.x DOM API）
+    from webview.dom import DOMEventHandler
+
+    def _on_drop(e):
+        files = e.get('dataTransfer', {}).get('files', [])
+        paths = []
+        for f in files:
+            fp = f.get('pywebviewFullPath', '')
+            if fp and os.path.isfile(fp):
+                paths.append(fp)
+        if paths:
+            result = api._process_paths(paths)
+            _window.evaluate_js(f"onDropResult({json.dumps(result)})")
+
+    def _bind_drop():
+        _window.dom.document.events.dragover += DOMEventHandler(lambda e: e, True, True)
+        _window.dom.document.events.drop += DOMEventHandler(_on_drop, True, True)
         _log.info("DOM drop handler bound")
-        _window.events.dropped += DOMEventHandler().on_drop
-    _window.events.loaded += on_loaded
+
+    _window.events.loaded += _bind_drop
 
     import time, urllib.request
     for _ in range(20):
