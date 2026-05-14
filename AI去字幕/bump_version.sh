@@ -21,4 +21,11 @@ PYEOF
 
 new=$(python3 -c "from config import __version__; print(__version__)")
 echo "  $old → $new"
-echo "✅ 版本号已更新"
+python3 -c "
+import json
+cfg = json.load(open('gray.json'))
+cfg['version'] = '$new'
+cfg['gray_dir'] = 'AI去字幕_v' + '$new'
+json.dump(cfg, open('gray.json','w'), indent=2, ensure_ascii=False)
+"
+echo "✅ 版本号已更新 + gray.json 同步"
