@@ -168,6 +168,7 @@ class RenamerAPI:
         defaults = _saved_defaults
         # 用户必须手动填，不给默认值
         _EMPTY_KEYS = {'ep','sc','gr','ver'}
+        VIDEO_EXT = {'.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw'}
 
         for p_ in paths_[:MAX_FILES + 500]:
             if len(files) >= MAX_FILES: truncated = True; break
@@ -176,6 +177,8 @@ class RenamerAPI:
             p = os.path.realpath(p)
 
             if os.path.isfile(p):
+                ext = os.path.splitext(p)[1].lower()
+                if ext not in VIDEO_EXT: continue
                 if p in {f["path"] for f in files}: duplicates += 1; continue
                 parsed = parse_filename(p)
                 fields = {}
@@ -191,6 +194,8 @@ class RenamerAPI:
                     for f in sorted(os.listdir(p)):
                         fp = os.path.join(p, f)
                         if os.path.isfile(fp):
+                            ext2 = os.path.splitext(fp)[1].lower()
+                            if ext2 not in VIDEO_EXT: continue
                             if fp in {x["path"] for x in files}: duplicates += 1; continue
                             if len(files) >= MAX_FILES: truncated = True; break
                             parsed = parse_filename(fp)
