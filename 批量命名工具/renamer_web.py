@@ -67,8 +67,8 @@ class RenamerAPI:
         return {"normalized": v, "exists": os.path.isdir(v)}
 
     def generate_thumbnails(self, paths):
-        """用 ffmpeg 提取视频第一帧，返回 base64 data URI"""
-        import subprocess, base64, tempfile, shutil, sys
+        """用 ffmpeg 提取视频第一帧，逐帧推送到 JS（渐进渲染）"""
+        import subprocess, base64, tempfile, shutil, sys, json
         ffmpeg = shutil.which("ffmpeg")
         if not ffmpeg:
             for pfx in (sys._MEIPASS if getattr(sys,'_MEIPASS',False) else '', '/opt/homebrew/bin', '/usr/local/bin'):
@@ -76,32 +76,32 @@ class RenamerAPI:
                 if os.path.exists(test): ffmpeg = test; break
         if not ffmpeg: ffmpeg = 'ffmpeg'
         _log.info(f"generate_thumbnails: {len(paths)} files, ffmpeg={ffmpeg}")
-        thumbs = {}
-        for p in paths:
+        total = 0
+        for p in paths[:THUMB_MAX]:
             try:
                 tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
                 tmp.close()
-                # 按比例缩放缩略图：以长边 180px 为准，短边自动计算
                 subprocess.run(
                     [ffmpeg, '-noaccurate_seek', '-ss', '00:00:01', '-i', p, '-vframes', '1',
-                     '-vf', 'scale=180:180:force_original_aspect_ratio=decrease', tmp.name],
+                     '-vf', 'scale=120:120:force_original_aspect_ratio=decrease',
+                     '-q:v', '8', tmp.name],
                     capture_output=True, timeout=8
                 )
-
                 if os.path.isfile(tmp.name) and os.path.getsize(tmp.name) > 100:
                     with open(tmp.name, 'rb') as f:
                         b64 = base64.b64encode(f.read()).decode()
-                    thumbs[p] = f"data:image/jpeg;base64,{b64}"
+                    thumb = f"data:image/jpeg;base64,{b64}"
+                    if _window:
+                        _window.evaluate_js(f"setThumb({json.dumps(p)},{json.dumps(thumb)})")
+                    total += 1
                 try: os.unlink(tmp.name)
                 except: pass
             except Exception as e:
                 _log.info(f"  thumb error: {e}")
                 try: os.unlink(tmp.name)
                 except: pass
-                try: os.unlink(tmp.name)
-                except: pass
-        _log.info(f"generate_thumbnails done: {len(thumbs)} thumbs")
-        return {"thumbs": thumbs}
+        _log.info(f"generate_thumbnails done: {total} thumbs")
+        return {"thumbs": {}, "total": total}
 
     def get_config(self):
         fmt = []
