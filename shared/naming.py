@@ -70,10 +70,25 @@ _CONTROL_RE = re.compile(r'[\x00-\x1f\x7f-\x9f\u200b-\u200f\u2028-\u202f\u2060\u
 
 # Windows 保留名 (大小写不敏感)
 _WIN_RESERVED = {n.upper() for n in [
-    "CON","PRN","AUX","NUL",
+    "CON","PRN","AUX","NUL","CLOCK$",
     *("COM%d"%i for i in range(1,10)),
     *("LPT%d"%i for i in range(1,10)),
+    *(f"{n}{s}" for n in ("COM","LPT") for s in ("¹","²","³")),
 ]}
+
+_MAX_FILENAME_BYTES = 250  # macOS APFS 255 字节限制，留 5 字节余量
+
+def _truncate_bytes(s: str, max_bytes: int) -> str:
+    """按 UTF-8 字节数截断（保留完整字符边界）"""
+    b = s.encode('utf-8')
+    if len(b) <= max_bytes:
+        return s
+    truncated = b[:max_bytes]
+    while True:
+        try:
+            return truncated.decode('utf-8')
+        except UnicodeDecodeError:
+            truncated = truncated[:-1]
 
 def sanitize_text(text: str, for_filename: bool = False) -> tuple:
     """清洗用户输入，返回 (cleaned: str, warnings: list)
@@ -98,7 +113,13 @@ def sanitize_text(text: str, for_filename: bool = False) -> tuple:
     if cleaned != before:
         warnings.append("已替换文件系统禁字")
 
-    # 4. 首尾空格/点 → 删除
+    # 4. 长度限制 (按字节)
+    before = cleaned
+    cleaned = _truncate_bytes(cleaned, _MAX_FILENAME_BYTES)
+    if cleaned != before:
+        warnings.append("已截断过长文件名")
+
+    # 5. 首尾空格/点 → 删除
     cleaned = cleaned.strip(' .')
 
     if for_filename:

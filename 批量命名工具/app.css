@@ -1,29 +1,43 @@
 :root {
-  --bg:        #151515;
-  --surface:   #1e1e1e;
-  --surface2:  #282828;
-  --border:    #3d3d3d;
-  --border-hi: #555555;
-  --text:      #c0c0c0;
-  --text-bright:#e8e8e8;
-  --text-dim:  #707070;
+  /* ═══ 灰色阶（vanilla CSS pattern）═══ */
+  --gray-50:  #fafafa; --gray-100: #f0f0f0; --gray-200: #e0e0e0;
+  --gray-300: #c0c0c0; --gray-400: #909090; --gray-500: #707070;
+  --gray-600: #555555; --gray-700: #3d3d3d; --gray-800: #282828;
+  --gray-900: #1e1e1e; --gray-950: #151515;
+
+  /* ═══ 语义 token（过渡到色阶）═══ */
+  --bg:        var(--gray-950);
+  --surface:   var(--gray-900);
+  --surface2:  var(--gray-800);
+  --border:    var(--gray-700);
+  --border-hi: var(--gray-600);
+  --text:      var(--gray-300);
+  --text-bright:var(--gray-100);
+  --text-dim:  var(--gray-500);
   --accent:    #e8870a;
   --accent-dim:#8a5000;
   --green:     #6a9a3a;
   --red:       #c04040;
   --yellow:    #c0a040;
+
+  /* ═══ 交互态 token ═══ */
+  --focus-bg:  rgba(232,135,10,0.08);
+  --filled-bg: rgba(52,211,153,0.12);
   --fs-body:   10px;
   --fs-label:  10px;
   --fs-sm:     10px;
   --fs-preview:11px;
-  --gap:       4px;
-  --pad:       6px;
-  --pad-lg:    8px;
+  --space-unit:4px;
+  --gap:       var(--space-unit);
+  --pad:       calc(var(--space-unit) * 1.5);
+  --pad-lg:    calc(var(--space-unit) * 2);
   --radius:    2px;
   --font-ui:   'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-mono: 'Consolas', 'Cascadia Code', monospace;
 }
-*{margin:0;padding:0;box-sizing:border-box}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{text-size-adjust:none}
+::placeholder{color:inherit;opacity:.5}
 body{
   background:var(--bg);color:var(--text);
   font-family:var(--font-ui);font-size:var(--fs-body);

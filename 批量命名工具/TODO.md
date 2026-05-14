@@ -2,12 +2,12 @@
 
 ## 🔴 待做
 
-- **P1a**: UI 文字从 FIELD_CONFIG 驱动 — inspector HTML 动态生成，标签/placeholder 不再硬编码
+- **P1a**: UI 文字从 FIELD_CONFIG 驱动 ✅ — inspector HTML 动态生成，标签/placeholder 不再硬编码
 - **测试**: 完整流程：拖入→全选填字段→切换方法→Enter 逐字段→批量重命名→撤销
 
 ## 🟡 后续
 
-- shared/naming.py 拆分 (build/parse/check/folder 四类职责分离)
+- shared/naming.py 拆分 ✅ (build/parse/check/folder 四类职责分离)
 - ~~自动检查结果在文件列表有更明显标注~~ ✅
 - Windows 部署适配
 
