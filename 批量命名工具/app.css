@@ -161,8 +161,8 @@ body{
 .fl-item.warn-size{background:rgba(192,160,64,.08);border-left:3px solid #c0a040}
 .fl-item.warn-dbl{background:rgba(192,128,208,.08);border-left:3px solid #c080d0}
 .fl-thumb{
-  width:calc(24px*var(--thumb-scale,1));height:calc(36px*var(--thumb-scale,1));border-radius:var(--radius);flex-shrink:0;
-  background:#222;border:1px solid #333;
+  width:calc(36px*var(--thumb-scale,1));height:calc(27px*var(--thumb-scale,1));border-radius:var(--radius);flex-shrink:0;
+  background:#222;border:1px solid #333;background-size:contain;background-repeat:no-repeat;background-position:center;
   display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;
 }
 .fl-thumb::after{content:'▶';position:absolute;font-size:5px;color:rgba(255,255,255,.4);text-shadow:0 0 2px #000}
