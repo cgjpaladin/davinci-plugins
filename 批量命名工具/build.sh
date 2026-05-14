@@ -18,6 +18,14 @@ fi
 # Node 语法检查
 /opt/homebrew/bin/node --check app.js || { echo "❌ JS 语法错误"; exit 1; }
 
+# 冒烟测试（可选）
+if [ -f "../test_smoke.py" ]; then
+  python3 ../test_smoke.py || { echo "❌ 冒烟测试失败"; exit 1; }
+fi
+if [ -f "test_smoke.py" ]; then
+  python3 test_smoke.py || { echo "❌ 冒烟测试失败"; exit 1; }
+fi
+
 rm -rf build dist *.spec _build
 
 # 拼接三文件 + 注入 git hash
