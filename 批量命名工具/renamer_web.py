@@ -260,15 +260,16 @@ class RenamerAPI:
         if not _undo_stack:
             return {"ok": 0, "msg": "没有可撤销的操作"}
         batch = _undo_stack.pop()
-        ud = 0
+        ud = 0; renamed = []
         for op, np in batch:
             try:
                 os.rename(np, op)
+                renamed.append({"old_path": np, "new_path": op})
                 ud += 1
             except:
                 pass
         _log.info(f"do_undo: {ud}/{len(batch)} reversed, remaining batches: {len(_undo_stack)}")
-        return {"ok": ud, "msg": f"已撤销 {ud} 个", "remaining": len(_undo_stack)}
+        return {"ok": ud, "msg": f"已撤销 {ud} 个", "remaining": len(_undo_stack), "renamed": renamed}
 
     def validate_dest(self, dest):
         v = str(dest).strip()

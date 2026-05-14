@@ -414,7 +414,7 @@ function buildName(f){
   const raw=_nameFmt.map(s=>s.pfx+(f[s.key]||'')).join('_');
   return raw.replace(/_+/g,'_').replace(/_$/,'');
 }
-async function doUndo(){const r=await call('do_undo');toast(r.msg);undoAvail=(r.remaining||0)>0;updButtons()}
+async function doUndo(){const r=await call('do_undo');toast(r.msg);undoAvail=(r.remaining||0)>0;if(r.renamed){r.renamed.forEach(rn=>{const f=files.find(x=>x.path===rn.old_path);if(f)f.path=rn.new_path})};renderList();updButtons()}
 
 function removeSelected(){if(sel.size===0)return;files=files.filter((_,i)=>!sel.has(i));sel.clear();renderList();toast('已移除')}
 async function doArchive(){
