@@ -456,10 +456,21 @@ async function loadThumbs(){
 
 function setThumb(path,thumb){
   _thumbs[path]=thumb;
-  // 渐进更新列表中的缩略图
   const el=document.querySelector(`[data-path="${CSS.escape(path)}"]`);
-  if(el){const td=el.querySelector('.fl-thumb');if(td){td.style.backgroundImage='url('+thumb+')';td.style.backgroundSize='contain';td.style.backgroundRepeat='no-repeat';td.style.backgroundPosition='center'}}
+  if(el){const td=el.querySelector('.fl-thumb');if(td){
+    const img=new Image();
+    img.onload=()=>{
+      const r=img.naturalWidth/img.naturalHeight;
+      const H=36*_thumbScale();
+      td.style.width=(H*r)+'px';td.style.height=H+'px';
+      td.style.backgroundImage='url('+thumb+')';
+      td.style.backgroundSize='cover';
+      td.style.backgroundPosition='center';
+    };
+    img.src=thumb;
+  }}
 }
+function _thumbScale(){const v=getComputedStyle(document.querySelector('.file-section')).getPropertyValue('--thumb-scale');return parseFloat(v)||1}
 function setStatus(s){document.getElementById('statusText').textContent=s}
 
 // ═══ Drag & Drop 遮罩 — 只在文件列表区 ═══
