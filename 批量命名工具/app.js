@@ -178,7 +178,7 @@ function renderList(){
   updCount();updButtons();
 }
 function updCount(){
-  document.getElementById('fileCount').innerHTML=`文件列表 · <strong style="color:var(--accent);font-weight:600">${files.length}</strong> 个  ·  选中 <strong style="color:var(--accent);font-weight:600">${sel.size}</strong>`;
+  let ok2=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)ok2++});document.getElementById('fileCount').innerHTML=`文件列表 · <span style="color:var(--green)">${ok2}</span>/${files.length} 就绪  ·  选中 ${sel.size}`;
 }
 function _lockInspector(lock){
   document.querySelectorAll('#inspector input:not([data-key="tk"]), #inspector select').forEach(el=>{

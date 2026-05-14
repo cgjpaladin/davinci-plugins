@@ -144,7 +144,6 @@ body{
 .fl-item.sel.mis .fl-new{color:var(--yellow);font-weight:600}
 .fl-item.warn-zero{background:rgba(192,64,64,.12)}
 .fl-item.warn-size{background:rgba(192,160,64,.08)}
-.fl-item.warn-fmt{background:rgba(192,128,208,.08)}
 .fl-item.warn-dbl{background:rgba(192,128,208,.08)}
 .fl-thumb{
   width:calc(24px*var(--thumb-scale,1));height:calc(36px*var(--thumb-scale,1));border-radius:var(--radius);flex-shrink:0;
