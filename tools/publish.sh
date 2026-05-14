@@ -197,6 +197,22 @@ publish_push_all() {
         echo "⛔ 本地尚未构建！请先运行 build_local.sh 再推全公司。"
         exit 1
     fi
+    # ═══ 硬拦截：SMB 文件不得比本地新（防止直接改 SMB 跳过本地测试） ═══
+    local smb_stale=""
+    for f in "$PRODUCT_DIR"/*.py "$PRODUCT_DIR"/adapters/*.py; do
+        [ ! -f "$f" ] && continue
+        local smb_f="$SMB_DIR/$(basename "$f")"
+        [ ! -f "$smb_f" ] && continue
+        if ! diff -q "$f" "$smb_f" > /dev/null 2>&1; then
+            smb_stale="$smb_stale  $(basename "$f")"
+        fi
+    done
+    if [ -n "$smb_stale" ]; then
+        echo "⛔ SMB 上有文件与本地不一致（可能直接在 SMB 上改了）："
+        echo "$smb_stale"
+        echo "   请先在本地修改并运行 build_local.sh，再推全公司。"
+        exit 1
+    fi
     local ver=$(publish_get_version)
     log_full_start "push_all v$ver"
     publish_validate_product
