@@ -12,16 +12,7 @@ window.onerror=function(m,s,l,c,e){const msg='JS错误: '+(m||'未知')+' @ '+(s
 window.addEventListener('unhandledrejection',e=>{const msg='Promise错误: '+e.reason;toast(msg);call('debug_log',msg)});
 const _origErr=console.error;console.error=function(...a){_origErr.apply(console,a);call('debug_log','CONSOLE: '+a.join(' '))};
 
-// ═══ files Proxy — 追踪所有修改 ═══
-const _rawFiles=[];
-let files=new Proxy(_rawFiles,{
-  get(t,k){return t[k]},
-  set(t,k,v){
-    if(k!=='length')call('debug_log',`FILES trace: [${k}]=${v&&v.path?`"${v.path.split('/').pop()}"`:'...'} (stack: ${new Error().stack.split('\\n')[2]?.trim()?.slice(3)||'?'})`);
-    t[k]=v;return true
-  }
-});
-let sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
+let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
 const C={g:'var(--green)',y:'var(--yellow)',r:'var(--red)',b:'var(--text-bright)',d:'var(--text-dim)',gr:'var(--filled-bg)'};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
@@ -439,7 +430,9 @@ let _dropCount=0;
 function onDropResult(result){
   if(result&&result.files){
     _dropCount++;
-    call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}, paths=[${result.files.slice(0,3).map(f=>f.path.split('/').pop()).join(',')}...]`);
+    // 首拖：强制清零（防御未知来源的预注入）
+    if(_firstDrop){_firstDrop=false;call('debug_log',`_firstDrop: was ${files.length}, clearing`);files=[];sel.clear()}
+    call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}`);
     const exist=new Set(files.map(f=>f.path));
     const fresh=result.files.filter(f=>!exist.has(f.path));
     const dup=result.files.length-fresh.length;

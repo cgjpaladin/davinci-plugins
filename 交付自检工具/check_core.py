@@ -1077,18 +1077,31 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
     video_count = timeline.GetTrackCount("video")
     if video_count == 0:
         return [_make_result("fail", detail="无视频轨道", is_summary=True)]
-    timeline_w, timeline_h = 1920, 1080
+
+    # ── 取时间线分辨率（三层兜底，取不到就放弃）──
+    timeline_w = timeline_h = 0
     if project:
         try:
-            timeline_w = int(project.GetSetting("timelineResolutionWidth") or timeline_w)
-            timeline_h = int(project.GetSetting("timelineResolutionHeight") or timeline_h)
-        except Exception: pass
-    try:
-        tl_w = timeline.GetSetting("timelineResolutionWidth")
-        tl_h = timeline.GetSetting("timelineResolutionHeight")
-        if tl_w: timeline_w = int(tl_w)
-        if tl_h: timeline_h = int(tl_h)
-    except Exception: pass
+            pw = project.GetSetting("timelineResolutionWidth")
+            ph = project.GetSetting("timelineResolutionHeight")
+            if pw: timeline_w = int(pw)
+            if ph: timeline_h = int(ph)
+        except Exception:
+            pass
+    if not (timeline_w and timeline_h):
+        try:
+            tw = timeline.GetSetting("timelineResolutionWidth")
+            th = timeline.GetSetting("timelineResolutionHeight")
+            if tw: timeline_w = int(tw)
+            if th: timeline_h = int(th)
+        except Exception:
+            pass
+    if not (timeline_w and timeline_h):
+        return [_make_result("fail",
+            detail="无法读取时间线分辨率，黑边检测已跳过",
+            reason="请检查项目设置中的时间线分辨率是否正常",
+            is_summary=True)]
+
     smpte = _get_smpte(fps)
     # 先收集所有轨上所有片段的时间范围（用于覆盖判定）
     all_ranges = {}  # track_index → [(start, end), ...]
