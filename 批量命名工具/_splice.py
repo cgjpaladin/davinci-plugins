@@ -8,12 +8,15 @@ css = open('app.css').read()
 js  = open('app.js').read()
 html = open('renamer_web.html').read()
 
-# 注入 git hash
+# 注入 git hash + 构建时间
+from datetime import datetime
 try:
     h = subprocess.check_output(['git','-C','..','rev-parse','--short','HEAD']).decode().strip()
 except:
     h = 'dev'
+ts = datetime.now().strftime('%m-%d %H:%M')
 js = js.replace("const APP_VERSION='DEV'", f"const APP_VERSION='{h}'")
+js = js.replace("const APP_BUILD_TIME=''", f"const APP_BUILD_TIME='{ts}'")
 
 html = html.replace('/* CSS_PLACEHOLDER */', css)
 html = html.replace('// JS_PLACEHOLDER', js)
