@@ -336,9 +336,7 @@ function _syncInspectorFromSelection(){
       const el=document.querySelector(`[data-key="${k}"]`);
       if(!el||el.id==='descInput')continue;
       if(vals.size===1){_skipKeys.delete(k);const v=[...vals][0];if(el.tagName==='SELECT'){el.value=v}else{el.value=v};_setVisual(el,v||'')}
-      else{_skipKeys.add(k);el.value='';el.placeholder='[混合]';el.style.color='#9a9a9a';el.style.background=''}      if(el.tagName==='SELECT'){el.value=vals.size===1?[...vals][0]:'';_setVisual(el,el.value)}
-      else{el.value=single||'';_setVisual(el,el.value)}
-    }
+      else{_skipKeys.add(k);el.value='';el.placeholder='[混合]';el.style.color='#9a9a9a';el.style.background=''}    }
     const mv=new Set(ix.map(i=>files[i].fields.method||''));
     if(mv.size===1){_skipKeys.delete('method');document.getElementById('methodSelect').value=[...mv][0]}
     else{_skipKeys.add('method');document.getElementById('methodSelect').value=''}
