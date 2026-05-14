@@ -109,4 +109,4 @@ def _watchdog():
             pass  # pgrep 挂了不误杀
 _wd = threading.Thread(target=_watchdog, daemon=True)
 _wd.start()
-_proc.wait()  # 阻塞等子进程退出，窗口关了 launcher 也跟着退
+# 不 wait()——Fusion 脚本线程不能阻塞，否则下次开插件会卡达芬奇
