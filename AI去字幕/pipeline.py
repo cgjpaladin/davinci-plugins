@@ -67,10 +67,8 @@ class SubtitlePipeline(BasePipeline):
         return self._adapter
 
     def _retry_with_fallback(self, tasks, batch):
-        """手动模式不自动切引擎"""
-        if self.manual_engine != "auto":
-            self.log.fail(f"处理失败，引擎 '{self.manual_engine}' 不可用，请更换引擎后重试")
-            return super()._retry_with_fallback(tasks, batch)  # 仍然返回结果(不处理)
+        """引擎失败提示，不自动切（用户手动换）"""
+        self.log.fail(f"处理失败，引擎 '{self.manual_engine}' 不可用，请更换引擎后重试")
         return super()._retry_with_fallback(tasks, batch)
 
     # ═══════════════════════════════════════

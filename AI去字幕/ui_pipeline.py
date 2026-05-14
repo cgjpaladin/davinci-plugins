@@ -243,8 +243,8 @@ def refresh_bal():
     from pricing_defaults import ADAPTER_PRIORITY
     from adapters import create_ghostcut_adapter, create_wuhenai_adapter
 
-    items = ["自动（优先）"]
-    current_idx = 0  # 默认选中"自动"
+    items = []
+    current_idx = 0  # 默认选主力
     main_key = ADAPTER_PRIORITY[0]
     backup_key = ADAPTER_PRIORITY[1] if len(ADAPTER_PRIORITY) > 1 else None
 
@@ -291,15 +291,13 @@ def refresh_bal():
             continue
 
 def get_selected_engine():
-    """返回用户选择的引擎：'auto' / '无痕AI 2.1' / 'GhostCut'"""
+    """返回用户选择的引擎"""
     sel = itm[API_CB].CurrentText
-    if not sel or "自动" in sel:
-        return "auto"
     if "无痕" in sel:
         return "无痕AI 2.1"
     if "鬼手" in sel or "Ghost" in sel:
         return "GhostCut"
-    return "auto"
+    return ADAPTER_PRIORITY[0]  # 兜底：主力
 
 
 # ── 阿里云余额 ──
