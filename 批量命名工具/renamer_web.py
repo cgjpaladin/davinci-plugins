@@ -326,11 +326,12 @@ class RenamerAPI:
                 max_tk = 0
                 if os.path.isdir(folder):
                     for fn in os.listdir(folder):
-                        m = re.search(r'Tk(\d{2})(?!\d)', fn)
+                        m = re.search(r'Tk(0[1-9]|[1-9]\d)(?!\d)', fn)
                         if m:
                             max_tk = max(max_tk, int(m.group(1)))
                 nxt = max_tk + 1
-                fd['tk'] = str(nxt).zfill(2) if nxt <= 99 else str(nxt).zfill(2)[-2:]
+                if nxt > 99: fail.append(f'{fd.get("ep","?")}_{fd.get("sc","?")}: TK 已满(99)'); continue
+                fd['tk'] = str(nxt).zfill(2)
                 target = os.path.join(folder, build_filename(fd) + ext)
             except:
                 fd['tk'] = '01'
