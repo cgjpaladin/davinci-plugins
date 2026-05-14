@@ -63,7 +63,7 @@ async function init(){
     if(d[fd.key]){const el=document.querySelector(`[data-key="${fd.key}"]`);if(el){if(el.tagName==='SELECT')el.value=d[fd.key];else{el.value=d[fd.key];_setVisual(el,d[fd.key])}}}
   }
   document.getElementById('methodSelect').value=d.method||'';
-  onMethodChange();
+  _fromSync=true;onMethodChange();_fromSync=false;
   // 绑定事件（在元素创建后）
   _bindInspectorListeners();
 
@@ -168,7 +168,7 @@ function getFields(){
 }
 
 // ═══ Method → Desc ═══
-let _prevMethod='';
+let _prevMethod='',_fromSync=false;
 function onMethodChange(){
   const m=document.getElementById('methodSelect').value||'请选择';
   // 混合态跳过：method 差异大时不强行改 desc
@@ -179,13 +179,14 @@ function onMethodChange(){
   if(cfg.mode==='locked'){descInput('text',cfg.value,true);descLocked=true}
   else if(cfg.mode==='dropdown'){descSelect(cfg.values);descLocked=false}
   else{const ro=cfg.hint.includes('请先选择');descInput('text','',ro,cfg.hint);descLocked=false}
-  if(methodChanged&&sel.size>0){
+  // 用户手动改 method 才写 desc；_syncInspector 调用时不写
+  if(methodChanged&&sel.size>0&&!_fromSync){
     const dv=cfg.mode==='locked'?cfg.value:'';
     for(const i of sel) files[i].fields.desc=dv;
     renderList();updButtons();
   }
   setTimeout(()=>_setVisual(document.getElementById('methodSelect'),m),0);
-}// 获取选中文件的存储 desc（单文件返回该值，多文件不一致返回空，无选中返回空）
+}
 function descInput(t,v,ro,ph){
   const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const el=document.getElementById('descInput');
@@ -329,7 +330,7 @@ function _syncInspectorFromSelection(){
       else{el.value=v;_setVisual(el,v)}
     }
     document.getElementById('methodSelect').value=f.fields.method||'';
-    onMethodChange();
+    _fromSync=true;onMethodChange();_fromSync=false;
     _setDescValue(f.fields.desc||'');
   }else{
     const ks=(window._fieldKeys||['ep','sc','gr','author','ver','status']);
@@ -342,7 +343,7 @@ function _syncInspectorFromSelection(){
     const mv=new Set(ix.map(i=>files[i].fields.method||''));
     if(mv.size===1){_skipKeys.delete('method');document.getElementById('methodSelect').value=[...mv][0]}
     else{_skipKeys.add('method');document.getElementById('methodSelect').value=''}
-    onMethodChange();
+    _fromSync=true;onMethodChange();_fromSync=false;
     const dv=new Set(ix.map(i=>files[i].fields.desc||''));
     if(dv.size===1){_skipKeys.delete('desc');_setDescValue([...dv][0])}
     else{_skipKeys.add('desc');const el=document.getElementById('descInput');if(el){el.value='';el.placeholder='[混合]';el.style.color='#9a9a9a';el.style.background=''}}
