@@ -204,7 +204,6 @@ def scan_io(*_):
             itm[PROJ_LB].Text = "③ 请点击开始处理"
         ui.set_status(f"待处理: {report.valid} 个片段")
         _event_log(f"扫描 — 项目: {project.GetName()} 时间线: {timeline.GetName()} IO={io_in}→{io_out} 内{report.valid}片段 需处理{need} 约{total_time}分钟 预估¥{yuan}")
-        refresh_bal()
     except Exception as e:
         ui.log_fail(f"扫描失败: {e}")
         _event_log(f"扫描失败: {e}")
@@ -233,36 +232,69 @@ def _refresh_scan_display():
         ui.set_status("就绪")
 
 
-# ── 余额 ──
+# ── 余额 + 引擎选择 ──
 _cached_balance = 0
-_cached_provider = ""
-_cached_pricing_key = "wuhenai"  # point_to_yuan() 定价 key
+_cached_provider = "auto"
+_cached_pricing_key = "wuhenai"
 
 def refresh_bal():
-    """刷新余额显示 — 按 ADAPTER_PRIORITY 依次尝试"""
+    """刷新引擎下拉框 — 查询所有 adapter 余额填入选单"""
     global _cached_balance, _cached_provider, _cached_pricing_key
     from pricing_defaults import ADAPTER_PRIORITY
+    from adapters import create_ghostcut_adapter, create_wuhenai_adapter
+
+    items = ["自动（优先）"]
+    current_idx = 0  # 默认选中"自动"
 
     for key in ADAPTER_PRIORITY:
         try:
             if key == "ghostcut":
-                from adapters import create_ghostcut_adapter
                 a = create_ghostcut_adapter()
                 bal = a.get_balance()
                 pts = sum(x["pointBalance"] for x in bal.get("pointAssets", []) if x["pointBalance"] > 0)
             else:
-                from adapters import create_wuhenai_adapter
                 a = create_wuhenai_adapter()
+                pts = query_balance(a)
+            yuan = point_to_yuan(pts, provider=key)
+            items.append(f"{a.name} | ¥{yuan:.2f}")
+            # 如果此前手动选了该引擎，保持选中
+            if _cached_provider == a.name:
+                current_idx = len(items) - 1
+        except Exception:
+            items.append(f"{'鬼手剪辑' if key == 'ghostcut' else '无痕AI 2.1'} | 离线")
+
+    # 写入下拉框
+    idx = 0
+    for item_text in items:
+        itm[API_CB].AddItem(item_text)
+        if idx == current_idx:
+            itm[API_CB].SetCurrentIndex(idx)
+        idx += 1
+    # 缓存：取优先级最高的有效余额
+    for key in ADAPTER_PRIORITY:
+        try:
+            if key == "ghostcut":
+                a = create_ghostcut_adapter()
+                pts = sum(x["pointBalance"] for x in a.get_balance().get("pointAssets", []) if x["pointBalance"] > 0)
+            else:
                 pts = query_balance(a)
             if pts >= 5:
                 _cached_balance = pts
-                _cached_provider = a.name
                 _cached_pricing_key = key
-                _bal(f"{_cached_provider} | ¥{point_to_yuan(pts, provider=key):.2f}")
-                return
+                break
         except Exception:
             continue
-    _bal("余额: 查询失败")
+
+def get_selected_engine():
+    """返回用户选择的引擎：'auto' / '无痕AI 2.1' / 'GhostCut'"""
+    sel = itm[API_CB].CurrentText
+    if not sel or "自动" in sel:
+        return "auto"
+    if "无痕" in sel:
+        return "无痕AI 2.1"
+    if "鬼手" in sel or "Ghost" in sel:
+        return "GhostCut"
+    return "auto"
 
 
 # ── 阿里云余额 ──
@@ -325,6 +357,7 @@ def process(*_):
         import math
 
         pipeline = SubtitlePipeline()
+        pipeline.manual_engine = get_selected_engine()
 
         # ── UI 专属钩子 ──
 
@@ -416,8 +449,8 @@ def process(*_):
             on_progress=_on_progress,
         )
 
-        # 余额更新（处理完成后用缓存的余额）
-        _bal(f"{_cached_provider} | ¥{point_to_yuan(pts_before, provider=_cached_pricing_key):.2f}")
+        # 处理完成后刷新引擎余额
+        refresh_bal()
 
     except Exception as e:
         ui.log_fail(f"{e}")

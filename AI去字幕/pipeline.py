@@ -48,6 +48,7 @@ class SubtitlePipeline(BasePipeline):
         self._adapter = None
         self._scan_report = None
         self._io_info = None
+        self.manual_engine = "auto"   # "auto" / "无痕AI 2.1" / "GhostCut"
 
     # ═══════════════════════════════════════
     # 适配器
@@ -55,8 +56,22 @@ class SubtitlePipeline(BasePipeline):
 
     def _get_adapter(self):
         if self._adapter is None:
-            self._adapter = create_preferred_adapter()
+            if self.manual_engine == "无痕AI 2.1":
+                from adapters import create_wuhenai_adapter
+                self._adapter = create_wuhenai_adapter()
+            elif self.manual_engine == "GhostCut":
+                from adapters import create_ghostcut_adapter
+                self._adapter = create_ghostcut_adapter()
+            else:
+                self._adapter = create_preferred_adapter()
         return self._adapter
+
+    def _retry_with_fallback(self, tasks, batch):
+        """手动模式不自动切引擎"""
+        if self.manual_engine != "auto":
+            self.log.fail(f"处理失败，引擎 '{self.manual_engine}' 不可用，请更换引擎后重试")
+            return super()._retry_with_fallback(tasks, batch)  # 仍然返回结果(不处理)
+        return super()._retry_with_fallback(tasks, batch)
 
     # ═══════════════════════════════════════
     # 抽象方法实现
