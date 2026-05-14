@@ -39,6 +39,7 @@ if os.path.exists(CFG_FILE):
     except:
         pass
 
+THUMB_MAX = 200  # 缩略图批次上限
 _undo_stack = []  # list of lists: [[(old,new),...], [(old,new),...]]
 _window = None  # 存引用
 
@@ -67,10 +68,8 @@ class RenamerAPI:
 
     def generate_thumbnails(self, paths):
         """用 ffmpeg 提取视频第一帧，返回 base64 data URI"""
-        import subprocess, base64, tempfile
-        ffmpeg = "/opt/homebrew/bin/ffmpeg"
-        if not os.path.exists(ffmpeg):
-            ffmpeg = "ffmpeg"
+        import subprocess, base64, tempfile, shutil
+        ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
         _log.info(f"generate_thumbnails: {len(paths)} files, ffmpeg={ffmpeg}")
         thumbs = {}
         for p in paths:
