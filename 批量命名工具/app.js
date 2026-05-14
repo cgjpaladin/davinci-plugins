@@ -62,6 +62,25 @@ async function init(){
   onMethodChange();
   // 绑定事件（在元素创建后）
   _bindInspectorListeners();
+
+  // 浏览器预览模式：注册 mock 拖放（仅在确认非 pywebview 时）
+  if(!window.pywebview){
+    const dz=document.getElementById('fileList');
+    dz.addEventListener('dragover',e=>{e.preventDefault()});
+    dz.addEventListener('drop',e=>{
+      e.preventDefault();
+      const items=[...e.dataTransfer.files].filter(f=>f.type.startsWith('video/')||f.name.match(/\.(mp4|mov|mxf|avi|mkv)$/i));
+      if(!items.length)return;
+      const mockFiles=items.map(f=>({
+        path:f.name,basename:f.name,ext:'.'+(f.name.split('.').pop()||'mp4'),
+        fields:{ep:'',sc:'',gr:'',desc:'',author:'',method:'',ver:'',status:''},
+        tags:/(\.[^.]+)\1$/i.test(f.name)?['dbl_ext']:[]
+      }));
+      files=files.concat(mockFiles.filter(mf=>!files.some(ef=>ef.path===mf.path)));
+      renderList();updButtons();
+      toast('已追加 '+mockFiles.length+' 个文件 (预览模式)');
+    });
+  }
 }
 // ═══ init — 轮询等待 pywebview 桥接 ═══
 let _ready=false;

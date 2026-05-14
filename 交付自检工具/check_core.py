@@ -1098,9 +1098,10 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
             pass
     if not (timeline_w and timeline_h):
         return [_make_result("fail",
-            detail="无法读取时间线分辨率，黑边检测已跳过",
-            reason="请检查项目设置中的时间线分辨率是否正常",
-            is_summary=True)]
+            detail="黑边检测: 无法读取时间线分辨率，已跳过",
+            is_summary=True),
+            _make_result("fail",
+            reason="请检查项目设置中的时间线分辨率是否正常")]
 
     smpte = _get_smpte(fps)
     # 先收集所有轨上所有片段的时间范围（用于覆盖判定）
