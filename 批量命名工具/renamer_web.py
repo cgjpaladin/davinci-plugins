@@ -149,7 +149,7 @@ class RenamerAPI:
             for f in sorted(os.listdir(folder)):
                 fp = os.path.join(folder, f)
                 if os.path.isfile(fp):
-                    paths.append(fp)
+                    paths.append(os.path.realpath(fp))
         except:
             pass
         return self._process_paths(paths)
@@ -178,7 +178,7 @@ class RenamerAPI:
             if len(files) >= MAX_FILES: truncated = True; break
             p = str(p_).strip()
             if p.startswith("file://"): p = unquote(p[7:])
-            p = os.path.expanduser(p)
+            p = os.path.realpath(p)
 
             if os.path.isfile(p):
                 if p in {f["path"] for f in files}: duplicates += 1; continue
@@ -358,12 +358,12 @@ if __name__ == "__main__":
                 fp = f.get('pywebviewFullPath', '')
                 if not fp: continue
                 if os.path.isfile(fp):
-                    paths.append(fp)
+                    paths.append(os.path.realpath(fp))
                 elif os.path.isdir(fp):
                     # 展开文件夹内容
                     try:
                         for sf in sorted(os.listdir(fp)):
-                            sfp = os.path.join(fp, sf)
+                            sfp = os.path.realpath(os.path.join(fp, sf))
                             if os.path.isfile(sfp):
                                 paths.append(sfp)
                     except: pass
