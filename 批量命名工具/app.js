@@ -500,6 +500,15 @@ document.addEventListener('keydown',e=>{
     if(idx>=0&&idx+1<all.length){all[idx+1].focus();if(typeof all[idx+1].select==='function')all[idx+1].select()}
     else{call("debug_log",`FILES list: removed ${sel.size} items -> ${files.length-sel.size} remaining`);sel.clear();renderList();updButtons();e.target.blur()}
   }
+  // ← → 在字段间跳转
+  if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&e.target.closest('#inspector')&&sel.size){
+    e.preventDefault();
+    const all=[...document.querySelectorAll('#inspector input:not([readonly]), #inspector select')];
+    const idx=all.indexOf(e.target);
+    const delta=e.key==='ArrowRight'?1:-1;
+    const nxt=idx+delta;
+    if(nxt>=0&&nxt<all.length){all[nxt].focus();if(typeof all[nxt].select==='function')all[nxt].select()}
+  }
   // ↑↓ 切换文件
   if((e.key==='ArrowUp'||e.key==='ArrowDown')&&sel.size===1){
     if(e.target.closest('#inspector')||e.target.closest('#fileList')){
@@ -508,6 +517,12 @@ document.addEventListener('keydown',e=>{
       const next=cur+(e.key==='ArrowDown'?1:-1);
       if(next>=0&&next<files.length){sel.clear();sel.add(next);renderList();_syncInspectorFromSelection();updButtons()}
     }
+  }
+  // Home → 第一个文件, End → 最后一个
+  if((e.key==='Home'||e.key==='End')&&e.target.closest('#inspector')&&sel.size===1){
+    e.preventDefault();
+    const i=e.key==='Home'?0:files.length-1;
+    sel.clear();sel.add(i);renderList();_syncInspectorFromSelection();updButtons();
   }
   // Cmd+A: input 里正常全选；其他位置 → 全选文件列表
   if((e.metaKey||e.ctrlKey)&&e.key==='a'){
