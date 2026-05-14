@@ -52,7 +52,7 @@ from ui_widgets import (
     _ui_lock, _ui_pending,
     _t_start, _t_estimated, _task_count,
     _update_countdown,
-    BAL_LB, OSS_LB, PROJ_LB, PATH_LB,
+    BAL_LB, API_CB, OSS_LB, PROJ_LB, PATH_LB,
     BTN_SCAN, BTN_START, BTN_STOP, BTN_PICK, BTN_UNDO,
     COLOR_CB, LOG_LB, ST_LB, PG_BAR,
 )
