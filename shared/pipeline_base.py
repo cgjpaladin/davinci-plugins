@@ -296,7 +296,7 @@ class BasePipeline(ABC):
         # 余额仅后端记录，不推日志区（用户已在面板手动刷新过）
 
         if pts > 0 and pts < total_est:
-            self.log.fail(f"余额不足: {pts:.1f} < {total_est}")
+            self.log.fail(f"余额不足，请联系裁缝老师充值（当前{pts:.1f}点，需要{total_est}点）")
             self._report["error"] = "余额不足"
             _log_ops.ops({"event": "balance_check", "pts": pts, "need": total_est, "result": "blocked"})
             return False
@@ -308,7 +308,7 @@ class BasePipeline(ABC):
             bal2 = adapter.get_balance()
             pts_now = self._parse_balance(bal2)
             if pts_now < total_est:
-                self.log.fail(f"余额不足: 当前{pts_now} < 需要{total_est}（可能被其他机器消费）")
+                self.log.fail(f"余额不足，请联系裁缝老师充值（当前{pts_now}点，需要{total_est}点）")
                 self._report["error"] = "余额不足（二次校验）"
                 return False
         except Exception:
