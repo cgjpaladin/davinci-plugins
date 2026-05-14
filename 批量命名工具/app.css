@@ -142,9 +142,9 @@ body{
 .fl-item.sel.rdy .fl-new{color:var(--green);font-weight:600}
 .fl-item.sel.mis{background:rgba(255,180,0,0.08);border-color:var(--yellow)}
 .fl-item.sel.mis .fl-new{color:var(--yellow);font-weight:600}
-.fl-item.warn-zero{background:rgba(192,64,64,.12)}
-.fl-item.warn-size{background:rgba(192,160,64,.08)}
-.fl-item.warn-dbl{background:rgba(192,128,208,.08)}
+.fl-item.warn-zero{background:rgba(192,64,64,.1);border-left:3px solid var(--red)}
+.fl-item.warn-size{background:rgba(192,160,64,.08);border-left:3px solid #c0a040}
+.fl-item.warn-dbl{background:rgba(192,128,208,.08);border-left:3px solid #c080d0}
 .fl-thumb{
   width:calc(24px*var(--thumb-scale,1));height:calc(36px*var(--thumb-scale,1));border-radius:var(--radius);flex-shrink:0;
   background:#222;border:1px solid #333;
