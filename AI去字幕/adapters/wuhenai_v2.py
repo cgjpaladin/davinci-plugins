@@ -733,8 +733,7 @@ class WuhenAIV21Adapter(BaseAdapter):
                         try:
                             self.cancel(tid)
                         except Exception:
-                            # cancel 在批量取消场景下可能因任务已完成而失败
-                            pass
+                            _log(f"[无痕AI 2.1] cancel() 失败(task={tid[-8:]})，非阻塞")
                     rec["result"] = SubtitleResult(
                         success=False,
                         task_id=tid,

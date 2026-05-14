@@ -344,7 +344,7 @@ class GhostCutAdapter(BaseAdapter):
                 try:
                     self.cancel(task_id)
                 except Exception:
-                    pass
+                    self._log("warn", f"cancel() 失败(task={task_id[-8:]})，非阻塞")
                 return SubtitleResult(
                     success=False,
                     task_id=task_id,
@@ -358,11 +358,11 @@ class GhostCutAdapter(BaseAdapter):
                 
                 if status == 1:
                     # 成功
-                    video_url = content.get("videoUrl", "")
+                    video_url = content.get("videoUrl", "") or ""
                     
                     # 如果指定了 output_path，自动下载
                     download_path = self._output_path
-                    if download_path:
+                    if download_path and video_url:
                         self._log("debug", f"下载处理结果到: {download_path}")
                         urllib.request.urlretrieve(video_url, download_path)
                     

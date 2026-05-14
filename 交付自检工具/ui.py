@@ -1406,8 +1406,11 @@ def _start_check():
         def _all_enabled(tt, count):
             for ti in range(1, count + 1):
                 try:
-                    if not timeline.GetIsTrackEnabled(tt, ti): return False
-                except Exception: pass
+                    if not timeline.GetIsTrackEnabled(tt, ti):
+                        return False
+                except Exception:
+                    _action_log(f"⚠ 无法读取 {tt} 轨 {ti} 启用状态，视为未启用")
+                    return False
             return True
 
         aud_names_ok = True

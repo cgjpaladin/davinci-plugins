@@ -1282,11 +1282,15 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
     issues = []
 
     # ── ① 时间线节点 ──
+    tl_nodes = 0
     try:
         tl_graph = timeline.GetNodeGraph()
-        tl_nodes = tl_graph.GetNumNodes() if tl_graph else 0
+        if tl_graph is not None:
+            tl_nodes = tl_graph.GetNumNodes()
     except Exception:
-        tl_nodes = 0
+        issues.append(_make_result("fail",
+            detail="调色: 无法读取时间线 NodeGraph",
+            reason="可能是达芬奇版本不支持，请手动检查调色节点"))
 
     if tl_nodes > 0:
         issues.append(_make_result("fail",
@@ -1364,8 +1368,13 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
             if _get_cached(it, "enabled", True) is False:
                 continue
 
-            ng = it.GetNodeGraph()
-            n = ng.GetNumNodes()
+            try:
+                ng = it.GetNodeGraph()
+                if ng is None:
+                    continue
+                n = ng.GetNumNodes()
+            except Exception:
+                continue
             if n > 2:
                 continue
 
