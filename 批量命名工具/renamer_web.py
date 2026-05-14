@@ -296,7 +296,7 @@ class RenamerAPI:
     def do_archive(self, files, dest):
         import hashlib
         _log.info(f"do_archive: {len(files)} files, dest={dest}")
-        ok = 0; fail = []; dup = 0; dest = re.sub(r'^smb://[\d.]+/', '/Volumes/', str(dest).strip())
+        ok = 0; fail = []; dup = 0; dest = os.path.realpath(re.sub(r'^smb://[\d.]+/', '/Volumes/', str(dest).strip()))
         def _hash_file(p):
             with open(p, 'rb') as fh:
                 return hashlib.sha256(fh.read()).digest()
@@ -312,7 +312,7 @@ class RenamerAPI:
                             h = _hash_file(fp)
                             if h not in seen: seen[h] = fp
                     except: pass
-                if len(seen) > 500: break
+                if len(seen) > 100: break
         # 逐文件处理
         for f in files:
             fd = f.get("fields", {})
@@ -326,7 +326,7 @@ class RenamerAPI:
                 max_tk = 0
                 if os.path.isdir(folder):
                     for fn in os.listdir(folder):
-                        m = re.search(r'Tk(0[1-9]|[1-9]\d)(?!\d)', fn)
+                        m = re.search(r'\bTk(0[1-9]|[1-9]\d)(?:_|\.mp4|\.mov|\.mxf|\.avi|\.mkv|$)', fn)
                         if m:
                             max_tk = max(max_tk, int(m.group(1)))
                 nxt = max_tk + 1
