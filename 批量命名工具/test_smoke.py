@@ -2,7 +2,8 @@
 import os, sys, tempfile, shutil
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from shared.naming import build_filename, FIELD_CONFIG
+from shared.naming import build_filename, FIELD_CONFIG, parse_filename, FILENAME_RE
+from shared.naming_checks import check_zero_byte, check_double_ext
 
 passed = 0
 failed = 0
@@ -42,7 +43,7 @@ print(f"   输出: {result}")
 
 # ═══ 3. 命名格式 ↔ 解析互逆 ═══
 print("\n3. 命名 ↔ 解析")
-from shared.naming import parse_filename
+
 import tempfile
 tmpdir = tempfile.mkdtemp()
 name = result + ".mp4"
@@ -58,7 +59,7 @@ shutil.rmtree(tmpdir)
 
 # ═══ 4. 命名正则 ↔ 格式一致 ═══
 print("\n4. 正则匹配")
-from shared.naming import FILENAME_RE
+
 check("FILENAME_RE 匹配", FILENAME_RE.match(name) is not None)
 
 # ═══ 5. 检查函数 ═══
