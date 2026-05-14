@@ -171,6 +171,8 @@ function getFields(){
 let _prevMethod='';
 function onMethodChange(){
   const m=document.getElementById('methodSelect').value||'请选择';
+  // 混合态跳过：method 差异大时不强行改 desc
+  if(_skipKeys.has('method')){setTimeout(()=>_setVisual(document.getElementById('methodSelect'),m),0);return}
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
   const methodChanged=m!==_prevMethod;
   _prevMethod=m;
@@ -343,7 +345,7 @@ function _syncInspectorFromSelection(){
     onMethodChange();
     const dv=new Set(ix.map(i=>files[i].fields.desc||''));
     if(dv.size===1){_skipKeys.delete('desc');_setDescValue([...dv][0])}
-    else{_skipKeys.add('desc')}
+    else{_skipKeys.add('desc');const el=document.getElementById('descInput');if(el){el.value='';el.placeholder='[混合]';el.style.color='#9a9a9a';el.style.background=''}}
   }
   const tkEl=document.querySelector('[data-key="tk"]');
   if(tkEl){tkEl.value=sel.size?'自动排序':'';_setVisual(tkEl,'自动排序')}
