@@ -130,7 +130,7 @@ function _bindInspectorListeners(){
   // 输入框：数字验证 + 泛用 handler
   document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
     if(el.readOnly)return;
-    el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color=C.b;const v=el.value.trim();el.style.background=v&&v!=='请选择'&&v!=='手动输入…'?C.gr:''});
+    el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color=C.b;const v=el.value.trim();el.style.background=v&&v!=='请选择'&&v!=='手动输入…'?C.gr:'var(--surface2)'});
     el.addEventListener('blur',()=>{if(!sel.size)return;_setVisual(el,el.value.trim())});
     const rx=DIGIT_RULES[el.getAttribute('data-key')];
     if(rx){
@@ -263,7 +263,8 @@ function updCount(){
 function _setVisual(el,v){
   const filled=v&&v!=='请选择'&&v!=='手动输入…';
   el.style.color=filled?'var(--text-bright)':'#9a9a9a';
-  el.style.background=filled?'var(--filled-bg)':'';
+  if(filled)el.style.background='var(--filled-bg)';
+  else el.style.background='var(--surface2)';
 }
 function _lockInspector(lock){
   document.querySelectorAll('#inspector input:not([data-key="tk"]), #inspector select').forEach(el=>{
