@@ -347,19 +347,21 @@ function _syncInspectorFromSelection(){
 }
 function _setDescValue(v){
   const ci=document.getElementById('descCustomInput');
-  if(ci){ci.value=v||'';_setVisual(ci,v);return}
+  if(ci){if(descLocked)return;ci.value=v||'';_setVisual(ci,v);return}
   const el=document.getElementById('descInput');
-  if(!el||!v)return;
+  if(!el)return;
+  if(descLocked&&el.tagName==='INPUT'){if(el.readOnly)return;el.value=v;_setVisual(el,v);return}
+  if(!v)return;
   if(el.tagName==='SELECT'){
-    for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;_setVisual(el,d[fd.key]);el.style.background='var(--filled-bg)';return}}
+    for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;_setVisual(el,v);return}}
     // 不在选项里 → 切到「手动输入…」并填值
-    el.value='手动输入…';_setVisual(el,d[fd.key]);el.style.background='var(--filled-bg)';
+    el.value='手动输入…';_setVisual(el,'手动输入…');
     const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');
     ip.value=v;ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;color:var(--text-bright);';
     ip.oninput=()=>{_setVisual(ip,ip.value);_applyInspectorToSelected();renderList();updButtons()};
     el.after(ip);
   }else if(el.tagName==='INPUT'){
-    el.value=v;_setVisual(el,d[fd.key]);el.style.background='var(--filled-bg)';
+    el.value=v;_setVisual(el,v);
   }
 }
 
