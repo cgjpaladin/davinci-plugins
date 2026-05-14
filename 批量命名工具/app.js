@@ -112,7 +112,7 @@ function _buildInspector(fields){
     if(fd.dv){
       const s=document.createElement('select');s.setAttribute('data-key',fd.key);
       if(fd.key==='method')s.id='methodSelect';
-      fd.dv.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o)});
+      fd.dv.forEach((v,i)=>{const o=document.createElement('option');o.value=i===0?'':v;o.textContent=v;s.appendChild(o)});
       d.appendChild(s);
     }else{
       const ip=document.createElement('input');ip.setAttribute('data-key',fd.key);
