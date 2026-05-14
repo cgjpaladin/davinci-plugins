@@ -1,3 +1,4 @@
+const APP_VERSION='DEV';
 // ═══ 立即执行 — 确认脚本加载 ═══
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('debugMode').textContent='JS ✓';
@@ -43,7 +44,7 @@ async function init(){
 
   const cfg=await call('get_config');
   methodDescMap=cfg.method_desc_map||{};_nameFmt=cfg.name_format||[];
-  if(cfg.dev)document.getElementById('debugMode').textContent='🔧 DEV';
+  const v=APP_VERSION||'?';document.getElementById('debugMode').textContent=(cfg.dev?'🔧 DEV ':'')+'v'+v;
   const d=cfg.defaults||{};
   for(const fd of cfg.fields){
     if(d[fd.key]){const el=document.querySelector(`[data-key="${fd.key}"]`);if(el){if(el.tagName==='SELECT')el.value=d[fd.key];else{el.value=d[fd.key];el.style.color='var(--text-bright)'}}}

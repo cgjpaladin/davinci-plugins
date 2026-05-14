@@ -27,6 +27,7 @@ python3 -c "
 css=open('app.css').read();js=open('app.js').read()
 html=open('renamer_web.html').read()
 html=html.replace('/* CSS_PLACEHOLDER */',css)
+js=js.replace("const APP_VERSION='DEV'","const APP_VERSION='"+__import__('subprocess').check_output(['git','-C','..','rev-parse','--short','HEAD']).decode().strip()+"'")
 html=html.replace('// JS_PLACEHOLDER',js)
 open('_build/renamer_web.html','w').write(html)
 "
