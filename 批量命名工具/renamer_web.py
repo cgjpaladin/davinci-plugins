@@ -80,8 +80,10 @@ class RenamerAPI:
 
     def generate_thumbnails(self, paths):
         """用 ffmpeg 提取视频第一帧，返回 base64 data URI"""
-        import subprocess, base64, tempfile, shutil as _shutil
-        ffmpeg = _shutil.which('ffmpeg') or '/opt/homebrew/bin/ffmpeg'
+        import subprocess, base64, tempfile
+        ffmpeg = "/opt/homebrew/bin/ffmpeg"
+        if not os.path.exists(ffmpeg):
+            ffmpeg = "ffmpeg"
         _log.info(f"generate_thumbnails: {len(paths)} files, ffmpeg={ffmpeg}")
         thumbs = {}
         for p in paths:
@@ -89,18 +91,20 @@ class RenamerAPI:
                 tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
                 tmp.close()
                 result = subprocess.run(
-                    [ffmpeg, '-y', '-i', p, '-vframes', '1', '-s', '48x72', '-q:v', '5', tmp.name],
+                    [ffmpeg, '-y', '-ss', '00:00:01', '-i', p, '-vframes', '1', '-s', '160x90', tmp.name],
                     capture_output=True, timeout=5
                 )
-                if result.returncode != 0:
-                    _log.info(f"  ffmpeg fail: {result.stderr[:200]}")
+
                 if os.path.isfile(tmp.name) and os.path.getsize(tmp.name) > 100:
                     with open(tmp.name, 'rb') as f:
                         b64 = base64.b64encode(f.read()).decode()
-                    thumbs[p] = f"data:image/jpg;base64,{b64}"
-                os.unlink(tmp.name)
+                    thumbs[p] = f"data:image/jpeg;base64,{b64}"
+                try: os.unlink(tmp.name)
+                except: pass
             except Exception as e:
                 _log.info(f"  thumb error: {e}")
+                try: os.unlink(tmp.name)
+                except: pass
                 try: os.unlink(tmp.name)
                 except: pass
         _log.info(f"generate_thumbnails done: {len(thumbs)} thumbs")
