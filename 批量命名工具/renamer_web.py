@@ -296,23 +296,43 @@ class RenamerAPI:
     def do_archive(self, files, dest):
         import hashlib
         _log.info(f"do_archive: {len(files)} files, dest={dest}")
-        ok = 0; fail = []; dup = []; dest = re.sub(r'^smb://[\d.]+/', '/Volumes/', str(dest).strip())
+        ok = 0; fail = []; dup = 0; dest = re.sub(r'^smb://[\d.]+/', '/Volumes/', str(dest).strip())
+        # 扫目标文件夹建哈希索引（防同名不同内容重复）
+        existing = {}  # {size: [(path,hash)]}
+        def _hash_file(p):
+            with open(p, 'rb') as fh:
+                return hashlib.sha256(fh.read()).digest()
+        if os.path.isdir(dest):
+            for root, dirs, filenames in os.walk(dest):
+                for fn in filenames:
+                    fp = os.path.join(root, fn)
+                    try:
+                        sz = os.path.getsize(fp)
+                        if sz > 0:
+                            if sz not in existing: existing[sz] = []
+                            existing[sz].append(fp)
+                    except: pass
+                if len(existing) > 500: break  # 安全阀
         for f in files:
             fd = f.get("fields", {})
             ext = f.get("ext", ".mp4")
             target = build_folder(dest, type('E',(),{'fields':fd,'ext':ext})())
             os.makedirs(os.path.dirname(target), exist_ok=True)
-            # 重复检测
-            if os.path.exists(target):
-                src_sz = os.path.getsize(f["path"])
-                dst_sz = os.path.getsize(target)
-                if src_sz == dst_sz:
-                    with open(f["path"], 'rb') as fa, open(target, 'rb') as fb:
-                        if hashlib.sha256(fa.read()).digest() == hashlib.sha256(fb.read()).digest():
-                            dup.append(os.path.basename(target)); continue
+            # 重复检测：同哈希即跳（不限同名）
+            src_sz = os.path.getsize(f["path"])
+            if src_sz in existing:
+                src_hash = _hash_file(f["path"])
+                dup_found = False
+                for cand in existing.get(src_sz, []):
+                    try:
+                        if os.path.exists(cand) and os.path.getsize(cand) == src_sz:
+                            if _hash_file(cand) == src_hash:
+                                dup += 1; dup_found = True; break
+                    except: pass
+                if dup_found: continue
             try: shutil.copy2(f["path"], target); ok += 1
             except Exception as e: fail.append(os.path.basename(f["path"]) + ": " + str(e))
-        return {"ok": ok, "dup": len(dup), "fail": fail, "total": len(files)}
+        return {"ok": ok, "dup": dup, "fail": fail, "total": len(files)}
 
 
 HTML_FILE = os.path.join(_BASE_DIR, "renamer_web.html")
