@@ -170,21 +170,19 @@ function getFields(){
 let _prevMethod='';
 function onMethodChange(){
   const m=document.getElementById('methodSelect').value||'请选择';
-  _setVisual(document.getElementById('methodSelect'),m);
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
   const methodChanged=m!==_prevMethod;
   _prevMethod=m;
   if(cfg.mode==='locked'){descInput('text',cfg.value,true);descLocked=true}
   else if(cfg.mode==='dropdown'){descSelect(cfg.values);descLocked=false}
   else{const ro=cfg.hint.includes('请先选择');descInput('text','',ro,cfg.hint);descLocked=false}
-  // 跨方法时清 desc，但 locked 模式写入固定值
   if(methodChanged&&sel.size>0){
     const dv=cfg.mode==='locked'?cfg.value:'';
     for(const i of sel) files[i].fields.desc=dv;
     renderList();updButtons();
   }
-}
-// 获取选中文件的存储 desc（单文件返回该值，多文件不一致返回空，无选中返回空）
+  setTimeout(()=>_setVisual(document.getElementById('methodSelect'),m),0);
+}// 获取选中文件的存储 desc（单文件返回该值，多文件不一致返回空，无选中返回空）
 function descInput(t,v,ro,ph){
   const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const el=document.getElementById('descInput');
