@@ -222,7 +222,7 @@ function renderList(){
   if(files.length===0){ct.innerHTML='<div class="fl-empty">拖放文件到此处 或 点击 +文件</div>';document.getElementById('fileCount').innerHTML='文件列表 · 0 个';updButtons();return}
   const srt=[...sel].sort((a,b)=>a-b);
   files.forEach((f,i)=>{
-    const d=document.createElement('div');d.className='fl-item';
+    const d=document.createElement('div');d.className='fl-item';d.setAttribute('data-path',f.path);
     if(sel.has(i))d.classList.add('sel');
     let ff={...f.fields,tk:_computeTK(i)},nm=buildName(ff);
     const ready=ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status;

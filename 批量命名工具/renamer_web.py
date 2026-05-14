@@ -39,7 +39,7 @@ if os.path.exists(CFG_FILE):
     except:
         pass
 
-THUMB_MAX = 200  # 缩略图批次上限
+THUMB_MAX = 100  # 缩略图批次上限
 _undo_stack = []  # list of lists: [[(old,new),...], [(old,new),...]]
 _window = None  # 存引用
 
@@ -163,7 +163,7 @@ class RenamerAPI:
 
     def _process_paths(self, paths_):
         _log.info(f"_process_paths received {len(paths_)} paths")
-        MAX_FILES = 500
+        MAX_FILES = 100
         files = []; duplicates = 0; subdirs = 0; truncated = False
         defaults = _saved_defaults
         # 用户必须手动填，不给默认值
