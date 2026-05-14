@@ -280,25 +280,33 @@ function _lockInspector(lock){
 }
 function updButtons(){
   const hf=files.length>0,hs=sel.size>0,fd=getFields();
-    const _fks=window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'];
-  let af=true;for(const k of _fks)if(!fd[k]){af=false;break}
+  // af: 用文件实际数据算（不用 inspector，避免混合态误判）
+  let af=true;
+  if(hs){for(const i of sel){const ff=files[i].fields;let ok=true;for(const k of (window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'])){if(!ff[k]){ok=false;break}}if(!ok){af=false;break}}}
   document.getElementById('btnRename').disabled=!(hs&&af);
   document.getElementById('btnArchive').disabled=!(hs&&af);
   document.getElementById('btnUndo').disabled=!undoAvail;
-  // 状态栏：列出缺失字段 + 点颜色
   const dot=document.querySelector('.sb-dot');
   if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');return}
+  // 全就绪
   if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，可以重命名');return}
+  // 混合态标注（与缺失区分）
+  const skipped=[];_skipKeys.forEach(k=>{const _lbs=window._fieldLabels||{};skipped.push(_lbs[k]||k)});
   const missing=[];
   const _lbs=window._fieldLabels||{};
-  for(const k of (window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'])){if(!fd[k])missing.push(_lbs[k]||k)}
+  for(const k of (window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'])){if(!fd[k]&&!_skipKeys.has(k))missing.push(_lbs[k]||k)}
   // 检查警告
   let warn=[];
   for(const t of files){if(t.tags&&t.tags.length)warn.push(...t.tags)}
   if(warn.length){const wl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};dot.style.background='var(--red)';setStatus('⚠ '+[...new Set(warn)].map(w=>wl[w]||w).join(' · '));return}
   dot.style.background='var(--yellow)';
   let t_ok=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)t_ok++});
-  _lockInspector(hs);setStatus(missing.length?('缺失: '+missing.join(' · ')+'  ·  '+t_ok+'/'+files.length+' 就绪'):('就绪  ·  Ctrl+Z 撤销  ·  '+t_ok+'/'+files.length+' 就绪'));
+  let msg=[];
+  if(missing.length)msg.push('缺失: '+missing.join(' · '));
+  if(skipped.length)msg.push('混合: '+skipped.join(' · '));
+  if(!msg.length)msg.push('就绪  ·  Ctrl+Z 撤销');
+  msg.push(t_ok+'/'+files.length+' 就绪');
+  _lockInspector(hs);setStatus(msg.join('  ·  '));
   _lockInspector(!hs);
 }
 
