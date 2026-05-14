@@ -64,7 +64,7 @@ check("FILENAME_RE 匹配", FILENAME_RE.match(name) is not None)
 
 # ═══ 5. 检查函数 ═══
 print("\n5. 检查函数")
-from shared.naming import check_zero_byte, check_double_ext
+from shared.naming_checks import check_zero_byte, check_double_ext
 zero_path = os.path.join(tempfile.mkdtemp(), "zero.mp4")
 open(zero_path, 'w').close()
 check("零字节检测", check_zero_byte(zero_path))
