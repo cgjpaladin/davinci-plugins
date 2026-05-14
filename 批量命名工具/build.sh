@@ -1,19 +1,18 @@
 #!/bin/bash
 # 批量命名工具 — 打包脚本
-# 每次执行自动 commit 变更 + 重建 app 并放到桌面
 set -e
 cd "$(dirname "$0")"
 
 # 预览改动
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "=== 改动预览 ==="
-  git diff --stat -- . ':(exclude)*.icns' ':(exclude)*.png' ':(exclude)*.spec'
+  git diff --stat -- . ':(exclude)*.icns' ':(exclude)*.png'
   echo "================"
 fi
 
-# 自动 commit 变更
+# 自动 commit
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  git add -A && git commit -m "build: $(date '+%Y-%m-%d %H:%M')" 2>/dev/null || true
+  git add -A && git commit -m "build: $(date '+%H:%M')" 2>/dev/null || true
 fi
 
 # Node 语法检查
@@ -21,16 +20,9 @@ fi
 
 rm -rf build dist *.spec _build
 
-# 拼接 CSS + HTML 模板 + JS → _build/renamer_web.html
+# 拼接三文件 + 注入 git hash
 mkdir -p _build
-python3 -c "
-css=open('app.css').read();js=open('app.js').read()
-html=open('renamer_web.html').read()
-html=html.replace('/* CSS_PLACEHOLDER */',css)
-js=js.replace("const APP_VERSION='DEV'","const APP_VERSION='"+__import__('subprocess').check_output(['git','-C','..','rev-parse','--short','HEAD']).decode().strip()+"'")
-html=html.replace('// JS_PLACEHOLDER',js)
-open('_build/renamer_web.html','w').write(html)
-"
+python3 _splice.py
 
 /Library/Frameworks/Python.framework/Versions/3.13/bin/pyinstaller \
   --onedir --windowed \
