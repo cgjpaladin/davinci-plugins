@@ -83,9 +83,9 @@ class RenamerAPI:
                 tmp.close()
                 # 按比例缩放缩略图：以长边 180px 为准，短边自动计算
                 subprocess.run(
-                    [ffmpeg, '-y', '-ss', '00:00:01', '-i', p, '-vframes', '1',
+                    [ffmpeg, '-noaccurate_seek', '-ss', '00:00:01', '-i', p, '-vframes', '1',
                      '-vf', 'scale=180:180:force_original_aspect_ratio=decrease', tmp.name],
-                    capture_output=True, timeout=5
+                    capture_output=True, timeout=8
                 )
 
                 if os.path.isfile(tmp.name) and os.path.getsize(tmp.name) > 100:
@@ -170,7 +170,7 @@ class RenamerAPI:
         _EMPTY_KEYS = {'ep','sc','gr','ver'}
         VIDEO_EXT = {'.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw'}
 
-        for p_ in paths_[:MAX_FILES + 500]:
+        for p_ in paths_[:MAX_FILES]:
             if len(files) >= MAX_FILES: truncated = True; break
             p = str(p_).strip()
             if p.startswith("file://"): p = unquote(p[7:])
