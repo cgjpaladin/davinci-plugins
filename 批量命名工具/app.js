@@ -130,7 +130,7 @@ function _bindInspectorListeners(){
   // 输入框：数字验证 + 泛用 handler
   document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
     if(el.readOnly)return;
-    el.addEventListener('focus',()=>{if(!sel.size)return;_skipKeys.delete(el.getAttribute('data-key'));el.style.color=C.b;const v=el.value.trim();el.style.background=v&&v!=='请选择'&&v!=='手动输入…'?C.gr:'var(--surface2)'});
+    el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color=C.b;const v=el.value.trim();el.style.background=v&&v!=='请选择'&&v!=='手动输入…'?C.gr:'var(--surface2)'});
     el.addEventListener('blur',()=>{if(!sel.size)return;_setVisual(el,el.value.trim())});
     const rx=DIGIT_RULES[el.getAttribute('data-key')];
     if(rx){
