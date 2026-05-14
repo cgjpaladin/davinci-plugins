@@ -300,8 +300,8 @@ function updButtons(){
   let t_ok=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)t_ok++});
   let msg=missing.length?('缺失: '+missing.join(' · ')):'';
   if(!msg)msg='就绪  ·  Ctrl+Z 撤销';
-  _lockInspector(hs);setStatus(msg+'  ·  '+t_ok+'/'+files.length+' 就绪');
-  _lockInspector(!hs);
+  _lockInspector(true);setStatus(msg+'  ·  '+t_ok+'/'+files.length+' 就绪');
+  _lockInspector(false);
 }
 
 // ═══ Dialog ═══
