@@ -422,8 +422,11 @@ dropZone.addEventListener('dragleave',e=>{e.preventDefault();dg--;if(dg<=0){dg=0
 dropZone.addEventListener('drop',e=>{e.preventDefault();dg=0;overlay.classList.remove('show')});
 
 // ═══ Drop results from Python ═══
+let _dropCount=0;
 function onDropResult(result){
   if(result&&result.files){
+    _dropCount++;
+    call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}`);
     const exist=new Set(files.map(f=>f.path));
     const fresh=result.files.filter(f=>!exist.has(f.path));
     const dup=result.files.length-fresh.length;
