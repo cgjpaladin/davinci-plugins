@@ -231,7 +231,7 @@ function renderList(){
     const tt=f.tags;if(tt&&tt.length){if(tt.includes('zero'))d.classList.add('warn-zero');if(tt.includes('size'))d.classList.add('warn-size');if(tt.includes('dbl_ext'))d.classList.add('warn-dbl')}
     const th=document.createElement('div');th.className='fl-thumb';
     const tsrc=_thumbs[f.path];
-    if(tsrc){th.style.backgroundImage=`url(${tsrc})`;th.style.backgroundSize='cover';th.style.backgroundPosition='center'}
+    if(tsrc){th.style.backgroundImage=`url(${tsrc})`;th.style.backgroundSize='contain';th.style.backgroundRepeat='no-repeat';th.style.backgroundPosition='center'}
     else{th.style.background=`linear-gradient(135deg,${tc[i%tc.length]},${tc[(i+2)%tc.length]})`}
     const nn=document.createElement('span');nn.className='fl-new';
     nn.textContent=nm+' '+f.ext;
