@@ -103,7 +103,7 @@ function _buildInspector(fields){
     const d=document.createElement('div');d.className='param'+(fd.key==='desc'?' wide':'');
     const lb=document.createElement('label');lb.textContent=fd.label;d.appendChild(lb);
     if(fd.dv){
-      const s=document.createElement('select');s.setAttribute('data-key',fd.key);
+      const s=document.createElement('select');s.setAttribute('data-key',fd.key);s.style.color='var(--text-dim)';
       if(fd.key==='method')s.id='methodSelect';
       fd.dv.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o)});
       d.appendChild(s);
@@ -134,13 +134,13 @@ function _bindInspectorListeners(){
   // 下拉框
   document.querySelectorAll('#inspector select[data-key]').forEach(el=>{
     if(el.id==='descInput'||el.id==='methodSelect')return;
-    el.addEventListener('change',()=>{if(!sel.size)return;_applyInspectorToSelected();renderList();updButtons()});
+    el.addEventListener('change',()=>{if(!sel.size)return;el.style.color='var(--text-bright)';_applyInspectorToSelected();renderList();updButtons()});
   });
   // methodSelect
   document.getElementById('methodSelect').addEventListener('change',onMethodChange);
   // 制作者中文限制
   const ab=document.getElementById('authorInput');
-  if(ab)ab.addEventListener('input',()=>{const o=ab.value;const c=o.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g,'');if(c!==o){toast('请输入完整中文姓名');ab.value=c}});
+  if(ab)ab.addEventListener('input',()=>{const o=ab.value;const c=o.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g,'');if(c!==o){ab.value=c;toast('请输入完整中文姓名');_applyInspectorToSelected();renderList();updButtons()}});
 }
 
 // ═══ Fields ═══
@@ -304,7 +304,7 @@ function _syncInspectorFromSelection(){
       const el=document.querySelector(`[data-key="${k}"]`);
       if(!el||el.id==='descInput')continue;
       const v=f.fields[k]||'';
-      if(el.tagName==='SELECT'){el.value=v;el.style.borderLeft=''}
+      if(el.tagName==='SELECT'){el.value=v;const filled=v&&v!=='请选择';el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'var(--filled-bg)':''}
       else{el.value=v;const filled=!!v;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'var(--filled-bg)':''}
     }
     document.getElementById('methodSelect').value=f.fields.method||'';
@@ -317,7 +317,7 @@ function _syncInspectorFromSelection(){
       const el=document.querySelector(`[data-key="${k}"]`);
       if(!el||el.id==='descInput')continue;
       const single=vals.size===1?[...vals][0]:'';
-      if(el.tagName==='SELECT'){el.value=vals.size===1?[...vals][0]:''}
+      if(el.tagName==='SELECT'){el.value=vals.size===1?[...vals][0]:'';const filled=single&&single!=='请选择';el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'var(--filled-bg)':''}
       else{el.value=single||'';const filled=!!single;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'var(--filled-bg)':''}
     }
     const mv=new Set(ix.map(i=>files[i].fields.method||''));

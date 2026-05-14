@@ -965,87 +965,93 @@ def _show_config_dialog():
 
     # ── 保存（按类型分发）──
     def _save(ev):
-        global _clamp_value, _track_values, _censor_subs, _video_clamp_threshold
+        global _clamp_value, _track_values, _censor_subs, _video_clamp_threshold, _black_frame_sec
         msg_parts = []
+        err = ""
 
-        for section in CONFIG_SECTIONS:
-            t = section["type"]
-            if t == "clamp_threshold":
-                try:
-                    cv = int(cfg["cfg_clamp"].Text)
-                    if cv < 1:
-                        _action_log("⚠ 时长阈值不能小于1, 放弃保存")
-                        return
-                except ValueError:
-                    _action_log(f"⚠ 时长阈值无效: {cfg['cfg_clamp'].Text}, 放弃保存")
-                    return
-                old = _clamp_value
-                _clamp_value = cv
-                if old != cv:
-                    msg_parts.append(f"阈值 {old}→{cv}")
-
-            elif t == "video_clamp_threshold":
-                global _video_clamp_threshold
-                try:
-                    cv = int(cfg["cfg_vid_clamp"].Text)
-                    if cv < 1:
-                        _action_log("⚠ 视频夹帧阈值不能小于1, 放弃保存")
-                        return
-                except ValueError:
-                    _action_log(f"⚠ 视频夹帧阈值无效: {cfg['cfg_vid_clamp'].Text}, 放弃保存")
-                    return
-                old = _video_clamp_threshold
-                _video_clamp_threshold = cv
-                if old != cv:
-                    msg_parts.append(f"视频夹帧 {old}→{cv}")
-
-            elif t == "black_frame_sec":
-                try:
-                    cv = float(cfg["cfg_black_sec"].Text)
-                    if cv <= 0:
-                        _action_log("⚠ 黑帧阈值必须大于0, 放弃保存")
-                        return
-                except ValueError:
-                    _action_log(f"⚠ 黑帧阈值无效: {cfg['cfg_black_sec'].Text}, 放弃保存")
-                    return
-                old = _black_frame_sec
-                _black_frame_sec = cv
-                if old != cv:
-                    msg_parts.append(f"黑帧 {old}s→{cv}s")
-
-            elif t == "track_preset":
-                old = _track_values.copy()
-                try:
-                    sv = int(cfg["cfg_sub"].Text)
-                    vv = int(cfg["cfg_vid"].Text)
-                    av = int(cfg["cfg_aud"].Text)
-                except Exception:
-                    _action_log("⚠ 轨道数量读取失败, 放弃保存")
-                    return
-                _track_values = [sv, vv, av]
-                if old != _track_values:
-                    msg_parts.append(f"轨道 {old}→{_track_values}")
-
-            elif t == "censor_system_subs":
-                old_subs = _censor_subs.copy()
-                for cbox_id, key in SUB_CBOX_MAP:
+        try:
+            for section in CONFIG_SECTIONS:
+                t = section["type"]
+                if t == "clamp_threshold":
                     try:
-                        _censor_subs[key] = cfg[cbox_id].Checked
+                        cv = int(cfg["cfg_clamp"].Text)
+                        if cv < 1:
+                            err = "时长阈值不能小于1"
+                            continue
+                    except ValueError:
+                        err = f"时长阈值无效: {cfg['cfg_clamp'].Text}"
+                        continue
+                    old = _clamp_value
+                    _clamp_value = cv
+                    if old != cv:
+                        msg_parts.append(f"阈值 {old}→{cv}")
+
+                elif t == "video_clamp_threshold":
+                    try:
+                        cv = int(cfg["cfg_vid_clamp"].Text)
+                        if cv < 1:
+                            err = "视频夹帧阈值不能小于1"
+                            continue
+                    except ValueError:
+                        err = f"视频夹帧阈值无效: {cfg['cfg_vid_clamp'].Text}"
+                        continue
+                    old = _video_clamp_threshold
+                    _video_clamp_threshold = cv
+                    if old != cv:
+                        msg_parts.append(f"视频夹帧 {old}→{cv}")
+
+                elif t == "black_frame_sec":
+                    try:
+                        cv = float(cfg["cfg_black_sec"].Text)
+                        if cv <= 0:
+                            err = "黑帧阈值必须大于0"
+                            continue
+                    except ValueError:
+                        err = f"黑帧阈值无效: {cfg['cfg_black_sec'].Text}"
+                        continue
+                    old = _black_frame_sec
+                    _black_frame_sec = cv
+                    if old != cv:
+                        msg_parts.append(f"黑帧 {old}s→{cv}s")
+
+                elif t == "track_preset":
+                    old = _track_values.copy()
+                    try:
+                        sv = int(cfg["cfg_sub"].Text)
+                        vv = int(cfg["cfg_vid"].Text)
+                        av = int(cfg["cfg_aud"].Text)
                     except Exception:
-                        pass
-                if old_subs != _censor_subs:
-                    msg_parts.append(f"词典 {old_subs}→{_censor_subs}")
+                        err = "轨道数量读取失败"
+                        continue
+                    _track_values = [sv, vv, av]
+                    if old != _track_values:
+                        msg_parts.append(f"轨道 {old}→{_track_values}")
 
-            elif t == "censor_personal":
-                pass  # 编辑按钮独立处理
+                elif t == "censor_system_subs":
+                    old_subs = _censor_subs.copy()
+                    for cbox_id, key in SUB_CBOX_MAP:
+                        try:
+                            _censor_subs[key] = cfg[cbox_id].Checked
+                        except Exception:
+                            pass
+                    if old_subs != _censor_subs:
+                        msg_parts.append(f"词典 {old_subs}→{_censor_subs}")
 
-        if msg_parts:
-            _action_log("⚙ 配置保存: " + ", ".join(msg_parts))
-        else:
-            _action_log("⚙ 配置保存: 无变更")
-        _save_config_to_file()
-        config_dlg.Hide()
-        config_disp.ExitLoop()
+                elif t == "censor_personal":
+                    pass  # 编辑按钮独立处理
+
+            if msg_parts:
+                _action_log("⚙ 配置保存: " + ", ".join(msg_parts))
+            else:
+                _action_log("⚙ 配置保存: 无变更")
+            _save_config_to_file()
+            if err:
+                _action_log(f"⚠ 配置保存（部分跳过）: {err}")
+        except Exception as e:
+            _action_log(f"⚠ 配置保存异常: {e}")
+        finally:
+            config_dlg.Hide()
+            config_disp.ExitLoop()
 
     # ── 编辑违禁词（打开系统文本编辑）──
     censor_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
