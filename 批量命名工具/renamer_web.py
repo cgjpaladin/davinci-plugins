@@ -311,4 +311,4 @@ if __name__ == "__main__":
         except:
             time.sleep(0.3)
 
-    webview.start()
+    webview.start(debug=False)
