@@ -240,7 +240,7 @@ function renderList(){
     if(tags.length){const lbl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};tag.textContent=tags.map(t=>lbl[t]||t).join(' · ');tag.style.color='var(--red)'}
     else if(!ready){
       const m=[];const lb={ep:'Ep集数',sc:'Sc场次',gr:'Gr小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'版本号',status:'通过情况'};
-      for(const k of (window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'])){if(!ff[k])m.push(_lbs[k]||k)}
+      const _lbs2=window._fieldLabels||{};for(const k of (window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'])){if(!ff[k])m.push(_lbs2[k]||k)}
       tag.textContent='请填写: '+m.join(' · ');
     }else{tag.textContent='✓'}
     d.append(th,nn,ar,on,dot,tag);
