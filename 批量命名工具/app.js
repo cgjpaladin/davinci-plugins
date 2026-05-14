@@ -406,7 +406,7 @@ async function doRename(){
 }
 function buildTK(i){
   const fs=files[i].fields;
-  const k=fs.ep+'|'+fs.sc+'|'+fs.gr+'|'+(fs.method||'')+'|'+fs.ver;
+  const k=fs.ep+'|'+fs.sc+'|'+fs.gr+'|'+(fs.desc||'')+'|'+(fs.method||'')+'|'+fs.ver;
   let n=0;
   for(let j=0;j<=i;j++){
     const g=files[j].fields;

@@ -331,11 +331,15 @@ class RenamerAPI:
             target = build_folder(dest, type('E',(),{'fields':fd,'ext':ext})())
             folder = os.path.dirname(target)
             os.makedirs(folder, exist_ok=True)
-            # 扫描文件夹找最大 TK
+            # 扫描文件夹找最大 TK（同 desc 归一组）
             try:
                 max_tk = 0
                 if os.path.isdir(folder):
+                    # 构建不含 TK 的文件名前缀，用于筛选同组文件
+                    fd_copy = dict(fd); fd_copy['tk'] = '??'
+                    prefix = build_filename(fd_copy).replace('??', '')
                     for fn in os.listdir(folder):
+                        if not fn.startswith(prefix): continue
                         m = re.search(r'\bTk(0[1-9]|[1-9]\d)(?:_|\.mp4|\.mov|\.mxf|\.avi|\.mkv|$)', fn)
                         if m:
                             max_tk = max(max_tk, int(m.group(1)))
