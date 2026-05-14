@@ -130,18 +130,18 @@ function _bindInspectorListeners(){
   // 输入框：数字验证 + 泛用 handler
   document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
     if(el.readOnly)return;
-    el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color=C.b;const v=el.value.trim();el.style.background=v&&v!=='请选择'&&v!=='手动输入…'?C.gr:'var(--surface2)'});
+    el.addEventListener('focus',()=>{if(!sel.size)return;_skipKeys.delete(el.getAttribute('data-key'));el.style.color=C.b;const v=el.value.trim();el.style.background=v&&v!=='请选择'&&v!=='手动输入…'?C.gr:'var(--surface2)'});
     el.addEventListener('blur',()=>{if(!sel.size)return;_setVisual(el,el.value.trim())});
     const rx=DIGIT_RULES[el.getAttribute('data-key')];
     if(rx){
       el.addEventListener('input',e=>{if(!sel.size)return;let v=el.value.replace(/[^\d.]/g,'');const dp=v.indexOf('.');if(dp>=0)v=v.slice(0,dp+1)+v.slice(dp+1).replace(/\./g,'');while(v&&!rx.test(v))v=v.slice(0,-1);if(v!==el.value){el.value=v;e.stopImmediatePropagation();return}},true);
     }
-    el.addEventListener('input',()=>{if(!sel.size)return;_applyInspectorToSelected();renderList();updButtons()});
+    el.addEventListener('input',()=>{if(!sel.size)return;_skipKeys.delete(el.getAttribute('data-key'));_applyInspectorToSelected();renderList();updButtons()});
   });
   // 下拉框
   document.querySelectorAll('#inspector select[data-key]').forEach(el=>{
     if(el.id==='descInput')return;
-    el.addEventListener('change',()=>{if(!sel.size)return;_setVisual(el,el.value);_applyInspectorToSelected();renderList();updButtons()});
+    el.addEventListener('change',()=>{if(!sel.size)return;_skipKeys.delete(el.getAttribute('data-key'));_setVisual(el,el.value);_applyInspectorToSelected();renderList();updButtons()});
   });
   // methodSelect
   document.getElementById('methodSelect').addEventListener('change',onMethodChange);
