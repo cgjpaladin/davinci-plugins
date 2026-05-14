@@ -451,8 +451,7 @@ async function loadThumbs(){
   const paths=files.map(f=>f.path);
   call('debug_log','loadThumbs: '+paths.length+' files');
   const r=await call('generate_thumbnails',paths);
-  call('debug_log','loadThumbs result: '+(r&&r.thumbs?Object.keys(r.thumbs).length:0)+' thumbs');
-  if(r&&r.thumbs){_thumbs=r.thumbs;renderList()}
+  call('debug_log','loadThumbs done: '+(r?r.total:0)+' thumbs');
 }
 
 function setThumb(path,thumb){
