@@ -41,6 +41,7 @@ function mock(m,...a){
 
 // ═══ 浏览器预览：拖入真文件 ═══
 if(!window.pywebview){
+  console.error('MOCK MODE browser drop handler registered');
   const dz=document.getElementById('fileList');
   dz.addEventListener('dragover',e=>{e.preventDefault()});
   dz.addEventListener('drop',e=>{
