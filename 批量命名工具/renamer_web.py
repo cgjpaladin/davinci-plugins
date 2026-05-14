@@ -45,19 +45,6 @@ _window = None  # 存引用
 
 class RenamerAPI:
 
-    def on_drop_files(self, paths_json):
-        """JS 通知 Python 处理拖放路径（从 Python 端 DOM 事件拿到完整路径）"""
-        try:
-            paths = json.loads(paths_json)
-        except:
-            return {"files": [], "total": 0}
-        _log.info(f"on_drop_files: {paths[:5]}")
-        result = self._process_paths(paths)
-        # 通知 JS 更新 UI
-        if _window:
-            _window.evaluate_js(f"onDropResult({json.dumps(result)})")
-        return result
-
     def pick_dest_folder(self):
         """打开文件夹选择框，返回路径"""
         result = _window.create_file_dialog(webview.FOLDER_DIALOG)
