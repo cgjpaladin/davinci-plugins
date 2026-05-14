@@ -201,13 +201,17 @@ class RenamerAPI:
         # 自动检查
         anomalies = set()
         try:
-            sp = [(f,p) for f in files for p in [f["path"]] if os.path.getsize(p) > 0]
+            sp = [(fp, os.path.getsize(fp)) for f in files for fp in [f["path"]] if os.path.getsize(fp) > 0]
             vals = [s for _,s in sp]
             if len(vals) >= 3:
                 mu = statistics.mean(vals); sd = statistics.stdev(vals)
-                if sd > 0 and mu > 0 and sd/mu > 1.0:
+                cv = sd/mu if mu > 0 else 0
+                _log.info(f"auto-check: {len(vals)} files, mean={mu/1024/1024:.1f}MB sd={sd/1024/1024:.1f}MB cv={cv:.2f}")
+                if cv > 1.0:
                     anomalies = {fp for fp,_ in sp if abs(os.path.getsize(fp)-mu) > 2*sd}
-        except: pass
+                    _log.info(f"  anomalies: {len(anomalies)}")
+        except Exception as e:
+            _log.info(f"  auto-check error: {e}")
         for f in files:
             tags = []
             if check_zero_byte(f["path"]): tags.append("zero")
