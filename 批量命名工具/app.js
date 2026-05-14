@@ -113,7 +113,7 @@ function _buildInspector(fields){
     }else{
       const ip=document.createElement('input');ip.setAttribute('data-key',fd.key);
       ip.placeholder=fd.hint||'';ip.value='';
-      if(fd.key==='tk'){ip.value='自动排序';ip.readOnly=true}
+      if(fd.key==='tk'){ip.value='自动排序';ip.readOnly=true;_setVisual(ip,'自动排序')}
       if(fd.key==='desc'){ip.id='descInput';ip.readOnly=true}
       if(fd.key==='author')ip.id='authorInput';
       d.appendChild(ip);
@@ -340,7 +340,7 @@ function _syncInspectorFromSelection(){
     _setDescValue(dv.size===1?[...dv][0]:'');
   }
   const tkEl=document.querySelector('[data-key="tk"]');
-  if(tkEl){tkEl.value=sel.size?'自动排序':'';tkEl.style.color='var(--text-dim)'}
+  if(tkEl){tkEl.value=sel.size?'自动排序':'';_setVisual(tkEl,'自动排序')}
 }
 function _setDescValue(v){
   const ci=document.getElementById('descCustomInput');
