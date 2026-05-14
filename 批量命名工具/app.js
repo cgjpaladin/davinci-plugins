@@ -197,14 +197,17 @@ function descSelect(vs){
   const el=document.getElementById('descInput');
   const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const s=document.createElement('select');s.id='descInput';s.setAttribute('data-key','desc');
-  s.style.cssText=el?el.style.cssText:'';
+  s.style.cssText='color:var(--text-dim);background:;';
   vs.forEach(v=>{const o=document.createElement('option');o.text=v;o.value=v;s.add(o)});
-  s.onchange=function(){
+  function _onDescChange(){
     const ci2=document.getElementById('descCustomInput');
     if(s.value==='手动输入…'){
       if(!ci2){const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;';ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};s.after(ip)}
     }else{if(ci2)ci2.remove();_applyInspectorToSelected();renderList();updButtons()}
+    s.style.color=s.value&&s.value!=='请选择'?'var(--text-bright)':'var(--text-dim)';
+    s.style.background=s.value&&s.value!=='请选择'?'var(--filled-bg)':'';
   };
+  s.onchange=_onDescChange;
   if(el)el.replaceWith(s);
 }
 // ═══ File List ═══
@@ -337,15 +340,15 @@ function _syncInspectorFromSelection(){
 }
 function _setDescValue(v){
   const ci=document.getElementById('descCustomInput');
-  if(ci){ci.value=v||'';return}
+  if(ci){ci.value=v||'';ci.style.color=v?'var(--text-bright)':'var(--text-dim)';return}
   const el=document.getElementById('descInput');
   if(!el||!v)return;
   if(el.tagName==='SELECT'){
-    for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;return}}
+    for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;el.style.color='var(--text-bright)';el.style.background='var(--filled-bg)';return}}
     // 不在选项里 → 切到「手动输入…」并填值
-    el.value='手动输入…';
+    el.value='手动输入…';el.style.color='var(--text-bright)';el.style.background='var(--filled-bg)';
     const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');
-    ip.value=v;ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;';
+    ip.value=v;ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;color:var(--text-bright);';
     ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};
     el.after(ip);
   }else if(el.tagName==='INPUT'){
