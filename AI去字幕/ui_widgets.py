@@ -135,7 +135,7 @@ window_layout = [
                 ui.Button({"ID": BTN_UNDO, "Text": "撤销替换", "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Label({"Text": " ", "Weight": 1}),  # 弹性空间，把引擎推到右边
                 ui.Label({"Text": "引擎", "StyleSheet": "color:rgb(150,150,150);font-size:12px", "Weight": 0}),
-                ui.ComboBox({"ID": API_CB, "Weight": 0, "MinimumSize": [160, 0]}),
+                ui.ComboBox({"ID": API_CB, "Weight": 0, "MinimumSize": [260, 0]}),
             ]),
         ]),
 

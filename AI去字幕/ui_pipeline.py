@@ -245,6 +245,8 @@ def refresh_bal():
 
     items = ["自动（优先）"]
     current_idx = 0  # 默认选中"自动"
+    main_key = ADAPTER_PRIORITY[0]
+    backup_key = ADAPTER_PRIORITY[1] if len(ADAPTER_PRIORITY) > 1 else None
 
     for key in ADAPTER_PRIORITY:
         try:
@@ -256,12 +258,14 @@ def refresh_bal():
                 a = create_wuhenai_adapter()
                 pts = query_balance(a)
             yuan = point_to_yuan(pts, provider=key)
-            items.append(f"{a.name} | ¥{yuan:.2f}")
-            # 如果此前手动选了该引擎，保持选中
+            role = "主力" if key == main_key else "备用"
+            items.append(f"{a.name}（{role}）¥{yuan:.2f}")
             if _cached_provider == a.name:
                 current_idx = len(items) - 1
         except Exception:
-            items.append(f"{'鬼手剪辑' if key == 'ghostcut' else '无痕AI 2.1'} | 离线")
+            role = "主力" if key == main_key else "备用"
+            label = "鬼手剪辑" if key == "ghostcut" else "无痕AI 2.1"
+            items.append(f"{label}（{role}）离线")
 
     # 写入下拉框
     itm[API_CB].Clear()

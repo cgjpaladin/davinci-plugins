@@ -35,9 +35,9 @@ PRICING = {
 # 改这里即可切换默认供应商，无需改其他代码
 ACTIVE_PROVIDER = "wuhenai"
 
-# 适配器优先顺序：["ghostcut", "wuhenai"] = 鬼手优先无痕备用
+# 适配器优先顺序：["wuhenai", "ghostcut"] = 无痕主力鬼手备用
 # 切换优先级只需改这一行
-ADAPTER_PRIORITY = ["ghostcut", "wuhenai"]
+ADAPTER_PRIORITY = ["wuhenai", "ghostcut"]
 
 # ── OSS 流量定价（阿里云）──
 # 杭州区域折扣价，2026-05-05
