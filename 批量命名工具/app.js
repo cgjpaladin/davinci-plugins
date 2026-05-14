@@ -470,30 +470,6 @@ function _applyInspectorToSelected(){
   }
   if(changed.length)call('debug_log','fields changed: '+[...new Set(changed)].join(',')+' on '+sel.size+' files');
 }
-document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
-  if(el.readOnly)return;
-  el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color='var(--text-bright)';el.style.background=''});
-  el.addEventListener('blur',()=>{if(!sel.size)return;if(!el.value.trim()){el.style.color='var(--text-dim)';el.style.background=''}else{el.style.background='rgba(52,211,153,0.12)'}});
-  // 数字字段限制 — 在 input 之前运行
-  const rx=DIGIT_RULES[el.getAttribute('data-key')];
-  if(rx){
-    el.addEventListener('input',e=>{
-      if(!sel.size)return;let v=el.value.replace(/[^\d.]/g,'');const dp=v.indexOf('.');if(dp>=0)v=v.slice(0,dp+1)+v.slice(dp+1).replace(/\./g,'');
-      while(v&&!rx.test(v))v=v.slice(0,-1);
-      if(v!==el.value){el.value=v;e.stopImmediatePropagation();return}
-    },true);  // capture phase — 先于泛用 handler
-  }
-  el.addEventListener('input',()=>{if(!sel.size)return;_applyInspectorToSelected();renderList();updButtons()});
-  el.addEventListener('change',()=>{if(!sel.size)return;_applyInspectorToSelected();renderList();updButtons()});
-});
-// 制作者 — 仅限中文
-const ab=document.getElementById('authorInput');
-if(ab)ab.addEventListener('input',()=>{const o=ab.value;const c=o.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g,'');if(c!==o){toast('请输入完整中文姓名');ab.value=c}});
-// 数字字段限制 — 已并入泛用 input handler 的 capture 阶段，此处移除重复
-document.querySelectorAll('#inspector select[data-key]').forEach(el=>{
-  if(el.id==='descInput'||el.id==='methodSelect')return;
-  el.addEventListener('change',()=>{_applyInspectorToSelected();renderList();updButtons()});
-});
 
 // ═══ Dest validation（smb:// 静默转换，前端不跳） ═══
 const di=document.getElementById('destInput'),ds=document.getElementById('destStatus');
