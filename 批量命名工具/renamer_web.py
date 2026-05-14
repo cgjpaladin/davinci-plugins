@@ -298,8 +298,13 @@ class RenamerAPI:
         _log.info(f"do_archive: {len(files)} files, dest={dest}")
         ok = 0; fail = []; dup = 0; dest = os.path.realpath(re.sub(r'^smb://[\d.]+/', '/Volumes/', str(dest).strip()))
         def _hash_file(p):
+            h = hashlib.sha256()
             with open(p, 'rb') as fh:
-                return hashlib.sha256(fh.read()).digest()
+                while True:
+                    chunk = fh.read(65536)
+                    if not chunk: break
+                    h.update(chunk)
+            return h.digest()
         # 扫目标文件夹，预建 {hash: path}（同内容只保留一条）
         seen = {}  # hash bytes → path
         if os.path.isdir(dest):
