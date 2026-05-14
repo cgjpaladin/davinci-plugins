@@ -35,8 +35,6 @@ python3 _splice.py
   --hidden-import webview \
   --hidden-import webview.platforms.cocoa \
   --hidden-import bottle \
-  --hidden-import proxy_tools \
-  --hidden-import pyobjc \
   --noconfirm \
   renamer_web.py
 
