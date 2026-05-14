@@ -192,7 +192,7 @@ function descInput(t,v,ro,ph){
   const ip=document.createElement('input');ip.id='descInput';ip.setAttribute('data-key','desc');
   ip.value=v||'';ip.readOnly=ro||false;ip.placeholder=ph||'由制作方式决定';
   ip.style.cssText=el?el.style.cssText:'';_setVisual(ip,v);
-  if(!ro)ip.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};
+  if(!ro)ip.oninput=()=>{if(!descLocked){_setVisual(ip,ip.value);_applyInspectorToSelected();renderList();updButtons()}};
   if(el)el.replaceWith(ip);
 }
 function descSelect(vs){
@@ -204,7 +204,7 @@ function descSelect(vs){
   function _onDescChange(){
     const ci2=document.getElementById('descCustomInput');
     if(s.value==='手动输入…'){
-      if(!ci2){const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;';ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};s.after(ip)}
+      if(!ci2){const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;';ip.oninput=()=>{_setVisual(ip,ip.value);_applyInspectorToSelected();renderList();updButtons()};s.after(ip)}
     }else{if(ci2)ci2.remove();_applyInspectorToSelected();renderList();updButtons()}
     _setVisual(s,s.value);
   };
@@ -358,7 +358,7 @@ function _setDescValue(v){
     el.value='手动输入…';_setVisual(el,d[fd.key]);el.style.background='var(--filled-bg)';
     const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');
     ip.value=v;ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;color:var(--text-bright);';
-    ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};
+    ip.oninput=()=>{_setVisual(ip,ip.value);_applyInspectorToSelected();renderList();updButtons()};
     el.after(ip);
   }else if(el.tagName==='INPUT'){
     el.value=v;_setVisual(el,d[fd.key]);el.style.background='var(--filled-bg)';
