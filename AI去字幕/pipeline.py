@@ -127,10 +127,13 @@ class SubtitlePipeline(BasePipeline):
         return prepared.tasks, prepared.cache_hits, prepared.cache_hit_names
 
     def _submit(self, tasks: list, batch: bool) -> list:
-        """提交无痕/鬼手 API 处理。返回 [ResultItem, ...] 列表。"""
+        """提交 API 处理。返回 [ResultItem, ...] 列表。"""
         adapter = self._get_adapter()
-        # API 健康预检——不通则立刻切备选
+        # API 健康预检——手动模式不切备选，直接报错
         if hasattr(adapter, 'check_health') and not adapter.check_health():
+            if self.manual_engine != "auto":
+                self.log.fail(f"引擎 '{self.manual_engine}' 不可用，请更换引擎后重试")
+                return [SubtitleResult(success=False, error_message=f"引擎不可用: {self.manual_engine}") for _ in tasks]
             cls_name = adapter.__class__.__name__
             exclude = "wuhenai" if "Wuhen" in cls_name else "ghostcut" if "Ghost" in cls_name else ""
             _log_ops.ops({"event": "adapter_health_fail", "adapter": cls_name})
