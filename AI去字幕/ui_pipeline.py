@@ -128,8 +128,7 @@ def scan_io(*_):
     注：片段遍历逻辑与 _refresh_scan_display() 有约50行重复，修改任一处需同步另一处。
     """
     global _version_checked
-    if not _check_smb(): return
-    # 首次扫描时检查 SMB 上的版本是否已更新
+    # 扫描不依赖 SMB（片段数据来自达芬奇 API），版本检查失败降级不阻塞
     if not _version_checked:
         _version_checked = True
         try:
