@@ -108,7 +108,17 @@ PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 # ============================================================
 # SMB 常量
 # ============================================================
-SMB_MOUNT = "/Volumes/MYJC"
+def _read_smb_mount():
+    """从 deploy.json 读取 SMB 挂载点，不存在则用默认值。"""
+    import json as _json
+    cfg_path = os.path.expanduser("~/达芬奇插件工坊/deploy.json")
+    try:
+        with open(cfg_path) as f:
+            return _json.load(f).get("smb_mount", "/Volumes/MYJC") or "/Volumes/MYJC"
+    except Exception:
+        return "/Volumes/MYJC"
+
+SMB_MOUNT = _read_smb_mount()
 SMB_SCRIPTS = os.path.join(SMB_MOUNT, "06_Software", "达芬奇脚本")
 SMB_AI_SUBTITLE = os.path.join(SMB_SCRIPTS, "AI去字幕")
 SMB_AI_PROJECT = os.path.join(SMB_MOUNT, "08_AI_Project")

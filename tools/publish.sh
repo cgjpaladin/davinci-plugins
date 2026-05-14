@@ -485,6 +485,26 @@ publish_sync() {
         FILES+=("$f")
     done < <(find . -maxdepth 1 -name '*.py' | sed 's|^\./||' | sort)
 
+    # ── MD5 校验锁：SMB 有未同步到本地的修改 → 拒绝 ──
+    echo "MD5 校验锁..."
+    local md5_blocked=0
+    for f in "${FILES[@]}"; do
+        local smb_f="$SMB_DIR/$f"
+        [ ! -f "$smb_f" ] && continue
+        local local_md5=$(md5 -q "$f" 2>/dev/null || echo "")
+        local smb_md5=$(md5 -q "$smb_f" 2>/dev/null || echo "")
+        if [ -n "$local_md5" ] && [ -n "$smb_md5" ] && [ "$local_md5" != "$smb_md5" ]; then
+            echo "  ⛔ $f — SMB 与本地不一致（SMB 上有未同步到本地的修改）"
+            md5_blocked=1
+        fi
+    done
+    if [ "$md5_blocked" -eq 1 ]; then
+        echo ""
+        echo "⛔ SMB 上有未同步到本地的修改，请先 git pull 或手动同步后再推送。"
+        exit 1
+    fi
+    echo "  ✅ MD5 校验通过"
+
     echo "同步到 SMB..."
     for f in "${FILES[@]}"; do
         src="$PWD/$f"
