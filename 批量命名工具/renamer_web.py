@@ -325,10 +325,9 @@ class RenamerAPI:
             try:
                 max_tk = 0
                 if os.path.isdir(folder):
-                    grp_prefix = build_filename({**fd, 'tk':''})[:-1]  # 命名前缀（不含 TK）
                     for fn in os.listdir(folder):
                         m = re.search(r'Tk(\d{2})\b', fn)
-                        if m and grp_prefix in fn:
+                        if m:
                             max_tk = max(max_tk, int(m.group(1)))
                 fd['tk'] = str(max_tk + 1).zfill(2)
                 target = os.path.join(folder, build_filename(fd) + ext)
