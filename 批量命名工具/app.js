@@ -155,7 +155,6 @@ function getFields(){
   const PLACEHOLDERS=['请选择','手动输入…'];
   const f={};
   for(const el of document.querySelectorAll('#inspector [data-key]')){
-    if(_skipKeys.has(el.getAttribute('data-key')))continue;
     if(el.id==='descInput'&&document.getElementById('descCustomInput'))continue;
     let v=el.value.trim();
     if(PLACEHOLDERS.includes(v))v='';
@@ -340,15 +339,19 @@ function _syncInspectorFromSelection(){
       const vals=new Set(ix.map(i=>files[i].fields[k]||''));
       const el=document.querySelector(`[data-key="${k}"]`);
       if(!el||el.id==='descInput')continue;
-      if(vals.size===1){_skipKeys.delete(k);const v=[...vals][0];if(el.tagName==='SELECT'){el.value=v}else{el.value=v};_setVisual(el,v||'')}
-      else{_skipKeys.add(k);el.value='';el.placeholder='[混合]';el.style.color='#9a9a9a';el.style.background=''}    }
+      const first=ix.sort((a,b)=>a-b)[0];
+      const v=files[first].fields[k]||'';
+      if(el.tagName==='SELECT'){el.value=v}else{el.value=v}
+      _setVisual(el,v);
+      const bdg=el.nextElementSibling;if(bdg&&bdg.className==='mix-badge')bdg.remove();
+      if(vals.size>1){const b=document.createElement('span');b.className='mix-badge';b.textContent='['+vals.size+'种]';b.style.cssText='margin-left:6px;color:var(--text-dim);font-size:11px';el.after(b)}
+    }
     const mv=new Set(ix.map(i=>files[i].fields.method||''));
-    if(mv.size===1){_skipKeys.delete('method');document.getElementById('methodSelect').value=[...mv][0]}
-    else{_skipKeys.add('method');document.getElementById('methodSelect').value=''}
+    const mi=ix.sort((a,b)=>a-b)[0];
+    document.getElementById('methodSelect').value=files[mi].fields.method||'';
     _fromSync=true;onMethodChange();_fromSync=false;
     const dv=new Set(ix.map(i=>files[i].fields.desc||''));
-    if(dv.size===1){_skipKeys.delete('desc');_setDescValue([...dv][0])}
-    else{_skipKeys.add('desc');const el=document.getElementById('descInput');if(el){el.value='';el.placeholder='[混合]';el.style.color='#9a9a9a';el.style.background=''}}
+    _setDescValue(files[mi].fields.desc||'');
   }
   const tkEl=document.querySelector('[data-key="tk"]');
   if(tkEl){tkEl.value=sel.size?'自动排序':'';_setVisual(tkEl,'自动排序')}
