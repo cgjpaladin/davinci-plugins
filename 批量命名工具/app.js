@@ -40,11 +40,13 @@ function mock(m,...a){
 }
 
 // ═══ 浏览器预览：拖入真文件 ═══
-if(!window.pywebview){
-  console.error('MOCK MODE browser drop handler registered');
-  const dz=document.getElementById('fileList');
-  dz.addEventListener('dragover',e=>{e.preventDefault()});
-  dz.addEventListener('drop',e=>{
+// 注意：模块加载时 pywebview 可能尚未注入，故在 DOMContentLoaded 后再判断
+document.addEventListener('DOMContentLoaded',()=>{
+  if(!window.pywebview){
+    console.error('MOCK MODE browser drop handler registered');
+    const dz=document.getElementById('fileList');
+    dz.addEventListener('dragover',e=>{e.preventDefault()});
+    dz.addEventListener('drop',e=>{
     e.preventDefault();
     const items=[...e.dataTransfer.files].filter(f=>f.type.startsWith('video/')||f.name.match(/\.(mp4|mov|mxf|avi|mkv)$/i));
     if(!items.length)return;
@@ -57,7 +59,8 @@ if(!window.pywebview){
     renderList();updButtons();
     toast(`已追加 ${mockFiles.length} 个文件 (预览模式)`);
   });
-}
+  }
+});
 
 // ═══ Load ═══
 async function init(){
