@@ -297,11 +297,11 @@ class RenamerAPI:
         import hashlib
         _log.info(f"do_archive: {len(files)} files, dest={dest}")
         ok = 0; fail = []; dup = 0; dest = re.sub(r'^smb://[\d.]+/', '/Volumes/', str(dest).strip())
-        # 扫目标文件夹建哈希索引（防同名不同内容重复）
-        existing = {}  # {size: [(path,hash)]}
         def _hash_file(p):
             with open(p, 'rb') as fh:
                 return hashlib.sha256(fh.read()).digest()
+        # 扫目标文件夹，预建 {hash: path}（同内容只保留一条）
+        seen = {}  # hash bytes → path
         if os.path.isdir(dest):
             for root, dirs, filenames in os.walk(dest):
                 for fn in filenames:
@@ -309,29 +309,25 @@ class RenamerAPI:
                     try:
                         sz = os.path.getsize(fp)
                         if sz > 0:
-                            if sz not in existing: existing[sz] = []
-                            existing[sz].append(fp)
+                            h = _hash_file(fp)
+                            if h not in seen: seen[h] = fp
                     except: pass
-                if len(existing) > 500: break  # 安全阀
+                if len(seen) > 500: break
+        # 逐文件处理
         for f in files:
             fd = f.get("fields", {})
             ext = f.get("ext", ".mp4")
             target = build_folder(dest, type('E',(),{'fields':fd,'ext':ext})())
             os.makedirs(os.path.dirname(target), exist_ok=True)
-            # 重复检测：同哈希即跳（不限同名）
-            src_sz = os.path.getsize(f["path"])
-            if src_sz in existing:
+            # 哈希去重
+            try:
                 src_hash = _hash_file(f["path"])
-                dup_found = False
-                for cand in existing.get(src_sz, []):
-                    try:
-                        if os.path.exists(cand) and os.path.getsize(cand) == src_sz:
-                            if _hash_file(cand) == src_hash:
-                                dup += 1; dup_found = True; break
-                    except: pass
-                if dup_found: continue
-            try: shutil.copy2(f["path"], target); ok += 1
-            except Exception as e: fail.append(os.path.basename(f["path"]) + ": " + str(e))
+                if src_hash in seen: dup += 1; continue
+                shutil.copy2(f["path"], target)
+                seen[src_hash] = target  # 防同一批内重复
+                ok += 1
+            except Exception as e:
+                fail.append(os.path.basename(f["path"]) + ": " + str(e))
         return {"ok": ok, "dup": dup, "fail": fail, "total": len(files)}
 
 
