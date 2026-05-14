@@ -166,6 +166,9 @@ function getFields(){
 let _prevMethod='';
 function onMethodChange(){
   const m=document.getElementById('methodSelect').value;
+  const filled=m&&m!=='请选择';
+  document.getElementById('methodSelect').style.color=filled?'var(--text-bright)':'var(--text-dim)';
+  document.getElementById('methodSelect').style.background=filled?'var(--filled-bg)':'';
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
   const methodChanged=m!==_prevMethod;
   _prevMethod=m;
