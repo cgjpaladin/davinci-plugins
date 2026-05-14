@@ -294,16 +294,25 @@ class RenamerAPI:
         return {"ok": True, "msg": "✓ 格式正确"}
 
     def do_archive(self, files, dest):
+        import hashlib
         _log.info(f"do_archive: {len(files)} files, dest={dest}")
-        ok = 0; fail = []; dest = re.sub(r'^smb://[\d.]+/', '/Volumes/', str(dest).strip())
+        ok = 0; fail = []; dup = []; dest = re.sub(r'^smb://[\d.]+/', '/Volumes/', str(dest).strip())
         for f in files:
             fd = f.get("fields", {})
             ext = f.get("ext", ".mp4")
             target = build_folder(dest, type('E',(),{'fields':fd,'ext':ext})())
             os.makedirs(os.path.dirname(target), exist_ok=True)
+            # 重复检测
+            if os.path.exists(target):
+                src_sz = os.path.getsize(f["path"])
+                dst_sz = os.path.getsize(target)
+                if src_sz == dst_sz:
+                    with open(f["path"], 'rb') as fa, open(target, 'rb') as fb:
+                        if hashlib.sha256(fa.read()).digest() == hashlib.sha256(fb.read()).digest():
+                            dup.append(os.path.basename(target)); continue
             try: shutil.copy2(f["path"], target); ok += 1
             except Exception as e: fail.append(os.path.basename(f["path"]) + ": " + str(e))
-        return {"ok": ok, "fail": fail, "total": len(files)}
+        return {"ok": ok, "dup": len(dup), "fail": fail, "total": len(files)}
 
 
 HTML_FILE = os.path.join(_BASE_DIR, "renamer_web.html")

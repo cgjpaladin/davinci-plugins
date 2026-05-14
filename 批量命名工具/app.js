@@ -443,9 +443,8 @@ async function doArchive(){
   if(!await showDialog('确认归档',`确认归档 ${sfs.length} 个文件到?\n${dest}/EP${sfs[0].fields.ep||'??'}/SC${sfs[0].fields.sc||'??'}/...`))return;
   call('debug_log','archive: starting');
   const r=await call('do_archive',sfs,dest);
-  call('debug_log','archive: result='+JSON.stringify({ok:r.ok,total:r.total}));
-  if(r.ok>0)toast(`归档完成 ${r.ok}/${r.total}`);
-  if(r.fail&&r.fail.length){setTimeout(()=>toast('失败: '+r.fail.join('; ')),2000)}
+  call('debug_log','archive: result='+JSON.stringify({ok:r.ok,total:r.total,dup:r.dup||0}));
+  let m=`归档完成 ${r.ok} 个`;if(r.dup>0)m+=` · ${r.dup} 个重复已跳过`;if(r.fail&&r.fail.length>0)m+=` · ${r.fail.length} 失败`;toast(m);
 }
 // ═══ Thumbnails ═══
 async function loadThumbs(){
