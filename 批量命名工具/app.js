@@ -383,7 +383,7 @@ async function doRename(){
   // 用每个文件自己的 fields，不是 inspector 全局值
   const sfs=srt.map((i,p)=>{
     const f={...files[i]};
-    f.fields={...f.fields,tk:String(srt[0]+p+1).padStart(2,'0')};
+    f.fields={...f.fields,tk:buildTK(i)};
     return f;
   });
   const nm=buildName(sfs[0].fields)+sfs[0].ext;
@@ -399,6 +399,17 @@ async function doRename(){
     toast(`完成 ${r.ok}/${r.total}`)}
   if(r.fail&&r.fail.length){setTimeout(()=>toast('失败: '+r.fail.join('; ')),2000)}
   renderList();updButtons();
+}
+function buildTK(i){
+  const fs=files[i].fields;
+  const k=fs.ep+'|'+fs.sc+'|'+fs.gr+'|'+(fs.method||'')+'|'+fs.ver;
+  let n=0;
+  for(let j=0;j<=i;j++){
+    const g=files[j].fields;
+    const jk=g.ep+'|'+g.sc+'|'+g.gr+'|'+(g.method||'')+'|'+g.ver;
+    if(jk===k)n++;
+  }
+  return String(n).padStart(2,'0');
 }
 function _computeTK(i){
   const fs=files[i].fields;
