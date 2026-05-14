@@ -349,9 +349,10 @@ function _setDescValue(v){
   const ci=document.getElementById('descCustomInput');
   if(ci){if(descLocked)return;ci.value=v||'';_setVisual(ci,v);return}
   const el=document.getElementById('descInput');
-  if(!el)return;
-  if(descLocked&&el.tagName==='INPUT'){if(el.readOnly)return;el.value=v;_setVisual(el,v);return}
-  if(!v)return;
+      if(!el)return;
+      // 锁定模式：直接跳过，不碰 desc DOM（值由 method 决定）
+      if(descLocked){el.value=v;_setVisual(el,v);return}
+      if(!v)return;
   if(el.tagName==='SELECT'){
     for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;_setVisual(el,v);return}}
     // 不在选项里 → 切到「手动输入…」并填值
