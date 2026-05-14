@@ -435,7 +435,7 @@ async function doArchive(){
   const dest=document.getElementById('destInput').value.trim();
   if(!dest){toast('请先输入目标路径');return}
   const srt=[...sel].sort((a,b)=>a-b);
-  const sfs=srt.map((i,p)=>{const f={...files[i]};f.fields={...f.fields,tk:String(srt[0]+p+1).padStart(2,'0')};return f});
+  const sfs=srt.map((i,p)=>{const f={...files[i]};f.fields={...f.fields,tk:buildTK(i)};return f});
   if(!await showDialog('确认归档',`确认归档 ${sfs.length} 个文件到?\n${dest}/EP${sfs[0].fields.ep||'??'}/SC${sfs[0].fields.sc||'??'}/...`))return;
   call('debug_log','archive: starting');
   const r=await call('do_archive',sfs,dest);
