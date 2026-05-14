@@ -83,26 +83,6 @@ body{
 .dest input:focus{border-color:var(--accent)}
 #btnBrowseDest{font-size:12px;padding:3px 6px;flex-shrink:0}
 .dest-ok{font-size:var(--fs-sm);white-space:nowrap;flex-shrink:0}
-.hero{
-  display:flex;align-items:stretch;gap:6px;
-  padding:5px var(--pad-lg);border-bottom:1px solid var(--border);flex-shrink:0;
-}
-.hero-preview{
-  flex:1;display:flex;align-items:center;gap:8px;min-width:0;
-  background:var(--surface2);border:1px solid var(--border);
-  border-radius:var(--radius);padding:5px 10px;
-}
-.hero-arrow{color:var(--green);font-weight:bold;font-size:14px;flex-shrink:0}
-.hero-filename{
-  font-family:var(--font-mono);font-size:var(--fs-preview);color:var(--green);
-  flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-}
-.hero-meta{
-  display:flex;align-items:center;gap:10px;
-  font-size:var(--fs-sm);color:var(--text-dim);
-  border-left:1px solid var(--border);padding-left:10px;flex-shrink:0;
-}
-.hero-meta em{font-style:normal;font-family:var(--font-mono);color:var(--green);font-weight:bold}
 .hero-btn{
   flex-shrink:0;padding:6px 12px;background:var(--accent);color:#fff;
   border:none;border-radius:var(--radius);
@@ -120,7 +100,7 @@ body{
 .hero-archive:hover{background:rgba(106,154,58,.12)}
 .hero-archive:disabled{color:var(--text-dim);border-color:#3d3d3d;cursor:not-allowed}
 .hero-archive:disabled:hover{background:transparent}
-.hero-check,.hero-undo{
+.hero-undo{
   flex-shrink:0;padding:6px 8px;background:transparent;color:var(--text-dim);
   border:1px solid var(--border);border-radius:var(--radius);
   font-family:var(--font-ui);font-size:var(--fs-sm);cursor:pointer;
