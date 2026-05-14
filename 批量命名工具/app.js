@@ -507,19 +507,20 @@ document.addEventListener('keydown',e=>{
     else{call("debug_log",`FILES list: removed ${sel.size} items -> ${files.length-sel.size} remaining`);sel.clear();renderList();updButtons();e.target.blur()}
   }
   // ← → 在字段间跳转（input 里光标到头了才跳）
-  if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&e.target.closest('#inspector')&&sel.size){
-    if(e.target.tagName==='INPUT'){
-      const cs=e.target.selectionStart,len=e.target.value.length;
-      if(e.key==='ArrowLeft'&&cs===0){e.preventDefault();_moveField(e.target,-1)}
-      else if(e.key==='ArrowRight'&&cs===len){e.preventDefault();_moveField(e.target,1)}
-      else return;
-    }else{
-      e.preventDefault();_moveField(e.target,e.key==='ArrowRight'?1:-1);
+  if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&sel.size){
+    if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'){
+      if(e.target.tagName==='INPUT'){
+        const cs=e.target.selectionStart,len=e.target.value.length;
+        if(e.key==='ArrowLeft'&&cs===0){e.preventDefault();_moveField(e.target,-1)}
+        else if(e.key==='ArrowRight'&&cs===len){e.preventDefault();_moveField(e.target,1)}
+      }else if(e.target.tagName==='SELECT'){
+        e.preventDefault();_moveField(e.target,e.key==='ArrowRight'?1:-1);
+      }
     }
   }
   // ↑↓ 切换文件
-  if((e.key==='ArrowUp'||e.key==='ArrowDown')&&sel.size===1){
-    if(e.target.closest('#inspector')||e.target.closest('#fileList')){
+  if((e.key==='ArrowUp'||e.key==='ArrowDown')&&sel.size===1&&files.length>0){
+    if(e.target.tagName!=='INPUT'||(e.key==='ArrowUp'&&e.target.selectionStart===0)||(e.key==='ArrowDown'&&e.target.selectionStart===e.target.value.length)){
       e.preventDefault();
       const cur=[...sel][0];
       const next=cur+(e.key==='ArrowDown'?1:-1);
@@ -527,10 +528,12 @@ document.addEventListener('keydown',e=>{
     }
   }
   // Home → 第一个文件, End → 最后一个
-  if((e.key==='Home'||e.key==='End')&&e.target.closest('#inspector')&&sel.size===1){
-    e.preventDefault();
-    const i=e.key==='Home'?0:files.length-1;
-    sel.clear();sel.add(i);renderList();_syncInspectorFromSelection();updButtons();
+  if((e.key==='Home'||e.key==='End')&&sel.size===1&&files.length>0){
+    if(e.target.tagName!=='INPUT'||e.target.selectionStart===0){
+      e.preventDefault();
+      const i=e.key==='Home'?0:files.length-1;
+      sel.clear();sel.add(i);renderList();_syncInspectorFromSelection();updButtons();
+    }
   }
   // Cmd+A: input 里正常全选；其他位置 → 全选文件列表
   if((e.metaKey||e.ctrlKey)&&e.key==='a'){
