@@ -110,7 +110,7 @@ function _buildInspector(fields){
     const d=document.createElement('div');d.className='param'+(fd.key==='desc'?' wide':'');
     const lb=document.createElement('label');lb.textContent=fd.label;d.appendChild(lb);
     if(fd.dv){
-      const s=document.createElement('select');s.setAttribute('data-key',fd.key);s.style.color='#888';
+      const s=document.createElement('select');s.setAttribute('data-key',fd.key);s.style.color='#9a9a9a';
       if(fd.key==='method')s.id='methodSelect';
       fd.dv.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o)});
       d.appendChild(s);
@@ -169,7 +169,7 @@ function getFields(){
 // ═══ Method → Desc ═══
 let _prevMethod='';
 function onMethodChange(){
-  const m=document.getElementById('methodSelect').value;
+  const m=document.getElementById('methodSelect').value||'请选择';
   _setVisual(document.getElementById('methodSelect'),m);
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
   const methodChanged=m!==_prevMethod;
@@ -262,7 +262,7 @@ function updCount(){
 
 function _setVisual(el,v){
   const filled=v&&v!=='请选择'&&v!=='手动输入…';
-  el.style.color=filled?'var(--text-bright)':'#888';
+  el.style.color=filled?'var(--text-bright)':'#9a9a9a';
   el.style.background=filled?'var(--filled-bg)':'';
 }
 function _lockInspector(lock){
