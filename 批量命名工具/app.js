@@ -1,4 +1,5 @@
 const APP_VERSION='DEV';
+const APP_BRANCH='';
 const APP_BUILD_TIME='';
 // ═══ 立即执行 — 确认脚本加载 ═══
 document.addEventListener('DOMContentLoaded',()=>{
@@ -45,7 +46,7 @@ async function init(){
 
   const cfg=await call('get_config');
   methodDescMap=cfg.method_desc_map||{};_nameFmt=cfg.name_format||[];
-  const v=APP_VERSION||'?',t=APP_BUILD_TIME||'';document.getElementById('debugMode').textContent=(cfg.dev?'🔧 DEV ':'')+'v'+v+(t?' '+t:'');
+  const v=APP_VERSION||'?',br=APP_BRANCH||'',t=APP_BUILD_TIME||'';document.getElementById('debugMode').textContent=(cfg.dev?'🔧 DEV ':'')+(br&&br!='main'?br+'@':'')+'v'+v+(t?' '+t:'');
   const d=cfg.defaults||{};
   for(const fd of cfg.fields){
     if(d[fd.key]){const el=document.querySelector(`[data-key="${fd.key}"]`);if(el){if(el.tagName==='SELECT')el.value=d[fd.key];else{el.value=d[fd.key];el.style.color='var(--text-bright)'}}}
