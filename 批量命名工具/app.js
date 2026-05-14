@@ -431,6 +431,8 @@ function onDropResult(result){
     const exist=new Set(files.map(f=>f.path));
     const fresh=result.files.filter(f=>!exist.has(f.path));
     const dup=result.files.length-fresh.length;
+    // 如果完全重复，跳过（不清空现有）
+    if(fresh.length===0){call('debug_log','drop skipped: all paths already loaded');return}
     files=files.concat(fresh);
     let msg=`已追加 ${fresh.length} 个文件`;
     if(dup) msg+=` · ${dup} 个重复跳过`;
