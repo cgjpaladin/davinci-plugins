@@ -484,7 +484,7 @@ document.addEventListener('keydown',e=>{
     if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
     e.preventDefault();
     sel=new Set([...Array(files.length).keys()]);
-    renderList();updButtons();
+    renderList();_syncInspectorFromSelection();updButtons();
   }
 });
 
