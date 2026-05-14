@@ -9,6 +9,9 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   git add -A && git commit -m "build: $(date '+%Y-%m-%d %H:%M')" 2>/dev/null || true
 fi
 
+# Node 语法检查
+/opt/homebrew/bin/node --check app.js || { echo "❌ JS 语法错误"; exit 1; }
+
 rm -rf build dist *.spec _build
 
 # 拼接 CSS + HTML 模板 + JS → _build/renamer_web.html

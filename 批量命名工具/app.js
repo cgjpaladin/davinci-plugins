@@ -3,6 +3,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('debugMode').textContent='JS ✓';
 });
 // ═══ State ═══
+
+// 全局错误 → toast（不沉默）
+window.onerror=function(m,s,l,c,e){toast('JS错误: '+(m||'未知'));return false};
+window.addEventListener('unhandledrejection',e=>{toast('Promise错误: '+e.reason)});
+
 let files=[], sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
 const C={g:'var(--green)',y:'var(--yellow)',r:'var(--red)',b:'var(--text-bright)',d:'var(--text-dim)',gr:'rgba(52,211,153,0.12)'};

@@ -44,6 +44,9 @@ _window = None  # 存引用
 
 
 class RenamerAPI:
+    def __getattr__(self, name):
+        """未定义 API → 返回错误而不沉默"""
+        return lambda *a,**k: {"error": f"API not found: {name}"}
 
     def on_drop_files(self, paths_json):
         """JS 通知 Python 处理拖放路径（从 Python 端 DOM 事件拿到完整路径）"""
