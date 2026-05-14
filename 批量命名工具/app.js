@@ -488,6 +488,12 @@ function onDropResult(result){
 }
 
 // ═══ Keyboard ═══
+function _moveField(el,delta){
+  const all=[...document.querySelectorAll('#inspector input:not([readonly]), #inspector select')];
+  const idx=all.indexOf(el);
+  const nxt=idx+delta;
+  if(nxt>=0&&nxt<all.length){all[nxt].focus();if(typeof all[nxt].select==='function')all[nxt].select()}
+}
 document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}
   if((e.key==='Delete'||e.key==='Backspace')&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){e.preventDefault();removeSelected()}
@@ -500,14 +506,16 @@ document.addEventListener('keydown',e=>{
     if(idx>=0&&idx+1<all.length){all[idx+1].focus();if(typeof all[idx+1].select==='function')all[idx+1].select()}
     else{call("debug_log",`FILES list: removed ${sel.size} items -> ${files.length-sel.size} remaining`);sel.clear();renderList();updButtons();e.target.blur()}
   }
-  // ← → 在字段间跳转
+  // ← → 在字段间跳转（input 里光标到头了才跳）
   if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&e.target.closest('#inspector')&&sel.size){
-    e.preventDefault();
-    const all=[...document.querySelectorAll('#inspector input:not([readonly]), #inspector select')];
-    const idx=all.indexOf(e.target);
-    const delta=e.key==='ArrowRight'?1:-1;
-    const nxt=idx+delta;
-    if(nxt>=0&&nxt<all.length){all[nxt].focus();if(typeof all[nxt].select==='function')all[nxt].select()}
+    if(e.target.tagName==='INPUT'){
+      const cs=e.target.selectionStart,len=e.target.value.length;
+      if(e.key==='ArrowLeft'&&cs===0){e.preventDefault();_moveField(e.target,-1)}
+      else if(e.key==='ArrowRight'&&cs===len){e.preventDefault();_moveField(e.target,1)}
+      else return;
+    }else{
+      e.preventDefault();_moveField(e.target,e.key==='ArrowRight'?1:-1);
+    }
   }
   // ↑↓ 切换文件
   if((e.key==='ArrowUp'||e.key==='ArrowDown')&&sel.size===1){

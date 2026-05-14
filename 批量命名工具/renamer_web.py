@@ -68,8 +68,13 @@ class RenamerAPI:
 
     def generate_thumbnails(self, paths):
         """用 ffmpeg 提取视频第一帧，返回 base64 data URI"""
-        import subprocess, base64, tempfile, shutil
-        ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
+        import subprocess, base64, tempfile, shutil, sys
+        ffmpeg = shutil.which("ffmpeg")
+        if not ffmpeg:
+            for pfx in (sys._MEIPASS if getattr(sys,'_MEIPASS',False) else '', '/opt/homebrew/bin', '/usr/local/bin'):
+                test = os.path.join(pfx, 'ffmpeg') if pfx else 'ffmpeg'
+                if os.path.exists(test): ffmpeg = test; break
+        if not ffmpeg: ffmpeg = 'ffmpeg'
         _log.info(f"generate_thumbnails: {len(paths)} files, ffmpeg={ffmpeg}")
         thumbs = {}
         for p in paths:
