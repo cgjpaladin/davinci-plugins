@@ -108,8 +108,10 @@ class RenamerAPI:
             elif nm == "v": fmt.append({"pfx":"v","key":"ver"})
             elif k == "status": fmt.append({"pfx":"","key":"status"})
             else: fmt.append({"pfx":"","key":k})
+        is_dev = not getattr(sys, '_MEIPASS', False)
         return {
-            "fields": DISPLAY_FIELDS,
+            "fields": FIELD_CONFIG,  # 含 tk，P1a 动态 inspector 需要
+            "dev": is_dev,
             "defaults": _saved_defaults,
             "method_desc_map": METHOD_DESC_MAP,
             "field_rules": FIELD_RULES,
