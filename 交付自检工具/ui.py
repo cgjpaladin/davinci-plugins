@@ -1391,13 +1391,13 @@ def _start_check():
         _action_log(f"时间线: {timeline.GetName()}")
         _action_log(f"帧率: {fps} fps")
 
-        # ── 四道门：结构不对则跳过整组检查（仅当用户勾选了对应结构检查才生效）──
-        # Gate 0: 起始时码归零（仅当勾了「时间线」检查）
-        gate0_ok = not itm[CHK_TIMELINE].Checked or (timeline.GetStartFrame() == 0)
+        # ── 四扇并行门：任一不通 → 全部门控检查跳过 ──
+        # 工程门：仅当勾了「工程设置」才生效，要求时码归零
+        engineering_ok = not itm[CHK_TIMELINE].Checked or (timeline.GetStartFrame() == 0)
         gate_warnings = []
-        if not gate0_ok:
-            _action_log("⚠ 起始时码非零，后续所有检查已跳过，请归零时码后重新运行")
-            gate_warnings.append("⚠ 起始时码非 00:00:00:00，后续所有检查已跳过，请归零时码后重新运行")
+        if not engineering_ok:
+            _action_log("⚠ 起始时码非零，后续门控检查已跳过，请归零时码后重新运行")
+            gate_warnings.append("⚠ 起始时码非 00:00:00:00，后续门控检查已跳过，请归零时码后重新运行")
 
         sub_count = timeline.GetTrackCount("subtitle")
         vid_count = timeline.GetTrackCount("video")
@@ -1421,17 +1421,17 @@ def _start_check():
 
         gates = {}
         if itm[CHK_TRACK].Checked:
-            # 用户勾了轨道结构 → 启用门判断
-            gates["subtitle"] = gate0_ok and sub_count == DEFAULT_SUBTITLE_TRACKS and _all_enabled("subtitle", sub_count)
-            gates["video"]    = gate0_ok and vid_count == DEFAULT_VIDEO_TRACKS and _all_enabled("video", vid_count)
-            gates["audio"]    = gate0_ok and aud_count == DEFAULT_AUDIO_TRACKS and _all_enabled("audio", aud_count) and aud_names_ok
+            # 用户勾了轨道结构 → 三门严格检查
+            gates["subtitle"] = engineering_ok and sub_count == DEFAULT_SUBTITLE_TRACKS and _all_enabled("subtitle", sub_count)
+            gates["video"]    = engineering_ok and vid_count == DEFAULT_VIDEO_TRACKS and _all_enabled("video", vid_count)
+            gates["audio"]    = engineering_ok and aud_count == DEFAULT_AUDIO_TRACKS and _all_enabled("audio", aud_count) and aud_names_ok
         else:
-            gates["subtitle"] = gate0_ok
-            gates["video"]    = gate0_ok
-            gates["audio"]    = gate0_ok
+            gates["subtitle"] = engineering_ok
+            gates["video"]    = engineering_ok
+            gates["audio"]    = engineering_ok
 
-        # 三门合一：任意一门不通 → 后续所有检查跳过
-        gate_all_ok = gate0_ok and all(gates.values())
+        # 四扇并行门：任一不通 → 全部门控检查跳过
+        gates_ok = engineering_ok and all(gates.values())
 
         if itm[CHK_TRACK].Checked:
             failed_gates = []
@@ -1440,7 +1440,7 @@ def _start_check():
                     failed_gates.append(label)
                     _action_log(f"⚠ {label}结构异常")
             if failed_gates:
-                gate_warnings.append(f"⚠ {'、'.join(failed_gates)}结构异常，所有检查已跳过，请先修复基础问题后重新运行")
+                gate_warnings.append(f"⚠ {'、'.join(failed_gates)}结构异常，所有门控检查已跳过，请先修复基础问题后重新运行")
 
         if gate_warnings:
             itm["lbl_gate_warn"].Text = "  ⚠  ".join(gate_warnings)
@@ -1457,7 +1457,7 @@ def _start_check():
                 continue
             g = check.get("gate", "")
             if check.get("run_fn") and itm[check["chk_id"]].Checked:
-                if not g or gate_all_ok:
+                if not g or gates_ok:
                     needed.update(check.get("tracks", []))
         preload_timeline_items(timeline, track_types=list(needed) if needed else None)
 
@@ -1478,9 +1478,9 @@ def _start_check():
                 continue
             if not itm[check["chk_id"]].Checked:
                 continue
-            # 门关闭 → 跳过（三门合一：任一不通全停）
+            # 门关闭 → 跳过（四扇并行门：任一不通全停）
             g = check.get("gate", "")
-            if g and not gate_all_ok:
+            if g and not gates_ok:
                 _action_log(f"⏭ {check['section']}检查跳过（门未通过）")
                 continue
 
