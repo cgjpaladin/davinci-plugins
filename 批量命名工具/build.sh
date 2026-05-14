@@ -31,7 +31,6 @@ python3 _splice.py
   --add-data "_build/renamer_web.html:." \
   --add-data "../shared:shared" \
   --collect-data webview \
-  --collect-data bottle \
   --hidden-import webview \
   --hidden-import webview.platforms.cocoa \
   --hidden-import bottle \
