@@ -276,7 +276,8 @@ function updButtons(){
   for(const t of files){if(t.tags&&t.tags.length)warn.push(...t.tags)}
   if(warn.length){const wl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};dot.style.background='var(--red)';setStatus('⚠ '+[...new Set(warn)].map(w=>wl[w]||w).join(' · '));return}
   dot.style.background='var(--yellow)';
-  _lockInspector(hs);setStatus(missing.length?('缺失: '+missing.join(' · ')+'  ·  '+ok+'/'+total+' 就绪'):('就绪  ·  Ctrl+Z 撤销  ·  '+ok+'/'+total+' 就绪'));
+  let t_ok=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)t_ok++});
+  _lockInspector(hs);setStatus(missing.length?('缺失: '+missing.join(' · ')+'  ·  '+t_ok+'/'+files.length+' 就绪'):('就绪  ·  Ctrl+Z 撤销  ·  '+t_ok+'/'+files.length+' 就绪'));
   _lockInspector(!hs);
 }
 
