@@ -433,6 +433,13 @@ function onDropResult(result){
     call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}, paths=[${result.files.slice(0,3).map(f=>f.path.split('/').pop()).join(',')}...]`);
     const exist=new Set(files.map(f=>f.path));
     const fresh=result.files.filter(f=>!exist.has(f.path));
+    // 兜底：如果按路径去重后仍全量，用 basename 再试（路径格式可能不同）
+    if(fresh.length===result.files.length){
+      const existNames=new Set(files.map(f=>f.path.split('/').pop()));
+      const byName=result.files.filter(f=>!existNames.has(f.path.split('/').pop()));
+      if(byName.length===0){call('debug_log','dedup by basename: all matched, skip');return}
+      if(byName.length<fresh.length){call('debug_log',`dedup: ${fresh.length-byName.length} matched by basename`);fresh.splice(0,fresh.length,...byName)}
+    }
     const dup=result.files.length-fresh.length;
     // 如果完全重复，跳过（不清空现有）
     if(fresh.length===0){call('debug_log','drop skipped: all paths already loaded');return}
