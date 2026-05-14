@@ -450,7 +450,7 @@ function onDropResult(result){
     const fresh=result.files.filter(f=>!exist.has(f.path));
     const dup=result.files.length-fresh.length;
     // 如果完全重复，跳过（不清空现有）
-    if(fresh.length===0){call('debug_log','drop skipped: all paths already loaded');return}
+    if(fresh.length===0){toast(`全部重复 · ${dup} 个已跳过`);return}
     files=files.concat(fresh);call("debug_log",`FILES list: ${files.length} total (added ${fresh.length})`);
     let msg=`已追加 ${fresh.length} 个文件`;
     if(dup) msg+=` · ${dup} 个重复跳过`;
