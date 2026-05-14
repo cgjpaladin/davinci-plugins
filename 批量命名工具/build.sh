@@ -50,4 +50,14 @@ open('_build/renamer_web.html','w').write(html)
 rm -rf ~/Desktop/批量命名工具.app
 cp -R dist/批量命名工具.app ~/Desktop/
 
-echo "✅ 批量命名工具.app 已更新到桌面"
+# 验证打包完整性
+BUNDLE="$HOME/Desktop/批量命名工具.app/Contents/Resources/renamer_web.html"
+if python3 -c "
+h=open('$BUNDLE').read()
+assert ':root' in h, 'CSS missing'
+assert 'DIGIT_RULES' in h, 'JS missing'
+" 2>/dev/null; then
+  echo "✅ 批量命名工具.app 已更新到桌面（CSS+JS 验证通过）"
+else
+  echo "❌ 打包异常：CSS/JS 未嵌入！"; exit 1
+fi
