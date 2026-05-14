@@ -54,7 +54,7 @@ async function init(){
   _reservedDesc.clear();
   for(const v of Object.values(methodDescMap)){
     if(v.value)_reservedDesc.add(v.value);
-    if(v.values)v.values.forEach(x=>{if(x!=='请选择'&&x!=='手动输入…')_reservedDesc.add(x)});
+    if(v.values)v.values.forEach(x=>{_reservedDesc.add(x)});
   }
   const _allFields=cfg.fields||[];
   window._fieldKeys=_allFields.filter(f=>f.key!=='tk'&&!(f.dv)).map(f=>f.key);
