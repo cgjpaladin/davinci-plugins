@@ -207,12 +207,16 @@ def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expec
                           audio_preset=None, video_preset=None, subtitle_preset=None) -> list:
     """检查字幕/视频/音频轨道数量 + 各轨名称/启用状态。
 
-    音频轨：数量不对 → 只提示重新应用预设，不列详情。
-           数量对但名称/启用不对 → 列出每轨差异。
+    音频轨三层检查（逐级递进）：
+      ① Fairlight 预设文件是否存在
+      ② 预设文件 MD5 是否与参考版本一致（防旧版本）
+      ③ 轨道名称/数量是否匹配（推断是否正确应用到时间线）
 
     Returns:
         list[dict]: 轨道数量 + 各轨详情（pass 不列出详情）
     """
+    import hashlib
+
     if audio_preset is None:
         audio_preset = AUDIO_TRACK_PRESET
     if video_preset is None:
@@ -234,7 +238,31 @@ def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expec
             results.append(_make_result("fail",
                 detail=f"{label}轨道: 当前 {actual} 轨", reason=f"应为 {expected} 轨"))
 
+    # ═══ 音频检查 ═══
     actual_audio = timeline.GetTrackCount("audio")
+
+    # ① MD5 校验预设文件（缺失/版本不对 = 同一出口）
+    preset_path = os.path.expanduser(
+        "~/Library/Preferences/Blackmagic Design/DaVinci Resolve/"
+        "Fairlight/Presets/CONSOLE_FLEXI/交付总线设置.dat")
+    _PRESET_HASH = "eb3ad5485026fa8e568608638d118a2d"
+
+    try:
+        with open(preset_path, "rb") as f:
+            actual_hash = hashlib.md5(f.read()).hexdigest()
+        if actual_hash != _PRESET_HASH:
+            results.append(_make_result("fail",
+                detail="Fairlight 预设: 版本过旧",
+                reason="交付总线设置.dat 与参考版本不一致，请更新预设文件"))
+        else:
+            results.append(_make_result("pass",
+                detail="Fairlight 预设: 版本正确 (MD5 校验通过)"))
+    except Exception:
+        results.append(_make_result("fail",
+            detail="Fairlight 预设: 文件缺失或无法读取",
+            reason=f"请确保 {preset_path} 存在且为最新版本"))
+
+    # ③ 轨道名称/数量（推断是否正确应用到时间线）
     if actual_audio == expected_audio:
         # 数量对 → 再检查名称是否都对得上
         names_ok = True
@@ -1420,6 +1448,22 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
 
 _SMB_PREFIX = "/Volumes/MYJC"
 
+def _load_smb_prefix():
+    """从 deploy.json 读取 SMB 挂载点，不存在则用默认值。"""
+    import json as _json
+    cfg_path = os.path.expanduser("~/达芬奇插件工坊/deploy.json")
+    try:
+        with open(cfg_path) as f:
+            cfg = _json.load(f)
+        prefix = cfg.get("smb_mount", _SMB_PREFIX)
+        if prefix:
+            return prefix
+    except Exception:
+        pass
+    return _SMB_PREFIX
+
+_SMB_PREFIX = _load_smb_prefix()
+
 # ── 片段文件信息缓存（脱机+路径检测共享，避免重复 IPC）──
 _clip_files_cache = None  # {(track, name): {"start": int, "mp": item|None, "path": str|None}}
 
@@ -1475,7 +1519,7 @@ def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list
             smpte = _get_smpte(fps)
             tc = smpte.gettc(info["start"])
             issues.append(_make_result("fail", track=track, timecode=tc,
-                detail=f"{name}，不在服务器路径: {path}",
+                detail=f"{name}，不在服务器路径",
                 reason="请将素材移至服务器后重新链接"))
 
     if not issues:
@@ -1490,9 +1534,9 @@ def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list
 def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
     """检查当前时间线是否存在脱机文件（使用共享缓存）。
 
-    两种脱机：
-      - 媒体脱机：源文件丢失，达芬奇显示红屏
-      - 离线片段：右键→生成离线参考片段（故意空的占位片段）
+    达芬奇两种脱机模式：
+      - MediaPoolItem 被删：mp=None，时间线上还在但媒体池里找不到
+      - 源文件丢失：mp 存在，但 File Path 为空（文件被移动/删除/改名）
     """
     _MEDIA_EXT = {".mp4", ".mxf", ".mov", ".avi", ".r3d", ".braw",
         ".mts", ".m2t", ".mpg", ".mpeg", ".m4v", ".mkv",

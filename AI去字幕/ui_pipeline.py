@@ -264,6 +264,7 @@ def refresh_bal():
             items.append(f"{'鬼手剪辑' if key == 'ghostcut' else '无痕AI 2.1'} | 离线")
 
     # 写入下拉框
+    itm[API_CB].Clear()
     idx = 0
     for item_text in items:
         itm[API_CB].AddItem(item_text)
