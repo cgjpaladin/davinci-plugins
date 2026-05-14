@@ -506,7 +506,7 @@ document.addEventListener('keydown',e=>{
     if(idx>=0&&idx+1<all.length){all[idx+1].focus();if(typeof all[idx+1].select==='function')all[idx+1].select()}
     else{call("debug_log",`FILES list: removed ${sel.size} items -> ${files.length-sel.size} remaining`);sel.clear();renderList();updButtons();e.target.blur()}
   }
-  // ← → 在字段间跳转（input 里光标到头了才跳）
+  // ← → 在字段间跳转
   if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&sel.size){
     if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'){
       if(e.target.tagName==='INPUT'){
@@ -516,6 +516,11 @@ document.addEventListener('keydown',e=>{
       }else if(e.target.tagName==='SELECT'){
         e.preventDefault();_moveField(e.target,e.key==='ArrowRight'?1:-1);
       }
+    }else{
+      // 焦点在列表，按→ 进第一个字段
+      e.preventDefault();
+      const all=[...document.querySelectorAll('#inspector input:not([readonly]), #inspector select')];
+      if(all.length)all[0].focus();
     }
   }
   // ↑↓ 切换文件
