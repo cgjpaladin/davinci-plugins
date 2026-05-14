@@ -317,8 +317,24 @@ class RenamerAPI:
         for f in files:
             fd = f.get("fields", {})
             ext = f.get("ext", ".mp4")
+            # 构建目标文件夹
             target = build_folder(dest, type('E',(),{'fields':fd,'ext':ext})())
-            os.makedirs(os.path.dirname(target), exist_ok=True)
+            folder = os.path.dirname(target)
+            os.makedirs(folder, exist_ok=True)
+            # 扫描文件夹找最大 TK
+            try:
+                max_tk = 0
+                if os.path.isdir(folder):
+                    grp_prefix = build_filename({**fd, 'tk':''})[:-1]  # 命名前缀（不含 TK）
+                    for fn in os.listdir(folder):
+                        m = re.search(r'Tk(\d+)', fn)
+                        if m and grp_prefix in fn:
+                            max_tk = max(max_tk, int(m.group(1)))
+                fd['tk'] = str(max_tk + 1).zfill(2)
+                target = os.path.join(folder, build_filename(fd) + ext)
+            except:
+                fd['tk'] = '01'
+                target = build_folder(dest, type('E',(),{'fields':fd,'ext':ext})())
             # 哈希去重
             try:
                 src_hash = _hash_file(f["path"])
