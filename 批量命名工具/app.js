@@ -40,27 +40,7 @@ function mock(m,...a){
 }
 
 // ═══ 浏览器预览：拖入真文件 ═══
-// 注意：模块加载时 pywebview 可能尚未注入，故在 DOMContentLoaded 后再判断
-document.addEventListener('DOMContentLoaded',()=>{
-  if(!window.pywebview){
-    console.error('MOCK MODE browser drop handler registered');
-    const dz=document.getElementById('fileList');
-    dz.addEventListener('dragover',e=>{e.preventDefault()});
-    dz.addEventListener('drop',e=>{
-    e.preventDefault();
-    const items=[...e.dataTransfer.files].filter(f=>f.type.startsWith('video/')||f.name.match(/\.(mp4|mov|mxf|avi|mkv)$/i));
-    if(!items.length)return;
-    const mockFiles=items.map((f,i)=>({
-      path:f.name, basename:f.name, ext:'.'+(f.name.split('.').pop()||'mp4'),
-      fields:{ep:'',sc:'',gr:'',desc:'',author:'',method:'',ver:'',status:''},
-      tags:/(\.[^.]+)\1$/i.test(f.name)?['dbl_ext']:[]
-    }));
-    files=files.concat(mockFiles.filter(mf=>!files.some(ef=>ef.path===mf.path)));
-    renderList();updButtons();
-    toast(`已追加 ${mockFiles.length} 个文件 (预览模式)`);
-  });
-  }
-});
+// (已移除 — pywebview 模式不需要 mock handler)
 
 // ═══ Load ═══
 async function init(){
