@@ -15,18 +15,8 @@
   <span style="color:#444;font-size:9px" id="debugMode">loading...</span>
 </div>
 
-  <!-- Inspector — 占位符提示，无预填值 -->
-  <div class="inspector" id="inspector">
-    <div class="param"><label>Ep 集数</label><input data-key="ep" value="" placeholder="01" style="color:var(--text-dim)"></div>
-    <div class="param"><label>Sc 场次</label><input data-key="sc" value="" placeholder="01" style="color:var(--text-dim)"></div>
-    <div class="param"><label>Gr 小场次</label><input data-key="gr" value="" placeholder="01" style="color:var(--text-dim)"></div>
-    <div class="param"><label>Tk 次数</label><input data-key="tk" value="自动排序" readonly></div>
-    <div class="param wide"><label>镜头描述</label><input id="descInput" data-key="desc" value="" placeholder="由制作方式决定" readonly></div>
-    <div class="param"><label>制作者</label><input data-key="author" id="authorInput" value="" placeholder="请输入姓名" style="color:var(--text-dim)"></div>
-    <div class="param"><label>制作方式</label><select id="methodSelect" data-key="method"><option value="">请选择</option><option value="智能分镜版">智能分镜版</option><option value="双轨版">双轨版</option><option value="角色专属版">角色专属版</option></select></div>
-    <div class="param"><label>版本号</label><input data-key="ver" value="" placeholder="01" style="color:var(--text-dim)"></div>
-    <div class="param"><label>通过情况</label><select data-key="status"><option value="">请选择</option><option value="OK">OK</option><option value="KP">KP</option><option value="NG">NG</option></select></div>
-  </div>
+  <!-- Inspector — 由 JS 从 FIELD_CONFIG 动态生成 -->
+  <div class="inspector" id="inspector"></div>
 
 <!-- Dest + Buttons -->
 <div class="dest">

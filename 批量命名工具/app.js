@@ -59,19 +59,24 @@ if(!window.pywebview){
 
 // ═══ Load ═══
 async function init(){
-  // 调试：显示当前运行模式
   const dm = document.getElementById('debugMode');
   dm.textContent = _isLive() ? '✔ Live' : '✖ Mock';
 
   const cfg=await call('get_config');
   methodDescMap=cfg.method_desc_map||{};_nameFmt=cfg.name_format||[];
   const v=APP_VERSION||'?',br=APP_BRANCH||'',t=APP_BUILD_TIME||'';document.getElementById('debugMode').textContent=(cfg.dev?'🔧 DEV ':'')+(br&&br!='main'?br+'@':'')+'v'+v+(t?' '+t:'');
+
+  // 动态构建 inspector
+  _buildInspector(cfg.fields);
+  // 应用保存的默认值
   const d=cfg.defaults||{};
   for(const fd of cfg.fields){
     if(d[fd.key]){const el=document.querySelector(`[data-key="${fd.key}"]`);if(el){if(el.tagName==='SELECT')el.value=d[fd.key];else{el.value=d[fd.key];el.style.color='var(--text-bright)'}}}
   }
   document.getElementById('methodSelect').value=d.method||'';
   onMethodChange();
+  // 绑定事件（在元素创建后）
+  _bindInspectorListeners();
 }
 // ═══ init — 轮询等待 pywebview 桥接 ═══
 let _ready=false;
@@ -89,6 +94,53 @@ function _tryStart(){
   }).catch(()=>{init()});
 }
 window._tryIv=setInterval(_tryStart,300);
+
+// ═══ 动态构建 Inspector ═══
+function _buildInspector(fields){
+  const ct=document.getElementById('inspector');ct.innerHTML='';
+  fields.forEach(fd=>{
+    const d=document.createElement('div');d.className='param'+(fd.key==='desc'?' wide':'');
+    const lb=document.createElement('label');lb.textContent=fd.label;d.appendChild(lb);
+    if(fd.dv){
+      const s=document.createElement('select');s.setAttribute('data-key',fd.key);
+      if(fd.key==='method')s.id='methodSelect';
+      fd.dv.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o)});
+      d.appendChild(s);
+    }else{
+      const ip=document.createElement('input');ip.setAttribute('data-key',fd.key);
+      ip.placeholder=fd.hint||'';ip.value='';
+      if(fd.key==='tk'){ip.value='自动排序';ip.readOnly=true}
+      if(fd.key==='desc'){ip.id='descInput';ip.readOnly=true}
+      if(fd.key==='author')ip.id='authorInput';
+      d.appendChild(ip);
+    }
+    ct.appendChild(d);
+  });
+}
+
+function _bindInspectorListeners(){
+  // 输入框：数字验证 + 泛用 handler
+  document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
+    if(el.readOnly)return;
+    el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color=C.b;el.style.background=''});
+    el.addEventListener('blur',()=>{if(!sel.size)return;if(!el.value.trim()){el.style.color=C.d;el.style.background=''}else{el.style.background=C.gr}});
+    const rx=DIGIT_RULES[el.getAttribute('data-key')];
+    if(rx){
+      el.addEventListener('input',e=>{if(!sel.size)return;let v=el.value.replace(/[^\d.]/g,'');const dp=v.indexOf('.');if(dp>=0)v=v.slice(0,dp+1)+v.slice(dp+1).replace(/\./g,'');while(v&&!rx.test(v))v=v.slice(0,-1);if(v!==el.value){el.value=v;e.stopImmediatePropagation();return}},true);
+    }
+    el.addEventListener('input',()=>{if(!sel.size)return;_applyInspectorToSelected();renderList();updButtons()});
+  });
+  // 下拉框
+  document.querySelectorAll('#inspector select[data-key]').forEach(el=>{
+    if(el.id==='descInput'||el.id==='methodSelect')return;
+    el.addEventListener('change',()=>{if(!sel.size)return;_applyInspectorToSelected();renderList();updButtons()});
+  });
+  // methodSelect
+  document.getElementById('methodSelect').addEventListener('change',onMethodChange);
+  // 制作者中文限制
+  const ab=document.getElementById('authorInput');
+  if(ab)ab.addEventListener('input',()=>{const o=ab.value;const c=o.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g,'');if(c!==o){toast('请输入完整中文姓名');ab.value=c}});
+}
 
 // ═══ Fields ═══
 function getFields(){
@@ -148,9 +200,6 @@ function descSelect(vs){
   };
   if(el)el.replaceWith(s);
 }
-document.getElementById('methodSelect').addEventListener('change',onMethodChange);
-
-// ═══ Preview ═══
 // ═══ File List ═══
 function renderList(){
   const ct=document.getElementById('fileList');ct.innerHTML='';
