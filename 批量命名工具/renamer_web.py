@@ -285,18 +285,21 @@ if __name__ == "__main__":
     def _bind_drop():
         from webview.dom import DOMEventHandler
         def _on_drop(e):
-            _log.info(f"DROP EVENT: keys={list(e.keys())[:10]}")
             dt = e.get('dataTransfer', {})
-            _log.info(f"  dataTransfer keys={list(dt.keys())[:10] if dt else 'NONE'}")
-            files = dt.get('files', []) if dt else []
-            _log.info(f"  files count={len(files)}")
+            files = dt.get('files', [])
             paths = []
             for f in files:
                 fp = f.get('pywebviewFullPath', '')
-                _log.info(f"  file: pywebviewFullPath={fp[:80] if fp else 'MISSING'}")
                 if not fp: continue
                 if os.path.isfile(fp):
                     paths.append(fp)
+                elif os.path.isdir(fp):
+                    try:
+                        for sf in sorted(os.listdir(fp)):
+                            sfp = os.path.join(fp, sf)
+                            if os.path.isfile(sfp):
+                                paths.append(sfp)
+                    except: pass
             if paths:
                 _log.info(f"DOM drop: {len(paths)} items")
                 result = api._process_paths(paths)
