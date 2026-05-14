@@ -282,20 +282,21 @@ if __name__ == "__main__":
     )
 
     # 注册 DOM 事件处理器（pywebview 6.x DOM API）
-    from webview.dom import DOMEventHandler
-
-    def _on_drop(e):
-        files = e.get('dataTransfer', {}).get('files', [])
-        paths = []
-        for f in files:
-            fp = f.get('pywebviewFullPath', '')
-            if fp and os.path.isfile(fp):
-                paths.append(fp)
-        if paths:
-            result = api._process_paths(paths)
-            _window.evaluate_js(f"onDropResult({json.dumps(result)})")
-
     def _bind_drop():
+        from webview.dom import DOMEventHandler
+        def _on_drop(e):
+            _log.info(f"DROP EVENT: type={type(e).__name__}")
+            files = e['dataTransfer']['files']
+            paths = []
+            for f in files:
+                fp = f.get('pywebviewFullPath', '')
+                if not fp: continue
+                if os.path.isfile(fp):
+                    paths.append(fp)
+            if paths:
+                _log.info(f"DOM drop: {len(paths)} items")
+                result = api._process_paths(paths)
+                _window.evaluate_js(f"onDropResult({json.dumps(result)})")
         _window.dom.document.events.dragover += DOMEventHandler(lambda e: e, True, True)
         _window.dom.document.events.drop += DOMEventHandler(_on_drop, True, True)
         _log.info("DOM drop handler bound")
