@@ -478,7 +478,7 @@ document.addEventListener('keydown',e=>{
     e.preventDefault();
     const all=[...document.querySelectorAll('#inspector input:not([readonly]), #inspector select')];
     const idx=all.indexOf(e.target);
-    if(idx>=0&&idx+1<all.length){all[idx+1].focus();all[idx+1].select()}
+    if(idx>=0&&idx+1<all.length){all[idx+1].focus();if(typeof all[idx+1].select==='function')all[idx+1].select()}
     else{call("debug_log",`FILES list: removed ${sel.size} items -> ${files.length-sel.size} remaining`);sel.clear();renderList();updButtons();e.target.blur()}
   }
   // Cmd+A: input 里正常全选；其他位置 → 全选文件列表
