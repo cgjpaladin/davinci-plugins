@@ -56,7 +56,7 @@ async function init(){
   // 应用保存的默认值
   const d=cfg.defaults||{};
   for(const fd of cfg.fields){
-    if(d[fd.key]){const el=document.querySelector(`[data-key="${fd.key}"]`);if(el){if(el.tagName==='SELECT')el.value=d[fd.key];else{el.value=d[fd.key];el.style.color='var(--text-bright)'}}}
+    if(d[fd.key]){const el=document.querySelector(`[data-key="${fd.key}"]`);if(el){if(el.tagName==='SELECT')el.value=d[fd.key];else{el.value=d[fd.key];_setVisual(el,f[d.key])}}}
   }
   document.getElementById('methodSelect').value=d.method||'';
   onMethodChange();
@@ -137,7 +137,7 @@ function _bindInspectorListeners(){
   // 下拉框
   document.querySelectorAll('#inspector select[data-key]').forEach(el=>{
     if(el.id==='descInput'||el.id==='methodSelect')return;
-    el.addEventListener('change',()=>{if(!sel.size)return;el.style.color='var(--text-bright)';_applyInspectorToSelected();renderList();updButtons()});
+    el.addEventListener('change',()=>{if(!sel.size)return;_setVisual(el,f[d.key]);_applyInspectorToSelected();renderList();updButtons()});
   });
   // methodSelect
   document.getElementById('methodSelect').addEventListener('change',onMethodChange);
@@ -167,8 +167,7 @@ let _prevMethod='';
 function onMethodChange(){
   const m=document.getElementById('methodSelect').value;
   const filled=m&&m!=='请选择';
-  document.getElementById('methodSelect').style.color=filled?'var(--text-bright)':'var(--text-dim)';
-  document.getElementById('methodSelect').style.background=filled?'var(--filled-bg)':'';
+  _setVisual(document.getElementById('methodSelect'),m);
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
   const methodChanged=m!==_prevMethod;
   _prevMethod=m;
@@ -186,10 +185,10 @@ function onMethodChange(){
 function descInput(t,v,ro,ph){
   const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const el=document.getElementById('descInput');
-  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';el.style.color=(ro&&v)?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');el.style.background=v?'var(--filled-bg)':'';if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};return}
+  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';_setVisual(el,v);if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};return}
   const ip=document.createElement('input');ip.id='descInput';ip.setAttribute('data-key','desc');
   ip.value=v||'';ip.readOnly=ro||false;ip.placeholder=ph||'由制作方式决定';
-  ip.style.cssText=el?el.style.cssText:'';ip.style.color=(ro&&v)?'var(--text-bright)':(v?'var(--text-bright)':'var(--text-dim)');ip.style.background=v?'var(--filled-bg)':'';
+  ip.style.cssText=el?el.style.cssText:'';_setVisual(ip,v);
   if(!ro)ip.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};
   if(el)el.replaceWith(ip);
 }
@@ -204,8 +203,7 @@ function descSelect(vs){
     if(s.value==='手动输入…'){
       if(!ci2){const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;';ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};s.after(ip)}
     }else{if(ci2)ci2.remove();_applyInspectorToSelected();renderList();updButtons()}
-    s.style.color=s.value&&s.value!=='请选择'?'var(--text-bright)':'var(--text-dim)';
-    s.style.background=s.value&&s.value!=='请选择'?'var(--filled-bg)':'';
+    _setVisual(s,s.value);
   };
   s.onchange=_onDescChange;
   if(el)el.replaceWith(s);
@@ -257,6 +255,12 @@ function renderList(){
 }
 function updCount(){
   let ok2=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)ok2++});document.getElementById('fileCount').innerHTML=`文件列表 · <span style="color:var(--green)">${ok2}</span>/${files.length} 就绪  ·  选中 ${sel.size}`;
+}
+
+function _setVisual(el,v){
+  const filled=v&&v!=='请选择'&&v!=='手动输入…';
+  el.style.color=filled?'var(--text-bright)':'var(--text-dim)';
+  el.style.background=filled?'var(--filled-bg)':'';
 }
 function _lockInspector(lock){
   document.querySelectorAll('#inspector input:not([data-key="tk"]), #inspector select').forEach(el=>{
@@ -313,8 +317,8 @@ function _syncInspectorFromSelection(){
       const el=document.querySelector(`[data-key="${k}"]`);
       if(!el||el.id==='descInput')continue;
       const v=f.fields[k]||'';
-      if(el.tagName==='SELECT'){el.value=v;const filled=v&&v!=='请选择';el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'var(--filled-bg)':''}
-      else{el.value=v;const filled=!!v;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'var(--filled-bg)':''}
+      if(el.tagName==='SELECT'){el.value=v;_setVisual(el,v)}
+      else{el.value=v;_setVisual(el,v)}
     }
     document.getElementById('methodSelect').value=f.fields.method||'';
     onMethodChange();
@@ -326,8 +330,8 @@ function _syncInspectorFromSelection(){
       const el=document.querySelector(`[data-key="${k}"]`);
       if(!el||el.id==='descInput')continue;
       const single=vals.size===1?[...vals][0]:'';
-      if(el.tagName==='SELECT'){el.value=vals.size===1?[...vals][0]:'';const filled=single&&single!=='请选择';el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'var(--filled-bg)':''}
-      else{el.value=single||'';const filled=!!single;el.style.color=filled?'var(--text-bright)':'var(--text-dim)';el.style.background=filled?'var(--filled-bg)':''}
+      if(el.tagName==='SELECT'){el.value=vals.size===1?[...vals][0]:'';_setVisual(el,el.value)}
+      else{el.value=single||'';_setVisual(el,el.value)}
     }
     const mv=new Set(ix.map(i=>files[i].fields.method||''));
     document.getElementById('methodSelect').value=mv.size===1?[...mv][0]:'';
@@ -340,19 +344,19 @@ function _syncInspectorFromSelection(){
 }
 function _setDescValue(v){
   const ci=document.getElementById('descCustomInput');
-  if(ci){ci.value=v||'';ci.style.color=v?'var(--text-bright)':'var(--text-dim)';return}
+  if(ci){ci.value=v||'';_setVisual(ci,v);return}
   const el=document.getElementById('descInput');
   if(!el||!v)return;
   if(el.tagName==='SELECT'){
-    for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;el.style.color='var(--text-bright)';el.style.background='var(--filled-bg)';return}}
+    for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;_setVisual(el,f[d.key]);el.style.background='var(--filled-bg)';return}}
     // 不在选项里 → 切到「手动输入…」并填值
-    el.value='手动输入…';el.style.color='var(--text-bright)';el.style.background='var(--filled-bg)';
+    el.value='手动输入…';_setVisual(el,f[d.key]);el.style.background='var(--filled-bg)';
     const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');
     ip.value=v;ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;color:var(--text-bright);';
     ip.oninput=()=>{_applyInspectorToSelected();renderList();updButtons()};
     el.after(ip);
   }else if(el.tagName==='INPUT'){
-    el.value=v;el.style.color='var(--text-bright)';el.style.background='var(--filled-bg)';
+    el.value=v;_setVisual(el,f[d.key]);el.style.background='var(--filled-bg)';
   }
 }
 
