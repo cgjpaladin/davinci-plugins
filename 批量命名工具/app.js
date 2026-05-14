@@ -49,6 +49,10 @@ async function init(){
 
   const cfg=await call('get_config');
   methodDescMap=cfg.method_desc_map||{};_nameFmt=cfg.name_format||[];
+  const _allFields=cfg.fields||[];
+  window._fieldKeys=_allFields.filter(f=>f.key!=='tk'&&!(f.dv)).map(f=>f.key);
+  window._fieldKeysAll=_allFields.filter(f=>f.key!=='tk').map(f=>f.key);
+  window._fieldLabels={};_allFields.forEach(f=>{window._fieldLabels[f.key]=f.label});
   const v=APP_VERSION||'?',br=APP_BRANCH||'',t=APP_BUILD_TIME||'';document.getElementById('debugMode').textContent=(cfg.dev?'🔧 DEV ':'')+(br&&br!='main'?br+'@':'')+'v'+v+(t?' '+t:'');
 
   // 动态构建 inspector
@@ -236,7 +240,7 @@ function renderList(){
     if(tags.length){const lbl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};tag.textContent=tags.map(t=>lbl[t]||t).join(' · ');tag.style.color='var(--red)'}
     else if(!ready){
       const m=[];const lb={ep:'Ep集数',sc:'Sc场次',gr:'Gr小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'版本号',status:'通过情况'};
-      for(const k of['ep','sc','gr','desc','author','method','ver','status']){if(!ff[k])m.push(lb[k])}
+      for(const k of (window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'])){if(!ff[k])m.push(_lbs[k]||k)}
       tag.textContent='请填写: '+m.join(' · ');
     }else{tag.textContent='✓'}
     d.append(th,nn,ar,on,dot,tag);
@@ -272,7 +276,8 @@ function _lockInspector(lock){
 }
 function updButtons(){
   const hf=files.length>0,hs=sel.size>0,fd=getFields();
-  const af=fd.ep&&fd.sc&&fd.gr&&fd.author&&fd.method&&fd.ver&&fd.status&&fd.desc;
+    const _fks=window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'];
+  let af=true;for(const k of _fks)if(!fd[k]){af=false;break}
   document.getElementById('btnRename').disabled=!(hs&&af);
   document.getElementById('btnArchive').disabled=!(hs&&af);
   document.getElementById('btnUndo').disabled=!undoAvail;
@@ -281,8 +286,8 @@ function updButtons(){
   if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');return}
   if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，可以重命名');return}
   const missing=[];
-  const labels={ep:'Ep集数',sc:'Sc场次',gr:'Gr小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'版本号',status:'通过情况'};
-  for(const k of['ep','sc','gr','desc','author','method','ver','status']){if(!fd[k])missing.push(labels[k])}
+  const _lbs=window._fieldLabels||{};
+  for(const k of (window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'])){if(!fd[k])missing.push(_lbs[k]||k)}
   // 检查警告
   let warn=[];
   for(const t of files){if(t.tags&&t.tags.length)warn.push(...t.tags)}
@@ -323,7 +328,7 @@ function _syncInspectorFromSelection(){
     onMethodChange();
     _setDescValue(f.fields.desc||'');
   }else{
-    const ks=['ep','sc','gr','author','ver','status'];
+    const ks=(window._fieldKeys||['ep','sc','gr','author','ver','status']);
     for(const k of ks){
       const vals=new Set(ix.map(i=>files[i].fields[k]||''));
       const el=document.querySelector(`[data-key="${k}"]`);

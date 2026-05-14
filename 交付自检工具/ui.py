@@ -408,7 +408,7 @@ def _filter_covered(results, personal_words):
                 detail=f"系统违禁词典: {total} 处  (个人词典覆盖 {removed} 处)", is_summary=True)
     return kept
 CHECKS = [
-    # gate="" → 不依赖任何门，永远运行（用于诊断问题出在哪扇门）
+    # gate="" → 不用门控制，直接跑
     {"id": "timeline",      "section": "工程设置", "chk_id": CHK_TIMELINE,      "group": "工程", "subgroup": "设置",   "run_fn": _run_timeline_check,     "tracks": [], "gate": ""},
     {"id": "offline",       "section": "脱机检测", "chk_id": CHK_OFFLINE,       "group": "工程", "subgroup": "路径",   "run_fn": _run_offline_check,       "tracks": ["video"], "gate": ""},
     {"id": "path",          "section": "路径检测", "chk_id": CHK_PATH,           "group": "工程", "subgroup": "路径",   "run_fn": _run_path_check,          "tracks": ["video"], "gate": ""},
@@ -436,7 +436,7 @@ CHECKS = [
     {"id": "audio_color",   "section": "音频越轨", "chk_id": CHK_AUDIO_COLOR,     "group": "音频", "subgroup": "越轨",   "run_fn": _run_audio_color_check,   "tracks": ["audio"], "gate": "audio"},
 ]
 # 扩展指南：
-#   - gate: ""=不依赖门永远跑, "subtitle"/"video"/"audio"=受 gates_ok 控制（四扇并行门全过才跑）
+#   - gate: ""=不用门控制直接跑, 非空=受 gates_ok 控制（四扇并行门全过才跑）
 #   - tracks: 声明需要的轨道类型, []不预加载; 门关闭时相关轨道也不会预加载
 #   - 换位置：移动 list 中 dict 的位置
 #   - 暂时关闭：run_fn 设为 None
