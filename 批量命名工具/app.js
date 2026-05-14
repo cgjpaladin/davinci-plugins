@@ -186,9 +186,10 @@ function onMethodChange(){
 function descInput(t,v,ro,ph){
   const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const el=document.getElementById('descInput');
-  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;el.placeholder=ph||'由制作方式决定';_setVisual(el,v);if(!ro)el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}};return}
+  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;if(ro){el.setAttribute('readonly','');el.oninput=null}else{el.removeAttribute('readonly')}el.placeholder=ph||'由制作方式决定';_setVisual(el,v);if(!ro){el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}}}return}
   const ip=document.createElement('input');ip.id='descInput';ip.setAttribute('data-key','desc');
-  ip.value=v||'';ip.readOnly=ro||false;ip.placeholder=ph||'由制作方式决定';
+  ip.value=v||'';ip.placeholder=ph||'由制作方式决定';
+  if(ro){ip.readOnly=true;ip.setAttribute('readonly','')}
   ip.style.cssText=el?el.style.cssText:'';_setVisual(ip,v);
   if(!ro)ip.oninput=()=>{if(!descLocked){_setVisual(ip,ip.value);_applyInspectorToSelected();renderList();updButtons()}};
   if(el)el.replaceWith(ip);
