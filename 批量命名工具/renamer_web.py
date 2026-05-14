@@ -78,7 +78,7 @@ class RenamerAPI:
                 tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
                 tmp.close()
                 result = subprocess.run(
-                    [ffmpeg, '-y', '-ss', '00:00:01', '-i', p, '-vframes', '1', '-s', '160x90', tmp.name],
+                    [ffmpeg, '-y', '-ss', '00:00:01', '-i', p, '-vframes', '1', '-s', '90x160', tmp.name],
                     capture_output=True, timeout=5
                 )
 
