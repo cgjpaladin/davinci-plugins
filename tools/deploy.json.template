@@ -1,0 +1,5 @@
+{
+  "smb_root": "/Volumes/你的共享盘名/达芬奇脚本",
+  "dev_hosts": ["你的开发机名.local"],
+  "dev_dir": "~/WorkBuddy/达芬奇插件工坊"
+}

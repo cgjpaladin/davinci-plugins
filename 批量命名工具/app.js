@@ -8,8 +8,9 @@ document.addEventListener('DOMContentLoaded',()=>{
 // ═══ State ═══
 
 // 全局错误 → toast（不沉默）
-window.onerror=function(m,s,l,c,e){toast('JS错误: '+(m||'未知'));return false};
-window.addEventListener('unhandledrejection',e=>{toast('Promise错误: '+e.reason)});
+window.onerror=function(m,s,l,c,e){const msg='JS错误: '+(m||'未知')+' @ '+(s||'?')+':'+l;toast(msg);call('debug_log',msg);return false};
+window.addEventListener('unhandledrejection',e=>{const msg='Promise错误: '+e.reason;toast(msg);call('debug_log',msg)});
+const _origErr=console.error;console.error=function(...a){_origErr.apply(console,a);call('debug_log','CONSOLE: '+a.join(' '))};
 
 let files=[], sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
