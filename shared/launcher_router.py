@@ -1,14 +1,32 @@
 #!/usr/bin/env python3
 # launcher_router.py — 达芬奇插件工坊 统一启动路由器（部署后永不更新）
 # 每台机器一份，按主机名判断读本地开发版还是 SMB 稳定版：
-#   Bryan → 本地开发目录
+#   Dev 机 → 本地开发目录
 #   灰度名单 → SMB gray/
 #   其他人 → SMB 根目录
+#
+# 路径来源：优先读 ~/达芬奇插件工坊/deploy.json，不存在则用默认值
 #
 # 用法:
 #   import launcher_router; launcher_router.route("AI去字幕", ui_module="stable_ui")
 import sys, os, json, socket
 
+
+def _load_deploy_config():
+    """读取部署配置，不存在返回空 dict"""
+    cfg_path = os.path.expanduser("~/达芬奇插件工坊/deploy.json")
+    try:
+        with open(cfg_path) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+_deploy = _load_deploy_config()
+_SMB_ROOT = _deploy.get("smb_root", "/Volumes/MYJC/06_Software/达芬奇脚本")
+_DEV_HOSTS = set(_deploy.get("dev_hosts", ["BryandeMac-mini.local", "BryandeMac-mini"]))
+_DEV_DIR_BASE = os.path.expanduser(
+    _deploy.get("dev_dir", "~/WorkBuddy/达芬奇插件工坊")
+)
 
 
 def route(product_name: str, ui_module: str = "ui"):
@@ -18,11 +36,10 @@ def route(product_name: str, ui_module: str = "ui"):
         product_name: 产品目录名（如 "AI去字幕"、"交付自检工具"）
         ui_module:   UI 入口模块名（如 "stable_ui"、"ui"）
     """
-    _SMB_BASE = f"/Volumes/MYJC/06_Software/达芬奇脚本/{product_name}"
-    _DEV_DIR = os.path.expanduser(f"~/WorkBuddy/达芬奇插件工坊/{product_name}")
-    _SHARED_DIR = os.path.join(_DEV_DIR, "..", "shared")  # 本地开发用 shared/
+    _SMB_BASE = os.path.join(_SMB_ROOT, product_name)
+    _DEV_DIR = os.path.join(_DEV_DIR_BASE, product_name)
+    _SHARED_DIR = os.path.join(_DEV_DIR_BASE, "shared")
 
-    _DEV_HOSTS = {"BryandeMac-mini.local", "BryandeMac-mini"}
     _host = socket.gethostname()
     _code_dir = _SMB_BASE
 
@@ -40,7 +57,7 @@ def route(product_name: str, ui_module: str = "ui"):
             pass
 
     sys.path.insert(0, _code_dir)
-    sys.path.insert(0, os.path.join(_SMB_BASE, "..", "shared"))  # SMB shared/ 模块
+    sys.path.insert(0, os.path.join(_SMB_ROOT, "shared"))
 
     # ── dry-run 自检 ──
     if "--dry-run" in sys.argv:
