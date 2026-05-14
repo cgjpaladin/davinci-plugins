@@ -38,6 +38,25 @@ function mock(m,...a){
   });
 }
 
+// ═══ 浏览器预览：拖入真文件 ═══
+if(!window.pywebview){
+  const dz=document.getElementById('fileList');
+  dz.addEventListener('dragover',e=>{e.preventDefault()});
+  dz.addEventListener('drop',e=>{
+    e.preventDefault();
+    const items=[...e.dataTransfer.files].filter(f=>f.type.startsWith('video/')||f.name.match(/\.(mp4|mov|mxf|avi|mkv)$/i));
+    if(!items.length)return;
+    const mockFiles=items.map((f,i)=>({
+      path:f.name, basename:f.name, ext:'.'+(f.name.split('.').pop()||'mp4'),
+      fields:{ep:'',sc:'',gr:'',desc:'',author:'',method:'',ver:'',status:''},
+      tags:/(\.[^.]+)\1$/i.test(f.name)?['dbl_ext']:[]
+    }));
+    files=files.concat(mockFiles.filter(mf=>!files.some(ef=>ef.path===mf.path)));
+    renderList();updButtons();
+    toast(`已追加 ${mockFiles.length} 个文件 (预览模式)`);
+  });
+}
+
 // ═══ Load ═══
 async function init(){
   // 调试：显示当前运行模式
