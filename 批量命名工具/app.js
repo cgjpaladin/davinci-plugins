@@ -126,8 +126,8 @@ function _bindInspectorListeners(){
   // 输入框：数字验证 + 泛用 handler
   document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
     if(el.readOnly)return;
-    el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color=C.b;el.style.background=''});
-    el.addEventListener('blur',()=>{if(!sel.size)return;if(!el.value.trim()){el.style.color=C.d;el.style.background=''}else{el.style.background=C.gr}});
+    el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color=C.b;const v=el.value.trim();el.style.background=v&&v!=='请选择'&&v!=='手动输入…'?C.gr:''});
+    el.addEventListener('blur',()=>{if(!sel.size)return;_setVisual(el,el.value.trim())});
     const rx=DIGIT_RULES[el.getAttribute('data-key')];
     if(rx){
       el.addEventListener('input',e=>{if(!sel.size)return;let v=el.value.replace(/[^\d.]/g,'');const dp=v.indexOf('.');if(dp>=0)v=v.slice(0,dp+1)+v.slice(dp+1).replace(/\./g,'');while(v&&!rx.test(v))v=v.slice(0,-1);if(v!==el.value){el.value=v;e.stopImmediatePropagation();return}},true);
