@@ -14,7 +14,7 @@ const _origErr=console.error;console.error=function(...a){_origErr.apply(console
 
 let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
-const DIGIT_STRICT={ep:/^\d{2,3}$/,sc:/^\d{2}$/,gr:/^\d{2}$/,ver:/^\d{2}(\.\d)?$/};
+const DIGIT_STRICT={ep:/^(0[1-9]|[1-9]\d{1,2})$/,sc:/^(0[1-9]|[1-9]\d)$/,gr:/^(0[1-9]|[1-9]\d)$/,ver:/^(0[1-9]|[1-9]\d)(\.\d)?$/};
 const C={g:'var(--green)',y:'var(--yellow)',r:'var(--red)',b:'var(--text-bright)',d:'var(--text-dim)',gr:'var(--filled-bg)'};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
 
