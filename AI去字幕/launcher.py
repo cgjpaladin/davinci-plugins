@@ -91,4 +91,22 @@ if '--dry-run' in sys.argv:
 # 启动外部 Python 进程（stdout/stderr 保留给子进程，不归 log_writer 管）
 _env = os.environ.copy()
 _env["PYTHONIOENCODING"] = "utf-8"
-subprocess.Popen([_PYTHON, _STABLE_UI], env=_env)
+_proc = subprocess.Popen([_PYTHON, _STABLE_UI], env=_env)
+
+# ═══ 看门狗：达芬奇退出时杀掉孤儿子进程 ═══
+import threading
+def _watchdog():
+    """每 15 秒检查达芬奇是否还在运行；不在了就杀子进程然后自尽"""
+    import subprocess as _sp
+    while True:
+        time.sleep(15)
+        try:
+            r = _sp.run(["pgrep", "-x", "Resolve"], capture_output=True, timeout=5)
+            if r.returncode != 0:
+                _proc.kill()
+                os._exit(0)
+        except Exception:
+            pass  # pgrep 挂了不误杀
+_wd = threading.Thread(target=_watchdog, daemon=True)
+_wd.start()
+_proc.wait()  # 阻塞等子进程退出，窗口关了 launcher 也跟着退
