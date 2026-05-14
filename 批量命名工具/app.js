@@ -106,7 +106,7 @@ function _buildInspector(fields){
     const d=document.createElement('div');d.className='param'+(fd.key==='desc'?' wide':'');
     const lb=document.createElement('label');lb.textContent=fd.label;d.appendChild(lb);
     if(fd.dv){
-      const s=document.createElement('select');s.setAttribute('data-key',fd.key);s.style.color='var(--text-dim)';
+      const s=document.createElement('select');s.setAttribute('data-key',fd.key);s.style.color='#888';
       if(fd.key==='method')s.id='methodSelect';
       fd.dv.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o)});
       d.appendChild(s);
@@ -259,7 +259,7 @@ function updCount(){
 
 function _setVisual(el,v){
   const filled=v&&v!=='请选择'&&v!=='手动输入…';
-  el.style.color=filled?'var(--text-bright)':'var(--text-dim)';
+  el.style.color=filled?'var(--text-bright)':'#888';
   el.style.background=filled?'var(--filled-bg)':'';
 }
 function _lockInspector(lock){
