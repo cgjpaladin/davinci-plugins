@@ -50,6 +50,12 @@ async function init(){
 
   const cfg=await call('get_config');
   methodDescMap=cfg.method_desc_map||{};_nameFmt=cfg.name_format||[];
+  // 收集所有预置镜头描述值供碰撞检测
+  _reservedDesc.clear();
+  for(const v of Object.values(methodDescMap)){
+    if(v.value)_reservedDesc.add(v.value);
+    if(v.values)v.values.forEach(x=>{if(x!=='请选择'&&x!=='手动输入…')_reservedDesc.add(x)});
+  }
   const _allFields=cfg.fields||[];
   window._fieldKeys=_allFields.filter(f=>f.key!=='tk'&&!(f.dv)).map(f=>f.key);
   window._fieldKeysAll=_allFields.filter(f=>f.key!=='tk').map(f=>f.key);
@@ -171,7 +177,7 @@ function getFields(){
 }
 
 // ═══ Method → Desc ═══
-let _prevMethod='',_fromSync=false;
+let _prevMethod='',_fromSync=false,_reservedDesc=new Set();
 function onMethodChange(){
   const m=document.getElementById('methodSelect').value||'请选择';
   // 混合态跳过：method 差异大时不强行改 desc
@@ -189,6 +195,9 @@ function onMethodChange(){
   }
   setTimeout(()=>_setVisual(document.getElementById('methodSelect'),m),0);
 }
+function _checkDescCollision(v){
+  if(v&&_reservedDesc.has(v))toast('⚠ 镜头描述与预置词「'+v+'」冲突');
+}
 function descInput(t,v,ro,ph){
   const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const el=document.getElementById('descInput');
@@ -197,7 +206,7 @@ function descInput(t,v,ro,ph){
   ip.value=v||'';ip.placeholder=ph||'由制作方式决定';
   if(ro){ip.readOnly=true;ip.setAttribute('readonly','')}
   ip.style.cssText=el?el.style.cssText:'';_setVisual(ip,v);
-  if(!ro)ip.oninput=()=>{if(!descLocked){_setVisual(ip,ip.value);_applyInspectorToSelected();renderList();updButtons()}};
+  if(!ro)ip.oninput=()=>{if(!descLocked){_setVisual(ip,ip.value);_checkDescCollision(ip.value);_applyInspectorToSelected();renderList();updButtons()}};
   if(el)el.replaceWith(ip);
 }
 function descSelect(vs){
