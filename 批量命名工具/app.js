@@ -12,7 +12,7 @@ window.onerror=function(m,s,l,c,e){const msg='JS错误: '+(m||'未知')+' @ '+(s
 window.addEventListener('unhandledrejection',e=>{const msg='Promise错误: '+e.reason;toast(msg);call('debug_log',msg)});
 const _origErr=console.error;console.error=function(...a){_origErr.apply(console,a);call('debug_log','CONSOLE: '+a.join(' '))};
 
-let files=[], _firstDrop=true, sel=new Set(), _skipKeys=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
+let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
 const C={g:'var(--green)',y:'var(--yellow)',r:'var(--red)',b:'var(--text-bright)',d:'var(--text-dim)',gr:'var(--filled-bg)'};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
@@ -136,12 +136,12 @@ function _bindInspectorListeners(){
     if(rx){
       el.addEventListener('input',e=>{if(!sel.size)return;let v=el.value.replace(/[^\d.]/g,'');const dp=v.indexOf('.');if(dp>=0)v=v.slice(0,dp+1)+v.slice(dp+1).replace(/\./g,'');while(v&&!rx.test(v))v=v.slice(0,-1);if(v!==el.value){el.value=v;e.stopImmediatePropagation();return}},true);
     }
-    el.addEventListener('input',()=>{if(!sel.size)return;_skipKeys.delete(el.getAttribute('data-key'));_applyInspectorToSelected();renderList();updButtons()});
+    el.addEventListener('input',()=>{if(!sel.size)return;_applyInspectorToSelected();renderList();updButtons()});
   });
   // 下拉框
   document.querySelectorAll('#inspector select[data-key]').forEach(el=>{
     if(el.id==='descInput')return;
-    el.addEventListener('change',()=>{if(!sel.size)return;_skipKeys.delete(el.getAttribute('data-key'));_setVisual(el,el.value);_applyInspectorToSelected();renderList();updButtons()});
+    el.addEventListener('change',()=>{if(!sel.size)return;_setVisual(el,el.value);_applyInspectorToSelected();renderList();updButtons()});
   });
   // methodSelect
   document.getElementById('methodSelect').addEventListener('change',onMethodChange);
@@ -172,7 +172,6 @@ let _prevMethod='',_fromSync=false;
 function onMethodChange(){
   const m=document.getElementById('methodSelect').value||'请选择';
   // 混合态跳过：method 差异大时不强行改 desc
-  if(_skipKeys.has('method')){setTimeout(()=>_setVisual(document.getElementById('methodSelect'),m),0);return}
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
   const methodChanged=m!==_prevMethod;
   _prevMethod=m;
@@ -291,22 +290,18 @@ function updButtons(){
   // 全就绪
   if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，可以重命名');return}
   // 混合态标注（与缺失区分）
-  const skipped=[];_skipKeys.forEach(k=>{const _lbs=window._fieldLabels||{};skipped.push(_lbs[k]||k)});
   const missing=[];
   const _lbs=window._fieldLabels||{};
-  for(const k of (window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'])){if(!fd[k]&&!_skipKeys.has(k))missing.push(_lbs[k]||k)}
+  for(const k of (window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'])){if(!fd[k])missing.push(_lbs[k]||k)}
   // 检查警告
   let warn=[];
   for(const t of files){if(t.tags&&t.tags.length)warn.push(...t.tags)}
   if(warn.length){const wl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};dot.style.background='var(--red)';setStatus('⚠ '+[...new Set(warn)].map(w=>wl[w]||w).join(' · '));return}
   dot.style.background='var(--yellow)';
   let t_ok=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)t_ok++});
-  let msg=[];
-  if(missing.length)msg.push('缺失: '+missing.join(' · '));
-  if(skipped.length)msg.push('混合: '+skipped.join(' · '));
-  if(!msg.length)msg.push('就绪  ·  Ctrl+Z 撤销');
-  msg.push(t_ok+'/'+files.length+' 就绪');
-  _lockInspector(hs);setStatus(msg.join('  ·  '));
+  let msg=missing.length?('缺失: '+missing.join(' · ')):'';
+  if(!msg)msg='就绪  ·  Ctrl+Z 撤销';
+  _lockInspector(hs);setStatus(msg+'  ·  '+t_ok+'/'+files.length+' 就绪');
   _lockInspector(!hs);
 }
 
@@ -328,7 +323,6 @@ function _syncInspectorFromSelection(){
   const ix=[...sel].sort((a,b)=>a-b);
   if(ix.length===0)return;
   if(ix.length===1){
-    _skipKeys.clear();
     const f=files[ix[0]];
     for(const k of Object.keys(f.fields)){
       const el=document.querySelector(`[data-key="${k}"]`);
