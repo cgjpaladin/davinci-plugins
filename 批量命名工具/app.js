@@ -500,6 +500,15 @@ document.addEventListener('keydown',e=>{
     if(idx>=0&&idx+1<all.length){all[idx+1].focus();if(typeof all[idx+1].select==='function')all[idx+1].select()}
     else{call("debug_log",`FILES list: removed ${sel.size} items -> ${files.length-sel.size} remaining`);sel.clear();renderList();updButtons();e.target.blur()}
   }
+  // ↑↓ 切换文件
+  if((e.key==='ArrowUp'||e.key==='ArrowDown')&&sel.size===1){
+    if(e.target.closest('#inspector')||e.target.closest('#fileList')){
+      e.preventDefault();
+      const cur=[...sel][0];
+      const next=cur+(e.key==='ArrowDown'?1:-1);
+      if(next>=0&&next<files.length){sel.clear();sel.add(next);renderList();_syncInspectorFromSelection();updButtons()}
+    }
+  }
   // Cmd+A: input 里正常全选；其他位置 → 全选文件列表
   if((e.metaKey||e.ctrlKey)&&e.key==='a'){
     if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
