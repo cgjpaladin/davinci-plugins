@@ -1088,7 +1088,7 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
         tl_h = timeline.GetSetting("timelineResolutionHeight")
         if tl_w: timeline_w = int(tl_w)
         if tl_h: timeline_h = int(tl_h)
-    except: pass
+    except Exception: pass
     smpte = _get_smpte(fps)
     # 先收集所有轨上所有片段的时间范围（用于覆盖判定）
     all_ranges = {}  # track_index → [(start, end), ...]

@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 // ═══ Load ═══
 async function init(){
   const dm = document.getElementById('debugMode');
-  dm.textContent = _isLive() ? '✔ Live' : '✖ Mock';
+  const isLive=_isLive();dm.textContent=isLive?'✔ Live':'✖ Mock';call("debug_log",`APP START: ${isLive?"pywebview":"MOCK"} mode, files=${files.length}`);
 
   const cfg=await call('get_config');
   methodDescMap=cfg.method_desc_map||{};_nameFmt=cfg.name_format||[];
@@ -295,8 +295,8 @@ function showDialog(title,msg){return new Promise(r=>{
 })}
 
 // ═══ Actions ═══
-async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);r.total=fr.length;r.duplicates=r.files.length-fr.length;renderList();_toastResult(r);loadThumbs()}}
-async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);r.total=fr.length;r.duplicates=r.files.length-fr.length;renderList();_toastResult(r);loadThumbs()}}
+async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
+async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
 function _toastResult(r){let m=`已追加 ${r.total} 个文件`;if(r.duplicates)m+=` · ${r.duplicates} 个重复跳过`;if(r.subdirs_skipped)m+=` · ${r.subdirs_skipped} 个子文件夹跳过`;if(r.truncated)m+=` (上限${r.max}个)`;toast(m)}
 // 选中文件时，把它们的字段反映到 inspector
 function _syncInspectorFromSelection(){
@@ -436,7 +436,7 @@ function onDropResult(result){
     const dup=result.files.length-fresh.length;
     // 如果完全重复，跳过（不清空现有）
     if(fresh.length===0){call('debug_log','drop skipped: all paths already loaded');return}
-    files=files.concat(fresh);
+    files=files.concat(fresh);call("debug_log",`FILES list: ${files.length} total (added ${fresh.length})`);
     let msg=`已追加 ${fresh.length} 个文件`;
     if(dup) msg+=` · ${dup} 个重复跳过`;
     if(result.subdirs_skipped) msg+=` · ${result.subdirs_skipped} 个子文件夹跳过`;
@@ -457,7 +457,7 @@ document.addEventListener('keydown',e=>{
     const all=[...document.querySelectorAll('#inspector input:not([readonly]), #inspector select')];
     const idx=all.indexOf(e.target);
     if(idx>=0&&idx+1<all.length){all[idx+1].focus();all[idx+1].select()}
-    else{sel.clear();renderList();updButtons();e.target.blur()}
+    else{call("debug_log",`FILES list: removed ${sel.size} items -> ${files.length-sel.size} remaining`);sel.clear();renderList();updButtons();e.target.blur()}
   }
   // Cmd+A: input 里正常全选；其他位置 → 全选文件列表
   if((e.metaKey||e.ctrlKey)&&e.key==='a'){

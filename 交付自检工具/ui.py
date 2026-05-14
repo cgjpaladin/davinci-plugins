@@ -323,7 +323,7 @@ def _run_censor_system(timeline, fps, **_kw):
         os.unlink(tmp.name)
         if whitelist_path:
             try: os.unlink(whitelist_path)
-            except: pass
+            except Exception: pass
 
     # 过滤个人词典已覆盖的词
     personal_words = set()
@@ -379,9 +379,9 @@ def _run_censor_personal(timeline, fps, **_kw):
                 io_range=_kw.get("io_range"))
     finally:
         try: os.unlink(black_tmp.name)
-        except: pass
+        except Exception: pass
         try: os.unlink(white_tmp.name)
-        except: pass
+        except Exception: pass
 
 def _make_result_passthrough(status, track="", timecode="", detail="", reason="", is_summary=False):
     """同 check_core._make_result 格式，避免跨模块循环导入。"""
@@ -1407,7 +1407,7 @@ def _start_check():
             for ti in range(1, count + 1):
                 try:
                     if not timeline.GetIsTrackEnabled(tt, ti): return False
-                except: pass
+                except Exception: pass
             return True
 
         aud_names_ok = True
