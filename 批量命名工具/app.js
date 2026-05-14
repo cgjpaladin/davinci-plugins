@@ -12,7 +12,7 @@ window.onerror=function(m,s,l,c,e){const msg='JS错误: '+(m||'未知')+' @ '+(s
 window.addEventListener('unhandledrejection',e=>{const msg='Promise错误: '+e.reason;toast(msg);call('debug_log',msg)});
 const _origErr=console.error;console.error=function(...a){_origErr.apply(console,a);call('debug_log','CONSOLE: '+a.join(' '))};
 
-let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
+let files=[], _firstDrop=true, sel=new Set(), _skipKeys=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
 const C={g:'var(--green)',y:'var(--yellow)',r:'var(--red)',b:'var(--text-bright)',d:'var(--text-dim)',gr:'var(--filled-bg)'};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
@@ -155,6 +155,7 @@ function getFields(){
   const PLACEHOLDERS=['请选择','手动输入…'];
   const f={};
   for(const el of document.querySelectorAll('#inspector [data-key]')){
+    if(_skipKeys.has(el.getAttribute('data-key')))continue;
     if(el.id==='descInput'&&document.getElementById('descCustomInput'))continue;
     let v=el.value.trim();
     if(PLACEHOLDERS.includes(v))v='';
@@ -316,6 +317,7 @@ function _syncInspectorFromSelection(){
   const ix=[...sel].sort((a,b)=>a-b);
   if(ix.length===0)return;
   if(ix.length===1){
+    _skipKeys.clear();
     const f=files[ix[0]];
     for(const k of Object.keys(f.fields)){
       const el=document.querySelector(`[data-key="${k}"]`);
@@ -333,15 +335,17 @@ function _syncInspectorFromSelection(){
       const vals=new Set(ix.map(i=>files[i].fields[k]||''));
       const el=document.querySelector(`[data-key="${k}"]`);
       if(!el||el.id==='descInput')continue;
-      const single=vals.size===1?[...vals][0]:'';
-      if(el.tagName==='SELECT'){el.value=vals.size===1?[...vals][0]:'';_setVisual(el,el.value)}
+      if(vals.size===1){_skipKeys.delete(k);const v=[...vals][0];if(el.tagName==='SELECT'){el.value=v}else{el.value=v};_setVisual(el,v||'')}
+      else{_skipKeys.add(k);el.value='';el.placeholder='[混合]';el.style.color='#9a9a9a';el.style.background=''}      if(el.tagName==='SELECT'){el.value=vals.size===1?[...vals][0]:'';_setVisual(el,el.value)}
       else{el.value=single||'';_setVisual(el,el.value)}
     }
     const mv=new Set(ix.map(i=>files[i].fields.method||''));
-    document.getElementById('methodSelect').value=mv.size===1?[...mv][0]:'';
+    if(mv.size===1){_skipKeys.delete('method');document.getElementById('methodSelect').value=[...mv][0]}
+    else{_skipKeys.add('method');document.getElementById('methodSelect').value=''}
     onMethodChange();
     const dv=new Set(ix.map(i=>files[i].fields.desc||''));
-    _setDescValue(dv.size===1?[...dv][0]:'');
+    if(dv.size===1){_skipKeys.delete('desc');_setDescValue([...dv][0])}
+    else{_skipKeys.add('desc')}
   }
   const tkEl=document.querySelector('[data-key="tk"]');
   if(tkEl){tkEl.value=sel.size?'自动排序':'';_setVisual(tkEl,'自动排序')}
