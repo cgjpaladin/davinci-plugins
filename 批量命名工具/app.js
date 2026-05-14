@@ -136,8 +136,8 @@ function _bindInspectorListeners(){
   });
   // 下拉框
   document.querySelectorAll('#inspector select[data-key]').forEach(el=>{
-    if(el.id==='descInput'||el.id==='methodSelect')return;
-    el.addEventListener('change',()=>{if(!sel.size)return;_setVisual(el,d[fd.key]);_applyInspectorToSelected();renderList();updButtons()});
+    if(el.id==='descInput')return;
+    el.addEventListener('change',()=>{if(!sel.size)return;_setVisual(el,el.value);_applyInspectorToSelected();renderList();updButtons()});
   });
   // methodSelect
   document.getElementById('methodSelect').addEventListener('change',onMethodChange);
