@@ -1493,6 +1493,7 @@ def _start_check():
             except Exception:
                 import traceback
                 _action_log(f"❌ {check['section']}检查崩溃: {traceback.format_exc()}")
+                all_results = []  # 防止用上一次循环的脏数据
             section_rows = []
             section_pass = 0
             summary_text = ""

@@ -106,7 +106,7 @@ function _buildInspector(fields){
     const d=document.createElement('div');d.className='param'+(fd.key==='desc'?' wide':'');
     const lb=document.createElement('label');lb.textContent=fd.label;d.appendChild(lb);
     if(fd.dv){
-      const s=document.createElement('select');s.setAttribute('data-key',fd.key);s.style.color='#909090';s.style.background='var(--bg, #151515)';
+      const s=document.createElement('select');s.setAttribute('data-key',fd.key);s.style.color='var(--text-dim)';
       if(fd.key==='method')s.id='methodSelect';
       fd.dv.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o)});
       d.appendChild(s);
