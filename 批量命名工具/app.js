@@ -426,7 +426,7 @@ let _dropCount=0;
 function onDropResult(result){
   if(result&&result.files){
     _dropCount++;
-    call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}`);
+    call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}, paths=[${result.files.slice(0,3).map(f=>f.path.split('/').pop()).join(',')}...]`);
     const exist=new Set(files.map(f=>f.path));
     const fresh=result.files.filter(f=>!exist.has(f.path));
     const dup=result.files.length-fresh.length;

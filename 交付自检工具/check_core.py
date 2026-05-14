@@ -1082,7 +1082,7 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
         try:
             timeline_w = int(project.GetSetting("timelineResolutionWidth") or timeline_w)
             timeline_h = int(project.GetSetting("timelineResolutionHeight") or timeline_h)
-        except: pass
+        except Exception: pass
     try:
         tl_w = timeline.GetSetting("timelineResolutionWidth")
         tl_h = timeline.GetSetting("timelineResolutionHeight")
@@ -1120,7 +1120,7 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
             res_str = _get_cached(it, "mp_resolution", "")
             if not res_str or "x" not in res_str: continue
             try: src_w, src_h = map(int, res_str.split("x"))
-            except: continue
+            except Exception: continue
             props = _get_cached(it, "props", {})
             if not props: continue
             zoom_x = float(props.get("ZoomX", 1.0))
