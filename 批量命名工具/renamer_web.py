@@ -77,20 +77,10 @@ class RenamerAPI:
             try:
                 tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
                 tmp.close()
-                # 自动检测视频方向
-                try:
-                    probe = subprocess.run(
-                        [ffmpeg.replace('ffmpeg','ffprobe'), '-v', 'error', '-select_streams', 'v:0',
-                         '-show_entries', 'stream=width,height', '-of', 'csv=p=0', p],
-                        capture_output=True, timeout=3
-                    )
-                    wh = probe.stdout.decode().strip().split(',')
-                    w, h = int(wh[0]), int(wh[1]) if len(wh)==2 else (1920,1080)
-                except:
-                    w, h = 1920, 1080
-                sz = '160x90' if w >= h else '90x160'
+                # 按比例缩放缩略图：以长边 180px 为准，短边自动计算
                 subprocess.run(
-                    [ffmpeg, '-y', '-ss', '00:00:01', '-i', p, '-vframes', '1', '-s', sz, tmp.name],
+                    [ffmpeg, '-y', '-ss', '00:00:01', '-i', p, '-vframes', '1',
+                     '-vf', 'scale=180:180:force_original_aspect_ratio=decrease', tmp.name],
                     capture_output=True, timeout=5
                 )
 
