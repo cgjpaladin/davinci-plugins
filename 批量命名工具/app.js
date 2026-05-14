@@ -201,7 +201,7 @@ function _checkDescCollision(v){
 function descInput(t,v,ro,ph){
   const ci=document.getElementById('descCustomInput');if(ci)ci.remove();
   const el=document.getElementById('descInput');
-  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;if(ro){el.setAttribute('readonly','');el.oninput=null}else{el.removeAttribute('readonly')}el.placeholder=ph||'由制作方式决定';_setVisual(el,v);if(!ro){el.oninput=()=>{if(!descLocked){_applyInspectorToSelected();renderList();updButtons()}}}return}
+  if(el&&el.tagName==='INPUT'){el.value=v||'';el.readOnly=ro||false;if(ro){el.setAttribute('readonly','');el.oninput=null}else{el.removeAttribute('readonly')}el.placeholder=ph||'由制作方式决定';_setVisual(el,v);if(!ro){el.oninput=()=>{if(!descLocked){_checkDescCollision(el.value);_applyInspectorToSelected();renderList();updButtons()}}}return}
   const ip=document.createElement('input');ip.id='descInput';ip.setAttribute('data-key','desc');
   ip.value=v||'';ip.placeholder=ph||'由制作方式决定';
   if(ro){ip.readOnly=true;ip.setAttribute('readonly','')}
@@ -218,7 +218,7 @@ function descSelect(vs){
   function _onDescChange(){
     const ci2=document.getElementById('descCustomInput');
     if(s.value==='手动输入…'){
-      if(!ci2){const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;';ip.oninput=()=>{_setVisual(ip,ip.value);_applyInspectorToSelected();renderList();updButtons()};s.after(ip)}
+      if(!ci2){const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;';ip.oninput=()=>{_checkDescCollision(ip.value);_setVisual(ip,ip.value);_applyInspectorToSelected();renderList();updButtons()};s.after(ip)}
     }else{if(ci2)ci2.remove();_applyInspectorToSelected();renderList();updButtons()}
     _setVisual(s,s.value);
   };
@@ -383,7 +383,7 @@ function _setDescValue(v){
     el.value='手动输入…';_setVisual(el,'手动输入…');
     const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');
     ip.value=v;ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;color:var(--text-bright);';
-    ip.oninput=()=>{_setVisual(ip,ip.value);_applyInspectorToSelected();renderList();updButtons()};
+    ip.oninput=()=>{_checkDescCollision(ip.value);_setVisual(ip,ip.value);_applyInspectorToSelected();renderList();updButtons()};
     el.after(ip);
   }else if(el.tagName==='INPUT'){
     el.value=v;_setVisual(el,v);
