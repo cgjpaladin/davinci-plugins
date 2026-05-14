@@ -191,6 +191,12 @@ publish_push_all() {
         echo "   或告诉我「确认发布全公司」，我会帮你跑。"
         exit 1
     fi
+    # ═══ 硬拦截：本地必须先更新再推 SMB ═══
+    local launcher_chk=$(ls "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊/${PRODUCT_NAME}"*.py 2>/dev/null | head -1)
+    if [ -z "$launcher_chk" ] || [ ! -f "$launcher_chk" ]; then
+        echo "⛔ 本地尚未构建！请先运行 build_local.sh 再推全公司。"
+        exit 1
+    fi
     local ver=$(publish_get_version)
     log_full_start "push_all v$ver"
     publish_validate_product
