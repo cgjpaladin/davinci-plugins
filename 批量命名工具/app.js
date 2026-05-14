@@ -14,6 +14,7 @@ const _origErr=console.error;console.error=function(...a){_origErr.apply(console
 
 let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
+const DIGIT_STRICT={ep:/^\d{2,3}$/,sc:/^\d{2}$/,gr:/^\d{2}$/,ver:/^\d{2}(\.\d)?$/};
 const C={g:'var(--green)',y:'var(--yellow)',r:'var(--red)',b:'var(--text-bright)',d:'var(--text-dim)',gr:'var(--filled-bg)'};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
 
@@ -131,7 +132,10 @@ function _bindInspectorListeners(){
   document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
     if(el.readOnly)return;
     el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color=C.b;const v=el.value.trim();el.style.background=v&&v!=='请选择'&&v!=='手动输入…'?C.gr:'var(--surface2)'});
-    el.addEventListener('blur',()=>{if(!sel.size)return;_setVisual(el,el.value.trim())});
+    el.addEventListener('blur',()=>{if(!sel.size)return;_setVisual(el,el.value.trim());
+      const k=el.getAttribute('data-key');const sr=DIGIT_STRICT[k];
+      if(sr&&el.value&&!sr.test(el.value)){toast(`请输入${el.placeholder||'正确格式'}`);el.focus()}
+    });
     const rx=DIGIT_RULES[el.getAttribute('data-key')];
     if(rx){
       el.addEventListener('input',e=>{if(!sel.size)return;let v=el.value.replace(/[^\d.]/g,'');const dp=v.indexOf('.');if(dp>=0)v=v.slice(0,dp+1)+v.slice(dp+1).replace(/\./g,'');while(v&&!rx.test(v))v=v.slice(0,-1);if(v!==el.value){el.value=v;e.stopImmediatePropagation();return}},true);
