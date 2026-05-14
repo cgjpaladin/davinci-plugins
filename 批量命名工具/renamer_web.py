@@ -53,7 +53,9 @@ class RenamerAPI:
         try:
             paths = json.loads(paths_json)
         except:
-            return {"files": [], "total": 0}
+                    is_dev = not getattr(sys, '_MEIPASS', False)
+        return {
+            "dev": is_dev,"files": [], "total": 0}
         _log.info(f"on_drop_files: {paths[:5]}")
         result = self._process_paths(paths)
         # 通知 JS 更新 UI
