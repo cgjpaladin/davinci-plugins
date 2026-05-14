@@ -13,7 +13,7 @@ FIELD_CONFIG = [
     {"key":"gr",     "name":"Gr",  "label":"Gr 小场次", "def":"01","regex":r"^\d{2,3}$","hint":"01"},
     {"key":"tk",     "name":"Tk",  "label":"Tk 次数",   "def":"01","regex":r"^\d{2,3}$","inc":True,"hint":"01"},
     {"key":"desc",   "name":"",    "label":"镜头描述",   "def":"","hint":"由制作方式决定"},
-    {"key":"author", "name":"",    "label":"制作者",     "def":"","hint":"张谭/温欣然"},
+    {"key":"author", "name":"",    "label":"制作者",     "def":"","hint":"请输入姓名"},
     {"key":"method", "name":"",    "label":"制作方式",   "def":"","dv":["请选择","智能分镜版","双轨版","角色专属版"]},
     {"key":"ver",    "name":"v",   "label":"v 版本号",   "def":"01","regex":r"^\d{2,3}(\.\d+)?$","hint":"01"},
     {"key":"status", "name":"",    "label":"通过情况",   "def":"","dv":["请选择","OK","KP","NG"]},
