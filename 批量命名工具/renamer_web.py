@@ -15,12 +15,15 @@ from shared.naming import (
 from shared.naming_checks import check_zero_byte, check_double_ext, check_size_anomaly
 
 import webview
-import logging
+import logging, tempfile
 _log = logging.getLogger("renamer_web")
 _log.setLevel(logging.DEBUG)
-_hdlr = logging.FileHandler("/tmp/renamer_web.log")
-_hdlr.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
-_log.addHandler(_hdlr)
+try:
+    _hdlr = logging.FileHandler(os.path.join(tempfile.gettempdir(), "renamer_web.log"))
+    _hdlr.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
+    _log.addHandler(_hdlr)
+except Exception:
+    pass  # 日志文件不可用时静默跳过
 
 # pyinstaller 打包后 sys._MEIPASS = app bundle 资源目录
 _BASE_DIR = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
@@ -72,7 +75,8 @@ class RenamerAPI:
         ffmpeg = shutil.which("ffmpeg")
         if not ffmpeg:
             for pfx in (sys._MEIPASS if getattr(sys,'_MEIPASS',False) else '', '/opt/homebrew/bin', '/usr/local/bin'):
-                test = os.path.join(pfx, 'ffmpeg') if pfx else 'ffmpeg'
+                exe_name = 'ffmpeg.exe' if sys.platform == 'win32' else 'ffmpeg'
+                test = os.path.join(pfx, exe_name) if pfx else 'ffmpeg'
                 if os.path.exists(test): ffmpeg = test; break
         if not ffmpeg: ffmpeg = 'ffmpeg'
         _log.info(f"generate_thumbnails: {len(paths)} files, ffmpeg={ffmpeg}")
@@ -81,11 +85,14 @@ class RenamerAPI:
             try:
                 tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
                 tmp.close()
+                kw = dict(capture_output=True, timeout=8)
+                if sys.platform == 'win32':
+                    kw['creationflags'] = subprocess.CREATE_NO_WINDOW
                 subprocess.run(
                     [ffmpeg, '-y', '-ss', '00:00:01', '-i', p, '-vframes', '1',
                      '-vf', 'scale=120:120:force_original_aspect_ratio=decrease',
                      '-q:v', '8', tmp.name],
-                    capture_output=True, timeout=8
+                    **kw
                 )
                 if os.path.isfile(tmp.name) and os.path.getsize(tmp.name) > 100:
                     with open(tmp.name, 'rb') as f:
@@ -242,7 +249,7 @@ class RenamerAPI:
             ext = os.path.splitext(os.path.basename(p))[1]
             nm = build_filename(f["fields"]) + ext
             np = os.path.join(d, nm)
-            if os.path.exists(np) and np != p:
+            if os.path.exists(np) and os.path.normcase(np) != os.path.normcase(p):
                 fail.append(os.path.basename(p) + " → 已存在")
                 continue
             try:
@@ -335,14 +342,27 @@ class RenamerAPI:
             try:
                 max_tk = 0
                 if os.path.isdir(folder):
-                    # 构建不含 TK 的文件名前缀，用于筛选同组文件
-                    fd_copy = dict(fd); fd_copy['tk'] = '??'
-                    prefix = build_filename(fd_copy).replace('??', '')
-                    for fn in os.listdir(folder):
-                        if not fn.startswith(prefix): continue
-                        m = re.search(r'\bTk(0[1-9]|[1-9]\d)(?:_|\.mp4|\.mov|\.mxf|\.avi|\.mkv|$)', fn)
-                        if m:
-                            max_tk = max(max_tk, int(m.group(1)))
+                    # 用 tk='00' 构建模板，split 精准切分前后缀
+                    fd_copy = dict(fd); fd_copy['tk'] = '00'
+                    sample = build_filename(fd_copy)
+                    parts = sample.split('_Tk00_', 1)
+                    if len(parts) == 2:
+                        tk_prefix = parts[0] + '_Tk'
+                        tk_suffix = '_' + parts[1]
+                        for fn in os.listdir(folder):
+                            if not (fn.startswith(tk_prefix) and fn.endswith(tk_suffix + ext)): continue
+                            m = re.search(r'\bTk(0[1-9]|[1-9]\d)(?:_|\.mp4|\.mov|\.mxf|\.avi|\.mkv|$)', fn)
+                            if m:
+                                max_tk = max(max_tk, int(m.group(1)))
+                    else:
+                        # 回退：旧方法
+                        fd_copy['tk'] = '??'
+                        prefix = build_filename(fd_copy).replace('??', '')
+                        for fn in os.listdir(folder):
+                            if not fn.startswith(prefix): continue
+                            m = re.search(r'\bTk(0[1-9]|[1-9]\d)(?:_|\.mp4|\.mov|\.mxf|\.avi|\.mkv|$)', fn)
+                            if m:
+                                max_tk = max(max_tk, int(m.group(1)))
                 nxt = max_tk + 1
                 if nxt > 99: fail.append(f'{fd.get("ep","?")}_{fd.get("sc","?")}: TK 已满(99)'); continue
                 fd['tk'] = str(nxt).zfill(2)

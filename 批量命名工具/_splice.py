@@ -4,9 +4,9 @@ import subprocess, os, sys
 BASE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(BASE)
 
-css = open('app.css').read()
-js  = open('app.js').read()
-html = open('renamer_web.html').read()
+css = open('app.css', encoding='utf-8').read()
+js  = open('app.js', encoding='utf-8').read()
+html = open('renamer_web.html', encoding='utf-8').read()
 
 # 注入 git hash + branch + 构建时间
 from datetime import datetime
@@ -24,5 +24,5 @@ html = html.replace('/* CSS_PLACEHOLDER */', css)
 html = html.replace('// JS_PLACEHOLDER', js)
 
 os.makedirs('_build', exist_ok=True)
-open('_build/renamer_web.html', 'w').write(html)
+open('_build/renamer_web.html', 'w', encoding='utf-8').write(html)
 print(f'✅ Spliced → _build/renamer_web.html (v{h})')

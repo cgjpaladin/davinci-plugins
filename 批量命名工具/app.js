@@ -419,7 +419,7 @@ function buildTK(i){
   let n=0;
   for(let j=0;j<=i;j++){
     const g=files[j].fields;
-    const jk=g.ep+'|'+g.sc+'|'+g.gr+'|'+(g.method||'')+'|'+g.ver;
+    const jk=g.ep+'|'+g.sc+'|'+g.gr+'|'+(g.desc||'')+'|'+(g.method||'')+'|'+g.ver;
     if(jk===k)n++;
   }
   return String(n).padStart(2,'0');
