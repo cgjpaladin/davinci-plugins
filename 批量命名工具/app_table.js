@@ -80,6 +80,9 @@ async function init(){
   // 绑定事件（在元素创建后）
   _bindInspectorListeners();
 
+  // 列宽拖拽
+  _initColResize();
+
   // 浏览器预览模式：注册 mock 拖放（仅在确认非 pywebview 时）
   if(!window.pywebview){
     const dz=document.getElementById('fileList');
@@ -184,20 +187,23 @@ function getFields(){
 
 // ═══ Method → Desc ═══
 let _prevMethod='',_fromSync=false,_reservedDesc=new Set();
-function onMethodChange(forcedVal){
+function onMethodChange(forcedVal, ri){
   const m = forcedVal ?? (document.getElementById('methodSelect')?.value || '请选择');
-  // 混合态跳过：method 差异大时不强行改 desc
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
   const methodChanged=m!==_prevMethod;
   _prevMethod=m;
-  if(cfg.mode==='locked'){descInput(cfg.value,true);descLocked=true}
-  else if(cfg.mode==='dropdown'){descSelect(cfg.values);descLocked=false}
-  else{const ro=cfg.hint.includes('请先选择');descInput('',ro,cfg.hint);descLocked=false}
+  descLocked = cfg.mode === 'locked';
   // 用户手动改 method 才写 desc；_syncInspector 调用时不写
-  if(methodChanged&&sel.size>0&&!_fromSync){
-    const dv=cfg.mode==='locked'?cfg.value:'';
-    for(const i of sel) files[i].fields.desc=dv;
-    renderList();updButtons();
+  if(methodChanged&&!_fromSync){
+    const rows = sel.size > 0 ? [...sel] : (ri !== undefined ? [ri] : []);
+    if(cfg.mode === 'locked'){
+      rows.forEach(r => { files[r].fields.desc = cfg.value; });
+    } else if(cfg.mode === 'dropdown'){
+      rows.forEach(r => { files[r].fields.desc = ''; });
+    } else {
+      rows.forEach(r => { files[r].fields.desc = ''; });
+    }
+    if(rows.length) { renderList(); updButtons(); }
   }
   const ms=document.getElementById('methodSelect');if(ms)setTimeout(()=>_setVisual(ms,m),0);
 }
@@ -463,10 +469,7 @@ function activateEdit(td, key, i){
       });
       // method change triggers side effects
       if(key === 'method'){
-        const hadSel = sel.has(i);
-        if(!hadSel) sel.add(i);  // 临时加入选择，让 onMethodChange 能写入 desc
-        onMethodChange(finalVal);
-        if(!hadSel) sel.delete(i);
+        onMethodChange(finalVal, i);
       }
     }
 
@@ -848,6 +851,45 @@ document.getElementById('fileList').addEventListener('wheel',e=>{
     zs.dispatchEvent(new Event('input'));
   }
 });
+
+// ═══ Column resize ═══
+let _resizing=null;
+function _initColResize(){
+  const thead=document.querySelector('#fileList thead');
+  if(!thead)return;
+  thead.querySelectorAll('th:not(.col-base)').forEach(th=>{
+    th.addEventListener('mousedown',e=>{
+      const rect=th.getBoundingClientRect();
+      if(e.clientX < rect.right-6 || e.clientX > rect.right+2) return; // 只响应右边缘 6px
+      e.preventDefault();
+      _resizing={th, startX:e.clientX, startW:rect.width, ghost:null};
+      const ghost=document.createElement('div');
+      ghost.className='resize-ghost';
+      ghost.style.left=rect.right+'px';
+      ghost.style.top=rect.top+'px';
+      ghost.style.height=rect.height+'px';
+      document.body.appendChild(ghost);
+      _resizing.ghost=ghost;
+      th.classList.add('resizing');
+    });
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!_resizing)return;
+    const dx=e.clientX-_resizing.startX;
+    const nw=Math.max(32, _resizing.startW+dx);
+    _resizing.ghost.style.left=(_resizing.th.getBoundingClientRect().left+nw)+'px';
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!_resizing)return;
+    const rect=_resizing.th.getBoundingClientRect();
+    const nw=Math.max(32, rect.width+(_resizing.ghost?parseInt(_resizing.ghost.style.left)-rect.right:0));
+    _resizing.th.style.width=nw+'px';
+    _resizing.th.style.minWidth=nw+'px';
+    _resizing.th.classList.remove('resizing');
+    if(_resizing.ghost){_resizing.ghost.remove();_resizing.ghost=null}
+    _resizing=null;
+  });
+}
 
 // ═══ Toast ═══
 let tt;function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2500)}

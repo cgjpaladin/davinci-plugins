@@ -175,7 +175,16 @@ thead th{
   padding:8px 12px 6px;
   border-bottom:2px solid #1e2028;
   white-space:nowrap;
+  position:relative;overflow:visible;
 }
+thead th::after{
+  content:'';position:absolute;right:0;top:0;bottom:0;
+  width:5px;cursor:col-resize;background:transparent;
+  transition:background .15s;
+}
+thead th:hover::after,thead th.resizing::after{background:var(--tbl-accent)}
+thead th.resizing::after{opacity:.6}
+.resize-ghost{position:fixed;top:0;bottom:0;width:1px;background:var(--tbl-accent);pointer-events:none;z-index:100}
 
 /* ── Rows ── */
 tbody td{
