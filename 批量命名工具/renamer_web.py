@@ -31,7 +31,7 @@ _SHARED_DIR = os.path.join(_BASE_DIR, 'shared')
 if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
     sys.path.insert(0, os.path.dirname(_SHARED_DIR))
 
-CFG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".renamer_saved.json")
+CFG_FILE = os.path.join(os.path.expanduser("~"), ".renamer_saved.json")
 PATH_RE = re.compile(r"^(\d{8})_(.+)$")
 
 _saved_defaults = {}
@@ -102,11 +102,11 @@ class RenamerAPI:
                         _window.evaluate_js(f"setThumb({json.dumps(p)},{json.dumps(thumb)})")
                     total += 1
                 try: os.unlink(tmp.name)
-                except: pass
+                except OSError: pass
             except Exception as e:
                 _log.info(f"  thumb error: {e}")
                 try: os.unlink(tmp.name)
-                except: pass
+                except OSError: pass
         _log.info(f"generate_thumbnails done: {total} thumbs")
         return {"thumbs": {}, "total": total}
 
@@ -382,7 +382,13 @@ class RenamerAPI:
         return {"ok": ok, "dup": dup, "fail": fail, "total": len(files)}
 
 
-HTML_FILE = os.path.join(_BASE_DIR, "renamer_web.html")
+# 自动检测打包后的 HTML 文件（支持卡片版/表格版）
+_HTML_CANDIDATES = ["renamer_web.html", "renamer_table.html"]
+HTML_FILE_NAME = "renamer_web.html"  # 默认
+for _c in _HTML_CANDIDATES:
+    if os.path.isfile(os.path.join(_BASE_DIR, _c)):
+        HTML_FILE_NAME = _c; break
+HTML_FILE = os.path.join(_BASE_DIR, HTML_FILE_NAME)
 
 if __name__ == "__main__":
     import threading, socket
@@ -391,7 +397,7 @@ if __name__ == "__main__":
     # 用 bottle HTTP 服务绕过 WKWebView 沙箱限制
     @route('/')
     def index():
-        return static_file('renamer_web.html', root=_BASE_DIR)
+        return static_file(HTML_FILE_NAME, root=_BASE_DIR)
 
     # 找空闲端口
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

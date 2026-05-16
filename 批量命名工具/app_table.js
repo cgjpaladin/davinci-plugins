@@ -34,14 +34,20 @@ function mock(m,...a){
       case'do_rename':r({ok:1,total:1,fail:[],renamed:[]});break;
       case'do_undo':r({ok:0,msg:'Mock: 无操作'});break;
       case'do_archive':r({ok:0,fail:['Mock mode'],total:1});break;
+      case'add_files_via_dialog':case'add_folder_via_dialog':
+        r({files:[
+          {path:'/mock/test01.mp4',basename:'C01_男主中景_20260301_0930.mp4',ext:'.mp4',fields:{ep:'01',sc:'02',gr:'03',desc:'全能分镜',author:'张谭',method:'智能分镜版',ver:'01',status:'OK'},tags:[]},
+          {path:'/mock/test02.mp4',basename:'C01_女主近景_20260301_0931.mp4',ext:'.mp4',fields:{ep:'01',sc:'02',gr:'03',desc:'空镜',author:'张谭',method:'双轨版',ver:'01',status:'OK'},tags:[]},
+          {path:'/mock/test03.mp4',basename:'C01_空镜街道_20260301_0932.mp4',ext:'.mp4',fields:{ep:'01',sc:'02',gr:'03',desc:'空镜',author:'李四',method:'双轨版',ver:'01',status:'OK'},tags:[]},
+          {path:'/mock/test04.mp4',basename:'C02_过肩中景_20260302_1400.mp4',ext:'.mp4',fields:{ep:'02',sc:'01',gr:'01',desc:'温时雨过肩中景',author:'温欣然',method:'角色专属版',ver:'02',status:'KP'},tags:[]},
+          {path:'/mock/test05.mp4',basename:'C02_零字节文件_20260302_1401.mp4',ext:'.mp4',fields:{ep:'02',sc:'01',gr:'01',desc:'幽灵角色',author:'张谭',method:'双轨版',ver:'01',status:'OK'},tags:['zero']},
+          {path:'/mock/test06.mp4',basename:'C02_缺失字段_20260302_1402.mp4',ext:'.mp4',fields:{ep:'02',sc:'01',gr:'02',desc:'',author:'',method:'',ver:'',status:''},tags:[]},
+        ],total:6,duplicates:0});break;
       case'debug_log':r('ok');break;
       default:r({});
     }
   });
 }
-
-// ═══ 浏览器预览：拖入真文件 ═══
-// (已移除 — pywebview 模式不需要 mock handler)
 
 // ═══ Load ═══
 async function init(){
@@ -178,8 +184,8 @@ function getFields(){
 
 // ═══ Method → Desc ═══
 let _prevMethod='',_fromSync=false,_reservedDesc=new Set();
-function onMethodChange(){
-  const m=document.getElementById('methodSelect').value||'请选择';
+function onMethodChange(forcedVal){
+  const m = forcedVal ?? (document.getElementById('methodSelect')?.value || '请选择');
   // 混合态跳过：method 差异大时不强行改 desc
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
   const methodChanged=m!==_prevMethod;
@@ -193,7 +199,7 @@ function onMethodChange(){
     for(const i of sel) files[i].fields.desc=dv;
     renderList();updButtons();
   }
-  setTimeout(()=>_setVisual(document.getElementById('methodSelect'),m),0);
+  const ms=document.getElementById('methodSelect');if(ms)setTimeout(()=>_setVisual(ms,m),0);
 }
 function _checkDescCollision(v){
   if(v&&_reservedDesc.has(v))toast('⚠ 镜头描述与预置词「'+v+'」冲突');
@@ -226,49 +232,265 @@ function descSelect(vs){
   if(el)el.replaceWith(s);
 }
 // ═══ File List ═══
+/* ═════════════════════════════
+   TABLE renderList (replaces card view)
+   ═════════════════════════════ */
 function renderList(){
-  const ct=document.getElementById('fileList');ct.innerHTML='';
-  if(files.length===0){ct.innerHTML='<div class="fl-empty">拖放文件到此处 或 点击 +文件</div>';document.getElementById('fileCount').innerHTML='文件列表 · 0 个';updButtons();return}
-  const srt=[...sel].sort((a,b)=>a-b);
+  const tbody = document.querySelector('#fileList tbody');
+  const empty = document.querySelector('#fileList .fl-empty');
+  const thead = document.querySelector('#fileList thead');
+  tbody.innerHTML = '';
+  if(files.length === 0){
+    empty.classList.add('show');
+    if(thead) thead.style.display = 'none';
+    updCount(); updButtons();
+    return;
+  }
+  empty.classList.remove('show');
+  if(thead) thead.style.display = '';
   files.forEach((f,i)=>{
-    const d=document.createElement('div');d.className='fl-item';d.setAttribute('data-path',f.path);
-    if(sel.has(i))d.classList.add('sel');
-    let ff={...f.fields,tk:_computeTK(i)},nm=buildName(ff);
-    const ready=ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status;
-    d.classList.add(ready?'rdy':'mis');
-    // 自动检查标注
-    const tt=f.tags;if(tt&&tt.length){if(tt.includes('zero'))d.classList.add('warn-zero');if(tt.includes('size'))d.classList.add('warn-size');if(tt.includes('dbl_ext'))d.classList.add('warn-dbl')}
-    const th=document.createElement('div');th.className='fl-thumb';
-    const tsrc=_thumbs[f.path];
-    if(tsrc){th.style.backgroundImage=`url(${tsrc})`;th.style.backgroundSize='contain';th.style.backgroundRepeat='no-repeat';th.style.backgroundPosition='center'}
-    else{th.style.background=`linear-gradient(135deg,${tc[i%tc.length]},${tc[(i+2)%tc.length]})`}
-    const nn=document.createElement('span');nn.className='fl-new';
-    nn.textContent=nm+' '+f.ext;
-    const ar=document.createElement('span');ar.className='fl-arrow-sym';ar.textContent='←';
-    const on=document.createElement('span');on.className='fl-old';on.textContent=f.basename;
-    const dot=document.createElement('span');dot.className='fl-dot';
-    const tags=f.tags||[];
-    dot.style.background=tags.length?'var(--red)':(ready?'var(--green)':'var(--yellow)');
-    // 缺失字段 / 检查警告
-    const tag=document.createElement('span');tag.className='fl-tag';
-    if(tags.length){const lbl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};tag.textContent=tags.map(t=>lbl[t]||t).join(' · ');tag.style.color='var(--red)'}
-    else if(!ready){
-      const m=[];const lb={ep:'Ep集数',sc:'Sc场次',gr:'Gr小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'版本号',status:'通过情况'};
-      const _lbs2=window._fieldLabels||{};for(const k of (window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'])){if(!ff[k])m.push(_lbs2[k]||k)}
-      tag.textContent='请填写: '+m.join(' · ');
-    }else{tag.textContent='✓'}
-    d.append(th,nn,ar,on,dot,tag);
-    d.addEventListener('click',e=>{
-      if(e.metaKey||e.ctrlKey){if(sel.has(i))sel.delete(i);else sel.add(i)}
-      else if(e.shiftKey&&sel.size>0){const s=[...sel].sort((a,b)=>a-b);const[l,h]=[Math.min(s[0],i),Math.max(s[0],i)];for(let j=l;j<=h;j++)sel.add(j)}
-      else if(sel.size===1&&sel.has(i))return;
-      else{sel.clear();sel.add(i)}
-      renderList();updButtons();
-      _syncInspectorFromSelection();
+    const tr = document.createElement('tr');
+    tr.dataset.index = i;
+    tr.dataset.path = f.path;
+    const ff = {...f.fields, tk: _computeTK(i)};
+    const ready = ff.ep && ff.sc && ff.gr && ff.desc && ff.author && ff.method && ff.ver && ff.status;
+    if(sel.has(i)) tr.classList.add('sel');
+    tr.classList.add(ready?'rdy':'mis');
+    const tags = f.tags||[];
+    if(tags.length) tr.classList.add('warn');
+
+    // # 列
+    const tdNum = document.createElement('td');
+    tdNum.className = 'col-num'; tdNum.textContent = i+1;
+    tr.appendChild(tdNum);
+
+    // 缩略图
+    const tdThumb = document.createElement('td');
+    tdThumb.className = 'col-thumb';
+    const divThumb = document.createElement('div');
+    divThumb.className = 'cell-thumb';
+    divThumb.dataset.row = i;
+    const tsrc = _thumbs[f.path];
+    if(tsrc){
+      divThumb.style.backgroundImage = `url(${tsrc})`;
+      divThumb.style.backgroundSize = 'contain';
+      divThumb.style.backgroundRepeat = 'no-repeat';
+      divThumb.style.backgroundPosition = 'center';
+    } else {
+      divThumb.style.background = `linear-gradient(135deg,${tc[i%tc.length]},${tc[(i+2)%tc.length]})`;
+    }
+    tdThumb.appendChild(divThumb);
+    tr.appendChild(tdThumb);
+
+    // 字段列
+    for(const key of ['ep','sc','gr','tk','desc','author','method','ver','status']){
+      tr.appendChild(buildCellTD(key, ff, i));
+    }
+
+    // 原名
+    const tdBase = document.createElement('td');
+    tdBase.className = 'col-base';
+    tdBase.textContent = f.basename || '';
+    tr.appendChild(tdBase);
+
+    // 行选择：只对非编辑列响应（#列、缩略图、原名）
+    tr.addEventListener('click', e => {
+      if(e.target.closest('.editing')) return;
+      const td = e.target.closest('td');
+      if(!td) return;
+      // 字段列 → 直接编辑，不改变选择
+      if(td.classList.contains('col-ep') || td.classList.contains('col-sc') || td.classList.contains('col-gr') ||
+         td.classList.contains('col-desc') || td.classList.contains('col-author') || td.classList.contains('col-method') ||
+         td.classList.contains('col-ver') || td.classList.contains('col-status')){
+        if(td.classList.contains('readonly')) return;
+        activateEdit(td, td.dataset.key, i);
+        return;
+      }
+      rowClick(e, i);
     });
-    ct.appendChild(d);
+
+    tbody.appendChild(tr);
   });
-  updCount();updButtons();
+  updCount(); updButtons();
+}
+
+function rowClick(e, i){
+  if(e.metaKey || e.ctrlKey){
+    if(sel.has(i)) sel.delete(i); else sel.add(i);
+  } else if(e.shiftKey && sel.size > 0){
+    const s = [...sel].sort((a,b)=>a-b);
+    const lo = Math.min(s[0], i);
+    const hi = Math.max(s[0], i);
+    for(let j=lo; j<=hi; j++) sel.add(j);
+  } else if(sel.size === 1 && sel.has(i)){
+    return; // clicking already-single-selected row: do nothing
+  } else {
+    sel.clear(); sel.add(i);
+  }
+  renderList(); updButtons();
+  _syncInspectorFromSelection();
+}
+
+function buildCellTD(key, ff, i){
+  const td = document.createElement('td');
+  td.className = `col-${key}`;
+  td.dataset.key = key;
+  td.dataset.row = i;
+
+  const v = ff[key] || '';
+  td.dataset.value = v;
+
+  if(key === 'tk'){
+    // TK: display only
+    td.textContent = v;
+    td.classList.add('readonly');
+    return td;
+  }
+
+  // Display value
+  if(v === '' || v === '请选择' || v === '手动输入…'){
+    td.textContent = '—';
+    td.classList.add('empty');
+  } else {
+    td.textContent = v;
+  }
+
+  // 点击编辑由 tr click handler 统一分发
+  return td;
+}
+
+function activateEdit(td, key, i){
+  if(td.classList.contains('editing')) return;
+  // 多行批量编辑提示
+  if(sel.size > 1 && sel.has(i)){
+    const lbls = {ep:'Ep 集数',sc:'Sc 场次',gr:'Gr 小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'版本号',status:'通过情况'};
+    toast('编辑 '+sel.size+' 个文件的 '+ (lbls[key]||key));
+  }
+  const oldVal = td.dataset.value;
+  let el;
+
+  if(key === 'method'){
+    const methods = ['智能分镜版','双轨版','角色专属版'];
+    el = document.createElement('select');
+    methods.forEach(m => {
+      const o = document.createElement('option');
+      o.value = m; o.textContent = m;
+      if(m === oldVal) o.selected = true;
+      el.appendChild(o);
+    });
+  } else if(key === 'status'){
+    el = document.createElement('select');
+    ['OK','KP','NG',''].forEach(s => {
+      const o = document.createElement('option');
+      o.value = s; o.textContent = s || '—';
+      if(s === oldVal) o.selected = true;
+      el.appendChild(o);
+    });
+  } else if(key === 'desc'){
+    // desc 根据 method 决定输入类型
+    const method = files[i].fields.method || '';
+    const cfg = methodDescMap[method] || {mode:'text',hint:'输入镜头描述'};
+    if(cfg.mode === 'locked'){
+      // 锁定模式：readonly input，不可编辑
+      el = document.createElement('input');
+      el.type = 'text'; el.value = cfg.value || '';
+      el.readOnly = true;
+    } else if(cfg.mode === 'dropdown'){
+      // 下拉模式：select
+      el = document.createElement('select');
+      (cfg.values||[]).forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt; o.textContent = opt;
+        if(opt === oldVal) o.selected = true;
+        el.appendChild(o);
+      });
+    } else {
+      // 自由文本
+      el = document.createElement('input');
+      el.type = 'text'; el.value = oldVal;
+      el.placeholder = cfg.hint || '输入镜头描述';
+    }
+  } else {
+    el = document.createElement('input');
+    el.type = 'text';
+    el.value = oldVal;
+    if(['ep','sc','gr','ver'].includes(key)){
+      el.setAttribute('inputmode','numeric');
+    }
+    if(key === 'author'){
+      el.placeholder = '请输入姓名';
+    }
+  }
+
+  td.classList.add('editing');
+  td.textContent = '';
+  td.appendChild(el);
+  if(el.tagName === 'INPUT' && !el.readOnly){
+    el.focus();
+    el.select();
+  } else {
+    el.focus();
+  }
+
+  const commit = () => {
+    if(el.tagName === 'SELECT' && el.dataset.cancelled === '1') {
+      // Esc on select: do nothing, just close
+      el.dataset.cancelled = '0';
+      td.classList.remove('editing');
+      td.textContent = oldVal || (oldVal==='请选择'?'—':oldVal||'—');
+      if(oldVal === '' || oldVal === '请选择' || oldVal === '手动输入…') td.classList.add('empty');
+      return;
+    }
+    const v = (el.value||'').trim();
+    td.classList.remove('editing');
+
+    // Clean input
+    let finalVal = v;
+    if(key === 'author'){
+      finalVal = v.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g, '');
+    }
+
+    // Desc collision check
+    if(key === 'desc' && finalVal){
+      _checkDescCollision(finalVal);
+    }
+
+    // Write to all selected rows (or just this row)
+    if(finalVal !== oldVal){
+      const rows = sel.size > 1 ? [...sel] : [i];
+      rows.forEach(r => {
+        files[r].fields[key] = finalVal;
+      });
+      // method change triggers side effects
+      if(key === 'method'){
+        const hadSel = sel.has(i);
+        if(!hadSel) sel.add(i);  // 临时加入选择，让 onMethodChange 能写入 desc
+        onMethodChange(finalVal);
+        if(!hadSel) sel.delete(i);
+      }
+    }
+
+    renderList();
+  };
+
+  el.addEventListener('blur', () => {
+    setTimeout(commit, 100); // let click events resolve first
+  });
+  el.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); commit(); }
+    if(e.key === 'Escape'){
+      if(el.tagName === 'SELECT'){
+        el.dataset.cancelled = '1';
+      } else {
+        el.value = oldVal;
+      }
+      commit();
+    }
+  });
+  el.addEventListener('change', () => {
+    // select change fires immediately
+    if(el.tagName === 'SELECT') commit();
+  });
 }
 function updCount(){
   let ok2=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)ok2++});document.getElementById('fileCount').innerHTML=`文件列表 · <span style="color:var(--green)">${ok2}</span>/${files.length} 就绪  ·  选中 ${sel.size}`;
@@ -466,7 +688,7 @@ async function loadThumbs(){
 function setThumb(path,thumb){
   _thumbs[path]=thumb;
   const el=document.querySelector(`[data-path="${CSS.escape(path)}"]`);
-  if(el){const td=el.querySelector('.fl-thumb');if(td){
+  if(el){const td=el.querySelector('.cell-thumb');if(td){
     const img=new Image();
     img.onload=()=>{
       const r=img.naturalWidth/img.naturalHeight;

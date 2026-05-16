@@ -26,6 +26,7 @@
   --fs-body:   10px;
   --fs-label:  10px;
   --fs-sm:     10px;
+  --fs-xs:     9px;
   --fs-preview:11px;
   --space-unit:4px;
   --gap:       var(--space-unit);
