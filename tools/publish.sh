@@ -485,18 +485,23 @@ publish_sync() {
         FILES+=("$f")
     done < <(find . -maxdepth 1 -name '*.py' | sed 's|^\./||' | sort)
 
-    # ── MD5 校验锁：SMB 有未同步到本地的修改 → 拒绝 ──
-    # config.py 跳过（版本号每次推送都会变）
+    # ── MD5 校验锁：SMB 被绕过本地直接改了？ ──
+    # 对比 SMB 文件 vs 上次推送时的版本（HEAD~1），非当前本地
+    # config.py 跳过（版本号必定变化）
     echo "MD5 校验锁..."
+    local _git_root=$(cd "$PRODUCT_DIR/.." && pwd)
     local md5_blocked=0
     for f in "${FILES[@]}"; do
         [ "$f" = "config.py" ] && continue
         local smb_f="$SMB_DIR/$f"
         [ ! -f "$smb_f" ] && continue
-        local local_md5=$(md5 -q "$f" 2>/dev/null || echo "")
+        # SMB 实际 MD5
         local smb_md5=$(md5 -q "$smb_f" 2>/dev/null || echo "")
-        if [ -n "$local_md5" ] && [ -n "$smb_md5" ] && [ "$local_md5" != "$smb_md5" ]; then
-            echo "  ⛔ $f — SMB 与本地不一致（可能直接在 SMB 上改了）"
+        [ -z "$smb_md5" ] && continue
+        # 上次推送时该有的 MD5（HEAD~1）
+        local prev_md5=$(git -C "$_git_root" show "HEAD~1:$PRODUCT_NAME/$f" 2>/dev/null | md5 -q 2>/dev/null || echo "")
+        if [ -n "$prev_md5" ] && [ "$smb_md5" != "$prev_md5" ]; then
+            echo "  ⛔ $f — SMB 被绕过本地直接修改了（与上次推送不一致）"
             md5_blocked=1
         fi
     done
