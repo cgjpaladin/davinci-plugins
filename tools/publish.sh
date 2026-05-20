@@ -488,13 +488,30 @@ publish_sync() {
         FILES+=("$f")
     done < <(find . -maxdepth 1 -name '*.py' | sed 's|^\./||' | sort)
 
-    # ── MD5 校验锁（临时跳过，auto-commit 污染 git log）──
-    # TODO: 重构 — 把 auto-commit 移到 lock 之后，或改用文件记录上次推送状态
+    # ── MD5 校验锁：SMB 被绕过本地直接改了？ ──
+    # 原理：SMB/.push_commit 存上次推送的 git hash，比对 SMB 文件是否与之匹配
+    # 不匹配=SMB被直接修改过→拦截；匹配=正常→放行
     echo "MD5 校验锁..."
-    local md5_blocked=0
-    if false; then  # 临时禁用，推完后重写
     local _git_root=$(cd "$PRODUCT_DIR/.." && pwd)
-    local _last_push=$(git -C "$_git_root" log --oneline -10 --grep="push_all: $PRODUCT_NAME" --format="%H" 2>/dev/null | tail -1 || echo "")
+    local _push_cfg="$SMB_DIR/.push_commit"
+    local md5_blocked=0
+    if [ -f "$_push_cfg" ]; then
+        local _last_commit=$(cat "$_push_cfg" 2>/dev/null || echo "")
+        if [ -n "$_last_commit" ]; then
+            for f in "${FILES[@]}"; do
+                [ "$f" = "config.py" ] && continue
+                local smb_f="$SMB_DIR/$f"
+                [ ! -f "$smb_f" ] && continue
+                local smb_md5=$(md5 -q "$smb_f" 2>/dev/null || echo "")
+                [ -z "$smb_md5" ] && continue
+                local expect_md5=$(git -C "$_git_root" show "${_last_commit}:$PRODUCT_NAME/$f" 2>/dev/null | md5 -q 2>/dev/null || echo "")
+                if [ -n "$expect_md5" ] && [ "$smb_md5" != "$expect_md5" ]; then
+                    echo "  ⛔ $f — SMB 被修改过，非上次推送版本"
+                    md5_blocked=1
+                fi
+            done
+        fi
+    fi
     for f in "${FILES[@]}"; do
         [ "$f" = "config.py" ] && continue
         local smb_f="$SMB_DIR/$f"
@@ -507,7 +524,6 @@ publish_sync() {
             md5_blocked=1
         fi
     done
-    fi  # 临时禁用结束
     if [ "$md5_blocked" -eq 1 ]; then
         echo ""
         echo "⛔ SMB 上有未同步到本地的修改，请先 git pull 或手动同步后再推送。"
@@ -563,6 +579,9 @@ with open('$SMB_CFG', 'w') as f: f.write(code)
         SMB_VER=$(python3 -c "import sys; sys.path.insert(0,'$SMB_DIR'); from config import version_string; print(version_string())")
         echo "🏷 SMB 版本: $SMB_VER"
         echo "✅ 同步完成"
+        # 记录推送状态：下次推送用这个 hash 比对 SMB 是否被绕过本地直接修改
+        local _push_commit=$(git -C "$_git_root" rev-parse HEAD 2>/dev/null || echo "")
+        [ -n "$_push_commit" ] && echo "$_push_commit" > "$_push_cfg"
     else
         echo "❌ 有语法错误"
         exit 1

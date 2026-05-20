@@ -1762,8 +1762,10 @@ _AUDIO_COLOR_RULES = {
 
 
 def _audio_color_detail(color, vi, name):
-    """根据颜色和轨道生成 detail/reason。"""
+    """根据颜色和轨道生成 detail/reason。A1-A3 无色不报。"""
     if not color:
+        if 1 <= vi <= 3:
+            return None  # A1-A3 无色 = 合规（人声）
         return (f"{name}，未设置色彩",
                 "请归类为人声/音效/音乐对应色彩")
     rule = _AUDIO_COLOR_RULES.get(color)
