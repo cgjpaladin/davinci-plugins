@@ -485,13 +485,10 @@ publish_sync() {
         FILES+=("$f")
     done < <(find . -maxdepth 1 -name '*.py' | sed 's|^\./||' | sort)
 
-    # ── MD5 校验锁：SMB 被绕过本地直接改了？ ──
-    # 对比 SMB 文件 vs 上次成功推送时的版本（git log 找 push_all，跳当前 auto-commit）
-    # config.py 跳过（版本号必定变化）
-    echo "MD5 校验锁..."
+    # ── MD5 校验锁（跳过当前 auto-commit 干扰）──
+    # TODO: auto-commit 应先于锁执行，或移到 push_all 函数内部
     local _git_root=$(cd "$PRODUCT_DIR/.." && pwd)
-    # 取第二条 push_all 记录（第一条是当前 auto-commit）
-    local _last_push=$(git -C "$_git_root" log --oneline -2 --grep="push_all: $PRODUCT_NAME" --format="%H" 2>/dev/null | tail -1 || echo "")
+    local _last_push=$(git -C "$_git_root" log --oneline -10 --grep="push_all: $PRODUCT_NAME" --format="%H" 2>/dev/null | tail -1 || echo "")
     local md5_blocked=0
     for f in "${FILES[@]}"; do
         [ "$f" = "config.py" ] && continue
