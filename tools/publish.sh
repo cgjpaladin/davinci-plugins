@@ -512,21 +512,9 @@ publish_sync() {
             done
         fi
     fi
-    for f in "${FILES[@]}"; do
-        [ "$f" = "config.py" ] && continue
-        local smb_f="$SMB_DIR/$f"
-        [ ! -f "$smb_f" ] && continue
-        local smb_md5=$(md5 -q "$smb_f" 2>/dev/null || echo "")
-        [ -z "$smb_md5" ] && continue
-        local prev_md5=$(git -C "$_git_root" show "${_last_push}:$PRODUCT_NAME/$f" 2>/dev/null | md5 -q 2>/dev/null || echo "")
-        if [ -n "$prev_md5" ] && [ "$smb_md5" != "$prev_md5" ]; then
-            echo "  ⛔ $f — SMB 被绕过本地直接修改了（与上次推送不一致）"
-            md5_blocked=1
-        fi
-    done
     if [ "$md5_blocked" -eq 1 ]; then
         echo ""
-        echo "⛔ SMB 上有未同步到本地的修改，请先 git pull 或手动同步后再推送。"
+        echo "⛔ SMB 上的文件被直接修改过（非通过本地推送），请先确认更改来源后再推送。"
         exit 1
     fi
     echo "  ✅ MD5 校验通过"
@@ -580,7 +568,7 @@ with open('$SMB_CFG', 'w') as f: f.write(code)
         echo "🏷 SMB 版本: $SMB_VER"
         echo "✅ 同步完成"
         # 记录推送状态：下次推送用这个 hash 比对 SMB 是否被绕过本地直接修改
-        local _push_commit=$(git -C "$_git_root" rev-parse HEAD 2>/dev/null || echo "")
+        local _push_commit=$(cd "$PRODUCT_DIR/.." && git rev-parse HEAD 2>/dev/null || echo "")
         [ -n "$_push_commit" ] && echo "$_push_commit" > "$_push_cfg"
     else
         echo "❌ 有语法错误"
