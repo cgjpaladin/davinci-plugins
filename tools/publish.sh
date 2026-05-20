@@ -486,15 +486,17 @@ publish_sync() {
     done < <(find . -maxdepth 1 -name '*.py' | sed 's|^\./||' | sort)
 
     # ── MD5 校验锁：SMB 有未同步到本地的修改 → 拒绝 ──
+    # config.py 跳过（版本号每次推送都会变）
     echo "MD5 校验锁..."
     local md5_blocked=0
     for f in "${FILES[@]}"; do
+        [ "$f" = "config.py" ] && continue
         local smb_f="$SMB_DIR/$f"
         [ ! -f "$smb_f" ] && continue
         local local_md5=$(md5 -q "$f" 2>/dev/null || echo "")
         local smb_md5=$(md5 -q "$smb_f" 2>/dev/null || echo "")
         if [ -n "$local_md5" ] && [ -n "$smb_md5" ] && [ "$local_md5" != "$smb_md5" ]; then
-            echo "  ⛔ $f — SMB 与本地不一致（SMB 上有未同步到本地的修改）"
+            echo "  ⛔ $f — SMB 与本地不一致（可能直接在 SMB 上改了）"
             md5_blocked=1
         fi
     done
