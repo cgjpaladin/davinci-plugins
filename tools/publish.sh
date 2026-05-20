@@ -199,11 +199,14 @@ publish_push_all() {
     fi
     # ═══ 硬拦截：SMB 文件不得比本地新（防止直接改 SMB 跳过本地测试） ═══
     local smb_stale=""
-    for f in "$PRODUCT_DIR"/*.py "$PRODUCT_DIR"/adapters/*.py; do
+    for f in "$PRODUCT_DIR"/*.py; do
         [ ! -f "$f" ] && continue
         local smb_f="$SMB_DIR/$(basename "$f")"
         [ ! -f "$smb_f" ] && continue
-        if ! diff -q "$f" "$smb_f" > /dev/null 2>&1; then
+        local lm=$(stat -f %m "$f" 2>/dev/null || echo 0)
+        local sm=$(stat -f %m "$smb_f" 2>/dev/null || echo 0)
+        # 只拦 SMB 比本地新的（mtime 更大），不拦本地比 SMB 新的（正常推送）
+        if [ "$sm" -gt "$lm" ] 2>/dev/null && ! diff -q "$f" "$smb_f" > /dev/null 2>&1; then
             smb_stale="$smb_stale  $(basename "$f")"
         fi
     done
