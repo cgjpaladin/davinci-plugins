@@ -4,6 +4,8 @@ const APP_BUILD_TIME='';
 // ═══ 立即执行 — 确认脚本加载 ═══
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('debugMode').textContent='JS ✓';
+  // mock 模式下直接启动
+  if(!window.pywebview || !window.pywebview.api) init();
 });
 // ═══ State ═══
 
@@ -44,6 +46,12 @@ function mock(m,...a){
           {path:'/mock/test06.mp4',basename:'C02_缺失字段_20260302_1402.mp4',ext:'.mp4',fields:{ep:'02',sc:'01',gr:'02',desc:'',author:'',method:'',ver:'',status:''},tags:[]},
         ],total:6,duplicates:0});break;
       case'debug_log':r('ok');break;
+      case'check_files':r({files:files.map(f=>{
+        const tags=[];
+        if(f.tags&&f.tags.includes('zero'))tags.push('zero');
+        if(f.tags&&f.tags.includes('dbl_ext'))tags.push('dbl_ext');
+        return {...f,tags};
+      })});break;
       default:r({});
     }
   });
@@ -51,6 +59,7 @@ function mock(m,...a){
 
 // ═══ Load ═══
 async function init(){
+  if(window._initialized)return;window._initialized=true;
   const dm = document.getElementById('debugMode');
   const isLive=_isLive();dm.textContent=isLive?'✔ Live':'✖ Mock';call("debug_log",`APP START: ${isLive?"pywebview":"MOCK"} mode, files=${files.length}`);
 
@@ -101,6 +110,8 @@ async function init(){
       toast('已追加 '+mockFiles.length+' 个文件 (预览模式)');
     });
   }
+  // 自测（mock 模式）
+  if(!window.pywebview) setTimeout(() => _runSelfTest(), 500);
 }
 // ═══ init — 轮询等待 pywebview 桥接 ═══
 let _ready=false;
@@ -264,6 +275,9 @@ function renderList(){
     tr.classList.add(ready?'rdy':'mis');
     const tags = f.tags||[];
     if(tags.length) tr.classList.add('warn');
+    if(tags.includes('zero')) tr.classList.add('warn-zero');
+    if(tags.includes('size')) tr.classList.add('warn-size');
+    if(tags.includes('dbl_ext')) tr.classList.add('warn-dbl');
 
     // # 列
     const tdNum = document.createElement('td');
@@ -293,10 +307,23 @@ function renderList(){
       tr.appendChild(buildCellTD(key, ff, i));
     }
 
-    // 原名
+    // 原名 — 附警告/缺失标注
     const tdBase = document.createElement('td');
     tdBase.className = 'col-base';
-    tdBase.textContent = f.basename || '';
+    let baseText = f.basename || '';
+    if(tags.length){
+      const lbl={zero:'⚠零字节',size:'⚠大小异常',dbl_ext:'⚠双扩展名'};
+      baseText += ' · ' + tags.map(t=>lbl[t]||t).join(' · ');
+    }
+    if(!ready){
+      const m=[];
+      const lb={ep:'Ep',sc:'Sc',gr:'Gr',desc:'描述',author:'作者',method:'方式',ver:'版本',status:'通过'};
+      for(const k of ['ep','sc','gr','desc','author','method','ver','status']){
+        if(!ff[k]) m.push(lb[k]||k);
+      }
+      baseText += (baseText?' · ':'') + '✎缺: '+m.join(' ');
+    }
+    tdBase.textContent = baseText;
     tr.appendChild(tdBase);
 
     // 行选择：只对非编辑列响应（#列、缩略图、原名）
@@ -522,6 +549,7 @@ function updButtons(){
   document.getElementById('btnRename').disabled=!(hs&&af);
   document.getElementById('btnArchive').disabled=!(hs&&af);
   document.getElementById('btnUndo').disabled=!undoAvail;
+  document.getElementById('btnCheck').disabled=!hf;
   const dot=document.querySelector('.sb-dot');
   if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');return}
   // 全就绪
@@ -836,6 +864,28 @@ document.getElementById('btnRename').addEventListener('click',doRename);
 document.getElementById('btnArchive').addEventListener('click',doArchive);
 document.getElementById('btnUndo').addEventListener('click',doUndo);
 
+// 检查按钮
+async function doCheck(){
+  if(files.length===0){toast('请先添加文件');return}
+  const r=await call('check_files',files);
+  if(r&&r.files){
+    r.files.forEach(f=>{
+      const fi=files.find(x=>x.path===f.path);
+      if(fi)fi.tags=f.tags||[];
+    });
+    renderList();
+    const zero=files.filter(f=>f.tags&&f.tags.includes('zero')).length;
+    const size=files.filter(f=>f.tags&&f.tags.includes('size')).length;
+    const dbl=files.filter(f=>f.tags&&f.tags.includes('dbl_ext')).length;
+    const msgs=[];
+    if(zero)msgs.push(zero+' 个零字节');
+    if(size)msgs.push(size+' 个大小异常');
+    if(dbl)msgs.push(dbl+' 个双扩展名');
+    toast(msgs.length?'⚠ '+msgs.join(' · '):'✅ 全部正常');
+  }
+}
+document.getElementById('btnCheck').addEventListener('click',doCheck);
+
 // 缩放滑块
 const zs=document.getElementById('zoomSlider'),zl=document.getElementById('zoomLabel');
 zs.addEventListener('input',()=>{
@@ -889,6 +939,71 @@ function _initColResize(){
     if(_resizing.ghost){_resizing.ghost.remove();_resizing.ghost=null}
     _resizing=null;
   });
+}
+
+// ═══ Self-test (mock mode) ═══
+function _runSelfTest(){
+  const ok=[],fail=[];
+  function t(name,fn){try{fn();ok.push(name)}catch(e){fail.push(name+': '+e.message)}}
+  t('files array',()=>{if(!Array.isArray(files))throw new Error('files not array')});
+  t('sel is Set',()=>{if(!(sel instanceof Set))throw new Error('sel not Set')});
+  t('methodDescMap',()=>{if(Object.keys(methodDescMap).length<3)throw new Error('methodDescMap empty')});
+  t('_nameFmt',()=>{if(!Array.isArray(_nameFmt))throw new Error('_nameFmt not array')});
+  t('_reservedDesc',()=>{if(_reservedDesc.size<3)throw new Error('_reservedDesc empty')});
+  t('descLocked boolean',()=>{if(typeof descLocked!=='boolean')throw new Error('descLocked not bool')});
+  t('DIGIT_RULES',()=>{if(!DIGIT_RULES.ep)throw new Error('DIGIT_RULES missing')});
+  t('_computeTK',()=>{
+    files=[{fields:{ep:'01',sc:'01',gr:'01',desc:'A',method:'X',ver:'01'}}];
+    sel.add(0);
+    const tk=_computeTK(0);
+    files=[];sel.clear();
+    if(tk!=='01')throw new Error('_computeTK returned '+tk);
+  });
+  t('onMethodChange locked',()=>{
+    files=[{fields:{ep:'01',sc:'01',gr:'01',desc:'',author:'',method:'',ver:'01',status:''}}];
+    sel.add(0);
+    onMethodChange('智能分镜版',0);
+    const desc=files[0].fields.desc;
+    const ok2=desc==='全能分镜';
+    files=[];sel.clear();
+    if(!ok2)throw new Error('desc='+desc+' expected 全能分镜');
+  });
+  t('onMethodChange dropdown',()=>{
+    files=[{fields:{ep:'01',sc:'01',gr:'01',desc:'空镜',author:'',method:'双轨版',ver:'01',status:''}}];
+    sel.add(0);
+    onMethodChange('角色专属版',0);
+    const desc=files[0].fields.desc;
+    files=[];sel.clear();
+    if(desc!=='')throw new Error('desc='+desc+' expected empty after dropdown clear');
+  });
+  t('buildTK desc',()=>{
+    files=[
+      {fields:{ep:'01',sc:'01',gr:'01',desc:'A',method:'X',ver:'01'}},
+      {fields:{ep:'01',sc:'01',gr:'01',desc:'A',method:'X',ver:'01'}},
+    ];
+    const t2=buildTK(1);
+    files=[];
+    if(t2!=='02')throw new Error('buildTK returned '+t2+' expected 02');
+  });
+  t('buildName',()=>{
+    const nm=buildName({ep:'01',sc:'02',gr:'03',tk:'01',desc:'全能分镜',author:'张谭',method:'智能分镜版',ver:'01',status:'OK'});
+    if(!nm.includes('Ep01'))throw new Error('buildName missing Ep: '+nm);
+    if(!nm.includes('张谭'))throw new Error('buildName missing author: '+nm);
+  });
+  t('renderList table',()=>{
+    files=[{path:'/t/a.mp4',basename:'a.mp4',ext:'.mp4',fields:{ep:'01',sc:'01',gr:'01',desc:'',author:'',method:'',ver:'01',status:''},tags:[]}];
+    renderList();
+    const tr=document.querySelector('#fileList tbody tr');
+    if(!tr)throw new Error('no tr in tbody');
+    const tds=tr.querySelectorAll('td');
+    if(tds.length<12)throw new Error('expected 12+ tds, got '+tds.length);
+    files=[];renderList();
+  });
+  if(fail.length){
+    toast('⚠ 自测: '+ok.length+'/'+(ok.length+fail.length)+' — '+fail.join('; '));
+  } else {
+    toast('✅ 自测 '+ok.length+'/'+ok.length+' 全通过');
+  }
 }
 
 // ═══ Toast ═══

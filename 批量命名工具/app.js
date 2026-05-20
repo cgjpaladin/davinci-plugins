@@ -4,6 +4,7 @@ const APP_BUILD_TIME='';
 // ═══ 立即执行 — 确认脚本加载 ═══
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('debugMode').textContent='JS ✓';
+  if(!window.pywebview || !window.pywebview.api) init();
 });
 // ═══ State ═══
 
@@ -45,6 +46,7 @@ function mock(m,...a){
 
 // ═══ Load ═══
 async function init(){
+  if(window._initialized)return;window._initialized=true;
   const dm = document.getElementById('debugMode');
   const isLive=_isLive();dm.textContent=isLive?'✔ Live':'✖ Mock';call("debug_log",`APP START: ${isLive?"pywebview":"MOCK"} mode, files=${files.length}`);
 

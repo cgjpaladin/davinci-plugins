@@ -168,6 +168,39 @@ class RenamerAPI:
         _log.info(f"ECHO: {x!r}")
         return {"received": x}
 
+    def check_files(self, files):
+        """重新扫描文件的标签（零字节/双扩展/大小异常）"""
+        _log.info(f"check_files: {len(files)} files")
+        out = []
+        anomalies = set()
+        # 大小异常：按目录分组，变异系数 > 1.0 且 > 2SD 算异常
+        by_dir = {}
+        for f in files:
+            d = os.path.dirname(f["path"])
+            by_dir.setdefault(d, []).append(f["path"])
+        for d, fps in by_dir.items():
+            try:
+                sp = [(fp, os.path.getsize(fp)) for fp in fps if os.path.isfile(fp) and os.path.getsize(fp) > 0]
+                if len(sp) < 3: continue
+                sizes = [s for _, s in sp]
+                mu = statistics.mean(sizes)
+                sd = statistics.stdev(sizes)
+                cv = sd / mu if mu > 0 else 0
+                if cv > 1.0:
+                    anomalies = anomalies | {fp for fp, _ in sp if abs(os.path.getsize(fp) - mu) > 2 * sd}
+            except Exception:
+                pass
+        for f in files:
+            tags = []
+            if os.path.isfile(f["path"]):
+                if check_zero_byte(f["path"]): tags.append("zero")
+                if check_double_ext(f.get("basename", os.path.basename(f["path"]))): tags.append("dbl_ext")
+                if f["path"] in anomalies: tags.append("size")
+            f["tags"] = tags
+            out.append(f)
+        _log.info(f"check_files done: zero={sum(1 for o in out if 'zero' in o['tags'])} size={sum(1 for o in out if 'size' in o['tags'])} dbl={sum(1 for o in out if 'dbl_ext' in o['tags'])}")
+        return {"files": out}
+
     def _process_paths(self, paths_):
         _log.info(f"_process_paths received {len(paths_)} paths")
         MAX_FILES = 100

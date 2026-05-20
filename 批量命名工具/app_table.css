@@ -201,10 +201,10 @@ tbody tr.sel td{
   box-shadow:inset 2px 0 0 0 var(--tbl-accent);
 }
 tbody tr.sel td:first-child{box-shadow:inset 2px 0 0 0 var(--tbl-accent)}
-tbody tr.warn td{
-  background:var(--tbl-row-warn);
-  box-shadow:inset 2px 0 0 0 var(--red);
-}
+tbody tr.warn td{background:var(--tbl-row-warn)}
+tbody tr.warn-zero td{background:var(--tbl-row-warn);box-shadow:inset 2px 0 0 0 var(--red)}
+tbody tr.warn-size td{background:var(--tbl-row-warn);box-shadow:inset 2px 0 0 0 var(--yellow)}
+tbody tr.warn-dbl td{background:var(--tbl-row-warn);box-shadow:inset 2px 0 0 0 #c080d0}
 
 /* ── Selected + ready/missing states ── */
 tbody tr.sel.rdy td{background:color-mix(in srgb,var(--green) 6%,var(--tbl-row-sel))}
@@ -212,7 +212,7 @@ tbody tr.sel.mis td{background:color-mix(in srgb,var(--yellow) 6%,var(--tbl-row-
 
 /* ── Column widths (table-layout:fixed, all explicit) ── */
 .col-num{text-align:right;padding-right:12px!important;color:var(--tbl-dim);width:36px}
-.col-thumb{width:56px;padding:4px!important}
+.col-thumb{width:calc(56px * var(--thumb-scale, 1));padding:4px!important;overflow:hidden}
 .col-ep,.col-sc,.col-gr,.col-tk,.col-ver{text-align:center;width:52px}
 .col-status{text-align:center;width:72px}
 .col-desc{width:100px}
@@ -266,6 +266,7 @@ td.editing select{
 .cell-thumb{
   width:calc(44px * var(--thumb-scale,1));
   height:calc(44px * var(--thumb-scale,1));
+  max-width:100%;
   border-radius:4px;overflow:hidden;
   background:#16171d;border:1px solid #1e2028;
   display:flex;align-items:center;justify-content:center;
