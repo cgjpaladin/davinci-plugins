@@ -384,6 +384,7 @@ function activateEdit(td, key, i){
     el.select();
   } else {
     el.focus();
+    el._focused = true; // 防御 pywebview 不触发 focus 事件
   }
 
   const commit = () => {
