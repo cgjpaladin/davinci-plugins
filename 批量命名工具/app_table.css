@@ -222,7 +222,7 @@ tbody tr.sel.mis td{background:color-mix(in srgb,var(--yellow) 6%,var(--tbl-row-
 
 /* ── Column widths (table-layout:fixed, all explicit) ── */
 .col-num{text-align:right;padding-right:12px!important;color:var(--tbl-dim);width:36px}
-.col-thumb{width:calc(56px * var(--thumb-scale, 1));padding:4px!important;overflow:hidden}
+.col-thumb{width:calc(52px * var(--thumb-scale, 1));padding:4px!important;overflow:hidden}
 .col-ep,.col-sc,.col-gr,.col-tk,.col-ver{text-align:center;width:52px}
 .col-status{text-align:center;width:72px}
 .col-desc{width:100px}
