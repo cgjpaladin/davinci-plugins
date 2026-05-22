@@ -154,9 +154,19 @@ body{
 /* ── Empty state ── */
 .fl-empty{
   display:none;align-items:center;justify-content:center;
-  height:100%;color:var(--text-dim);font-size:18px;
+  height:100%;color:var(--text-dim);font-size:13px;
+  text-align:center;
 }
 .fl-empty.show{display:flex}
+.fl-empty-icon{font-size:40px;margin-bottom:12px;opacity:.4}
+.fl-empty-text{font-size:13px;color:var(--tbl-head);margin-bottom:16px}
+.fl-empty-btn{
+  padding:8px 24px;background:var(--tbl-accent);color:#fff;
+  border:none;border-radius:var(--radius);
+  font-family:var(--font-ui);font-size:13px;font-weight:600;
+  cursor:pointer;transition:filter .1s;
+}
+.fl-empty-btn:hover{filter:brightness(1.15)}
 
 /* ════════════════════════════════════════
    TABLE STYLES (Linear dark)
@@ -231,6 +241,9 @@ td.empty{color:var(--tbl-dim);font-style:italic}
 
 /* ── Readonly cell (TK) ── */
 td.readonly{cursor:default;color:var(--tbl-dim)}
+
+/* ── Locked cell (智能分镜版 desc) ── */
+td.locked{cursor:default;color:var(--tbl-dim);font-style:italic}
 
 /* ── Selection zone cursors ── */
 .col-num,.col-thumb,.col-base{cursor:pointer}

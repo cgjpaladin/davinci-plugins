@@ -30,7 +30,7 @@ function mock(m,...a){
   return new Promise(r=>{
     const C={ep:'01',sc:'01',gr:'01',desc:'',author:'',method:'',ver:'01',status:'OK',tk:'01'};
     switch(m){
-      case'get_config':r({fields:[{key:'ep',label:'Ep 集数',def:'01',hint:'01'},{key:'sc',label:'Sc 场次',def:'01',hint:'01'},{key:'gr',label:'Gr 小场次',def:'01',hint:'01'},{key:'desc',label:'镜头描述',def:'',hint:'由制作方式决定'},{key:'author',label:'制作者',def:'',hint:'请输入姓名'},{key:'method',label:'制作方式',def:'',dv:['请选择','智能分镜版','双轨版','角色专属版']},{key:'ver',label:'版本号',def:'01',hint:'01'},{key:'status',label:'通过情况',def:'',dv:['请选择','OK','KP','NG']}],defaults:{},method_desc_map:{'智能分镜版':{mode:'locked',value:'全能分镜'},'双轨版':{mode:'dropdown',values:['请选择','幽灵角色','空镜','手动输入…']},'角色专属版':{mode:'text',hint:'温时雨过肩中景'}},name_format:[{pfx:'Ep',key:'ep'},{pfx:'Sc',key:'sc'},{pfx:'Gr',key:'gr'},{pfx:'Tk',key:'tk'},{pfx:'',key:'desc'},{pfx:'',key:'author'},{pfx:'',key:'method'},{pfx:'v',key:'ver'},{pfx:'',key:'status'}],field_rules:[{trigger:'method',targets:['desc'],map:{'智能分镜版':{desc:{locked:'全能分镜'}},'双轨版':{desc:{dropdown:['请选择','幽灵角色','空镜','手动输入…']}},'角色专属版':{desc:{text_hint:'温时雨过肩中景'}}}}]});break;
+      case'get_config':r({fields:[{key:'ep',label:'Ep 集数',def:'01',hint:'01'},{key:'sc',label:'Sc 场次',def:'01',hint:'01'},{key:'gr',label:'Gr 小场次',def:'01',hint:'01'},{key:'desc',label:'镜头描述',def:'',hint:'由制作方式决定'},{key:'method',label:'制作方式',def:'',dv:['请选择','智能分镜版','双轨版','角色专属版']},{key:'author',label:'制作者',def:'',hint:'请输入姓名'},{key:'ver',label:'版本号',def:'01',hint:'01'},{key:'status',label:'通过情况',def:'',dv:['请选择','OK','KP','NG']}],defaults:{},method_desc_map:{'智能分镜版':{mode:'locked',value:'智能分镜'},'双轨版':{mode:'dropdown',values:['请选择','智能分镜','幽灵角色','空镜','请手动输入…']},'角色专属版':{mode:'dropdown',values:['请选择','智能分镜','请手动输入…']}},name_format:[{pfx:'Ep',key:'ep'},{pfx:'Sc',key:'sc'},{pfx:'Gr',key:'gr'},{pfx:'Tk',key:'tk'},{pfx:'',key:'desc'},{pfx:'',key:'method'},{pfx:'',key:'author'},{pfx:'v',key:'ver'},{pfx:'',key:'status'}],field_rules:[{trigger:'method',targets:['desc'],map:{'智能分镜版':{desc:{locked:'智能分镜'}},'双轨版':{desc:{dropdown:['请选择','智能分镜','幽灵角色','空镜','请手动输入…']}},'角色专属版':{desc:{dropdown:['请选择','智能分镜','请手动输入…']}}}}]});break;
             case'validate_dest':r({ok:true,msg:'✓ 格式正确'});break;
       case'do_rename':r({ok:1,total:1,fail:[],renamed:[]});break;
       case'do_undo':r({ok:0,msg:'Mock: 无操作'});break;
@@ -139,7 +139,7 @@ function _bindInspectorListeners(){
   // 输入框：数字验证 + 泛用 handler
   document.querySelectorAll('#inspector input[data-key]').forEach(el=>{
     if(el.readOnly)return;
-    el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color=C.b;const v=el.value.trim();el.style.background=v&&v!=='请选择'&&v!=='手动输入…'?C.gr:'var(--surface2)'});
+    el.addEventListener('focus',()=>{if(!sel.size)return;el.style.color=C.b;const v=el.value.trim();el.style.background=v&&v!=='请选择'&&v!=='请手动输入…'?C.gr:'var(--surface2)'});
     el.addEventListener('blur',()=>{if(!sel.size)return;_setVisual(el,el.value.trim());
       const k=el.getAttribute('data-key');const sr=DIGIT_STRICT[k];
       if(sr&&el.value&&!sr.test(el.value)){toast(`请输入${el.placeholder||'正确格式'}`);el.focus()}
@@ -164,7 +164,7 @@ function _bindInspectorListeners(){
 
 // ═══ Fields ═══
 function getFields(){
-  const PLACEHOLDERS=['请选择','手动输入…'];
+  const PLACEHOLDERS=['请选择','请手动输入…'];
   const f={};
   for(const el of document.querySelectorAll('#inspector [data-key]')){
     if(el.id==='descInput'&&document.getElementById('descCustomInput'))continue;
@@ -219,7 +219,7 @@ function descSelect(vs){
   vs.forEach(v=>{const o=document.createElement('option');o.text=v;o.value=v;s.add(o)});
   function _onDescChange(){
     const ci2=document.getElementById('descCustomInput');
-    if(s.value==='手动输入…'){
+    if(s.value==='请手动输入…'){
       if(!ci2){const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;';ip.oninput=()=>{_checkDescCollision(ip.value);_setVisual(ip,ip.value);_applyInspectorToSelected();renderList();updButtons()};s.after(ip)}
     }else{if(ci2)ci2.remove();_applyInspectorToSelected();renderList();updButtons()}
     _setVisual(s,s.value);
@@ -277,7 +277,7 @@ function updCount(){
 }
 
 function _setVisual(el,v){
-  const filled=v&&v!=='请选择'&&v!=='手动输入…';
+  const filled=v&&v!=='请选择'&&v!=='请手动输入…';
   el.style.color=filled?'var(--text-bright)':'var(--text-dim)';
   if(filled)el.style.background='var(--filled-bg)';
   else el.style.background='var(--surface2)';
@@ -381,8 +381,8 @@ function _setDescValue(v){
       if(!v)return;
   if(el.tagName==='SELECT'){
     for(let i=0;i<el.options.length;i++){if(el.options[i].value===v){el.value=v;_setVisual(el,v);return}}
-    // 不在选项里 → 切到「手动输入…」并填值
-    el.value='手动输入…';_setVisual(el,'手动输入…');
+    // 不在选项里 → 切到「请手动输入…」并填值
+    el.value='请手动输入…';_setVisual(el,'请手动输入…');
     const ip=document.createElement('input');ip.id='descCustomInput';ip.setAttribute('data-key','desc');
     ip.value=v;ip.placeholder='输入自定义描述';ip.style.cssText='margin-left:4px;flex:1;color:var(--text-bright);';
     ip.oninput=()=>{_checkDescCollision(ip.value);_setVisual(ip,ip.value);_applyInspectorToSelected();renderList();updButtons()};

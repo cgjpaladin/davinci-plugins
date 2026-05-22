@@ -13,25 +13,25 @@ FIELD_CONFIG = [
     {"key":"gr",     "name":"Gr",  "label":"Gr 小场次", "def":"01","regex":r"^\d{2,3}$","hint":"01"},
     {"key":"tk",     "name":"Tk",  "label":"Tk 次数",   "def":"01","regex":r"^\d{2,3}$","inc":True,"hint":"01"},
     {"key":"desc",   "name":"",    "label":"镜头描述",   "def":"","hint":"由制作方式决定"},
-    {"key":"author", "name":"",    "label":"制作者",     "def":"","hint":"请输入姓名"},
     {"key":"method", "name":"",    "label":"制作方式",   "def":"","dv":["请选择","智能分镜版","双轨版","角色专属版"]},
+    {"key":"author", "name":"",    "label":"制作者",     "def":"","hint":"请输入姓名"},
     {"key":"ver",    "name":"v",   "label":"v 版本号",   "def":"01","regex":r"^\d{2,3}(\.\d+)?$","hint":"01"},
     {"key":"status", "name":"",    "label":"通过情况",   "def":"","dv":["请选择","OK","KP","NG"]},
 ]
 
 METHOD_DESC_MAP = {
-    "智能分镜版": {"mode":"locked", "value":"全能分镜"},
-    "双轨版":     {"mode":"dropdown","values":["请选择","幽灵角色","空镜","手动输入…"]},
-    "角色专属版": {"mode":"text","hint":"温时雨过肩中景"},
+    "智能分镜版": {"mode":"locked", "value":"智能分镜"},
+    "双轨版":     {"mode":"dropdown","values":["请选择","智能分镜","幽灵角色","空镜","请手动输入…"]},
+    "角色专属版": {"mode":"dropdown","values":["请选择","智能分镜","请手动输入…"]},
 }
 
-DESC_TO_METHOD = {"全能分镜":"智能分镜版","幽灵角色":"双轨版","空镜":"双轨版"}
+DESC_TO_METHOD = {"智能分镜":"智能分镜版","幽灵角色":"双轨版","空镜":"双轨版"}
 
 FIELD_RULES = [
     {"trigger":"method","targets":["desc"],"map":{
-        "智能分镜版": {"desc":{"locked":"全能分镜"}},
-        "双轨版":     {"desc":{"dropdown":["请选择","幽灵角色","空镜","手动输入…"]}},
-        "角色专属版": {"desc":{"text_hint":"温时雨过肩中景"}},
+        "智能分镜版": {"desc":{"locked":"智能分镜"}},
+        "双轨版":     {"desc":{"dropdown":["请选择","智能分镜","幽灵角色","空镜","请手动输入…"]}},
+        "角色专属版": {"desc":{"dropdown":["请选择","智能分镜","请手动输入…"]}},
     }},
 ]
 
@@ -175,7 +175,7 @@ def _build_filename_re():
     # Simplified: use a single comprehensive regex
     return re.compile(
         r"^Ep(?P<ep>\d{2,3})_Sc(?P<sc>\d{2,3})_Gr(?P<gr>\d{2,3})_Tk(?P<tk>\d{2,3})_"
-        r"(?P<desc>.+?)_(?P<author>[^_]+)_(?P<method>[^_]+)_v(?P<ver>\d{2,3}(?:\.\d+)?)_"
+        r"(?P<desc>.+?)_(?P<method>[^_]+)_(?P<author>[^_]+)_v(?P<ver>\d{2,3}(?:\.\d+)?)_"
         r"(?P<status>\w+)(?P<ext>\.[^.]+)$")
 
 FILENAME_RE = _build_filename_re()

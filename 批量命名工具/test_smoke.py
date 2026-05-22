@@ -32,7 +32,7 @@ check("含 status", "status" in keys)
 
 # ═══ 2. build_filename ═══
 print("\n2. build_filename")
-fields = {"ep":"01","sc":"02","gr":"03","tk":"01","desc":"全能分镜","author":"张谭","method":"智能分镜版","ver":"01","status":"OK"}
+fields = {"ep":"01","sc":"02","gr":"03","tk":"01","desc":"智能分镜","author":"张谭","method":"智能分镜版","ver":"01","status":"OK"}
 result = build_filename(fields)
 check("包含 Ep01", "Ep01" in result)
 check("包含 method 字段", "智能分镜版" in result)

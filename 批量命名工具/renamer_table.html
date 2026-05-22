@@ -34,10 +34,8 @@
   <div class="fl-bar">
     <span id="fileCount">文件列表 · 0 个</span>
     <div class="fl-bar-right">
-      <button class="fl-btn" id="btnCheck" disabled>🔍 检查</button>
       <span class="zoom-label" id="zoomLabel">100%</span>
       <input type="range" class="zoom-slider" id="zoomSlider" min="50" max="200" value="100" step="1">
-      <button class="fl-btn" id="btnAdd">+ 添加</button>
     </div>
   </div>
   <div class="fl-body" id="fileList">
@@ -50,15 +48,21 @@
         <th class="col-gr">Gr</th>
         <th class="col-tk">Tk</th>
         <th class="col-desc">镜头描述</th>
-        <th class="col-author">制作者</th>
         <th class="col-method">制作方式</th>
+        <th class="col-author">制作者</th>
         <th class="col-ver">v</th>
         <th class="col-status">通过</th>
         <th class="col-base">原名</th>
       </tr></thead>
       <tbody></tbody>
     </table>
-    <div class="fl-empty">拖放文件到此处 或 点击 +文件</div>
+    <div class="fl-empty">
+      <div>
+        <div class="fl-empty-icon">📁</div>
+        <div class="fl-empty-text">拖放素材到此处，或点击按钮</div>
+        <button class="fl-empty-btn" id="btnAddBig">+ 添加</button>
+      </div>
+    </div>
   </div>
   <div class="drop-overlay" id="dropOverlay"><span>释放以添加文件</span></div>
 </div>
@@ -66,7 +70,7 @@
 <!-- Status Bar -->
 <div class="statusbar">
   <span class="sb-left"><span class="sb-dot"></span> <span id="statusText">就绪  ·  Ctrl+Z 撤销  ·  Del 移除</span></span>
-  <span>裁缝老师的达芬奇插件工坊 · v3.0</span>
+  <span>批量命名工具 · v2.0</span>
 </div>
 
 <!-- Overlays -->
