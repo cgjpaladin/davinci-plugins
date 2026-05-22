@@ -292,29 +292,32 @@ function buildCellTD(key, ff, i){
   td.dataset.value = v;
 
   if(key === 'tk'){
-    td.textContent = v;
+    const s = document.createElement('span'); s.textContent = v;
+    td.appendChild(s);
     td.classList.add('readonly');
     return td;
   }
 
-  // locked desc: 灰化 + 🔒
+  // locked desc: 灰化
   if(key === 'desc'){
     const method = files[i].fields.method || '';
     const cfg = methodDescMap[method];
     if(cfg && cfg.mode === 'locked'){
-      td.textContent = v || '—';
+      const s = document.createElement('span'); s.textContent = v || '—';
+      td.appendChild(s);
       td.classList.add('locked');
       return td;
     }
   }
 
-  // Display value
+  // Default: span wrapping for consistent click target
+  const s = document.createElement('span');
+  s.textContent = v || '—';
   if(v === '' || v === '请选择' || v === '请手动输入…'){
-    td.textContent = '—';
+    s.textContent = '—';
     td.classList.add('empty');
-  } else {
-    td.textContent = v;
   }
+  td.appendChild(s);
 
   // 点击编辑由 tr click handler 统一分发
   return td;

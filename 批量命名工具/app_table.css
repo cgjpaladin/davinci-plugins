@@ -206,22 +206,32 @@ tbody td{
 }
 tbody tr{transition:background .06s}
 /* ── Ready / missing ── */
-tbody tr.rdy:not(.sel) .col-num{border-left:4px solid var(--green)}
-tbody tr.mis:not(.sel) .col-num{border-left:4px solid var(--yellow)}
 tbody tr.rdy .col-num{color:var(--green)}
 tbody tr.mis .col-num{color:var(--yellow)}
 tbody tr:hover td{background:var(--tbl-row-hov)}
 
+/* ── Left-edge indicator → 用 background gradient 模拟，不依赖 border ── */
+tbody tr.rdy:not(.sel) .col-num,
+tbody tr.mis:not(.sel) .col-num,
+tbody tr.sel .col-num,
+tbody tr.warn-zero .col-num,
+tbody tr.warn-size .col-num,
+tbody tr.warn-dbl .col-num{
+  padding-left:4px;
+}
+tbody tr.rdy:not(.sel) .col-num{background:linear-gradient(to right,var(--green) 4px,transparent 4px)}
+tbody tr.mis:not(.sel) .col-num{background:linear-gradient(to right,var(--yellow) 4px,transparent 4px)}
+
 /* ── Selected ── */
-tbody tr.sel .col-num{border-left:4px solid var(--tbl-accent)}
+tbody tr.sel .col-num{background:linear-gradient(to right,var(--tbl-accent) 4px,var(--tbl-row-sel) 4px)}
 tbody tr.sel td{background:var(--tbl-row-sel)}
 tbody tr.sel.rdy td{background:color-mix(in srgb,var(--green) 10%,var(--tbl-row-sel))}
 tbody tr.sel.mis td{background:color-mix(in srgb,var(--yellow) 10%,var(--tbl-row-sel))}
 
 /* ── Warnings ── */
-tbody tr.warn-zero .col-num{border-left:4px solid var(--red)}
-tbody tr.warn-size .col-num{border-left:4px solid var(--yellow)}
-tbody tr.warn-dbl .col-num{border-left:4px solid #c080d0}
+tbody tr.warn-zero .col-num{background:linear-gradient(to right,var(--red) 4px,var(--tbl-row-warn) 4px)}
+tbody tr.warn-size .col-num{background:linear-gradient(to right,var(--yellow) 4px,var(--tbl-row-warn) 4px)}
+tbody tr.warn-dbl .col-num{background:linear-gradient(to right,#c080d0 4px,var(--tbl-row-warn) 4px)}
 tbody tr.warn td{background:var(--tbl-row-warn)}
 
 /* ── Column widths (table-layout:fixed, all explicit) ── */
