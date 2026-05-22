@@ -70,6 +70,20 @@ async function init(){
   window._fieldLabels={};_allFields.forEach(f=>{window._fieldLabels[f.key]=f.label});
   const v=APP_VERSION||'?',br=APP_BRANCH||'',t=APP_BUILD_TIME||'';document.getElementById('debugMode').textContent=(cfg.dev?'🔧 DEV ':'')+(br&&br!='main'?br+'@':'')+'v'+v+(t?' '+t:'');
 
+  // 动态生成表头（单一事实来源，防止 HTML/JS 列序漂移）
+  const theadTr = document.querySelector('#fileList thead tr');
+  const baseTh = theadTr.querySelector('.col-base');
+  // 字段顺序与 build_filename 一致：desc → method → author → ver → status
+  const headerKeys = ['ep','sc','gr','tk','desc','method','author','ver','status'];
+  const headerLabels = {ep:'Ep',sc:'Sc',gr:'Gr',tk:'Tk',desc:'镜头描述',method:'制作方式',author:'制作者',ver:'v',status:'通过'};
+  headerKeys.forEach(k => {
+    const th = document.createElement('th');
+    th.className = 'col-'+k;
+    th.textContent = headerLabels[k] || k;
+    theadTr.insertBefore(th, baseTh);
+  });
+  window._headerKeys = headerKeys;
+
   // 列宽拖拽
   _initColResize();
 
@@ -197,7 +211,7 @@ function renderList(){
     tr.appendChild(tdThumb);
 
     // 字段列
-    for(const key of ['ep','sc','gr','tk','desc','method','author','ver','status']){
+    for(const key of (window._headerKeys||['ep','sc','gr','tk','desc','method','author','ver','status'])){
       tr.appendChild(buildCellTD(key, ff, i));
     }
 
