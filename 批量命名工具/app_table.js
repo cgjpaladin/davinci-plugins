@@ -279,7 +279,7 @@ function _initTBodyClick(){
       if(sameCell){
         activateEdit(td, key, i);
       } else {
-        rowClick({metaKey:false,ctrlKey:false,shiftKey:false}, i);
+        rowClick(e, i);
       }
       return;
     }
