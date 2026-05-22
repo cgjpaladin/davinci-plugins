@@ -244,7 +244,7 @@ td.editing input,td.editing select{max-width:100%}
 .col-author.editing input{width:64px}
 
 /* ── Empty cell ── */
-td.empty{color:var(--tbl-dim);font-style:italic}
+td.empty{color:var(--tbl-dim);font-style:italic;background:rgba(192,64,64,.06)}
 
 /* ── Readonly cell (TK) ── */
 td.readonly{cursor:default;color:var(--tbl-dim)}
