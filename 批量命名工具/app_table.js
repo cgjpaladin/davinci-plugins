@@ -189,8 +189,9 @@ function renderList(){
 
     // # 列
     const tdNum = document.createElement('td');
-    tdNum.className = 'col-num'; tdNum.textContent = i+1;
-    tdNum.dataset.row = i;
+    tdNum.className = 'col-num'; tdNum.dataset.row = i;
+    const sNum = document.createElement('span'); sNum.textContent = i+1;
+    tdNum.appendChild(sNum);
     tr.appendChild(tdNum);
 
     // 缩略图
@@ -230,7 +231,8 @@ function renderList(){
       }
       tooltips.push('✎缺失: '+m.join(' '));
     }
-    tdBase.textContent = baseText;
+    const sBase = document.createElement('span'); sBase.textContent = baseText;
+    tdBase.appendChild(sBase);
     if(tooltips.length) tdBase.title = tooltips.join('\n');
     tr.appendChild(tdBase);
 
