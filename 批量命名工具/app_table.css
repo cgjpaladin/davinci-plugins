@@ -200,9 +200,10 @@ thead th.resizing::after{opacity:.6}
 tbody td{
   padding:8px 12px;
   border-bottom:1px solid var(--tbl-border);
-  font-size:13px;color:var(--tbl-cell);
+  font-size:13px;line-height:1.2;color:var(--tbl-cell);
   white-space:nowrap;
   transition:background .08s;
+  height:32px;
 }
 tbody tr{transition:background .06s}
 /* ── Ready / missing ── */
@@ -240,7 +241,7 @@ tbody tr.warn td{background:var(--tbl-row-warn)}
 .col-author{width:64px}
 .col-method{width:100px}
 .col-base{width:auto;color:var(--tbl-dim);font-size:12px}
-td span{display:inline;line-height:13px}
+td span{display:inline}
 
 /* ── Editing: don't let input blow up column width ── */
 td.editing input,td.editing select{max-width:100%}
