@@ -205,10 +205,8 @@ tbody td{
   transition:background .08s;
 }
 tbody tr{transition:background .06s}
-/* ── Ready / missing (未选中行左边框) ── */
-tbody tr.rdy:not(.sel):not(.warn):not(.warn-zero):not(.warn-size):not(.warn-dbl) td{box-shadow:inset 3px 0 0 0 var(--green)}
+/* ── Ready / missing ── */
 tbody tr.rdy .col-num{color:var(--green)}
-tbody tr.mis:not(.sel):not(.warn):not(.warn-zero):not(.warn-size):not(.warn-dbl) td{box-shadow:inset 3px 0 0 0 var(--yellow)}
 tbody tr.mis .col-num{color:var(--yellow)}
 tbody tr:hover td{background:var(--tbl-row-hov)}
 
