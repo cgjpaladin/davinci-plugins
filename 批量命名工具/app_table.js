@@ -429,9 +429,10 @@ function activateEdit(td, key, i){
     renderList();
   };
 
-  el._committed = false;
+  el._committed = false; el._focused = false;
+  el.addEventListener('focus', () => { el._focused = true; });
   el.addEventListener('blur', () => {
-    setTimeout(() => { if(!el._committed) commit(); }, 100);
+    setTimeout(() => { if(el._focused && !el._committed) commit(); }, 100);
   });
   el.addEventListener('keydown', e => {
     if(e.key === 'Enter'){ e.preventDefault(); commit(); }
