@@ -190,17 +190,14 @@ function renderList(){
     // # 列
     const tdNum = document.createElement('td');
     tdNum.className = 'col-num'; tdNum.textContent = i+1;
-    tdNum.style.pointerEvents = 'auto';
-    tdNum.addEventListener('click', e => { e.stopPropagation(); rowClick(e, i); });
+    tdNum.dataset.row = i;
     tr.appendChild(tdNum);
 
     // 缩略图
     const tdThumb = document.createElement('td');
     tdThumb.className = 'col-thumb';
-    tdThumb.addEventListener('click', e => { e.stopPropagation(); rowClick(e, i); });
     const divThumb = document.createElement('div');
     divThumb.className = 'cell-thumb';
-    divThumb.dataset.row = i;
     const tsrc = _thumbs[f.path];
     if(tsrc){
       divThumb.style.backgroundImage = `url(${tsrc})`;
@@ -235,29 +232,39 @@ function renderList(){
     }
     tdBase.textContent = baseText;
     if(tooltips.length) tdBase.title = tooltips.join('\n');
-    tdBase.addEventListener('click', e => { e.stopPropagation(); rowClick(e, i); });
     tr.appendChild(tdBase);
-
-    // 行选择只通过 td 级 handler：缩略图/#列/原名列各自绑定
-    // TR 级 handler 仅处理字段列的编辑触发
-    tr.addEventListener('click', e => {
-  // 阻止点击穿透到下拉/输入框
-  if(e.target.closest('.editing')) return;
-  const td = e.target.closest('td');
-  if(!td) return;
-  if(td.classList.contains('col-ep') || td.classList.contains('col-sc') || td.classList.contains('col-gr') ||
-     td.classList.contains('col-desc') || td.classList.contains('col-author') || td.classList.contains('col-method') ||
-     td.classList.contains('col-ver') || td.classList.contains('col-status')){
-    if(td.classList.contains('readonly') || td.classList.contains('locked')) return;
-    e.stopPropagation();
-    activateEdit(td, td.dataset.key, i);
-      }
-    });
 
     tbody.appendChild(tr);
   });
   updCount(); updButtons();
 }
+
+// ═══ 单一事件委派：tbody 上处理所有点击（选中 或 编辑） ═══
+(function(){
+  const tbody = document.querySelector('#fileList tbody');
+  tbody.addEventListener('click', e => {
+    const td = e.target.closest('td');
+    if(!td) return;
+    const tr = td.closest('tr');
+    if(!tr) return;
+    const i = parseInt(tr.dataset.index);
+    if(isNaN(i)) return;
+
+    // 已在编辑中 → 忽略
+    if(td.classList.contains('editing')) return;
+
+    // 字段列（有 data-key 且不是 _base）→ 打开编辑
+    const key = td.dataset.key;
+    if(key && key !== 'tk' && key !== '_base'){
+      if(td.classList.contains('locked')) return;
+      activateEdit(td, key, i);
+      return;
+    }
+
+    // 其他（#列、缩略图、原名、TK）→ 行选择
+    rowClick(e, i);
+  });
+})();
 
 function rowClick(e, i){
   if(e.metaKey || e.ctrlKey){

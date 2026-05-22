@@ -173,7 +173,7 @@ body{
    ════════════════════════════════════════ */
 
 table{
-  border-collapse:separate;border-spacing:0;width:100%;table-layout:fixed;
+  border-collapse:collapse;width:100%;table-layout:fixed;
   font-variant-numeric:tabular-nums;
 }
 
@@ -206,22 +206,22 @@ tbody td{
 }
 tbody tr{transition:background .06s}
 /* ── Ready / missing ── */
-tbody tr.rdy:not(.sel){border-left:3px solid var(--green)}
-tbody tr.mis:not(.sel){border-left:3px solid var(--yellow)}
+tbody tr.rdy:not(.sel) .col-num{border-left:4px solid var(--green)}
+tbody tr.mis:not(.sel) .col-num{border-left:4px solid var(--yellow)}
 tbody tr.rdy .col-num{color:var(--green)}
 tbody tr.mis .col-num{color:var(--yellow)}
 tbody tr:hover td{background:var(--tbl-row-hov)}
 
 /* ── Selected ── */
-tbody tr.sel{border-left:3px solid var(--tbl-accent)}
+tbody tr.sel .col-num{border-left:4px solid var(--tbl-accent)}
 tbody tr.sel td{background:var(--tbl-row-sel)}
 tbody tr.sel.rdy td{background:color-mix(in srgb,var(--green) 10%,var(--tbl-row-sel))}
 tbody tr.sel.mis td{background:color-mix(in srgb,var(--yellow) 10%,var(--tbl-row-sel))}
 
 /* ── Warnings ── */
-tbody tr.warn-zero{border-left:3px solid var(--red)}
-tbody tr.warn-size{border-left:3px solid var(--yellow)}
-tbody tr.warn-dbl{border-left:3px solid #c080d0}
+tbody tr.warn-zero .col-num{border-left:4px solid var(--red)}
+tbody tr.warn-size .col-num{border-left:4px solid var(--yellow)}
+tbody tr.warn-dbl .col-num{border-left:4px solid #c080d0}
 tbody tr.warn td{background:var(--tbl-row-warn)}
 
 /* ── Column widths (table-layout:fixed, all explicit) ── */
