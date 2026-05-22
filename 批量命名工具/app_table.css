@@ -292,16 +292,9 @@ td.editing select{
   width:calc(44px * var(--thumb-scale,1));
   height:calc(44px * var(--thumb-scale,1));
   max-width:100%;
-  border-radius:4px;overflow:hidden;
-  background:transparent;border:none;
-  display:flex;align-items:center;justify-content:center;
-  position:relative;
-  background-size:contain;background-repeat:no-repeat;background-position:center;
-}
-.cell-thumb::after{
-  content:'▶';position:absolute;
-  font-size:7px;color:rgba(255,255,255,.20);
-  text-shadow:0 0 2px #000;
+  border-radius:4px;
+  object-fit:contain;
+  background:transparent;
 }
 
 /* ── Status dot ── */

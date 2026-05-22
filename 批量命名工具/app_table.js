@@ -221,11 +221,13 @@ function _buildRow(f,i){
 
   const tdThumb = document.createElement('td');
   tdThumb.className = 'col-thumb';
-  const divThumb = document.createElement('div');
-  divThumb.className = 'cell-thumb';
+  const img = document.createElement('img');
+  img.className = 'cell-thumb';
+  img.loading = 'lazy';
+  img.alt = '';
   const tsrc = _thumbs[f.path];
-  divThumb.style.background = tsrc ? `url(${tsrc})` : `linear-gradient(135deg,${tc[i%tc.length]},${tc[(i+2)%tc.length]})`;
-  tdThumb.appendChild(divThumb);
+  if(tsrc) img.src = tsrc;
+  tdThumb.appendChild(img);
   tr.appendChild(tdThumb);
 
   for(const key of (window._headerKeys||['ep','sc','gr','tk','desc','method','author','ver','status'])){
@@ -552,9 +554,7 @@ async function loadThumbs(){
 function setThumb(path,thumb){
   _thumbs[path]=thumb;
   const el=document.querySelector(`[data-path="${CSS.escape(path)}"]`);
-  if(el){const td=el.querySelector('.cell-thumb');if(td){
-    td.style.backgroundImage='url('+thumb+')';
-  }}
+  if(el){const img=el.querySelector('.cell-thumb');if(img)img.src=thumb;}
 }
 function _thumbScale(){const v=getComputedStyle(document.querySelector('.file-section')).getPropertyValue('--thumb-scale');return parseFloat(v)||1}
 function setStatus(s){document.getElementById('statusText').textContent=s}
