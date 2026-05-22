@@ -224,20 +224,18 @@ function renderList(){
     tdBase.addEventListener('click', e => { e.stopPropagation(); rowClick(e, i); });
     tr.appendChild(tdBase);
 
-    // 行选择：只对非编辑列响应（#列、缩略图、原名）
+    // 行选择只通过 td 级 handler：缩略图/#列/原名列各自绑定
+    // TR 级 handler 仅处理字段列的编辑触发
     tr.addEventListener('click', e => {
       if(e.target.closest('.editing')) return;
       const td = e.target.closest('td');
       if(!td) return;
-      // 字段列 → 直接编辑，不改变选择
       if(td.classList.contains('col-ep') || td.classList.contains('col-sc') || td.classList.contains('col-gr') ||
          td.classList.contains('col-desc') || td.classList.contains('col-author') || td.classList.contains('col-method') ||
          td.classList.contains('col-ver') || td.classList.contains('col-status')){
         if(td.classList.contains('readonly') || td.classList.contains('locked')) return;
         activateEdit(td, td.dataset.key, i);
-        return;
       }
-      rowClick(e, i);
     });
 
     tbody.appendChild(tr);
