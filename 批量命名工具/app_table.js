@@ -241,14 +241,16 @@ function renderList(){
     // 行选择只通过 td 级 handler：缩略图/#列/原名列各自绑定
     // TR 级 handler 仅处理字段列的编辑触发
     tr.addEventListener('click', e => {
-      if(e.target.closest('.editing')) return;
-      const td = e.target.closest('td');
-      if(!td) return;
-      if(td.classList.contains('col-ep') || td.classList.contains('col-sc') || td.classList.contains('col-gr') ||
-         td.classList.contains('col-desc') || td.classList.contains('col-author') || td.classList.contains('col-method') ||
-         td.classList.contains('col-ver') || td.classList.contains('col-status')){
-        if(td.classList.contains('readonly') || td.classList.contains('locked')) return;
-        activateEdit(td, td.dataset.key, i);
+  // 阻止点击穿透到下拉/输入框
+  if(e.target.closest('.editing')) return;
+  const td = e.target.closest('td');
+  if(!td) return;
+  if(td.classList.contains('col-ep') || td.classList.contains('col-sc') || td.classList.contains('col-gr') ||
+     td.classList.contains('col-desc') || td.classList.contains('col-author') || td.classList.contains('col-method') ||
+     td.classList.contains('col-ver') || td.classList.contains('col-status')){
+    if(td.classList.contains('readonly') || td.classList.contains('locked')) return;
+    e.stopPropagation();
+    activateEdit(td, td.dataset.key, i);
       }
     });
 
@@ -385,6 +387,7 @@ function activateEdit(td, key, i){
   }
 
   const commit = () => {
+    el._committed = true;
     if(el.tagName === 'SELECT' && el.dataset.cancelled === '1') {
       // Esc on select: do nothing, just close
       el.dataset.cancelled = '0';
@@ -426,8 +429,9 @@ function activateEdit(td, key, i){
     renderList();
   };
 
+  el._committed = false;
   el.addEventListener('blur', () => {
-    setTimeout(commit, 100); // let click events resolve first
+    setTimeout(() => { if(!el._committed) commit(); }, 100);
   });
   el.addEventListener('keydown', e => {
     if(e.key === 'Enter'){ e.preventDefault(); commit(); }
