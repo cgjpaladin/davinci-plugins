@@ -315,6 +315,8 @@ function buildCellTD(key, ff, i){
 
 function activateEdit(td, key, i){
   if(td.classList.contains('editing')) return;
+  // 关闭当前正在编辑的控件
+  if(window._activeCancel){ window._activeCancel(); window._activeCancel = null; }
   if(sel.size > 1 && sel.has(i)){
     const lbls = {ep:'Ep 集数',sc:'Sc 场次',gr:'Gr 小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'版本号',status:'通过情况'};
     toast('编辑 '+sel.size+' 个文件的 '+ (lbls[key]||key));
@@ -391,29 +393,23 @@ function activateEdit(td, key, i){
 
   // SELECT: change/Escape only. Click-outside → revert without commit.
   if(isSelect){
-    el.addEventListener('change', () => { commit(false); });
+    const cancel = () => commit(true);
+    window._activeCancel = cancel;
+    el.addEventListener('change', () => { window._activeCancel = null; commit(false); });
     el.addEventListener('keydown', e => {
-      if(e.key === 'Escape'){ commit(true); e.preventDefault(); }
+      if(e.key === 'Escape'){ window._activeCancel = null; commit(true); e.preventDefault(); }
     });
-    // document 级点击关闭：点击非编辑区域 → 取消
-    const docClick = e => {
-      if(!el.isConnected) return;
-      if(!td.contains(e.target)){
-        commit(true);
-        document.removeEventListener('click', docClick, true);
-      }
-    };
-    setTimeout(() => document.addEventListener('click', docClick, true), 0);
   } else {
     // INPUT: 响应 Enter / Escape / blur
     let _focused = false;
+    window._activeCancel = () => commit(true);
     el.addEventListener('focus', () => { _focused = true; });
     el.addEventListener('keydown', e => {
-      if(e.key === 'Enter'){ e.preventDefault(); commit(false); }
-      if(e.key === 'Escape'){ el.value = oldVal; commit(true); }
+      if(e.key === 'Enter'){ e.preventDefault(); window._activeCancel = null; commit(false); }
+      if(e.key === 'Escape'){ el.value = oldVal; window._activeCancel = null; commit(true); }
     });
     el.addEventListener('blur', () => {
-      setTimeout(() => { if(_focused) commit(false); }, 100);
+      setTimeout(() => { if(_focused){ window._activeCancel = null; commit(false); } }, 100);
     });
   }
 }
