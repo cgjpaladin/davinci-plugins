@@ -205,20 +205,26 @@ tbody td{
   transition:background .08s;
 }
 tbody tr{transition:background .06s}
+/* ── Ready / missing ── */
+tbody tr.rdy td{background:color-mix(in srgb,var(--green) 4%,var(--tbl-bg))}
+tbody tr.mis td{background:color-mix(in srgb,var(--yellow) 4%,var(--tbl-bg))}
+tbody tr.rdy .col-num{color:var(--green)}
+tbody tr.mis .col-num{color:var(--yellow)}
 tbody tr:hover td{background:var(--tbl-row-hov)}
+
+/* ── Selected + ready/missing states ── */
 tbody tr.sel td{
   background:var(--tbl-row-sel);
   box-shadow:inset 2px 0 0 0 var(--tbl-accent);
 }
+tbody tr.sel:not(.warn):not(.warn-zero):not(.warn-size):not(.warn-dbl) td{box-shadow:inset 2px 0 0 0 var(--tbl-accent)}
+tbody tr.sel.rdy td{background:color-mix(in srgb,var(--green) 8%,var(--tbl-row-sel))}
+tbody tr.sel.mis td{background:color-mix(in srgb,var(--yellow) 8%,var(--tbl-row-sel))}
 tbody tr.sel td:first-child{box-shadow:inset 2px 0 0 0 var(--tbl-accent)}
 tbody tr.warn td{background:var(--tbl-row-warn)}
 tbody tr.warn-zero td{background:var(--tbl-row-warn);box-shadow:inset 2px 0 0 0 var(--red)}
 tbody tr.warn-size td{background:var(--tbl-row-warn);box-shadow:inset 2px 0 0 0 var(--yellow)}
 tbody tr.warn-dbl td{background:var(--tbl-row-warn);box-shadow:inset 2px 0 0 0 #c080d0}
-
-/* ── Selected + ready/missing states ── */
-tbody tr.sel.rdy td{background:color-mix(in srgb,var(--green) 6%,var(--tbl-row-sel))}
-tbody tr.sel.mis td{background:color-mix(in srgb,var(--yellow) 6%,var(--tbl-row-sel))}
 
 /* ── Column widths (table-layout:fixed, all explicit) ── */
 .col-num{text-align:right;padding-right:12px!important;color:var(--tbl-dim);width:36px}
