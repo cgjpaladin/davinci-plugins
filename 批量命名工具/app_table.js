@@ -165,8 +165,8 @@ function renderList(){
   const tbody = document.querySelector('#fileList tbody');
   const empty = document.querySelector('#fileList .fl-empty');
   const thead = document.querySelector('#fileList thead');
-  tbody.innerHTML = '';
   if(files.length === 0){
+    tbody.innerHTML = '';
     empty.classList.add('show');
     if(thead) thead.style.display = 'none';
     updCount(); updButtons();
@@ -174,72 +174,84 @@ function renderList(){
   }
   empty.classList.remove('show');
   if(thead) thead.style.display = '';
-  files.forEach((f,i)=>{
-    const tr = document.createElement('tr');
-    tr.dataset.index = i;
-    tr.dataset.path = f.path;
-    const ff = {...f.fields, tk: _computeTK(i)};
-    const ready = ff.ep && ff.sc && ff.gr && ff.desc && ff.author && ff.method && ff.ver && ff.status;
-    if(sel.has(i)) tr.classList.add('sel');
-    tr.classList.add(ready?'rdy':'mis');
-    const tags = f.tags||[];
-    if(tags.length) tr.classList.add('warn');
-    if(tags.includes('zero')) tr.classList.add('warn-zero');
-    if(tags.includes('size')) tr.classList.add('warn-size');
-    if(tags.includes('dbl_ext')) tr.classList.add('warn-dbl');
 
-    // # 列
-    const tdNum = document.createElement('td');
-    tdNum.className = 'col-num'; tdNum.dataset.row = i;
-    const sNum = document.createElement('span'); sNum.textContent = i+1;
-    tdNum.appendChild(sNum);
-    tr.appendChild(tdNum);
+  // 增量更新：已存在的行只改 class，不重建
+  const rows = [...tbody.querySelectorAll('tr')];
+  const rowCount = rows.length;
+  const needRebuild = (rowCount !== files.length);
 
-    // 缩略图
-    const tdThumb = document.createElement('td');
-    tdThumb.className = 'col-thumb';
-    const divThumb = document.createElement('div');
-    divThumb.className = 'cell-thumb';
-    const tsrc = _thumbs[f.path];
-    if(tsrc){
-      divThumb.style.backgroundImage = `url(${tsrc})`;
-    } else {
-      divThumb.style.background = `linear-gradient(135deg,${tc[i%tc.length]},${tc[(i+2)%tc.length]})`;
-    }
-    tdThumb.appendChild(divThumb);
-    tr.appendChild(tdThumb);
-
-    // 字段列
-    for(const key of (window._headerKeys||['ep','sc','gr','tk','desc','method','author','ver','status'])){
-      tr.appendChild(buildCellTD(key, ff, i));
-    }
-
-    // 原名 — 警告/缺失放 tooltip，不全塞显示文本
-    const tdBase = document.createElement('td');
-    tdBase.className = 'col-base';
-    let baseText = f.basename || '';
-    const tooltips = [];
-    if(tags.length){
-      const lbl={zero:'⚠零字节',size:'⚠大小异常',dbl_ext:'⚠双扩展名'};
-      tooltips.push(...tags.map(t=>lbl[t]||t));
-      baseText += ' · ' + tags.map((t,i)=>i<2?'⚠':'').join('');
-    }
-    if(!ready){
-      const m=[];
-      const lb={ep:'Ep',sc:'Sc',gr:'Gr',desc:'描述',author:'作者',method:'方式',ver:'版本',status:'通过'};
-      for(const k of ['ep','sc','gr','desc','author','method','ver','status']){
-        if(!ff[k]) m.push(lb[k]||k);
-      }
-      tooltips.push('✎缺失: '+m.join(' '));
-    }
-    const sBase = document.createElement('span'); sBase.textContent = baseText;
-    tdBase.appendChild(sBase);
-    if(tooltips.length) tdBase.title = tooltips.join('\n');
-    tr.appendChild(tdBase);
-
-    tbody.appendChild(tr);
-  });
+  if(needRebuild){
+    tbody.innerHTML = '';
+    files.forEach((f,i)=>{ tbody.appendChild(_buildRow(f,i)); });
+  } else {
+    files.forEach((f,i)=>{
+      const tr = rows[i];
+      tr.className = ''; tr.dataset.index = i; tr.dataset.path = f.path;
+      if(sel.has(i)) tr.classList.add('sel');
+      const ff = {...f.fields, tk: _computeTK(i)};
+      const ready = ff.ep && ff.sc && ff.gr && ff.desc && ff.author && ff.method && ff.ver && ff.status;
+      tr.classList.add(ready?'rdy':'mis');
+      const tags = f.tags||[];
+      if(tags.length) tr.classList.add('warn');
+      if(tags.includes('zero')) tr.classList.add('warn-zero');
+      if(tags.includes('size')) tr.classList.add('warn-size');
+      if(tags.includes('dbl_ext')) tr.classList.add('warn-dbl');
+    });
+  }
   updCount(); updButtons();
+}
+
+function _buildRow(f,i){
+  const tr = document.createElement('tr');
+  tr.dataset.index = i; tr.dataset.path = f.path;
+  const ff = {...f.fields, tk: _computeTK(i)};
+  const ready = ff.ep && ff.sc && ff.gr && ff.desc && ff.author && ff.method && ff.ver && ff.status;
+  if(sel.has(i)) tr.classList.add('sel');
+  tr.classList.add(ready?'rdy':'mis');
+  const tags = f.tags||[];
+  if(tags.length) tr.classList.add('warn');
+  if(tags.includes('zero')) tr.classList.add('warn-zero');
+  if(tags.includes('size')) tr.classList.add('warn-size');
+  if(tags.includes('dbl_ext')) tr.classList.add('warn-dbl');
+
+  const tdNum = document.createElement('td');
+  tdNum.className = 'col-num'; tdNum.dataset.row = i;
+  tdNum.appendChild(Object.assign(document.createElement('span'),{textContent:i+1}));
+  tr.appendChild(tdNum);
+
+  const tdThumb = document.createElement('td');
+  tdThumb.className = 'col-thumb';
+  const divThumb = document.createElement('div');
+  divThumb.className = 'cell-thumb';
+  const tsrc = _thumbs[f.path];
+  divThumb.style.background = tsrc ? `url(${tsrc})` : `linear-gradient(135deg,${tc[i%tc.length]},${tc[(i+2)%tc.length]})`;
+  tdThumb.appendChild(divThumb);
+  tr.appendChild(tdThumb);
+
+  for(const key of (window._headerKeys||['ep','sc','gr','tk','desc','method','author','ver','status'])){
+    tr.appendChild(buildCellTD(key, ff, i));
+  }
+
+  const tdBase = document.createElement('td');
+  tdBase.className = 'col-base';
+  let baseText = f.basename || '';
+  const tooltips = [];
+  if(tags.length){
+    const lbl={zero:'⚠零字节',size:'⚠大小异常',dbl_ext:'⚠双扩展名'};
+    tooltips.push(...tags.map(t=>lbl[t]||t));
+    baseText += ' · ' + tags.map((t,i)=>i<2?'⚠':'').join('');
+  }
+  if(!ready){
+    const lb={ep:'Ep',sc:'Sc',gr:'Gr',desc:'描述',author:'作者',method:'方式',ver:'版本',status:'通过'};
+    for(const k of ['ep','sc','gr','desc','author','method','ver','status']){
+      if(!ff[k]) tooltips.push('✎缺失: '+lb[k]);
+    }
+  }
+  const sBase = Object.assign(document.createElement('span'),{textContent:baseText});
+  tdBase.appendChild(sBase);
+  if(tooltips.length) tdBase.title = tooltips.join('\n');
+  tr.appendChild(tdBase);
+  return tr;
 }
 
 // ═══ tbody 事件委派 ═══
