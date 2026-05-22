@@ -187,9 +187,6 @@ function renderList(){
     const tsrc = _thumbs[f.path];
     if(tsrc){
       divThumb.style.backgroundImage = `url(${tsrc})`;
-      divThumb.style.backgroundSize = 'contain';
-      divThumb.style.backgroundRepeat = 'no-repeat';
-      divThumb.style.backgroundPosition = 'center';
     } else {
       divThumb.style.background = `linear-gradient(135deg,${tc[i%tc.length]},${tc[(i+2)%tc.length]})`;
     }
