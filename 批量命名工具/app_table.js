@@ -107,6 +107,7 @@ async function init(){
   }
   // 自测（mock 模式）
   if(!window.pywebview) setTimeout(() => _runSelfTest(), 500);
+  _initTBodyClick();
 }
 // ═══ init — 轮询等待 pywebview 桥接 ═══
 let _ready=false;
@@ -241,9 +242,11 @@ function renderList(){
   updCount(); updButtons();
 }
 
-// ═══ 单一事件委派：tbody 上处理所有点击（选中 或 编辑） ═══
-(function(){
+// ═══ tbody 事件委派 ═══
+function _initTBodyClick(){
   const tbody = document.querySelector('#fileList tbody');
+  if(!tbody || tbody._clickInit) return;
+  tbody._clickInit = true;
   tbody.addEventListener('click', e => {
     const td = e.target.closest('td');
     if(!td) return;
@@ -251,22 +254,16 @@ function renderList(){
     if(!tr) return;
     const i = parseInt(tr.dataset.index);
     if(isNaN(i)) return;
-
-    // 已在编辑中 → 忽略
     if(td.classList.contains('editing')) return;
-
-    // 字段列（有 data-key 且不是 _base）→ 打开编辑
     const key = td.dataset.key;
-    if(key && key !== 'tk' && key !== '_base'){
+    if(key && key !== 'tk'){
       if(td.classList.contains('locked')) return;
       activateEdit(td, key, i);
       return;
     }
-
-    // 其他（#列、缩略图、原名、TK）→ 行选择
     rowClick(e, i);
   });
-})();
+}
 
 function rowClick(e, i){
   if(e.metaKey || e.ctrlKey){
