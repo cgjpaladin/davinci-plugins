@@ -176,6 +176,7 @@ function renderList(){
     // # 列
     const tdNum = document.createElement('td');
     tdNum.className = 'col-num'; tdNum.textContent = i+1;
+    tdNum.style.pointerEvents = 'auto';
     tdNum.addEventListener('click', e => { e.stopPropagation(); rowClick(e, i); });
     tr.appendChild(tdNum);
 
@@ -217,7 +218,6 @@ function renderList(){
         if(!ff[k]) m.push(lb[k]||k);
       }
       tooltips.push('✎缺失: '+m.join(' '));
-      baseText += ' ✎';
     }
     tdBase.textContent = baseText;
     if(tooltips.length) tdBase.title = tooltips.join('\n');

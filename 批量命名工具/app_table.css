@@ -206,8 +206,8 @@ tbody td{
 }
 tbody tr{transition:background .06s}
 /* ── Ready / missing ── */
-tbody tr.rdy td{background:color-mix(in srgb,var(--green) 8%,var(--tbl-bg))}
-tbody tr.mis td{background:color-mix(in srgb,var(--yellow) 8%,var(--tbl-bg))}
+tbody tr.rdy td{background:color-mix(in srgb,var(--green) 14%,var(--tbl-bg))}
+tbody tr.mis td{background:color-mix(in srgb,var(--yellow) 14%,var(--tbl-bg))}
 tbody tr.rdy .col-num{color:var(--green)}
 tbody tr.mis .col-num{color:var(--yellow)}
 tbody tr:hover td{background:var(--tbl-row-hov)}
