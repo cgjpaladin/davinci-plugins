@@ -210,32 +210,29 @@ tbody tr.rdy .col-num{color:var(--green)}
 tbody tr.mis .col-num{color:var(--yellow)}
 tbody tr:hover td{background:var(--tbl-row-hov)}
 
-/* ── Left-edge indicator → 用 background gradient 模拟，不依赖 border ── */
-tbody tr.rdy:not(.sel) .col-num,
-tbody tr.mis:not(.sel) .col-num,
-tbody tr.sel .col-num,
-tbody tr.warn-zero .col-num,
-tbody tr.warn-size .col-num,
-tbody tr.warn-dbl .col-num{
-  padding-left:4px;
+/* ── 左边指示条：::before 伪元素，全平台可靠 ── */
+.col-num{position:relative}
+.col-num::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:transparent;
 }
-tbody tr.rdy:not(.sel) .col-num{background:linear-gradient(to right,var(--green) 4px,transparent 4px)}
-tbody tr.mis:not(.sel) .col-num{background:linear-gradient(to right,var(--yellow) 4px,transparent 4px)}
+tbody tr.rdy:not(.sel):not(.warn):not(.warn-zero):not(.warn-size):not(.warn-dbl) .col-num::before{background:var(--green)}
+tbody tr.mis:not(.sel):not(.warn):not(.warn-zero):not(.warn-size):not(.warn-dbl) .col-num::before{background:var(--yellow)}
 
 /* ── Selected ── */
-tbody tr.sel .col-num{background:linear-gradient(to right,var(--tbl-accent) 4px,var(--tbl-row-sel) 4px)}
+tbody tr.sel .col-num::before{background:var(--tbl-accent)}
 tbody tr.sel td{background:var(--tbl-row-sel)}
 tbody tr.sel.rdy td{background:color-mix(in srgb,var(--green) 10%,var(--tbl-row-sel))}
 tbody tr.sel.mis td{background:color-mix(in srgb,var(--yellow) 10%,var(--tbl-row-sel))}
 
 /* ── Warnings ── */
-tbody tr.warn-zero .col-num{background:linear-gradient(to right,var(--red) 4px,var(--tbl-row-warn) 4px)}
-tbody tr.warn-size .col-num{background:linear-gradient(to right,var(--yellow) 4px,var(--tbl-row-warn) 4px)}
-tbody tr.warn-dbl .col-num{background:linear-gradient(to right,#c080d0 4px,var(--tbl-row-warn) 4px)}
+tbody tr.warn-zero .col-num::before{background:var(--red)}
+tbody tr.warn-size .col-num::before{background:var(--yellow)}
+tbody tr.warn-dbl .col-num::before{background:#c080d0}
 tbody tr.warn td{background:var(--tbl-row-warn)}
 
 /* ── Column widths (table-layout:fixed, all explicit) ── */
-.col-num{text-align:right;padding-right:12px!important;color:var(--tbl-dim);width:36px}
+.col-num{text-align:right;padding-right:12px!important;padding-left:8px;color:var(--tbl-dim);width:44px;position:relative}
 .col-thumb{width:calc(52px * var(--thumb-scale, 1));padding:4px!important;overflow:hidden}
 .col-ep,.col-sc,.col-gr,.col-tk,.col-ver{text-align:center;width:52px}
 .col-status{text-align:center;width:72px}
