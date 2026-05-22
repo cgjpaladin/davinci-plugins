@@ -389,12 +389,21 @@ function activateEdit(td, key, i){
     renderList();
   };
 
-  // SELECT: 只响应 change（用户主动选）和 Escape，不响应 blur
+  // SELECT: change/Escape only. Click-outside → revert without commit.
   if(isSelect){
     el.addEventListener('change', () => { commit(false); });
     el.addEventListener('keydown', e => {
       if(e.key === 'Escape'){ commit(true); e.preventDefault(); }
     });
+    // document 级点击关闭：点击非编辑区域 → 取消
+    const docClick = e => {
+      if(!el.isConnected) return;
+      if(!td.contains(e.target)){
+        commit(true);
+        document.removeEventListener('click', docClick, true);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', docClick, true), 0);
   } else {
     // INPUT: 响应 Enter / Escape / blur
     let _focused = false;
