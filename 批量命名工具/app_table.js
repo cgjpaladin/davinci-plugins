@@ -315,141 +315,98 @@ function buildCellTD(key, ff, i){
 
 function activateEdit(td, key, i){
   if(td.classList.contains('editing')) return;
-  // 多行批量编辑提示
   if(sel.size > 1 && sel.has(i)){
     const lbls = {ep:'Ep 集数',sc:'Sc 场次',gr:'Gr 小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'版本号',status:'通过情况'};
     toast('编辑 '+sel.size+' 个文件的 '+ (lbls[key]||key));
   }
   const oldVal = td.dataset.value;
+  const isSelect = (key === 'method' || key === 'status' || (key === 'desc' && files[i] && files[i].fields.method && methodDescMap[files[i].fields.method] && methodDescMap[files[i].fields.method].mode === 'dropdown'));
   let el;
 
   if(key === 'method'){
-    const methods = ['智能分镜版','双轨版','角色专属版'];
     el = document.createElement('select');
-    methods.forEach(m => {
-      const o = document.createElement('option');
-      o.value = m; o.textContent = m;
+    ['智能分镜版','双轨版','角色专属版'].forEach(m => {
+      const o = document.createElement('option'); o.value = m; o.textContent = m;
       if(m === oldVal) o.selected = true;
       el.appendChild(o);
     });
   } else if(key === 'status'){
     el = document.createElement('select');
     ['OK','KP','NG',''].forEach(s => {
-      const o = document.createElement('option');
-      o.value = s; o.textContent = s || '—';
+      const o = document.createElement('option'); o.value = s; o.textContent = s || '—';
       if(s === oldVal) o.selected = true;
       el.appendChild(o);
     });
   } else if(key === 'desc'){
-    // desc 根据 method 决定输入类型
     const method = files[i].fields.method || '';
     const cfg = methodDescMap[method] || {mode:'text',hint:'输入镜头描述'};
     if(cfg.mode === 'locked'){
-      // 锁定模式：readonly input，不可编辑
-      el = document.createElement('input');
-      el.type = 'text'; el.value = cfg.value || '';
-      el.readOnly = true;
+      el = document.createElement('input'); el.type = 'text'; el.value = cfg.value || ''; el.readOnly = true;
     } else if(cfg.mode === 'dropdown'){
-      // 下拉模式：select
       el = document.createElement('select');
       (cfg.values||[]).forEach(opt => {
-        const o = document.createElement('option');
-        o.value = opt; o.textContent = opt;
+        const o = document.createElement('option'); o.value = opt; o.textContent = opt;
         if(opt === oldVal) o.selected = true;
         el.appendChild(o);
       });
     } else {
-      // 自由文本
-      el = document.createElement('input');
-      el.type = 'text'; el.value = oldVal;
+      el = document.createElement('input'); el.type = 'text'; el.value = oldVal;
       el.placeholder = cfg.hint || '输入镜头描述';
     }
   } else {
-    el = document.createElement('input');
-    el.type = 'text';
-    el.value = oldVal;
-    if(['ep','sc','gr','ver'].includes(key)){
-      el.setAttribute('inputmode','numeric');
-    }
-    if(key === 'author'){
-      el.placeholder = '请输入姓名';
-    }
+    el = document.createElement('input'); el.type = 'text'; el.value = oldVal;
+    if(['ep','sc','gr','ver'].includes(key)) el.setAttribute('inputmode','numeric');
+    if(key === 'author') el.placeholder = '请输入姓名';
   }
 
   td.classList.add('editing');
   td.textContent = '';
   td.appendChild(el);
-  if(el.tagName === 'INPUT' && !el.readOnly){
-    el.focus();
-    el.select();
-  } else {
-    el.focus();
-    el._focused = true; // 防御 pywebview 不触发 focus 事件
-  }
+  if(el.tagName === 'INPUT' && !el.readOnly){ el.focus(); el.select(); }
+  else { el.focus(); }
 
-  const commit = () => {
-    el._committed = true;
-    if(el.tagName === 'SELECT' && el.dataset.cancelled === '1') {
-      // Esc on select: do nothing, just close
-      el.dataset.cancelled = '0';
-      td.classList.remove('editing');
-      td.textContent = oldVal || (oldVal==='请选择'?'—':oldVal||'—');
+  // ═══ Commit logic ═══
+  const commit = (cancel) => {
+    td.classList.remove('editing');
+    if(cancel){
+      // 取消：恢复旧值
+      td.textContent = oldVal || (oldVal===''||oldVal==='请选择'||oldVal==='请手动输入…'?'—':oldVal);
       if(oldVal === '' || oldVal === '请选择' || oldVal === '请手动输入…') td.classList.add('empty');
       return;
     }
     const v = (el.value||'').trim();
-    td.classList.remove('editing');
-
-    // Clean input
     let finalVal = v;
-    if(key === 'author'){
-      finalVal = v.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g, '');
-    }
-    if(key === 'desc'){
-      finalVal = v.replace(/_/g, '');
-    }
+    if(key === 'author') finalVal = v.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g, '');
+    if(key === 'desc') finalVal = v.replace(/_/g, '');
+    if(key === 'desc' && finalVal) _checkDescCollision(finalVal);
 
-    // Desc collision check
-    if(key === 'desc' && finalVal){
-      _checkDescCollision(finalVal);
-    }
-
-    // Write to all selected rows (or just this row)
     if(finalVal !== oldVal){
       const rows = sel.size > 1 ? [...sel] : [i];
-      rows.forEach(r => {
-        files[r].fields[key] = finalVal;
-      });
+      rows.forEach(r => { files[r].fields[key] = finalVal; });
       call('debug_log',`edit ${key}: ${oldVal||'(空)'} → ${finalVal||'(空)'} on ${rows.length} row(s)`);
-      // method change triggers side effects
-      if(key === 'method'){
-        onMethodChange(finalVal, i);
-      }
+      if(key === 'method') onMethodChange(finalVal, i);
     }
-
     renderList();
   };
 
-  el._committed = false; el._focused = false;
-  el.addEventListener('focus', () => { el._focused = true; });
-  el.addEventListener('blur', () => {
-    setTimeout(() => { if(el._focused && !el._committed) commit(); }, 100);
-  });
-  el.addEventListener('keydown', e => {
-    if(e.key === 'Enter'){ e.preventDefault(); commit(); }
-    if(e.key === 'Escape'){
-      if(el.tagName === 'SELECT'){
-        el.dataset.cancelled = '1';
-      } else {
-        el.value = oldVal;
-      }
-      commit();
-    }
-  });
-  el.addEventListener('change', () => {
-    // select change fires immediately
-    if(el.tagName === 'SELECT') commit();
-  });
+  // SELECT: 只响应 change（用户主动选）和 Escape，不响应 blur
+  if(isSelect){
+    el.addEventListener('change', () => { commit(false); });
+    el.addEventListener('keydown', e => {
+      if(e.key === 'Escape'){ commit(true); e.preventDefault(); }
+    });
+  } else {
+    // INPUT: 响应 Enter / Escape / blur
+    let _focused = false;
+    el.addEventListener('focus', () => { _focused = true; });
+    el.addEventListener('keydown', e => {
+      if(e.key === 'Enter'){ e.preventDefault(); commit(false); }
+      if(e.key === 'Escape'){ el.value = oldVal; commit(true); }
+    });
+    el.addEventListener('blur', () => {
+      setTimeout(() => { if(_focused) commit(false); }, 100);
+    });
+  }
 }
 function updCount(){
   let ok2=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)ok2++});document.getElementById('fileCount').innerHTML=`文件列表 · <span style="color:var(--green)">${ok2}</span>/${files.length} 就绪  ·  选中 ${sel.size}`;
