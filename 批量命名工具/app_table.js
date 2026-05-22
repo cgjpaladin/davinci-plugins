@@ -136,23 +136,23 @@ function getFields(){
 
 // ═══ Method → Desc ═══
 let _reservedDesc=new Set();
-function onMethodChange(forcedVal, ri){
-  const m = forcedVal ?? (document.getElementById('methodSelect')?.value || '请选择');
+function onMethodChange(oldMethod, newMethod, ri){
+  const m = newMethod;
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
   descLocked = cfg.mode === 'locked';
   const rows = sel.size > 0 ? [...sel] : (ri !== undefined ? [ri] : []);
-  // 只更新 method 确实变了的行
-  const changedRows = rows.filter(r => files[r] && files[r].fields.method !== m);
+  // 用传入的 oldMethod 判断是否真的变了
+  const changedRows = rows.filter(r => files[r] && files[r].fields.method === oldMethod && oldMethod !== m);
   if(!changedRows.length) return;
+  // 先写 method，再写 desc
+  changedRows.forEach(r => { files[r].fields.method = m; });
   if(cfg.mode === 'locked'){
     changedRows.forEach(r => { files[r].fields.desc = cfg.value; });
   } else {
     changedRows.forEach(r => { files[r].fields.desc = ''; });
   }
-  if(changedRows.length) {
-    renderList(); updButtons();
-    call('debug_log',`method→desc: ${changedRows.length} rows → desc='${files[changedRows[0]].fields.desc||'(空)'}' (mode=${cfg.mode})`);
-  }
+  renderList(true); updButtons();
+  call('debug_log',`method→desc: ${changedRows.length} rows → desc='${files[changedRows[0]].fields.desc||'(空)'}' (mode=${cfg.mode})`);
 }
 function _checkDescCollision(v){
   if(v&&_reservedDesc.has(v)){call('debug_log','desc collision: '+v);toast('⚠ 镜头描述与预置词「'+v+'」冲突')}
@@ -161,7 +161,7 @@ function _checkDescCollision(v){
 /* ═════════════════════════════
    TABLE renderList (replaces card view)
    ═════════════════════════════ */
-function renderList(){
+function renderList(force){
   const tbody = document.querySelector('#fileList tbody');
   const empty = document.querySelector('#fileList .fl-empty');
   const thead = document.querySelector('#fileList thead');
@@ -175,12 +175,8 @@ function renderList(){
   empty.classList.remove('show');
   if(thead) thead.style.display = '';
 
-  // 增量更新：已存在的行只改 class，不重建
   const rows = [...tbody.querySelectorAll('tr')];
-  const rowCount = rows.length;
-  const needRebuild = (rowCount !== files.length);
-
-  if(needRebuild){
+  if(force || rows.length !== files.length){
     tbody.innerHTML = '';
     files.forEach((f,i)=>{ tbody.appendChild(_buildRow(f,i)); });
   } else {
@@ -420,7 +416,11 @@ function activateEdit(td, key, i){
       const rows = sel.size > 1 ? [...sel] : [i];
       rows.forEach(r => { files[r].fields[key] = finalVal; });
       call('debug_log',`edit ${key}: ${oldVal||'(空)'} → ${finalVal||'(空)'} on ${rows.length} row(s)`);
-      if(key === 'method') onMethodChange(finalVal, i);
+      if(key === 'method'){
+        // method 由 onMethodChange 写入，这里先撤销（避免 double-write 导致变更检测失败）
+        rows.forEach(r => { files[r].fields.method = oldVal; });
+        onMethodChange(oldVal, finalVal, i);
+      }
     }
     renderList();
   };
@@ -734,7 +734,7 @@ function _runSelfTest(){
   t('onMethodChange locked',()=>{
     files=[{fields:{ep:'01',sc:'01',gr:'01',desc:'',author:'',method:'',ver:'01',status:''}}];
     sel.add(0);
-    onMethodChange('智能分镜版',0);
+    onMethodChange('','智能分镜版',0);
     const desc=files[0].fields.desc;
     const ok2=desc==='智能分镜';
     files=[];sel.clear();
@@ -743,7 +743,7 @@ function _runSelfTest(){
   t('onMethodChange dropdown',()=>{
     files=[{fields:{ep:'01',sc:'01',gr:'01',desc:'空镜',author:'',method:'双轨版',ver:'01',status:''}}];
     sel.add(0);
-    onMethodChange('角色专属版',0);
+    onMethodChange('双轨版','角色专属版',0);
     const desc=files[0].fields.desc;
     files=[];sel.clear();
     if(desc!=='')throw new Error('desc='+desc+' expected empty after dropdown clear');
