@@ -197,7 +197,7 @@ function renderList(){
     tr.appendChild(tdThumb);
 
     // 字段列
-    for(const key of ['ep','sc','gr','tk','desc','author','method','ver','status']){
+    for(const key of ['ep','sc','gr','tk','desc','method','author','ver','status']){
       tr.appendChild(buildCellTD(key, ff, i));
     }
 
