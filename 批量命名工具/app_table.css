@@ -281,10 +281,10 @@ td.editing select{
   height:calc(44px * var(--thumb-scale,1));
   max-width:100%;
   border-radius:4px;overflow:hidden;
-  background:#16171d;border:1px solid #1e2028;
+  background:var(--tbl-row-hov);border:1px solid transparent;
   display:flex;align-items:center;justify-content:center;
   position:relative;
-  background-size:contain;background-repeat:no-repeat;background-position:center;
+  background-size:cover;background-repeat:no-repeat;background-position:center;
 }
 .cell-thumb::after{
   content:'▶';position:absolute;

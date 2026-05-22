@@ -88,12 +88,16 @@ class RenamerAPI:
                 kw = dict(capture_output=True, timeout=8)
                 if sys.platform == 'win32':
                     kw['creationflags'] = subprocess.CREATE_NO_WINDOW
-                subprocess.run(
-                    [ffmpeg, '-y', '-ss', '00:00:01', '-i', p, '-vframes', '1',
-                     '-vf', 'scale=120:120:force_original_aspect_ratio=decrease',
-                     '-q:v', '8', tmp.name],
-                    **kw
-                )
+                # 先尝试 1 秒处抽帧；失败则用首帧（视频短于 1 秒）
+                for ss in ('00:00:01', '00:00:00.1'):
+                    subprocess.run(
+                        [ffmpeg, '-y', '-ss', ss, '-i', p, '-vframes', '1',
+                         '-vf', 'scale=120:120:force_original_aspect_ratio=decrease',
+                         '-q:v', '8', tmp.name],
+                        **kw
+                    )
+                    if os.path.isfile(tmp.name) and os.path.getsize(tmp.name) > 100:
+                        break
                 if os.path.isfile(tmp.name) and os.path.getsize(tmp.name) > 100:
                     with open(tmp.name, 'rb') as f:
                         b64 = base64.b64encode(f.read()).decode()

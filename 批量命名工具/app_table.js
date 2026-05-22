@@ -551,8 +551,6 @@ function setThumb(path,thumb){
       const H=36*_thumbScale();
       td.style.width=(H*r)+'px';td.style.height=H+'px';
       td.style.backgroundImage='url('+thumb+')';
-      td.style.backgroundSize='cover';
-      td.style.backgroundPosition='center';
     };
     img.src=thumb;
   }}
