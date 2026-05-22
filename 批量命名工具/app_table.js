@@ -176,13 +176,13 @@ function renderList(){
     // # 列
     const tdNum = document.createElement('td');
     tdNum.className = 'col-num'; tdNum.textContent = i+1;
-    tdNum.addEventListener('click', e => { rowClick(e, i); });
+    tdNum.addEventListener('click', e => { e.stopPropagation(); rowClick(e, i); });
     tr.appendChild(tdNum);
 
     // 缩略图
     const tdThumb = document.createElement('td');
     tdThumb.className = 'col-thumb';
-    tdThumb.addEventListener('click', e => { rowClick(e, i); });
+    tdThumb.addEventListener('click', e => { e.stopPropagation(); rowClick(e, i); });
     const divThumb = document.createElement('div');
     divThumb.className = 'cell-thumb';
     divThumb.dataset.row = i;
@@ -221,7 +221,7 @@ function renderList(){
     }
     tdBase.textContent = baseText;
     if(tooltips.length) tdBase.title = tooltips.join('\n');
-    tdBase.addEventListener('click', e => { rowClick(e, i); });
+    tdBase.addEventListener('click', e => { e.stopPropagation(); rowClick(e, i); });
     tr.appendChild(tdBase);
 
     // 行选择：只对非编辑列响应（#列、缩略图、原名）
