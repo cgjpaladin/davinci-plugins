@@ -261,7 +261,7 @@ td.locked{cursor:default;color:var(--tbl-dim);font-style:italic}
 .col-num:hover,.col-base:hover{color:var(--tbl-cell)}
 
 /* ── Editable cell: hint ── */
-td:not(.col-num):not(.col-thumb):not(.col-base):not(.readonly){
+td:not(.col-num):not(.col-thumb):not(.col-base):not(.readonly):not(.locked):not(.empty){
   cursor:cell;
 }
 td:not(.col-num):not(.col-thumb):not(.col-base):not(.readonly):hover{

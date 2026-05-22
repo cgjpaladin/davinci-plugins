@@ -263,14 +263,15 @@ function _initTBodyClick(){
       return;
     }
     if(isField && e.detail === 1){
-      // 延迟选中，给双击留时间窗口
       const _i = i;
+      window._pendingDbl = i;
       setTimeout(() => {
         if(window._pendingDbl !== _i) return;
         window._pendingDbl = null;
+        if(!td.isConnected) return; // 已被 renderList 销毁
+        if(td.classList.contains('editing')) return; // 已被双击编辑
         rowClick({metaKey:false,ctrlKey:false,shiftKey:false}, _i);
       }, 280);
-      window._pendingDbl = i;
       return;
     }
     rowClick(e, i);
@@ -336,7 +337,7 @@ function buildCellTD(key, ff, i){
 
 function activateEdit(td, key, i){
   if(td.classList.contains('editing')) return;
-  // 关闭当前正在编辑的控件
+  window._pendingDbl = null; // 取消待处理的延迟选中
   if(window._activeCancel){ window._activeCancel(); window._activeCancel = null; }
   if(sel.size > 1 && sel.has(i)){
     const lbls = {ep:'Ep 集数',sc:'Sc 场次',gr:'Gr 小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'版本号',status:'通过情况'};
