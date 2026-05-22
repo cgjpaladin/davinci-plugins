@@ -256,9 +256,21 @@ function _initTBodyClick(){
     if(isNaN(i)) return;
     if(td.classList.contains('editing')) return;
     const key = td.dataset.key;
-    if(key && key !== 'tk'){
-      if(td.classList.contains('locked')) return;
+    const isField = key && key !== 'tk' && !td.classList.contains('locked');
+    // 双击字段 → 编辑；单击字段 → 选中行
+    if(isField && e.detail === 2){
       activateEdit(td, key, i);
+      return;
+    }
+    if(isField && e.detail === 1){
+      // 延迟选中，给双击留时间窗口
+      const _i = i;
+      setTimeout(() => {
+        if(window._pendingDbl !== _i) return;
+        window._pendingDbl = null;
+        rowClick({metaKey:false,ctrlKey:false,shiftKey:false}, _i);
+      }, 280);
+      window._pendingDbl = i;
       return;
     }
     rowClick(e, i);
