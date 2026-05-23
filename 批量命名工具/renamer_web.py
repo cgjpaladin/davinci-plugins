@@ -437,31 +437,30 @@ if __name__ == "__main__":
     # 拖放：用 loaded 事件在 DOM 就绪后绑定 Python 端 handler
     def _bind_drop():
         from webview.dom import DOMEventHandler
-        _drop_state = [0]  # 上一次处理时间戳，防 pywebview 重复触发
+        _last_fp = [None]  # 上一次路径指纹，防 pywebview 延迟 5 秒重复
         def _on_drop(e):
-            import time
-            now = time.time()
-            if now - _drop_state[0] < 0.8:
-                _log.info(f"DOM drop: SKIP duplicate fire ({(now-_drop_state[0])*1000:.0f}ms gap)")
-                return
-            _drop_state[0] = now
+            import time, hashlib
             files = e['dataTransfer']['files']
             paths = []
             for f in files:
                 fp = f.get('pywebviewFullPath', '')
                 if not fp: continue
                 if os.path.isfile(fp):
-                    paths.append(os.path.realpath(fp))
+                    paths.append(os.path.basename(fp))
                 elif os.path.isdir(fp):
-                    # 展开文件夹内容
                     try:
                         for sf in sorted(os.listdir(fp)):
                             sfp = os.path.realpath(os.path.join(fp, sf))
                             if os.path.isfile(sfp):
-                                paths.append(sfp)
+                                paths.append(os.path.basename(sfp))
                     except: pass
-            if paths:
-                _log.info(f"DOM drop: {len(paths)} items")
+            if not paths: return
+            fp = hashlib.md5(('|'.join(sorted(paths))).encode()).hexdigest()
+            if fp == _last_fp[0]:
+                _log.info(f"DOM drop: SKIP duplicate (md5={fp[:8]})")
+                return
+            _last_fp[0] = fp
+            _log.info(f"DOM drop: {len(paths)} items")
                 result = api._process_paths(paths)
                 _window.evaluate_js(f"onDropResult({json.dumps(result)})")
         _window.dom.document.events.dragover += DOMEventHandler(lambda e: e, True, True)
