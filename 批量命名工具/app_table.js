@@ -431,19 +431,17 @@ function activateEdit(td, key, i){
 
   // ═══ Commit logic ═══
   const commit = (cancel) => {
+    const v = (el.value||'').trim();
     el.remove(); // 物理销毁编辑控件，杜绝残留
     td.classList.remove('editing');
     if(cancel){
-      // 取消：恢复旧值
       td.textContent = oldVal || (oldVal===''||oldVal==='请选择'||oldVal==='请手动输入…'?'—':oldVal);
       if(oldVal === '' || oldVal === '请选择' || oldVal === '请手动输入…') td.classList.add('empty');
       return;
     }
-    const v = (el.value||'').trim();
     let finalVal = v;
     if(key === 'author') finalVal = v.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g, '');
     if(key === 'desc') finalVal = v.replace(/_/g, '');
-    // 仅手动输入（非下拉选择）检测碰撞
     if(key === 'desc' && finalVal && !isSelect) _checkDescCollision(finalVal);
 
     if(finalVal !== oldVal){
@@ -452,14 +450,18 @@ function activateEdit(td, key, i){
       call('debug_log',`edit ${key}: ${oldVal||'(空)'} → ${finalVal||'(空)'} on ${rows.length} row(s)`);
       if(key === 'method'){
         rows.forEach(r => { files[r].fields.method = oldVal; });
-        call('debug_log',`invoking onMethodChange(${oldVal||'(空)'}, ${finalVal})`);
         onMethodChange(oldVal, finalVal, i);
-        return; // onMethodChange 已调用 renderList(true)
+        return;
       }
-      renderList(true); // 值变了 → 强制重建内容
-    } else {
-      renderList();
+      renderList(true);
+      return;
     }
+    // 值没变 → 恢复显示，增量更新
+    const s = document.createElement('span');
+    s.textContent = oldVal || (oldVal===''||oldVal==='请选择'||oldVal==='请手动输入…'?'—':oldVal);
+    td.appendChild(s);
+    if(oldVal === '' || oldVal === '请选择' || oldVal === '请手动输入…') td.classList.add('empty');
+    renderList();
   };
 
     // SELECT: change/Escape only. Click-outside → revert without commit.
