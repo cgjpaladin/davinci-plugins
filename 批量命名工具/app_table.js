@@ -58,11 +58,9 @@ async function init(){
 
   const cfg=await call('get_config');
   methodDescMap=cfg.method_desc_map||{};_nameFmt=cfg.name_format||[];
-  // 收集所有预置镜头描述值供碰撞检测 & 下拉过滤
+  // 收集所有预置镜头描述值供碰撞检测
   _reservedDesc.clear();
-  window._lockedValues = new Set();
-  for(const [k, v] of Object.entries(methodDescMap)){
-    if(v.mode === 'locked' && v.value) window._lockedValues.add(v.value);
+  for(const v of Object.values(methodDescMap)){
     if(v.value)_reservedDesc.add(v.value);
     if(v.values)v.values.forEach(x=>{_reservedDesc.add(x)});
   }
@@ -388,14 +386,8 @@ function activateEdit(td, key, i){
     if(cfg.mode === 'locked'){
       el = document.createElement('input'); el.type = 'text'; el.value = cfg.value || ''; el.readOnly = true;
     } else if(cfg.mode === 'dropdown'){
-      // 过滤：排除其他方法的锁定值，保留占位符和自由输入项
-      const locked = window._lockedValues || new Set();
-      const rawOpts = (cfg.values||[]).filter(opt => {
-        if(opt === '请选择' || opt === '请手动输入…') return true;
-        return !locked.has(opt);
-      });
+      const rawOpts = cfg.values||[];
       if(rawOpts.includes('请手动输入…')){
-        // 自由输入 → 改用 input + 碰撞检测
         el = document.createElement('select');
         rawOpts.filter(o => o !== '请手动输入…').forEach(opt => {
           const o = document.createElement('option'); o.value = opt; o.textContent = opt;
@@ -450,7 +442,8 @@ function activateEdit(td, key, i){
     let finalVal = v;
     if(key === 'author') finalVal = v.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g, '');
     if(key === 'desc') finalVal = v.replace(/_/g, '');
-    if(key === 'desc' && finalVal) _checkDescCollision(finalVal);
+    // 仅手动输入（非下拉选择）检测碰撞
+    if(key === 'desc' && finalVal && !isSelect) _checkDescCollision(finalVal);
 
     if(finalVal !== oldVal){
       const rows = sel.size > 1 ? [...sel] : [i];
