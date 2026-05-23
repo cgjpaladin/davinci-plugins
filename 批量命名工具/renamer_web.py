@@ -447,6 +447,7 @@ if __name__ == "__main__":
     # 拖放：用 loaded 事件在 DOM 就绪后绑定 Python 端 handler
     def _bind_drop():
         from webview.dom import DOMEventHandler
+        _sent_fps = set()  # 已发送的 fp 集合，防 evaluate_js 重复执行
         def _on_drop(e):
             files = e['dataTransfer']['files']
             paths = []
@@ -465,7 +466,13 @@ if __name__ == "__main__":
             if not paths: return
             _log.info(f"DOM drop: {len(paths)} items")
             result = api._process_paths(paths)
-            _window.evaluate_js(f"onDropResult({json.dumps(result)})")
+            # 过滤已发送的指纹（pywebview 的 evaluate_js 会重复执行）
+            fresh = [f for f in result.get('files', []) if f.get('fp','') not in _sent_fps]
+            if fresh:
+                for f in fresh: _sent_fps.add(f.get('fp',''))
+                result['files'] = fresh
+                result['total'] = len(fresh)
+                _window.evaluate_js(f"onDropResult({json.dumps(result)})")
         _window.dom.document.events.dragover += DOMEventHandler(lambda e: e, prevent_default=True)
         _window.dom.document.events.drop += DOMEventHandler(_on_drop, prevent_default=True, stop_propagation=True)
         _log.info("DOM drop handler bound")
