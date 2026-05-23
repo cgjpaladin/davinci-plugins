@@ -455,8 +455,10 @@ function activateEdit(td, key, i){
         onMethodChange(oldVal, finalVal, i);
         return; // onMethodChange 已调用 renderList(true)
       }
+      renderList(true); // 值变了 → 强制重建内容
+    } else {
+      renderList();
     }
-    renderList();
   };
 
     // SELECT: change/Escape only. Click-outside → revert without commit.
