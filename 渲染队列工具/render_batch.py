@@ -157,7 +157,9 @@ def show():
     # 预设分组（纯展示，不影响选择逻辑）
     delivery_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and int(n[:2]) <= 6]
     split_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and 7 <= int(n[:2]) <= 9]
-    special_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and (n.startswith("00_") or int(n[:2]) >= 11)]
+    # 特殊：00_竖屏、10_、11_及以上
+    special_ids = set(delivery_group + split_group)
+    special_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and n not in special_ids]
     custom_group = [n for n in preset_names if not _COMMON_DELIVERY_RE.match(n)]
     ordered_presets = delivery_group + split_group + special_group + custom_group
 
@@ -168,16 +170,19 @@ def show():
     tl_cb_ids = []
     tl_cb_map = {}  # id → name
     tl_widgets = []
-    for i, name in enumerate(compliant_tls):
-        cb_id = f"TLCB_{i}"
-        tl_cb_ids.append(cb_id)
-        tl_cb_map[cb_id] = name
-        tl_widgets.append(_make_checkbox(ui, cb_id, name, True, True))
-    for i, name in enumerate(skipped_tls):
-        cb_id = f"TLSKP_{i}"
-        tl_cb_ids.append(cb_id)
-        tl_cb_map[cb_id] = f"{name} (不合规)"
-        tl_widgets.append(_make_checkbox(ui, cb_id, f"{name} (不合规)", False, False))
+    if not compliant_tls and not skipped_tls:
+        tl_widgets.append(ui.Label("TLNone", {"Text": "当前文件夹无时间线"}))
+    else:
+        for i, name in enumerate(compliant_tls):
+            cb_id = f"TLCB_{i}"
+            tl_cb_ids.append(cb_id)
+            tl_cb_map[cb_id] = name
+            tl_widgets.append(_make_checkbox(ui, cb_id, name, True, True))
+        for i, name in enumerate(skipped_tls):
+            cb_id = f"TLSKP_{i}"
+            tl_cb_ids.append(cb_id)
+            tl_cb_map[cb_id] = f"{name} (不合规)"
+            tl_widgets.append(_make_checkbox(ui, cb_id, f"{name} (不合规)", False, False))
 
     # 分隔线 Label（用 Label 做视觉分隔）
     def _sep_label(text):
