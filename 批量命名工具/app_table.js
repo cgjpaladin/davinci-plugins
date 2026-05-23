@@ -670,8 +670,12 @@ dropZone.addEventListener('drop',e=>{e.preventDefault();dg=0;overlay.classList.r
 // ═══ Drop results from Python ═══
 let _dropCount=0;
 function onDropResult(result){
-  if(result&&result.files){
-    _dropCount++;
+  if(!result||!result.files) return;
+  // 防 pywebview 重复触发 DOM drop 事件
+  const key = JSON.stringify(result.files.map(f=>f.path).sort());
+  if(window._lastDropKey === key){call('debug_log',`onDropResult: SKIP duplicate drop ${result.files.length} files`); return;}
+  window._lastDropKey = key;
+  _dropCount++;
     // 首拖：强制清零（防御未知来源的预注入）
     if(_firstDrop){_firstDrop=false;call('debug_log',`_firstDrop: was ${files.length}, clearing`);files=[];sel.clear()}
     call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}`);
@@ -692,7 +696,6 @@ function onDropResult(result){
       call('debug_log',`loadThumbs: ${newPaths.length} new (skipped ${fresh.length - newPaths.length} cached)`);
       loadThumbsEx(newPaths);
     }
-  }
 }
 
 // ═══ Keyboard ═══
