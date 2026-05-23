@@ -250,7 +250,7 @@ td.editing input,td.editing select{max-width:100%}
 td.empty{color:var(--tbl-dim);font-style:italic}
 
 /* ── Readonly cell (TK) ── */
-td.readonly{cursor:default;color:var(--tbl-dim)}
+td.readonly{cursor:default;color:var(--tbl-dim);font-style:italic}
 
 /* ── Locked cell (智能分镜版 desc) ── */
 td.locked{cursor:default;color:var(--tbl-dim);font-style:italic}
