@@ -307,8 +307,14 @@ function rowClick(e, i){
     for(let j=lo; j<=hi; j++) sel.add(j);
     call('debug_log',`rowClick: Shift ${lo}-${hi} sel=${sel.size}`);
   } else if(sel.has(i)){
-    call('debug_log',`rowClick: SKIP already-selected ${i} sel=${sel.size}`);
-    return;
+    if(sel.size > 1){
+      // 多选态点已选行 → 收缩为单选此行
+      sel.clear(); sel.add(i);
+      call('debug_log',`rowClick: shrink-to ${i} sel=${sel.size}`);
+    } else {
+      call('debug_log',`rowClick: SKIP already-single ${i}`);
+      return; // 单选态点同一行 → 不动
+    }
   } else {
     sel.clear(); sel.add(i);
     call('debug_log',`rowClick: single ${i} sel=${sel.size}`);
