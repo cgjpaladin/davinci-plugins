@@ -48,6 +48,8 @@ _window = None  # 存引用
 
 
 class RenamerAPI:
+    _seen_fp = set()
+
     def pick_dest_folder(self):
         """打开文件夹选择框，返回路径"""
         result = _window.create_file_dialog(webview.FOLDER_DIALOG)
@@ -194,7 +196,8 @@ class RenamerAPI:
                     fp_key = f"{st.st_size}:{hashlib.md5(open(p,'rb').read(65536)).hexdigest()}"
                 except OSError:
                     fp_key = p  # fallback to path
-                if fp_key in {f.get("fp","") for f in files}: duplicates += 1; continue
+                if fp_key in RenamerAPI._seen_fp: duplicates += 1; continue
+                RenamerAPI._seen_fp.add(fp_key)
                 parsed = parse_filename(p)
                 fields = {}
                 for fd in FIELD_CONFIG:
