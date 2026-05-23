@@ -437,18 +437,8 @@ if __name__ == "__main__":
     # 拖放：用 loaded 事件在 DOM 就绪后绑定 Python 端 handler
     def _bind_drop():
         from webview.dom import DOMEventHandler
-        import threading
-        _drop_lock = threading.Lock()
-        _last_drop_ts = [0]
+        _last_inodes = [None]  # 上一次的文件 (dev,ino) 集合，pywebview 重复触发时跳过
         def _on_drop(e):
-            import time
-            now = time.time()
-            if now - _last_drop_ts[0] < 4:
-                _log.info(f"DOM drop: locked ({(now-_last_drop_ts[0])*1000:.0f}ms since last drop)")
-                return
-            with _drop_lock:
-                if now - _last_drop_ts[0] < 4: return  # double-check under lock
-                _last_drop_ts[0] = now
             files = e['dataTransfer']['files']
             paths = []
             for f in files:
@@ -464,6 +454,15 @@ if __name__ == "__main__":
                                 paths.append(sfp)
                     except: pass
             if not paths: return
+            # inode 指纹：同一批文件 inode 相同 → pywebview 重复触发 → 跳过
+            try:
+                inodes = frozenset((os.stat(p).st_dev, os.stat(p).st_ino) for p in paths)
+            except OSError:
+                inodes = None
+            if inodes and inodes == _last_inodes[0]:
+                _log.info(f"DOM drop: SKIP duplicate (same {len(inodes)} inodes)")
+                return
+            _last_inodes[0] = inodes
             _log.info(f"DOM drop: {len(paths)} items")
             result = api._process_paths(paths)
             _window.evaluate_js(f"onDropResult({json.dumps(result)})")
