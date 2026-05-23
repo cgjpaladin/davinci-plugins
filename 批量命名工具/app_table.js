@@ -278,8 +278,9 @@ function _initTBodyClick(){
 
     if(isField){
       const now = Date.now();
-      const sameCell = (window._lastClick === td && (now - (window._lastTime||0)) < 350);
-      window._lastClick = td; window._lastTime = now;
+      const cellId = `${i}:${key}`;
+      const sameCell = (window._lastCellId === cellId && (now - (window._lastTime||0)) < 350);
+      window._lastCellId = cellId; window._lastTime = now;
       if(sameCell){
         call('debug_log',`dblClick: activate ${key} on row ${i}`);
         activateEdit(td, key, i);
