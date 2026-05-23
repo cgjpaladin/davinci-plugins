@@ -22,6 +22,20 @@ _PLACEHOLDER_NAME = "项目名称"
 _EXPORT_SUFFIX = "_交付版本合集"
 _EXPORT_SUBDIR = "11_导出"
 
+# ── 系统默认预设（DaVinci 自带，过滤掉）──
+_SYSTEM_PRESET_PREFIXES = (
+    "H.264", "H.265", "HyperDeck", "ProRes", "YouTube", "Vimeo",
+    "TikTok", "Presentations", "Dropbox", "Replay", "IMF",
+    "FCP", "Premiere", "Audio Only", "AVID", "Pro Tools",
+    "Tencent",
+)
+
+def _is_system_preset(name):
+    for prefix in _SYSTEM_PRESET_PREFIXES:
+        if name.startswith(prefix):
+            return True
+    return False
+
 try:
     from config import version_string, PRODUCT_NAME
 except ImportError:
@@ -160,15 +174,15 @@ def show():
     compliant_tls = [n for n in timeline_names if _TIMELINE_NAME_RE.match(n)]
     skipped_tls = [n for n in timeline_names if n not in set(compliant_tls)]
 
-    preset_names = project.GetRenderPresetList()
+    preset_names = [n for n in project.GetRenderPresetList() if not _is_system_preset(n)]
     if not preset_names:
         print("项目没有渲染预设")
         return
 
-    video_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and 1 <= int(n[:2]) <= 6]
-    audio_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and 7 <= int(n[:2]) <= 9]
-    other_numbered = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and n not in set(video_group + audio_group)]
-    custom_group = [n for n in preset_names if not _COMMON_DELIVERY_RE.match(n)]
+    numbered = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n)]
+    custom = [n for n in preset_names if not _COMMON_DELIVERY_RE.match(n)]
+    numbered.sort(key=lambda n: int(n[:2]))
+    preset_names = numbered + custom
 
     export_root, project_name = _get_export_info(project)
     export_full = os.path.join(export_root, _EXPORT_SUBDIR, f"{project_name}{_EXPORT_SUFFIX}") if export_root else ""
@@ -196,29 +210,11 @@ def show():
 
     pr_widgets = []
     pr_ids, pr_map = [], {}
-    idx = 0
-
-    def _add_pr_group(label, names, checked_fn):
-        nonlocal idx
-        if label:
-            pr_widgets.append(SEP(label))
-        for name in names:
-            cid = f"PRCB_{idx:02d}"
-            idx += 1
-            pr_ids.append(cid)
-            pr_map[cid] = name
-            pr_widgets.append(CB(cid, name, checked_fn(name), True))
-
-    has_video = bool(video_group)
-    has_audio = bool(audio_group)
-    need_sep = has_video and (has_audio or other_numbered or custom_group)
-    _add_pr_group("视频" if need_sep else None, video_group, _delivery_default)
-    if need_sep:
-        _add_pr_group("音频", audio_group, _delivery_default)
-    else:
-        _add_pr_group(None, audio_group, _delivery_default)
-    _add_pr_group("其他" if other_numbered else None, other_numbered, _delivery_default)
-    _add_pr_group("其他预设" if custom_group else None, custom_group, lambda n: False)
+    for i, name in enumerate(preset_names):
+        cid = f"PRCB_{i:02d}"
+        pr_ids.append(cid)
+        pr_map[cid] = name
+        pr_widgets.append(CB(cid, name, _delivery_default(name), True))
 
     # ── 主窗口 ──
     win = disp.AddWindow({
@@ -250,7 +246,7 @@ def show():
                 ui.VGroup({"Weight": 1}, [
                     ui.HGroup({"Weight": 0}, [
                         L("PRTitle", "渲染预设", Weight=1),
-                        L("PRCount", f"{sum(1 for n in video_group+audio_group+other_numbered if _delivery_default(n))}/{len(video_group+audio_group+other_numbered+custom_group)} 已选"),
+                        L("PRCount", f"{sum(1 for n in preset_names if _delivery_default(n))}/{len(preset_names)} 已选"),
                     ]),
                     HG(B("PRCommon", "常用交付合集")),
                     *pr_widgets,
