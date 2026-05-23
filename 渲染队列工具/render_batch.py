@@ -224,7 +224,7 @@ def show():
     }, [
         ui.VGroup({"ID": "RootV", "Spacing": 6}, [
             # ── ① 输出目录 ──
-            L("DirSection", "输出目录", StyleSheet="font-weight:bold;font-size:13px;"),
+            L("DirSection", "输出目录", StyleSheet="font-size:14px;font-weight:bold;"),
             ui.HGroup({"Weight": 0}, [
                 L("DirHint", f"项目: {os.path.basename(export_root) if export_root else '?'}", Weight=1),
                 L("DirStatus", "目录已存在" if dir_exists else "目录不存在"),
@@ -236,7 +236,7 @@ def show():
             # ── 分割线 ──
             ui.Label({"ID": "Sep1", "Text": "━" * 80, "StyleSheet": "font-size:6px;color:#666;"}),
             # ── ② 时间线 + 预设 ──
-            L("TLSection", "时间线 & 渲染预设", StyleSheet="font-weight:bold;font-size:13px;"),
+            L("TLSection", "时间线 & 渲染预设", StyleSheet="font-size:14px;font-weight:bold;"),
             ui.HGroup({"ID": "MainPanels", "Weight": 10, "Spacing": 8}, [
                 ui.VGroup({"Weight": 1, "Spacing": 2}, [
                     ui.HGroup({"Weight": 0}, [
