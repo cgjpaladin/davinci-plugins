@@ -646,11 +646,14 @@ async function loadThumbsEx(paths){
 
 function setThumb(path,thumb){
   _thumbs[path]=thumb;
+  setThumbDOM(path, thumb);
+}
+
+function setThumbDOM(path, thumb){
   const el=document.querySelector(`[data-path="${CSS.escape(path)}"]`);
   if(!el)return;
   let thumbEl=el.querySelector('.cell-thumb');
   if(thumbEl&&thumbEl.tagName==='DIV'){
-    // 替换占位 div → img
     const img=document.createElement('img');
     img.className='cell-thumb';img.src=thumb;img.alt='';
     thumbEl.replaceWith(img);
