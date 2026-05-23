@@ -14,20 +14,10 @@ import time
 from datetime import datetime
 
 # ── 配置区：新增预设无需改代码 ──
-# 任意 `xx_` 开头的预设都算「常用交付合集」
+# xx_ 格式 = 交付预设；01-99 默认勾选，00_ 不参选
 _COMMON_DELIVERY_RE = re.compile(r"^\d{2}_")
-# 分组映射：根据编号自动归类
-def _preset_group_index(name):
-    """返回 0=交付版, 1=音频分离, 2=特殊, 3=自定义。"""
-    m = re.match(r"^(\d{2})_", name)
-    if not m:
-        return 3  # 自定义
-    n = int(m.group(1))
-    if 1 <= n <= 6:
-        return 0  # 交付版（视频）
-    if 7 <= n <= 9:
-        return 1  # 音频分离（LPCM）
-    return 2  # 特殊（00、10+）
+def _delivery_default(name):
+    return bool(_COMMON_DELIVERY_RE.match(name)) and not name.startswith("00_")
 
 _TIMELINE_NAME_RE = re.compile(r"^\d{2,3}$")
 _PLACEHOLDER_NAME = "项目名称"
@@ -212,7 +202,7 @@ def show():
         cb_id = f"PRCB_{i:02d}"
         pr_cb_ids.append(cb_id)
         pr_cb_map[cb_id] = name
-        pr_widgets.append(_make_checkbox(ui, cb_id, name, True, True))
+        pr_widgets.append(_make_checkbox(ui, cb_id, name, _delivery_default(name), True))
     idx = len(video_group)
     if need_sep:
         pr_widgets.append(_sep_label("音频"))
@@ -221,7 +211,7 @@ def show():
         idx += 1
         pr_cb_ids.append(cb_id)
         pr_cb_map[cb_id] = name
-        pr_widgets.append(_make_checkbox(ui, cb_id, name, True, True))
+        pr_widgets.append(_make_checkbox(ui, cb_id, name, _delivery_default(name), True))
     if other_numbered:
         pr_widgets.append(_sep_label("其他"))
     for name in other_numbered:
@@ -229,7 +219,7 @@ def show():
         idx += 1
         pr_cb_ids.append(cb_id)
         pr_cb_map[cb_id] = name
-        pr_widgets.append(_make_checkbox(ui, cb_id, name, True, True))
+        pr_widgets.append(_make_checkbox(ui, cb_id, name, _delivery_default(name), True))
     if custom_group:
         pr_widgets.append(_sep_label("其他预设"))
     for name in custom_group:
@@ -272,7 +262,7 @@ def show():
                 ui.VGroup("PRCol", [
                     ui.HGroup("PRTitleBar", [
                         ui.Label("PRTitle", {"Text": "渲染预设", "Weight": 1}),
-                        ui.Label("PRCount", {"Text": f"{len([1 for n in ordered_presets if _COMMON_DELIVERY_RE.match(n)])}/{len(ordered_presets)} 已选"}),
+                        ui.Label("PRCount", {"Text": f"{len([1 for n in ordered_presets if _delivery_default(n)])}/{len(ordered_presets)} 已选"}),
                     ]),
                     ui.VGap(0.005),
                     ui.HGroup("PRQuick", [
@@ -335,7 +325,7 @@ def show():
         for i, cid in enumerate(pr_cb_ids):
             name = pr_cb_map.get(cid, "")
             try:
-                items[cid].Checked = bool(_COMMON_DELIVERY_RE.match(name))
+                items[cid].Checked = _delivery_default(name)
             except Exception:
                 pass
         _update_stats()
