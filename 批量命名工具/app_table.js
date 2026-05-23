@@ -435,10 +435,10 @@ function activateEdit(td, key, i){
       rows.forEach(r => { files[r].fields[key] = finalVal; });
       call('debug_log',`edit ${key}: ${oldVal||'(空)'} → ${finalVal||'(空)'} on ${rows.length} row(s)`);
       if(key === 'method'){
-        // method 由 onMethodChange 写入，这里先撤销（避免 double-write 导致变更检测失败）
         rows.forEach(r => { files[r].fields.method = oldVal; });
         call('debug_log',`invoking onMethodChange(${oldVal||'(空)'}, ${finalVal})`);
         onMethodChange(oldVal, finalVal, i);
+        return; // onMethodChange 已调用 renderList(true)
       }
     }
     renderList();
