@@ -141,14 +141,15 @@ function onMethodChange(oldMethod, newMethod, ri){
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
   descLocked = cfg.mode === 'locked';
   const rows = sel.size > 0 ? [...sel] : (ri !== undefined ? [ri] : []);
-  // 用传入的 oldMethod 判断是否真的变了
   const changedRows = rows.filter(r => files[r] && files[r].fields.method === oldMethod && oldMethod !== m);
-  call('debug_log',`onMethodChange: rows=${rows.length} sel=${sel.size} changed=${changedRows.length} old='${oldMethod||'(空)'}' new='${m}'`);
+  call('debug_log',`onMethodChange: rows=${rows.length} sel=${sel.size} changed=${changedRows.length} old='${oldMethod||'(空)'}' new='${m||'(空)'}'`);
   if(!changedRows.length) return;
-  // 先写 method，再写 desc
   changedRows.forEach(r => { files[r].fields.method = m; });
   if(cfg.mode === 'locked'){
     changedRows.forEach(r => { files[r].fields.desc = cfg.value; });
+  } else if(m === ''){
+    // 请选择 → 清空 desc 并锁定
+    changedRows.forEach(r => { files[r].fields.desc = ''; });
   } else {
     changedRows.forEach(r => { files[r].fields.desc = ''; });
   }
@@ -366,8 +367,9 @@ function activateEdit(td, key, i){
 
   if(key === 'method'){
     el = document.createElement('select');
-    ['智能分镜版','双轨版','角色专属版'].forEach(m => {
-      const o = document.createElement('option'); o.value = m; o.textContent = m;
+    const opts = ['请选择','智能分镜版','双轨版','角色专属版'];
+    opts.forEach(m => {
+      const o = document.createElement('option'); o.value = m === '请选择' ? '' : m; o.textContent = m;
       if(m === oldVal) o.selected = true;
       el.appendChild(o);
     });
