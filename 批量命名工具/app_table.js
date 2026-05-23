@@ -162,6 +162,7 @@ function _checkDescCollision(v){
    TABLE renderList (replaces card view)
    ═════════════════════════════ */
 function renderList(force){
+  if(window._activeCancel){ window._activeCancel(); window._activeCancel = null; }
   const tbody = document.querySelector('#fileList tbody');
   const empty = document.querySelector('#fileList .fl-empty');
   const thead = document.querySelector('#fileList thead');
@@ -288,6 +289,7 @@ function _initTBodyClick(){
 }
 
 function rowClick(e, i){
+  if(window._activeCancel){ window._activeCancel(); window._activeCancel = null; }
   if(e.metaKey || e.ctrlKey){
     if(sel.has(i)) sel.delete(i); else sel.add(i);
   } else if(e.shiftKey && sel.size > 0){

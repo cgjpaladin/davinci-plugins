@@ -1189,10 +1189,10 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
                     check_w, check_h = eff_h, eff_w
                 else:
                     check_w, check_h = eff_w, eff_h
-                # 尺寸够大且中心未偏移且无旋转 → 才可安全跳过
+                # 尺寸够大且中心未偏移且旋转为 180° 的整倍数 → 安全跳过
                 if (check_w >= timeline_w and check_h >= timeline_h
                     and abs(cx - timeline_w/2) < 0.5 and abs(cy - timeline_h/2) < 0.5
-                    and rot_360 < 0.01):
+                    and rot_360 % 180 < 1.0):
                     continue
             # 统一角检测（覆盖近轴 + 非近轴）
             cos_r_raw = math.cos(rot); sin_r_raw = math.sin(rot)
