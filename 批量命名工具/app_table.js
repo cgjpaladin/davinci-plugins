@@ -671,10 +671,9 @@ dropZone.addEventListener('drop',e=>{e.preventDefault();dg=0;overlay.classList.r
 let _dropCount=0;
 function onDropResult(result){
   if(!result||!result.files) return;
-  // 防 pywebview 重复触发（路径可能变化，用 count+首尾文件名 做指纹）
-  const fp = result.files.map(f=>f.basename||f.path.split('/').pop());
-  const key = result.files.length + ':' + fp[0] + ':' + fp[fp.length-1];
-  if(window._lastDropKey === key){call('debug_log',`onDropResult: SKIP duplicate (key=${key})`); return;}
+  // 防 pywebview 重复触发：全量文件名做指纹
+  const key = result.files.length + '|' + result.files.map(f=>f.basename||f.path.split('/').pop()).sort().join(',');
+  if(window._lastDropKey === key){call('debug_log',`onDropResult: SKIP duplicate`); return;}
   window._lastDropKey = key;
   _dropCount++;
     // 首拖：强制清零（防御未知来源的预注入）
