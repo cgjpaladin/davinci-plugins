@@ -11,6 +11,7 @@ import re
 import os
 import sys
 import time
+from datetime import datetime
 
 # ── 配置区：新增预设无需改代码 ──
 _COMMON_DELIVERY_RE = re.compile(r"^(0[0-9]|1[01])_")
@@ -18,6 +19,31 @@ _TIMELINE_NAME_RE = re.compile(r"^\d{2,3}$")
 _PLACEHOLDER_NAME = "项目名称"
 _EXPORT_SUFFIX = "_交付版本合集"
 _EXPORT_SUBDIR = "11_导出"
+
+# ── 版本 ──
+try:
+    from config import version_string, PRODUCT_NAME
+except ImportError:
+    version_string = lambda: "dev"
+    PRODUCT_NAME = "渲染队列工具"
+
+# ── 日志 ──
+_LOG_DIR = os.path.expanduser("~/达芬奇插件工坊/logs")
+try:
+    os.makedirs(_LOG_DIR, exist_ok=True)
+except Exception:
+    _LOG_DIR = "/tmp"
+
+
+def _log(msg):
+    stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{stamp}] {msg}"
+    try:
+        with open(os.path.join(_LOG_DIR, "render_batch.log"), "a") as f:
+            f.write(line + "\n")
+    except Exception:
+        pass
+    print(line)
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "shared"))
 from fusionscript_loader import bmd
@@ -228,7 +254,7 @@ def show():
 
     disp = bmd.UIDispatcher(ui)
     win = disp.AddWindow({
-        "WindowTitle": "渲染队列批量提交",
+        "WindowTitle": f"{PRODUCT_NAME} v{version_string()}",
         "ID": "RenderBatchWin",
         "Geometry": [100, 100, 580, max(400, 140 + len(tl_widgets) * 22 + len(pr_widgets) * 22)],
     }, win_elements)
@@ -275,8 +301,11 @@ def show():
         _update_stats()
 
     def _on_submit(ev):
+        _log(f"=== 开始提交渲染队列 (v{version_string()}) ===")
+        _log(f"项目: {project.GetName()}, 数据库: {pm.GetCurrentDatabase().get('DbName','?')}")
         tl_checked = [tl_cb_map[cid] for cid in _read_checked(tl_cb_ids) if not cid.startswith("TLSKP_")]
         pr_checked = [pr_cb_map[cid] for cid in _read_checked(pr_cb_ids)]
+        _log(f"选中时间线: {len(tl_checked)} 条, 预设: {len(pr_checked)} 个")
 
         if not tl_checked:
             disp.ShowMessage("提示", "没有选中合规时间线")
@@ -335,6 +364,7 @@ def show():
         msg = f"成功添加 {success} 个渲染任务"
         if failed:
             msg += f"\n跳过 {len(failed)} 个: " + " ".join(failed[:10])
+        _log(f"结果: 成功 {success}, 失败 {len(failed)}, 输出目录: {export_dir}")
         disp.ShowMessage("完成", msg)
 
     # ── 绑定 ──
