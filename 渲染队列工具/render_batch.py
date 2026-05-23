@@ -183,7 +183,7 @@ def show():
             # ── 时间线 | 渲染预设 ──
             L("TLSection", "时间线 & 渲染预设", StyleSheet="font-size:14px;font-weight:bold;"),
             ui.HGroup({"ID": "MainPanels", "Spacing": 8, "Weight": 10}, [
-                ui.VGroup({"Weight": 1, "Spacing": 2, "FixedSize": [-1, 380]}, [
+                ui.VGroup({"Weight": 1, "Spacing": 2}, [
                     ui.HGroup({"Weight": 0}, [
                         L("TLTitle", "时间线", Weight=1),
                         L("TLCount", f"{len(compliant)} 合规 / {len(skipped)} 跳过"),
@@ -192,7 +192,7 @@ def show():
                     HG(B("TLSelectAll", "全选合规")),
                 ]),
                 ui.VGroup({"Weight": 0, "Spacing": 0}, VLINE_LABELS()),
-                ui.VGroup({"Weight": 1, "Spacing": 2, "FixedSize": [-1, 380]}, [
+                ui.VGroup({"Weight": 1, "Spacing": 2}, [
                     ui.HGroup({"Weight": 0}, [
                         L("PRTitle", "渲染预设", Weight=1),
                         L("PRCount", f"{sum(1 for n in presets if _delivery_default(n))}/{len(presets)} 已选"),
