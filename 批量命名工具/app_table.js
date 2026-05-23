@@ -669,23 +669,25 @@ dropZone.addEventListener('drop',e=>{e.preventDefault();dg=0;overlay.classList.r
 // ═══ Drop results from Python ═══
 let _dropCount=0;
 function onDropResult(result){
-  if(result&&result.files){
-    _dropCount++;
-    if(_firstDrop){_firstDrop=false;call('debug_log',`_firstDrop: was ${files.length}, clearing`);files=[];sel.clear()}
-    call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}`);
-    const exist=new Set(files.map(f=>f.fp||f.path));
-    const fresh=result.files.filter(f=>!(exist.has(f.fp||f.path)));
-    const dup=result.files.length-fresh.length;
-    if(fresh.length===0){toast(`全部重复 · ${dup} 个已跳过`);return}
-    files=files.concat(fresh);
-    call("debug_log",`FILES list: ${files.length} total (added ${fresh.length})`);
-    let msg=`已追加 ${fresh.length} 个文件`;
-    if(dup) msg+=` · ${dup} 个重复跳过`;
-    if(result.subdirs_skipped) msg+=` · ${result.subdirs_skipped} 个子文件夹跳过`;
-    if(result.truncated) msg+=` (上限${result.max}个)`;
-    renderList();toast(msg);
-    loadThumbs();
-  }
+  if(!result||!result.files||!result.files.length) return;
+  if(window._inDrop) return;  // pywebview 重复 evaluate_js 同一调用
+  window._inDrop = true;
+  _dropCount++;
+  if(_firstDrop){_firstDrop=false;call('debug_log',`_firstDrop: was ${files.length}, clearing`);files=[];sel.clear()}
+  call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}`);
+  const exist=new Set(files.map(f=>f.fp||f.path));
+  const fresh=result.files.filter(f=>!(exist.has(f.fp||f.path)));
+  const dup=result.files.length-fresh.length;
+  if(fresh.length===0){toast(`全部重复 · ${dup} 个已跳过`);window._inDrop = false;return}
+  files=files.concat(fresh);
+  call("debug_log",`FILES list: ${files.length} total (added ${fresh.length})`);
+  let msg=`已追加 ${fresh.length} 个文件`;
+  if(dup) msg+=` · ${dup} 个重复跳过`;
+  if(result.subdirs_skipped) msg+=` · ${result.subdirs_skipped} 个子文件夹跳过`;
+  if(result.truncated) msg+=` (上限${result.max}个)`;
+  renderList();toast(msg);
+  loadThumbs();
+  window._inDrop = false;
 }
 
 // ═══ Keyboard ═══
