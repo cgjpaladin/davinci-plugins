@@ -5,5 +5,6 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PRODUCT_NAME="$(basename "$SCRIPT_DIR")"
 _VERIFY_MODE="light"
+VERIFY_FILES="config.py render_batch.py"
 source "$SCRIPT_DIR/../tools/publish.sh"
 publish_build_local
