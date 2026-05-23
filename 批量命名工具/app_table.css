@@ -189,8 +189,7 @@ thead th{
 }
 thead th::after{
   content:'';position:absolute;right:0;top:0;bottom:0;
-  width:5px;cursor:col-resize;background:transparent;
-  transition:background .15s;
+  width:5px;cursor:col-resize;
 }
 thead th:hover::after,thead th.resizing::after{background:var(--tbl-accent)}
 thead th.resizing::after{opacity:.6}
