@@ -472,6 +472,7 @@ function activateEdit(td, key, i){
           input.value = (oldVal === '请手动输入…' || oldVal === '请选择') ? '' : oldVal;
           td.appendChild(input);
           input.focus(); input.select();
+          el = input; // 更新引用，确保 commit 读到输入值
           // 重新绑定 INPUT 事件
           let _focused = false;
           window._activeCancel = () => commit(true);
