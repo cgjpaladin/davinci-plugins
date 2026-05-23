@@ -222,20 +222,21 @@ def show():
         "ID": "RenderBatchWin",
         "Geometry": [100, 100, 580, 600],
     }, [
-        ui.VGroup({"ID": "RootV", "Spacing": 4}, [
-            # 输出目录
+        ui.VGroup({"ID": "RootV", "Spacing": 6}, [
+            # ── ① 输出目录 ──
+            L("DirSection", "▎输出目录", StyleSheet="font-weight:bold;font-size:12px;color:#ccc;"),
             ui.HGroup({"Weight": 0}, [
-                L("DirTitle", "输出目录", Weight=1),
+                L("DirHint", f"项目: {os.path.basename(export_root) if export_root else '?'}", Weight=1),
                 L("DirStatus", "目录已存在" if dir_exists else "目录不存在"),
             ]),
-            L("DirHint", f"项目: {os.path.basename(export_root) if export_root else '?'}"),
             ui.HGroup({"Weight": 0}, [
                 LE("DirNameEdit", project_name),
                 L("DirSuffix", "_交付版本合集/", Weight=0),
             ]),
-            # 时间线 / 预设（并排）
-            ui.HGroup({"ID": "MainPanels", "Weight": 10}, [
-                ui.VGroup({"Weight": 1}, [
+            # ── ② 时间线 + 预设 ──
+            L("TLSection", "▎时间线 & 渲染预设", StyleSheet="font-weight:bold;font-size:12px;color:#ccc;"),
+            ui.HGroup({"ID": "MainPanels", "Weight": 10, "Spacing": 8}, [
+                ui.VGroup({"Weight": 1, "Spacing": 2}, [
                     ui.HGroup({"Weight": 0}, [
                         L("TLTitle", "时间线", Weight=1),
                         L("TLCount", f"{len(compliant_tls)} 合规 / {len(skipped_tls)} 跳过"),
@@ -243,7 +244,7 @@ def show():
                     *tl_widgets,
                     HG(B("TLSelectAll", "全选合规")),
                 ]),
-                ui.VGroup({"Weight": 1}, [
+                ui.VGroup({"Weight": 1, "Spacing": 2}, [
                     ui.HGroup({"Weight": 0}, [
                         L("PRTitle", "渲染预设", Weight=1),
                         L("PRCount", f"{sum(1 for n in preset_names if _delivery_default(n))}/{len(preset_names)} 已选"),
@@ -252,7 +253,7 @@ def show():
                     *pr_widgets,
                 ]),
             ]),
-            # 底部
+            # ── ③ 操作 ──
             ui.HGroup({"Weight": 0}, [
                 L("Stats", "", Weight=1),
                 B("Submit", "加入渲染队列"),
