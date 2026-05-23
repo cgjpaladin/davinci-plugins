@@ -71,7 +71,7 @@ def HG(*widgets):
     return ui.HGroup({"Spacing": 6, "Weight": 0}, list(widgets))
 def DIVIDER(count=80):
     return ui.Label({"ID": "div", "Text": "━" * count, "StyleSheet": "font-size:6px;color:#666;", "Weight": 0})
-def VLINE_LABELS(count=20):
+def VLINE_LABELS(count=12):
     return [ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666;", "Weight": 0,
                       "MinimumSize": [0, 22]}) for _ in range(count)]
 
@@ -183,7 +183,7 @@ def show():
             # ── 时间线 | 渲染预设 ──
             L("TLSection", "时间线 & 渲染预设", StyleSheet="font-size:14px;font-weight:bold;"),
             ui.HGroup({"ID": "MainPanels", "Spacing": 8, "Weight": 10}, [
-                ui.VGroup({"Weight": 1, "Spacing": 2}, [
+                ui.VGroup({"Weight": 1, "Spacing": 1}, [
                     ui.HGroup({"Weight": 0}, [
                         L("TLTitle", "时间线", Weight=1),
                         L("TLCount", f"{len(compliant)} 合规 / {len(skipped)} 跳过"),
@@ -192,7 +192,7 @@ def show():
                     HG(B("TLSelectAll", "全选合规")),
                 ]),
                 ui.VGroup({"Weight": 0, "Spacing": 0}, VLINE_LABELS()),
-                ui.VGroup({"Weight": 1, "Spacing": 2}, [
+                ui.VGroup({"Weight": 1, "Spacing": 1}, [
                     ui.HGroup({"Weight": 0}, [
                         L("PRTitle", "渲染预设", Weight=1),
                         L("PRCount", f"{sum(1 for n in presets if _delivery_default(n))}/{len(presets)} 已选"),
@@ -213,7 +213,8 @@ def show():
     win = disp.AddWindow({
         "WindowTitle": f"{PRODUCT_NAME} v{version_string()}",
         "ID": "RenderBatchWin",
-        "Geometry": [100, 100, 580, 680],
+        "Geometry": [100, 100, 580, 720],
+        "FixedSize": [-1, 720],
     }, win_layout)
     win.RecalcLayout()
     items = win.GetItems()
