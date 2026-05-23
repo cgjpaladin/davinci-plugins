@@ -166,7 +166,7 @@ def show():
             SEP(),
             L("Section", "时间线 & 渲染预设", StyleSheet="font-size:14px;font-weight:bold;"),
             ui.HGroup({"ID": "Main", "Spacing": 8, "Weight": 10}, [
-                ui.VGroup({"Weight": 1, "Spacing": 1}, [
+                ui.VGroup({"Weight": 1, "Spacing": 1, "FixedSize": [240, 350]}, [
                     ui.HGroup({"Weight": 0}, [
                         L("TLTitle", "时间线", Weight=1),
                         L("TLCount", f"{len(compliant)} 合规 / {len(skipped)} 跳过"),
@@ -175,7 +175,7 @@ def show():
                     ui.HGroup({"Weight": 0}, [B("TLAll", "全选合规")]),
                 ]),
                 ui.VGroup({"Weight": 0, "Spacing": 0}, VLINES()),
-                ui.VGroup({"Weight": 1, "Spacing": 1}, [
+                ui.VGroup({"Weight": 1, "Spacing": 1, "FixedSize": [240, 350]}, [
                     ui.HGroup({"Weight": 0}, [
                         L("PRTitle", "渲染预设", Weight=1),
                         L("PRCount", f"{sum(1 for n in presets if _delivery_default(n))}/{len(presets)} 已选"),
