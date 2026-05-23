@@ -3,8 +3,6 @@
 
 从当前媒体池文件夹自动发现时间线，选择渲染预设，批量添加到渲染队列。
 适合紧接在「交付自检」检查通过后使用。
-
-扩展：预设列表动态读取，不硬编码。加预设改数据库即可，工具自动适配。
 """
 
 import re
@@ -13,10 +11,10 @@ import sys
 import time
 from datetime import datetime
 
-# ── 配置区：新增预设无需改代码 ──
-# xx_ 格式 = 交付预设；01-99 默认勾选，00_ 不参选
+# ── 配置 ──
 _COMMON_DELIVERY_RE = re.compile(r"^\d{2}_")
 def _delivery_default(name):
+    """常用交付合集：01-99 全勾，00_ 不勾，非编号不勾。"""
     return bool(_COMMON_DELIVERY_RE.match(name)) and not name.startswith("00_")
 
 _TIMELINE_NAME_RE = re.compile(r"^\d{2,3}$")
@@ -24,20 +22,17 @@ _PLACEHOLDER_NAME = "项目名称"
 _EXPORT_SUFFIX = "_交付版本合集"
 _EXPORT_SUBDIR = "11_导出"
 
-# ── 版本 ──
 try:
     from config import version_string, PRODUCT_NAME
 except ImportError:
     version_string = lambda: "dev"
     PRODUCT_NAME = "渲染队列工具"
 
-# ── 日志 ──
 _LOG_DIR = os.path.expanduser("~/达芬奇插件工坊/logs")
 try:
     os.makedirs(_LOG_DIR, exist_ok=True)
 except Exception:
     _LOG_DIR = "/tmp"
-
 
 def _log(msg):
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -49,8 +44,38 @@ def _log(msg):
         pass
     print(line)
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "shared"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared"))
 from fusionscript_loader import bmd
+
+# ── UIManager 包装（统一使用 dict 参数风格）──
+
+def L(id_, text, **extra):
+    """Label。"""
+    return ui.Label({"ID": id_, "Text": text, **extra})
+
+def B(id_, text, **extra):
+    """Button。"""
+    return ui.Button({"ID": id_, "Text": text, **extra})
+
+def CB(id_, text, checked=True, enabled=True):
+    """CheckBox。"""
+    return ui.CheckBox({"ID": id_, "Text": text, "Checked": checked, "Enabled": enabled})
+
+def LE(id_, text):
+    """LineEdit。"""
+    return ui.LineEdit({"ID": id_, "Text": text})
+
+def SEP(text):
+    """分隔线。"""
+    return ui.Label({"ID": f"SEP_{text}", "Text": f"── {text} ──", "Weight": 0})
+
+def HG(*widgets):
+    """水平排列。"""
+    return ui.HGroup({"Weight": 0}, list(widgets))
+
+def VG(*widgets):
+    """垂直排列。"""
+    return ui.VGroup({"Weight": 0}, list(widgets))
 
 
 def _derive_project_name(project_dir):
@@ -62,7 +87,6 @@ def _derive_project_name(project_dir):
 
 
 def _get_project_root_from_clip(project):
-    """从一个时间线的第一个视频素材路径推导项目根。"""
     try:
         count = project.GetTimelineCount()
         for i in range(1, count + 1):
@@ -80,14 +104,11 @@ def _get_project_root_from_clip(project):
 
 
 def _get_export_info(project):
-    """获取导出基路径 + 项目名。从素材路径推导。"""
     clip_path = _get_project_root_from_clip(project)
     if clip_path:
-        # 往上找匹配日期前缀的文件夹（yyyyMMdd_xxx）
         p = os.path.abspath(clip_path)
         while p and p != "/":
-            basename = os.path.basename(p)
-            if re.match(r"^\d{8}_", basename):
+            if re.match(r"^\d{8}_", os.path.basename(p)):
                 return p, _derive_project_name(p)
             p = os.path.dirname(p)
     return "", _PLACEHOLDER_NAME
@@ -108,8 +129,7 @@ def _get_folder_timelines(project):
             props = clip.GetClipProperty()
         except Exception:
             continue
-        clip_type = props.get("Type", "")
-        if clip_type not in ("Timeline", "时间线"):
+        if props.get("Type", "") not in ("Timeline", "时间线"):
             continue
         name = clip.GetName()
         if name not in seen:
@@ -119,20 +139,8 @@ def _get_folder_timelines(project):
     return names
 
 
-# ═══════════════════════════════════════════════════════════
-# 主窗口
-# ═══════════════════════════════════════════════════════════
-
-def _make_checkbox(ui, cb_id, label, checked=True, enabled=True):
-    """生成 CheckBox widget。"""
-    return ui.CheckBox(cb_id, {
-        "Text": label,
-        "Checked": checked,
-        "Enabled": enabled,
-    })
-
-
 def show():
+    global ui
     resolve = bmd.scriptapp("Resolve")
     if not resolve:
         print("达芬奇未运行")
@@ -148,7 +156,6 @@ def show():
         print("未打开项目")
         return
 
-    # ── 数据收集 ──
     timeline_names = _get_folder_timelines(project)
     compliant_tls = [n for n in timeline_names if _TIMELINE_NAME_RE.match(n)]
     skipped_tls = [n for n in timeline_names if n not in set(compliant_tls)]
@@ -158,162 +165,126 @@ def show():
         print("项目没有渲染预设")
         return
 
-    # 预设按编号自然排序：0x_ 视频文件, 7-9_ 音频文件, 其余放后面
     video_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and 1 <= int(n[:2]) <= 6]
     audio_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and 7 <= int(n[:2]) <= 9]
     other_numbered = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and n not in set(video_group + audio_group)]
     custom_group = [n for n in preset_names if not _COMMON_DELIVERY_RE.match(n)]
-    ordered_presets = video_group + audio_group + other_numbered + custom_group
 
     export_root, project_name = _get_export_info(project)
     export_full = os.path.join(export_root, _EXPORT_SUBDIR, f"{project_name}{_EXPORT_SUFFIX}") if export_root else ""
+    dir_exists = os.path.isdir(export_full) if export_full else False
 
-    # ── 生成预创建 CheckBox（达芬奇 UIManager 不支持运行时 AddWidget）──
-    # 时间线 CheckBox
-    tl_cb_ids = []
-    tl_cb_map = {}  # id → name
+    # ── disp ──
+    disp = bmd.UIDispatcher(ui)
+
+    # ── 构建窗口内联组件 ──
     tl_widgets = []
+    tl_ids, tl_map = [], {}
     if not compliant_tls and not skipped_tls:
-        tl_widgets.append(ui.Label("TLNone", {"Text": "当前文件夹无时间线"}))
+        tl_widgets.append(ui.Label({"ID": "TLNone", "Text": "当前文件夹无时间线"}))
     else:
         for i, name in enumerate(compliant_tls):
-            cb_id = f"TLCB_{i}"
-            tl_cb_ids.append(cb_id)
-            tl_cb_map[cb_id] = name
-            tl_widgets.append(_make_checkbox(ui, cb_id, name, True, True))
+            cid = f"TLCB_{i}"
+            tl_ids.append(cid)
+            tl_map[cid] = name
+            tl_widgets.append(CB(cid, name, True, True))
         for i, name in enumerate(skipped_tls):
-            cb_id = f"TLSKP_{i}"
-            tl_cb_ids.append(cb_id)
-            tl_cb_map[cb_id] = f"{name} (不合规)"
-            tl_widgets.append(_make_checkbox(ui, cb_id, f"{name} (不合规)", False, False))
+            cid = f"TLSKP_{i}"
+            tl_ids.append(cid)
+            tl_map[cid] = name
+            tl_widgets.append(CB(cid, f"{name} (不合规)", False, False))
 
-    # 分隔线 Label（用 Label 做视觉分隔）
-    def _sep_label(text):
-        return ui.Label(f"PRSEP_{text}", {"Text": f"── {text} ──", "Weight": 0})
-
-    # 预设 CheckBox
-    pr_cb_ids = []
-    pr_cb_map = {}
     pr_widgets = []
+    pr_ids, pr_map = [], {}
+    idx = 0
+
+    def _add_pr_group(label, names, checked_fn):
+        nonlocal idx
+        if label:
+            pr_widgets.append(SEP(label))
+        for name in names:
+            cid = f"PRCB_{idx:02d}"
+            idx += 1
+            pr_ids.append(cid)
+            pr_map[cid] = name
+            pr_widgets.append(CB(cid, name, checked_fn(name), True))
+
     has_video = bool(video_group)
     has_audio = bool(audio_group)
     need_sep = has_video and (has_audio or other_numbered or custom_group)
-
-    for i, name in enumerate(video_group):
-        cb_id = f"PRCB_{i:02d}"
-        pr_cb_ids.append(cb_id)
-        pr_cb_map[cb_id] = name
-        pr_widgets.append(_make_checkbox(ui, cb_id, name, _delivery_default(name), True))
-    idx = len(video_group)
+    _add_pr_group("视频" if need_sep else None, video_group, _delivery_default)
     if need_sep:
-        pr_widgets.append(_sep_label("音频"))
-    for name in audio_group:
-        cb_id = f"PRCB_{idx:02d}"
-        idx += 1
-        pr_cb_ids.append(cb_id)
-        pr_cb_map[cb_id] = name
-        pr_widgets.append(_make_checkbox(ui, cb_id, name, _delivery_default(name), True))
-    if other_numbered:
-        pr_widgets.append(_sep_label("其他"))
-    for name in other_numbered:
-        cb_id = f"PRCB_{idx:02d}"
-        idx += 1
-        pr_cb_ids.append(cb_id)
-        pr_cb_map[cb_id] = name
-        pr_widgets.append(_make_checkbox(ui, cb_id, name, _delivery_default(name), True))
-    if custom_group:
-        pr_widgets.append(_sep_label("其他预设"))
-    for name in custom_group:
-        cb_id = f"PRCB_{idx:02d}"
-        idx += 1
-        pr_cb_ids.append(cb_id)
-        pr_cb_map[cb_id] = name
-        pr_widgets.append(_make_checkbox(ui, cb_id, name, False, True))
+        _add_pr_group("音频", audio_group, _delivery_default)
+    else:
+        _add_pr_group(None, audio_group, _delivery_default)
+    _add_pr_group("其他" if other_numbered else None, other_numbered, _delivery_default)
+    _add_pr_group("其他预设" if custom_group else None, custom_group, lambda n: False)
 
-    # ── 构建窗口 ──
-    win_elements = [
-        ui.VGroup("RootV", [
-            # ── 输出目录 ──
-            ui.VGap(0.01),
-            ui.HGroup("DirHeader", [
-                ui.Label("DirTitle", {"Text": "输出目录", "Weight": 1}),
-                ui.Label("DirStatus", {"Text": "目录已存在" if (export_full and os.path.isdir(export_full)) else "目录不存在"}),
-            ]),
-            ui.Label("DirHint", {"Text": f"项目: {os.path.basename(export_root) if export_root else '?'}"}),
-            ui.HGroup("DirBar", [
-                ui.LineEdit("DirNameEdit", {"Text": project_name}),
-                ui.Label("DirSuffix", {"Text": "_交付版本合集/"}),
-            ]),
-            ui.VGap(0.02),
-            # ── 时间线 / 预设（并排）──
-            ui.HGroup("MainPanels", [
-                ui.VGroup("TLCol", [
-                    ui.HGroup("TLTitleBar", [
-                        ui.Label("TLTitle", {"Text": "时间线", "Weight": 1}),
-                        ui.Label("TLCount", {"Text": f"{len(compliant_tls)} 合规 / {len(skipped_tls)} 跳过"}),
-                    ]),
-                    ui.VGap(0.005),
-                    *tl_widgets,
-                    ui.VGap(0.005),
-                    ui.HGroup("TLBtns", [
-                        ui.Button("TLSelectAll", {"Text": "全选合规"}),
-                    ]),
-                ]),
-                ui.VGap(0.03),
-                ui.VGroup("PRCol", [
-                    ui.HGroup("PRTitleBar", [
-                        ui.Label("PRTitle", {"Text": "渲染预设", "Weight": 1}),
-                        ui.Label("PRCount", {"Text": f"{len([1 for n in ordered_presets if _delivery_default(n)])}/{len(ordered_presets)} 已选"}),
-                    ]),
-                    ui.VGap(0.005),
-                    ui.HGroup("PRQuick", [
-                        ui.Button("PRCommon", {"Text": "常用交付合集"}),
-                    ]),
-                    ui.VGap(0.005),
-                    *pr_widgets,
-                ]),
-            ]),
-            ui.VGap(0.02),
-            # ── 底部 ──
-            ui.HGroup("Bottom", [
-                ui.Label("Stats", {"Text": "", "Weight": 1}),
-                ui.Button("Submit", {"Text": "加入渲染队列"}),
-            ]),
-            ui.VGap(0.01),
-        ]),
-    ]
-
-    disp = bmd.UIDispatcher(ui)
+    # ── 主窗口 ──
     win = disp.AddWindow({
         "WindowTitle": f"{PRODUCT_NAME} v{version_string()}",
         "ID": "RenderBatchWin",
-        "Geometry": [100, 100, 580, max(400, 140 + len(tl_widgets) * 22 + len(pr_widgets) * 22)],
-    }, win_elements)
+        "Geometry": [100, 100, 580, 600],
+    }, [
+        ui.VGroup({"ID": "RootV", "Spacing": 4}, [
+            # 输出目录
+            ui.HGroup({"Weight": 0}, [
+                L("DirTitle", "输出目录", Weight=1),
+                L("DirStatus", "目录已存在" if dir_exists else "目录不存在"),
+            ]),
+            L("DirHint", f"项目: {os.path.basename(export_root) if export_root else '?'}"),
+            ui.HGroup({"Weight": 0}, [
+                LE("DirNameEdit", project_name),
+                L("DirSuffix", "_交付版本合集/", Weight=0),
+            ]),
+            # 时间线 / 预设（并排）
+            ui.HGroup({"ID": "MainPanels", "Weight": 10}, [
+                ui.VGroup({"Weight": 1}, [
+                    ui.HGroup({"Weight": 0}, [
+                        L("TLTitle", "时间线", Weight=1),
+                        L("TLCount", f"{len(compliant_tls)} 合规 / {len(skipped_tls)} 跳过"),
+                    ]),
+                    *tl_widgets,
+                    HG(B("TLSelectAll", "全选合规")),
+                ]),
+                ui.VGroup({"Weight": 1}, [
+                    ui.HGroup({"Weight": 0}, [
+                        L("PRTitle", "渲染预设", Weight=1),
+                        L("PRCount", f"{sum(1 for n in video_group+audio_group+other_numbered if _delivery_default(n))}/{len(video_group+audio_group+other_numbered+custom_group)} 已选"),
+                    ]),
+                    HG(B("PRCommon", "常用交付合集")),
+                    *pr_widgets,
+                ]),
+            ]),
+            # 底部
+            ui.HGroup({"Weight": 0}, [
+                L("Stats", "", Weight=1),
+                B("Submit", "加入渲染队列"),
+            ]),
+        ]),
+    ])
     win.RecalcLayout()
 
     items = win.GetItems()
     dir_edit = items["DirNameEdit"]
 
-    # ── 统计更新 ──
-    def _read_checked(ids):
+    def _read_checked(id_list):
         result = []
-        for cid in ids:
+        for cid in id_list:
             try:
-                cb = items[cid]
-                if cb and cb.Checked:
+                if items[cid].Checked:
                     result.append(cid)
             except Exception:
                 pass
         return result
 
     def _update_stats():
-        tl_c = len(_read_checked(tl_cb_ids))
-        pr_c = len(_read_checked(pr_cb_ids))
+        tl_c = len(_read_checked(tl_ids))
+        pr_c = len(_read_checked(pr_ids))
         items["Stats"].Text = f"{tl_c} x {pr_c} = {tl_c * pr_c} 个渲染任务"
 
-    # ── 回调 ──
     def _on_tl_select_all(ev):
-        for cid in tl_cb_ids:
+        for cid in tl_ids:
             if cid.startswith("TLSKP_"):
                 continue
             try:
@@ -323,8 +294,8 @@ def show():
         _update_stats()
 
     def _on_pr_common(ev):
-        for i, cid in enumerate(pr_cb_ids):
-            name = pr_cb_map.get(cid, "")
+        for cid in pr_ids:
+            name = pr_map.get(cid, "")
             try:
                 items[cid].Checked = _delivery_default(name)
             except Exception:
@@ -334,8 +305,8 @@ def show():
     def _on_submit(ev):
         _log(f"=== 开始提交渲染队列 (v{version_string()}) ===")
         _log(f"项目: {project.GetName()}, 数据库: {pm.GetCurrentDatabase().get('DbName','?')}")
-        tl_checked = [tl_cb_map[cid] for cid in _read_checked(tl_cb_ids) if not cid.startswith("TLSKP_")]
-        pr_checked = [pr_cb_map[cid] for cid in _read_checked(pr_cb_ids)]
+        tl_checked = [tl_map[c] for c in _read_checked(tl_ids) if not c.startswith("TLSKP_")]
+        pr_checked = [pr_map[c] for c in _read_checked(pr_ids)]
         _log(f"选中时间线: {len(tl_checked)} 条, 预设: {len(pr_checked)} 个")
 
         if not tl_checked:
@@ -350,8 +321,7 @@ def show():
             disp.ShowMessage("提示", "请填写项目名称（占位名「项目名称」不可用）")
             return
 
-        export_dir = os.path.join(export_root, _EXPORT_SUBDIR,
-                                  f"{proj_name}{_EXPORT_SUFFIX}")
+        export_dir = os.path.join(export_root, _EXPORT_SUBDIR, f"{proj_name}{_EXPORT_SUFFIX}")
         if not os.path.isdir(export_dir):
             try:
                 os.makedirs(export_dir, exist_ok=True)
@@ -359,7 +329,6 @@ def show():
                 disp.ShowMessage("错误", f"创建目录失败: {e}")
                 return
 
-        # 收集时间线对象
         tl_checked_set = set(tl_checked)
         tl_objs = {}
         for i in range(1, project.GetTimelineCount() + 1):
@@ -399,7 +368,6 @@ def show():
         _log(f"结果: 成功 {success}, 失败 {len(failed)}, 输出目录: {export_dir}")
         disp.ShowMessage("完成", msg)
 
-    # ── 绑定 ──
     win.On.TLSelectAll.Clicked = _on_tl_select_all
     win.On.PRCommon.Clicked = _on_pr_common
     win.On.Submit.Clicked = _on_submit
@@ -410,6 +378,9 @@ def show():
     disp.RunLoop()
     win.Hide()
 
+
+ui = None  # set by show()
+disp = None
 
 if __name__ == "__main__":
     show()
