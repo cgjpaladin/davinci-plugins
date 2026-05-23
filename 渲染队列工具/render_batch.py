@@ -180,7 +180,7 @@ def show():
                         L("PRTitle", "渲染预设", Weight=1),
                         L("PRCount", f"{sum(1 for n in presets if _delivery_default(n))}/{len(presets)} 已选"),
                     ]),
-                    *pr_widgets,
+                    ui.VGroup({"Weight": 0, "Spacing": 1}, pr_widgets),
                     ui.HGroup({"Weight": 0}, [B("PRAll", "常用交付合集")]),
                 ]),
             ]),
