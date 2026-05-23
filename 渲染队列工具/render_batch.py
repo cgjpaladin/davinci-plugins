@@ -57,14 +57,36 @@ def _derive_project_name(project_dir):
     return m.group(1) if m else folder
 
 
-def _get_export_info(project):
+def _get_project_root_from_clip(project):
+    """从一个时间线的第一个视频素材路径推导项目根。"""
     try:
-        root = project.GetSetting("workingDirectory")
+        count = project.GetTimelineCount()
+        for i in range(1, count + 1):
+            t = project.GetTimelineByIndex(i)
+            items = t.GetItemListInTrack("video", 1) or []
+            for it in items:
+                mp = it.GetMediaPoolItem()
+                if mp:
+                    path = mp.GetClipProperty().get("File Path", "")
+                    if path:
+                        return path
     except Exception:
-        root = ""
-    if not root:
-        return "", _PLACEHOLDER_NAME
-    return root, _derive_project_name(root) or _PLACEHOLDER_NAME
+        pass
+    return ""
+
+
+def _get_export_info(project):
+    """获取导出基路径 + 项目名。从素材路径推导。"""
+    clip_path = _get_project_root_from_clip(project)
+    if clip_path:
+        # 往上找匹配日期前缀的文件夹（yyyyMMdd_xxx）
+        p = os.path.abspath(clip_path)
+        while p and p != "/":
+            basename = os.path.basename(p)
+            if re.match(r"^\d{8}_", basename):
+                return p, _derive_project_name(p)
+            p = os.path.dirname(p)
+    return "", _PLACEHOLDER_NAME
 
 
 def _get_folder_timelines(project):
@@ -82,7 +104,8 @@ def _get_folder_timelines(project):
             props = clip.GetClipProperty()
         except Exception:
             continue
-        if props.get("Type", "") != "Timeline":
+        clip_type = props.get("Type", "")
+        if clip_type not in ("Timeline", "时间线"):
             continue
         name = clip.GetName()
         if name not in seen:
