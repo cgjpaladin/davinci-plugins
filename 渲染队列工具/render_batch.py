@@ -83,11 +83,11 @@ def L(id_, text, **extra):
 
 def B(id_, text, **extra):
     """Button — 默认灰色风格。"""
-    return ui.Button({"ID": id_, "Text": text, "StyleSheet": _BTN_STYLE, **extra})
+    return ui.Button({"ID": id_, "Text": text, "StyleSheet": _BTN_STYLE, "Weight": 0, **extra})
 
 def BP(id_, text, **extra):
     """Button — 蓝色主按钮。"""
-    return ui.Button({"ID": id_, "Text": text, "StyleSheet": _BTN_PRIMARY, **extra})
+    return ui.Button({"ID": id_, "Text": text, "StyleSheet": _BTN_PRIMARY, "Weight": 0, **extra})
 
 def CB(id_, text, checked=True, enabled=True):
     """CheckBox。"""
@@ -251,6 +251,8 @@ def show():
                     "StyleSheet": "font-size:11px;", "Weight": 0}),
             ]),
             ui.HGroup({"Spacing": 4, "Weight": 0}, [
+                ui.Label({"ID": "DirNameHint", "Text": "项目名",
+                    "StyleSheet": "color:rgb(150,150,150);font-size:12px;", "Weight": 0}),
                 LE("DirNameEdit", project_name),
                 L("DirSuffix", "_交付版本合集/", Weight=0),
             ]),
