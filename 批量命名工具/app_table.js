@@ -670,32 +670,24 @@ dropZone.addEventListener('drop',e=>{e.preventDefault();dg=0;overlay.classList.r
 // ═══ Drop results from Python ═══
 let _dropCount=0;
 function onDropResult(result){
-  if(!result||!result.files) return;
-  // 防 pywebview 重复触发：全量文件名做指纹
-  const key = result.files.length + '|' + result.files.map(f=>f.basename||f.path.split('/').pop()).sort().join(',');
-  if(window._lastDropKey === key){call('debug_log',`onDropResult: SKIP duplicate`); return;}
-  window._lastDropKey = key;
-  _dropCount++;
-    // 首拖：强制清零（防御未知来源的预注入）
+  if(result&&result.files){
+    _dropCount++;
     if(_firstDrop){_firstDrop=false;call('debug_log',`_firstDrop: was ${files.length}, clearing`);files=[];sel.clear()}
     call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}`);
-    const exist=new Set(files.map(f=>f.path));
-    const fresh=result.files.filter(f=>!exist.has(f.path));
+    // basename 去重（SMB 路径可能变化，basename 不变）
+    const exist=new Set(files.map(f=>f.basename));
+    const fresh=result.files.filter(f=>!exist.has(f.basename));
     const dup=result.files.length-fresh.length;
-    // 如果完全重复，跳过（不清空现有）
     if(fresh.length===0){toast(`全部重复 · ${dup} 个已跳过`);return}
-    files=files.concat(fresh);call("debug_log",`FILES list: ${files.length} total (added ${fresh.length})`);
+    files=files.concat(fresh);
+    call("debug_log",`FILES list: ${files.length} total (added ${fresh.length})`);
     let msg=`已追加 ${fresh.length} 个文件`;
     if(dup) msg+=` · ${dup} 个重复跳过`;
     if(result.subdirs_skipped) msg+=` · ${result.subdirs_skipped} 个子文件夹跳过`;
     if(result.truncated) msg+=` (上限${result.max}个)`;
     renderList();toast(msg);
-    // 只生成新文件的缩略图，已有缩略图的不重复生成
-    const newPaths = fresh.map(f=>f.path).filter(p => !_thumbs[p]);
-    if(newPaths.length){
-      call('debug_log',`loadThumbs: ${newPaths.length} new (skipped ${fresh.length - newPaths.length} cached)`);
-      loadThumbsEx(newPaths);
-    }
+    loadThumbs();
+  }
 }
 
 // ═══ Keyboard ═══
