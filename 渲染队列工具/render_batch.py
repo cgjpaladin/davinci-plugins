@@ -58,6 +58,20 @@ def _log(msg):
         pass
     print(line)
 
+# ── 按钮样式（同去字幕工具）──
+_BTN_STYLE = (
+    "QPushButton{max-height:28px;background-color:rgb(58,58,58);color:rgb(220,220,220);"
+    "border:1px solid rgb(80,80,80);border-radius:4px;padding:4px 12px}"
+    "QPushButton:hover{background-color:rgb(72,72,72)}"
+    "QPushButton:pressed{background-color:rgb(45,45,45)}"
+)
+_BTN_PRIMARY = (
+    "QPushButton{max-height:28px;background-color:rgb(50,120,220);color:rgb(255,255,255);"
+    "border:1px solid rgb(70,140,240);border-radius:4px;padding:4px 12px;font-weight:bold}"
+    "QPushButton:hover{background-color:rgb(65,135,235)}"
+    "QPushButton:pressed{background-color:rgb(40,100,200)}"
+)
+
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shared"))
 from fusionscript_loader import bmd
 
@@ -68,8 +82,12 @@ def L(id_, text, **extra):
     return ui.Label({"ID": id_, "Text": text, **extra})
 
 def B(id_, text, **extra):
-    """Button。"""
-    return ui.Button({"ID": id_, "Text": text, **extra})
+    """Button — 默认灰色风格。"""
+    return ui.Button({"ID": id_, "Text": text, "StyleSheet": _BTN_STYLE, **extra})
+
+def BP(id_, text, **extra):
+    """Button — 蓝色主按钮。"""
+    return ui.Button({"ID": id_, "Text": text, "StyleSheet": _BTN_PRIMARY, **extra})
 
 def CB(id_, text, checked=True, enabled=True):
     """CheckBox。"""
@@ -225,8 +243,7 @@ def show():
         ui.VGroup({"ID": "RootV", "Spacing": 6}, [
             # ── 输出目录（去字幕风格）──
             ui.HGroup({"Spacing": 8, "Weight": 0}, [
-                ui.Button({"ID": "BtnConfirm", "Text": "✓ 确认此路径",
-                    "StyleSheet": "font-size:12px;", "Weight": 0}),
+                B("BtnConfirm", "✓ 确认此路径"),
                 ui.Label({"ID": "DirProjPath", "Text":
                     f"项目: {os.path.basename(export_root)}" if export_root else "未指定项目路径",
                     "StyleSheet": "color:rgb(180,180,180);font-size:11px;", "Weight": 1}),
@@ -268,7 +285,7 @@ def show():
             # ── ③ 操作 ──
             ui.HGroup({"Weight": 0}, [
                 L("Stats", "", Weight=1),
-                B("Submit", "加入渲染队列"),
+                BP("Submit", "加入渲染队列"),
             ]),
         ]),
     ])
