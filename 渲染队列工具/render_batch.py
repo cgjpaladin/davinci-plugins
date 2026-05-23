@@ -223,21 +223,21 @@ def show():
         "Geometry": [100, 100, 580, 600],
     }, [
         ui.VGroup({"ID": "RootV", "Spacing": 6}, [
-            # ── ① 输出目录 ──
-            L("DirSection", "输出目录", StyleSheet="font-size:14px;font-weight:bold;"),
-            ui.HGroup({"Weight": 0, "Spacing": 8}, [
-                L("DirProjLabel", f"项目: {os.path.basename(export_root) if export_root else '未指定'}",
-                  StyleSheet="color:rgb(180,180,180);font-size:11px;", Weight=1),
-                L("DirStatus", "目录已存在" if dir_exists else "目录不存在",
-                  StyleSheet="font-size:11px;"),
+            # ── 输出目录（去字幕风格：无标题，行内路径 + 状态）──
+            ui.HGroup({"Spacing": 8, "Weight": 0}, [
+                ui.Label({"ID": "DirProjPath", "Text":
+                    f"项目: {os.path.basename(export_root)}" if export_root else "未指定项目路径",
+                    "StyleSheet": "color:rgb(180,180,180);font-size:11px;", "Weight": 1}),
+                ui.Label({"ID": "DirStatus", "Text": "目录已存在" if dir_exists else "目录不存在",
+                    "StyleSheet": "font-size:11px;", "Weight": 0}),
             ]),
-            ui.HGroup({"Weight": 0, "Spacing": 4}, [
+            ui.HGroup({"Spacing": 4, "Weight": 0}, [
                 LE("DirNameEdit", project_name),
                 L("DirSuffix", "_交付版本合集/", Weight=0),
             ]),
             # ── 分割线 ──
             ui.Label({"ID": "Sep1", "Text": "━" * 80, "StyleSheet": "font-size:6px;color:#666;"}),
-            # ── ② 时间线 + 预设 ──
+            # ── 时间线 + 预设 ──
             L("TLSection", "时间线 & 渲染预设", StyleSheet="font-size:14px;font-weight:bold;"),
             ui.HGroup({"ID": "MainPanels", "Weight": 10, "Spacing": 8}, [
                 ui.VGroup({"Weight": 1, "Spacing": 2}, [
