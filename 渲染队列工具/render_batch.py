@@ -166,6 +166,7 @@ def show():
     ordered_presets = video_group + audio_group + other_numbered + custom_group
 
     export_root, project_name = _get_export_info(project)
+    export_full = os.path.join(export_root, _EXPORT_SUBDIR, f"{project_name}{_EXPORT_SUFFIX}") if export_root else ""
 
     # ── 生成预创建 CheckBox（达芬奇 UIManager 不支持运行时 AddWidget）──
     # 时间线 CheckBox
@@ -236,7 +237,7 @@ def show():
             ui.VGap(0.01),
             ui.HGroup("DirHeader", [
                 ui.Label("DirTitle", {"Text": "输出目录", "Weight": 1}),
-                ui.Label("DirStatus", {"Text": "目录不存在"}),
+                ui.Label("DirStatus", {"Text": "目录已存在" if (export_full and os.path.isdir(export_full)) else "目录不存在"}),
             ]),
             ui.Label("DirHint", {"Text": f"项目: {os.path.basename(export_root) if export_root else '?'}"}),
             ui.HGroup("DirBar", [
@@ -359,11 +360,12 @@ def show():
                 return
 
         # 收集时间线对象
+        tl_checked_set = set(tl_checked)
         tl_objs = {}
         for i in range(1, project.GetTimelineCount() + 1):
             try:
                 t = project.GetTimelineByIndex(i)
-                if t.GetName() in tl_checked:
+                if t.GetName() in tl_checked_set:
                     tl_objs[t.GetName()] = t
             except Exception:
                 continue
