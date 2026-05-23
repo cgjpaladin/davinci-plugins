@@ -14,7 +14,23 @@ import time
 from datetime import datetime
 
 # ── 配置区：新增预设无需改代码 ──
-_COMMON_DELIVERY_RE = re.compile(r"^(0[0-9]|1[01])_")
+# 任意 `xx_` 开头的预设都算「常用交付合集」
+_COMMON_DELIVERY_RE = re.compile(r"^\d{2}_")
+# 分组映射：根据编号自动归类
+def _preset_group_index(name):
+    """返回 0=成片, 1=分轨, 2=特殊。编号越大越往后。"""
+    m = re.match(r"^(\d{2})_", name)
+    if not m:
+        return 3  # 自定义
+    n = int(m.group(1))
+    if n == 0:
+        return 2  # 00 = 特殊
+    if 1 <= n <= 6:
+        return 0  # 成片
+    if 7 <= n <= 9:
+        return 1  # 分轨
+    return 2  # 10+ = 特殊（未来扩展如 12_、25_）
+
 _TIMELINE_NAME_RE = re.compile(r"^\d{2,3}$")
 _PLACEHOLDER_NAME = "项目名称"
 _EXPORT_SUFFIX = "_交付版本合集"
