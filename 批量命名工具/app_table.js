@@ -180,7 +180,7 @@ function renderList(force){
 
   const rows = [...tbody.querySelectorAll('tr')];
   if(force || rows.length !== files.length){
-    call('debug_log',`renderList: FORCE rows=${rows.length} files=${files.length}`);
+    call('debug_log',`renderList: FORCE rows=${rows.length} files=${files.length} caller=${new Error().stack.split('\n')[2].trim().split('@')[0]||'?'}`);
     tbody.innerHTML = '';
     files.forEach((f,i)=>{ tbody.appendChild(_buildRow(f,i)); });
   } else {
