@@ -132,6 +132,30 @@ print('  ✅ SMB 可达')
         done
         [ $fail -ne 0 ] && echo "❌ 语法错误" && exit 1
 
+        # 版本 bump（VERSION_BUMP=patch|minor|major|none，默认 patch）
+        if [ "${VERSION_BUMP:-patch}" != "none" ] && [ "${SKIP_VERSION_BUMP:-}" != "1" ]; then
+            echo ""
+            local bump_level="${VERSION_BUMP:-patch}"
+            local new_ver=$(cd "$PRODUCT_DIR" && python3 -c "
+import re
+with open('config.py') as f: code = f.read()
+level = '${bump_level}'
+if level == 'major':
+    code = re.sub(r'__version__\s*=\s*\"(\d+)\.(\d+)\.(\d+)\"',
+                  lambda m: f'__version__ = \"{int(m.group(1))+1}.0.0\"', code)
+elif level == 'minor':
+    code = re.sub(r'__version__\s*=\s*\"(\d+)\.(\d+)\.(\d+)\"',
+                  lambda m: f'__version__ = \"{m.group(1)}.{int(m.group(2))+1}.0\"', code)
+else:  # patch
+    code = re.sub(r'__version__\s*=\s*\"(\d+)\.(\d+)\.(\d+)\"',
+                  lambda m: f'__version__ = \"{m.group(1)}.{m.group(2)}.{int(m.group(3))+1}\"', code)
+with open('config.py', 'w') as f: f.write(code)
+from config import version_string
+print(version_string())
+" 2>/dev/null)
+            echo "🏷 本地版本 bump → $new_ver"
+        fi
+
         # 本地 launcher 部署
         echo ""
         echo "── launcher 部署 ──"
@@ -330,28 +354,6 @@ print(f'  gray.json → v$ver')
         sed -i '' "s/^__channel__ = \"\"/__channel__ = \"$WAS_CHANNEL\"/" config.py
         echo "  恢复 channel: $WAS_CHANNEL"
     fi
-
-    # ── 推完自动 bump 版本号（本地进入下一个开发周期）──
-    # VERSION_BUMP=patch|minor|major，默认 patch
-    local bump_level="${VERSION_BUMP:-patch}"
-    local new_ver=$(cd "$PRODUCT_DIR" && python3 -c "
-import re
-with open('config.py') as f: code = f.read()
-level = '${bump_level}'
-if level == 'major':
-    code = re.sub(r'__version__\s*=\s*\"(\d+)\.(\d+)\.(\d+)\"',
-                  lambda m: f'__version__ = \"{int(m.group(1))+1}.0.0\"', code)
-elif level == 'minor':
-    code = re.sub(r'__version__\s*=\s*\"(\d+)\.(\d+)\.(\d+)\"',
-                  lambda m: f'__version__ = \"{m.group(1)}.{int(m.group(2))+1}.0\"', code)
-else:  # patch
-    code = re.sub(r'__version__\s*=\s*\"(\d+)\.(\d+)\.(\d+)\"',
-                  lambda m: f'__version__ = \"{m.group(1)}.{m.group(2)}.{int(m.group(3))+1}\"', code)
-with open('config.py', 'w') as f: f.write(code)
-from config import version_string
-print(version_string())
-" 2>/dev/null)
-    echo "🏷 本地版本 bump → $new_ver"
 
     # 5. diff 检查
     if [ "$VERIFY_MODE" = "full" ]; then
