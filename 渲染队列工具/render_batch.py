@@ -246,6 +246,7 @@ def show():
                     *tl_widgets,
                     HG(B("TLSelectAll", "全选合规")),
                 ]),
+                ui.Label({"ID": "VDivider", "Text": "┃", "StyleSheet": "font-size:18px;color:#666;", "Weight": 0}),
                 ui.VGroup({"Weight": 1, "Spacing": 2}, [
                     ui.HGroup({"Weight": 0}, [
                         L("PRTitle", "渲染预设", Weight=1),
