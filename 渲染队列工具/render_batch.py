@@ -223,8 +223,10 @@ def show():
         "Geometry": [100, 100, 580, 600],
     }, [
         ui.VGroup({"ID": "RootV", "Spacing": 6}, [
-            # ── 输出目录（去字幕风格：无标题，行内路径 + 状态）──
+            # ── 输出目录（去字幕风格）──
             ui.HGroup({"Spacing": 8, "Weight": 0}, [
+                ui.Button({"ID": "BtnConfirm", "Text": "✓ 确认此路径",
+                    "StyleSheet": "font-size:12px;", "Weight": 0}),
                 ui.Label({"ID": "DirProjPath", "Text":
                     f"项目: {os.path.basename(export_root)}" if export_root else "未指定项目路径",
                     "StyleSheet": "color:rgb(180,180,180);font-size:11px;", "Weight": 1}),
@@ -309,6 +311,23 @@ def show():
                 pass
         _update_stats()
 
+    def _on_confirm(ev):
+        proj_name = dir_edit.Text.strip()
+        if not proj_name or proj_name == _PLACEHOLDER_NAME:
+            disp.ShowMessage("提示", "请填写项目名称（占位名「项目名称」不可用）")
+            return
+        export_dir = os.path.join(export_root, _EXPORT_SUBDIR, f"{proj_name}{_EXPORT_SUFFIX}")
+        if not os.path.isdir(export_dir):
+            try:
+                os.makedirs(export_dir, exist_ok=True)
+                items["DirStatus"].Text = "目录已创建"
+            except Exception as e:
+                disp.ShowMessage("错误", f"创建目录失败: {e}")
+                return
+        else:
+            items["DirStatus"].Text = "目录已存在"
+        _log(f"确认路径: {export_dir}")
+
     def _on_submit(ev):
         _log(f"=== 开始提交渲染队列 (v{version_string()}) ===")
         _log(f"项目: {project.GetName()}, 数据库: {pm.GetCurrentDatabase().get('DbName','?')}")
@@ -378,6 +397,7 @@ def show():
     win.On["TLSelectAll"].Clicked = _on_tl_select_all
     win.On["PRCommon"].Clicked = _on_pr_common
     win.On["Submit"].Clicked = _on_submit
+    win.On["BtnConfirm"].Clicked = _on_confirm
     win.On["RenderBatchWin"].Close = lambda ev: disp.ExitLoop()
 
     _update_stats()
