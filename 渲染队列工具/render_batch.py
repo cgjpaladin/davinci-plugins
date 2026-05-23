@@ -225,11 +225,13 @@ def show():
         ui.VGroup({"ID": "RootV", "Spacing": 6}, [
             # ── ① 输出目录 ──
             L("DirSection", "输出目录", StyleSheet="font-size:14px;font-weight:bold;"),
-            ui.HGroup({"Weight": 0}, [
-                L("DirHint", f"项目: {os.path.basename(export_root) if export_root else '?'}", Weight=1),
-                L("DirStatus", "目录已存在" if dir_exists else "目录不存在"),
+            ui.HGroup({"Weight": 0, "Spacing": 8}, [
+                L("DirProjLabel", f"项目: {os.path.basename(export_root) if export_root else '未指定'}",
+                  StyleSheet="color:rgb(180,180,180);font-size:11px;", Weight=1),
+                L("DirStatus", "目录已存在" if dir_exists else "目录不存在",
+                  StyleSheet="font-size:11px;"),
             ]),
-            ui.HGroup({"Weight": 0}, [
+            ui.HGroup({"Weight": 0, "Spacing": 4}, [
                 LE("DirNameEdit", project_name),
                 L("DirSuffix", "_交付版本合集/", Weight=0),
             ]),
