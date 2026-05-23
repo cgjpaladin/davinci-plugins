@@ -187,6 +187,14 @@ class RenamerAPI:
                 ext = os.path.splitext(p)[1].lower()
                 if ext not in VIDEO_EXT: continue
                 if p in {f["path"] for f in files}: duplicates += 1; continue
+                # 内容指纹：size + 前 64KB hash（同一文件走不同路径也能去重）
+                try:
+                    import hashlib
+                    st = os.stat(p)
+                    fp_key = f"{st.st_size}:{hashlib.md5(open(p,'rb').read(65536)).hexdigest()}"
+                except OSError:
+                    fp_key = p  # fallback to path
+                if fp_key in {f.get("fp","") for f in files}: duplicates += 1; continue
                 parsed = parse_filename(p)
                 fields = {}
                 for fd in FIELD_CONFIG:
@@ -195,7 +203,7 @@ class RenamerAPI:
                     elif defaults and k in defaults and k not in _EMPTY_KEYS: fields[k] = defaults.get(k, fd["def"])
                     elif k in _EMPTY_KEYS: fields[k] = ""
                     else: fields[k] = fd["def"]
-                files.append({"path":p,"basename":os.path.basename(p),"ext":os.path.splitext(os.path.basename(p))[1],"fields":fields})
+                files.append({"path":p,"basename":os.path.basename(p),"ext":os.path.splitext(os.path.basename(p))[1],"fields":fields,"fp":fp_key})
             elif os.path.isdir(p):
                 try:
                     for f in sorted(os.listdir(p)):
@@ -204,6 +212,12 @@ class RenamerAPI:
                             ext2 = os.path.splitext(fp)[1].lower()
                             if ext2 not in VIDEO_EXT: continue
                             if fp in {x["path"] for x in files}: duplicates += 1; continue
+                            try:
+                                st = os.stat(fp)
+                                fp_key2 = f"{st.st_size}:{hashlib.md5(open(fp,'rb').read(65536)).hexdigest()}"
+                            except OSError:
+                                fp_key2 = fp
+                            if fp_key2 in {x.get("fp","") for x in files}: duplicates += 1; continue
                             if len(files) >= MAX_FILES: truncated = True; break
                             parsed = parse_filename(fp)
                             fields = {}
@@ -213,7 +227,7 @@ class RenamerAPI:
                                 elif defaults and k in defaults and k not in _EMPTY_KEYS: fields[k] = defaults.get(k, fd["def"])
                                 elif k in _EMPTY_KEYS: fields[k] = ""
                                 else: fields[k] = fd["def"]
-                            files.append({"path":fp,"basename":os.path.basename(fp),"ext":os.path.splitext(os.path.basename(fp))[1],"fields":fields})
+                            files.append({"path":fp,"basename":os.path.basename(fp),"ext":os.path.splitext(os.path.basename(fp))[1],"fields":fields,"fp":fp_key2})
                         elif os.path.isdir(fp): subdirs += 1
                 except: pass
 
