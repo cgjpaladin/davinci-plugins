@@ -671,10 +671,12 @@ dropZone.addEventListener('drop',e=>{e.preventDefault();dg=0;overlay.classList.r
 let _dropCount=0;
 function onDropResult(result){
   if(!result||!result.files) return;
-  // 防 pywebview 重复触发 DOM drop 事件
-  const key = `${result.files.length}:${result.files[0]?.path||''}:${result.files.length>1?result.files[result.files.length-1].path:''}`;
-  if(window._lastDropKey === key){call('debug_log',`onDropResult: SKIP duplicate drop (key=${key})`); return;}
-  window._lastDropKey = key;
+  // 防 pywebview 重复触发 DOM drop 事件（SMB 路径可能变化，用时间窗口）
+  const now = Date.now();
+  if(now - (window._lastDropTime||0) < 800){
+    call('debug_log',`onDropResult: SKIP rapid-fire drop (${result.files.length} files, ${now - window._lastDropTime}ms)`); return;
+  }
+  window._lastDropTime = now;
   _dropCount++;
     // 首拖：强制清零（防御未知来源的预注入）
     if(_firstDrop){_firstDrop=false;call('debug_log',`_firstDrop: was ${files.length}, clearing`);files=[];sel.clear()}
