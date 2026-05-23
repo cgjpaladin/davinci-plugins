@@ -431,6 +431,7 @@ function activateEdit(td, key, i){
 
   // ═══ Commit logic ═══
   const commit = (cancel) => {
+    el.remove(); // 物理销毁编辑控件，杜绝残留
     td.classList.remove('editing');
     if(cancel){
       // 取消：恢复旧值
