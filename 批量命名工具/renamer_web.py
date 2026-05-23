@@ -437,7 +437,14 @@ if __name__ == "__main__":
     # 拖放：用 loaded 事件在 DOM 就绪后绑定 Python 端 handler
     def _bind_drop():
         from webview.dom import DOMEventHandler
+        _drop_state = [0]  # 上一次处理时间戳，防 pywebview 重复触发
         def _on_drop(e):
+            import time
+            now = time.time()
+            if now - _drop_state[0] < 0.8:
+                _log.info(f"DOM drop: SKIP duplicate fire ({(now-_drop_state[0])*1000:.0f}ms gap)")
+                return
+            _drop_state[0] = now
             files = e['dataTransfer']['files']
             paths = []
             for f in files:
