@@ -271,7 +271,7 @@ function _initTBodyClick(){
     if(isNaN(i)) return;
     if(td.classList.contains('editing')) return;
     const key = td.dataset.key;
-    const isField = key && key !== 'tk' && !td.classList.contains('locked');
+    const isField = key && key !== 'tk' && !td.classList.contains('locked') && !td.classList.contains('readonly');
 
     if(isField){
       const now = Date.now();
@@ -325,7 +325,13 @@ function buildCellTD(key, ff, i){
   if(key === 'desc'){
     const method = files[i].fields.method || '';
     const cfg = methodDescMap[method];
-    if(cfg && cfg.mode === 'locked'){
+    if(!cfg){
+      const s = document.createElement('span'); s.textContent = '—';
+      td.appendChild(s);
+      td.classList.add('readonly');
+      return td;
+    }
+    if(cfg.mode === 'locked'){
       const s = document.createElement('span'); s.textContent = v || '—';
       td.appendChild(s);
       td.classList.add('locked');
