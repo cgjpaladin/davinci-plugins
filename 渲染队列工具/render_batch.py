@@ -168,12 +168,12 @@ def show():
         print("项目没有渲染预设")
         return
 
-    # 预设分组
-    delivery_group = [n for n in preset_names if _preset_group_index(n) == 0]
-    audio_group = [n for n in preset_names if _preset_group_index(n) == 1]
-    special_group = [n for n in preset_names if _preset_group_index(n) == 2]
-    custom_group = [n for n in preset_names if _preset_group_index(n) == 3]
-    ordered_presets = delivery_group + split_group + special_group + custom_group
+    # 预设按编号自然排序：0x_ 视频文件, 7-9_ 音频文件, 其余放后面
+    video_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and 1 <= int(n[:2]) <= 6]
+    audio_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and 7 <= int(n[:2]) <= 9]
+    other_numbered = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and n not in set(video_group + audio_group)]
+    custom_group = [n for n in preset_names if not _COMMON_DELIVERY_RE.match(n)]
+    ordered_presets = video_group + audio_group + other_numbered + custom_group
 
     export_root, project_name = _get_export_info(project)
 
@@ -204,34 +204,34 @@ def show():
     pr_cb_ids = []
     pr_cb_map = {}
     pr_widgets = []
-    has_delivery = bool(delivery_group)
+    has_video = bool(video_group)
     has_audio = bool(audio_group)
-    need_sep1 = has_delivery and (has_audio or special_group or custom_group)
+    need_sep = has_video and (has_audio or other_numbered or custom_group)
 
-    for i, name in enumerate(delivery_group):
+    for i, name in enumerate(video_group):
         cb_id = f"PRCB_{i:02d}"
         pr_cb_ids.append(cb_id)
         pr_cb_map[cb_id] = name
         pr_widgets.append(_make_checkbox(ui, cb_id, name, True, True))
-    idx = len(delivery_group)
-    if need_sep1:
-        pr_widgets.append(_sep_label("音频分离"))
+    idx = len(video_group)
+    if need_sep:
+        pr_widgets.append(_sep_label("音频"))
     for name in audio_group:
         cb_id = f"PRCB_{idx:02d}"
         idx += 1
         pr_cb_ids.append(cb_id)
         pr_cb_map[cb_id] = name
         pr_widgets.append(_make_checkbox(ui, cb_id, name, True, True))
-    if special_group:
-        pr_widgets.append(_sep_label("特殊"))
-    for name in special_group:
+    if other_numbered:
+        pr_widgets.append(_sep_label("其他"))
+    for name in other_numbered:
         cb_id = f"PRCB_{idx:02d}"
         idx += 1
         pr_cb_ids.append(cb_id)
         pr_cb_map[cb_id] = name
         pr_widgets.append(_make_checkbox(ui, cb_id, name, True, True))
     if custom_group:
-        pr_widgets.append(_sep_label("自定义"))
+        pr_widgets.append(_sep_label("其他预设"))
     for name in custom_group:
         cb_id = f"PRCB_{idx:02d}"
         idx += 1
