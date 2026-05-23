@@ -672,8 +672,8 @@ let _dropCount=0;
 function onDropResult(result){
   if(!result||!result.files) return;
   // 防 pywebview 重复触发 DOM drop 事件
-  const key = JSON.stringify(result.files.map(f=>f.path).sort());
-  if(window._lastDropKey === key){call('debug_log',`onDropResult: SKIP duplicate drop ${result.files.length} files`); return;}
+  const key = `${result.files.length}:${result.files[0]?.path||''}:${result.files.length>1?result.files[result.files.length-1].path:''}`;
+  if(window._lastDropKey === key){call('debug_log',`onDropResult: SKIP duplicate drop (key=${key})`); return;}
   window._lastDropKey = key;
   _dropCount++;
     // 首拖：强制清零（防御未知来源的预注入）
