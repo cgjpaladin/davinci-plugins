@@ -214,7 +214,6 @@ def show():
         "WindowTitle": f"{PRODUCT_NAME} v{version_string()}",
         "ID": "RenderBatchWin",
         "Geometry": [100, 100, 580, 720],
-        "FixedSize": [-1, 720],
     }, win_layout)
     win.RecalcLayout()
     items = win.GetItems()
