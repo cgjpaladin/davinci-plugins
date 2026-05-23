@@ -88,6 +88,7 @@ def show():
     if not fu:
         print("Fusion 不可用")
         return
+    ui = fu.UIManager
     pm = resolve.GetProjectManager()
     project = pm.GetCurrentProject()
     if not project:
