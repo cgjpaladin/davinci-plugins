@@ -18,18 +18,16 @@ from datetime import datetime
 _COMMON_DELIVERY_RE = re.compile(r"^\d{2}_")
 # 分组映射：根据编号自动归类
 def _preset_group_index(name):
-    """返回 0=成片, 1=分轨, 2=特殊。编号越大越往后。"""
+    """返回 0=交付版, 1=音频分离, 2=特殊, 3=自定义。"""
     m = re.match(r"^(\d{2})_", name)
     if not m:
         return 3  # 自定义
     n = int(m.group(1))
-    if n == 0:
-        return 2  # 00 = 特殊
     if 1 <= n <= 6:
-        return 0  # 成片
+        return 0  # 交付版（视频）
     if 7 <= n <= 9:
-        return 1  # 分轨
-    return 2  # 10+ = 特殊（未来扩展如 12_、25_）
+        return 1  # 音频分离（LPCM）
+    return 2  # 特殊（00、10+）
 
 _TIMELINE_NAME_RE = re.compile(r"^\d{2,3}$")
 _PLACEHOLDER_NAME = "项目名称"
@@ -170,13 +168,11 @@ def show():
         print("项目没有渲染预设")
         return
 
-    # 预设分组（纯展示，不影响选择逻辑）
-    delivery_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and int(n[:2]) <= 6]
-    split_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and 7 <= int(n[:2]) <= 9]
-    # 特殊：00_竖屏、10_、11_及以上
-    special_ids = set(delivery_group + split_group)
-    special_group = [n for n in preset_names if _COMMON_DELIVERY_RE.match(n) and n not in special_ids]
-    custom_group = [n for n in preset_names if not _COMMON_DELIVERY_RE.match(n)]
+    # 预设分组
+    delivery_group = [n for n in preset_names if _preset_group_index(n) == 0]
+    audio_group = [n for n in preset_names if _preset_group_index(n) == 1]
+    special_group = [n for n in preset_names if _preset_group_index(n) == 2]
+    custom_group = [n for n in preset_names if _preset_group_index(n) == 3]
     ordered_presets = delivery_group + split_group + special_group + custom_group
 
     export_root, project_name = _get_export_info(project)
@@ -209,8 +205,8 @@ def show():
     pr_cb_map = {}
     pr_widgets = []
     has_delivery = bool(delivery_group)
-    has_split = bool(split_group)
-    need_sep1 = has_delivery and (has_split or special_group or custom_group)
+    has_audio = bool(audio_group)
+    need_sep1 = has_delivery and (has_audio or special_group or custom_group)
 
     for i, name in enumerate(delivery_group):
         cb_id = f"PRCB_{i:02d}"
@@ -219,8 +215,8 @@ def show():
         pr_widgets.append(_make_checkbox(ui, cb_id, name, True, True))
     idx = len(delivery_group)
     if need_sep1:
-        pr_widgets.append(_sep_label("声轨分离"))
-    for name in split_group:
+        pr_widgets.append(_sep_label("音频分离"))
+    for name in audio_group:
         cb_id = f"PRCB_{idx:02d}"
         idx += 1
         pr_cb_ids.append(cb_id)
