@@ -48,8 +48,6 @@ _window = None  # 存引用
 
 
 class RenamerAPI:
-    _file_fp = set()  # (size, md5_head) 跨批次去重
-
     def pick_dest_folder(self):
         """打开文件夹选择框，返回路径"""
         result = _window.create_file_dialog(webview.FOLDER_DIALOG)
@@ -180,8 +178,6 @@ class RenamerAPI:
         defaults = _saved_defaults
         _EMPTY_KEYS = {'ep','sc','gr','ver'}
         VIDEO_EXT = {'.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw'}
-        import hashlib
-
         for p_ in paths_[:MAX_FILES]:
             if len(files) >= MAX_FILES: truncated = True; break
             p = str(p_).strip()
@@ -191,15 +187,6 @@ class RenamerAPI:
                 ext = os.path.splitext(p)[1].lower()
                 if ext not in VIDEO_EXT: continue
                 if p in {f["path"] for f in files}: duplicates += 1; continue
-                # 内容指纹去重（尺寸 + 前 64KB MD5）
-                try:
-                    st = os.stat(p)
-                    fp_key = (st.st_size, hashlib.md5(open(p,'rb').read(65536)).hexdigest())
-                except OSError:
-                    fp_key = None
-                if fp_key and fp_key in RenamerAPI._file_fp:
-                    duplicates += 1; continue
-                if fp_key: RenamerAPI._file_fp.add(fp_key)
                 parsed = parse_filename(p)
                 fields = {}
                 for fd in FIELD_CONFIG:
@@ -217,14 +204,6 @@ class RenamerAPI:
                             ext2 = os.path.splitext(fp)[1].lower()
                             if ext2 not in VIDEO_EXT: continue
                             if fp in {x["path"] for x in files}: duplicates += 1; continue
-                            try:
-                                st = os.stat(fp)
-                                fp_key2 = (st.st_size, hashlib.md5(open(fp,'rb').read(65536)).hexdigest())
-                            except OSError:
-                                fp_key2 = None
-                            if fp_key2 and fp_key2 in RenamerAPI._file_fp:
-                                duplicates += 1; continue
-                            if fp_key2: RenamerAPI._file_fp.add(fp_key2)
                             if len(files) >= MAX_FILES: truncated = True; break
                             parsed = parse_filename(fp)
                             fields = {}
