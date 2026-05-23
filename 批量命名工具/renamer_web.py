@@ -437,9 +437,18 @@ if __name__ == "__main__":
     # 拖放：用 loaded 事件在 DOM 就绪后绑定 Python 端 handler
     def _bind_drop():
         from webview.dom import DOMEventHandler
-        import hashlib
-        _last_fp = [None]
+        import threading
+        _drop_lock = threading.Lock()
+        _last_drop_ts = [0]
         def _on_drop(e):
+            import time
+            now = time.time()
+            if now - _last_drop_ts[0] < 4:
+                _log.info(f"DOM drop: locked ({(now-_last_drop_ts[0])*1000:.0f}ms since last drop)")
+                return
+            with _drop_lock:
+                if now - _last_drop_ts[0] < 4: return  # double-check under lock
+                _last_drop_ts[0] = now
             files = e['dataTransfer']['files']
             paths = []
             for f in files:
@@ -455,12 +464,6 @@ if __name__ == "__main__":
                                 paths.append(sfp)
                     except: pass
             if not paths: return
-            # MD5 指纹去重（不限时间，pywebview 延迟多久都能拦住）
-            fp = hashlib.md5(('|'.join(sorted(os.path.basename(p) for p in paths))).encode()).hexdigest()
-            if fp == _last_fp[0]:
-                _log.info(f"DOM drop: SKIP duplicate (fp={fp[:8]})")
-                return
-            _last_fp[0] = fp
             _log.info(f"DOM drop: {len(paths)} items")
             result = api._process_paths(paths)
             _window.evaluate_js(f"onDropResult({json.dumps(result)})")
