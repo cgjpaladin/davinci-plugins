@@ -185,7 +185,7 @@ class RenamerAPI:
             if len(files) >= MAX_FILES: truncated = True; break
             p = str(p_).strip()
             if p.startswith("file://"): p = unquote(p[7:])
-            p = os.path.realpath(p)
+            # _on_drop 已 resolve，不重复 realpath（SMB 两次结果不同）
 
             if os.path.isfile(p):
                 ext = os.path.splitext(p)[1].lower()

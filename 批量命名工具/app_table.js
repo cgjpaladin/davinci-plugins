@@ -674,8 +674,8 @@ function onDropResult(result){
     _dropCount++;
     if(_firstDrop){_firstDrop=false;call('debug_log',`_firstDrop: was ${files.length}, clearing`);files=[];sel.clear()}
     call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}`);
-    const exist=new Set(files.map(f=>f.basename));
-    const fresh=result.files.filter(f=>!exist.has(f.basename));
+    const exist=new Set(files.map(f=>f.path));
+    const fresh=result.files.filter(f=>!exist.has(f.path));
     const dup=result.files.length-fresh.length;
     if(fresh.length===0){toast(`全部重复 · ${dup} 个已跳过`);return}
     files=files.concat(fresh);
