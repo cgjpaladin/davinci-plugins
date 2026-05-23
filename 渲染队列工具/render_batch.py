@@ -368,10 +368,10 @@ def show():
         _log(f"结果: 成功 {success}, 失败 {len(failed)}, 输出目录: {export_dir}")
         disp.ShowMessage("完成", msg)
 
-    win.On.TLSelectAll.Clicked = _on_tl_select_all
-    win.On.PRCommon.Clicked = _on_pr_common
-    win.On.Submit.Clicked = _on_submit
-    win.On.RenderBatchWin.Close = lambda ev: disp.ExitLoop()
+    win.On["TLSelectAll"].Clicked = _on_tl_select_all
+    win.On["PRCommon"].Clicked = _on_pr_common
+    win.On["Submit"].Clicked = _on_submit
+    win.On["RenderBatchWin"].Close = lambda ev: disp.ExitLoop()
 
     _update_stats()
     win.Show()
