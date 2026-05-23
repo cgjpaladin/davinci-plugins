@@ -273,6 +273,7 @@ function _initTBodyClick(){
     if(isNaN(i)) return;
     if(td.classList.contains('editing')) return;
     const key = td.dataset.key;
+    call('debug_log',`click: td=${td.className} i=${i} key=${key||'-'} detail=${e.detail}`);
     const isField = key && key !== 'tk' && !td.classList.contains('locked') && !td.classList.contains('readonly');
 
     if(isField){
@@ -280,8 +281,10 @@ function _initTBodyClick(){
       const sameCell = (window._lastClick === td && (now - (window._lastTime||0)) < 350);
       window._lastClick = td; window._lastTime = now;
       if(sameCell){
+        call('debug_log',`dblClick: activate ${key} on row ${i}`);
         activateEdit(td, key, i);
       } else {
+        call('debug_log',`singleClick: rowClick ${i}`);
         rowClick(e, i);
       }
       return;

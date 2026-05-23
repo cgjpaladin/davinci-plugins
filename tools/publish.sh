@@ -225,6 +225,8 @@ publish_push_all() {
     local smb_stale=""
     for f in "$PRODUCT_DIR"/*.py; do
         [ ! -f "$f" ] && continue
+        # config.py 跳过（版本号/channel 每次推送都变）
+        [ "$(basename "$f")" = "config.py" ] && continue
         local smb_f="$SMB_DIR/$(basename "$f")"
         [ ! -f "$smb_f" ] && continue
         local lm=$(stat -f %m "$f" 2>/dev/null || echo 0)
