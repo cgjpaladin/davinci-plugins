@@ -270,6 +270,7 @@ def show():
         if not os.path.isdir(ed):
             try: os.makedirs(ed, exist_ok=True)
             except Exception as e: disp.ShowMessage("错误", f"{e}"); return
+
         ts = set(tl_ok)
         to = {}
         for i in range(1, project.GetTimelineCount() + 1):
@@ -277,20 +278,23 @@ def show():
                 t = project.GetTimelineByIndex(i)
                 if t.GetName() in ts: to[t.GetName()] = t
             except: continue
+
+        # 路径只设一次
+        project.SetRenderSettings({"TargetDir": ed})
+
         failed, ok = [], 0
-        for tn in sorted(tl_ok):
-            t = to.get(tn)
-            if not t: failed.append(tn); continue
-            project.SetCurrentTimeline(t)
-            for pn in pr_ok:
-                try:
-                    if not project.LoadRenderPreset(pn): failed.append(f"{tn}->{pn}"); continue
-                    project.SetRenderSettings({"TargetDir": ed})
-                    jid = project.AddRenderJob()
-                    if jid: ok += 1
-                    else: failed.append(f"{tn}->{pn}")
-                except Exception as e: failed.append(f"{tn}->{pn}({e})")
-                time.sleep(0.03)
+        for pn in pr_ok:
+            if not project.LoadRenderPreset(pn):
+                failed.append(f"预设加载失败: {pn}"); continue
+            _log(f"预设: {pn}")
+            for tn in sorted(tl_ok):
+                t = to.get(tn)
+                if not t: failed.append(tn); continue
+                project.SetCurrentTimeline(t)
+                jid = project.AddRenderJob()
+                if jid: ok += 1
+                else: failed.append(f"{tn}->{pn}")
+
         msg = f"成功添加 {ok} 个渲染任务"
         if failed: msg += f"\n跳过 {len(failed)} 个: " + " ".join(failed[:10])
         _log(f"结果: 成功 {ok}, 失败 {len(failed)}, 目录: {ed}")
