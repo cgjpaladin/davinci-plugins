@@ -241,13 +241,12 @@ def show():
         "Geometry": [100, 100, 580, 600],
     }, [
         ui.VGroup({"ID": "RootV", "Spacing": 6}, [
-            # ── 输出目录（去字幕风格：一行搞定）──
+            # ── 输出目录（去字幕风格）──
             ui.HGroup({"Spacing": 8, "Weight": 0}, [
                 B("BtnConfirm", "✓ 确认此路径"),
-                LE("DirNameEdit", project_name),
-                L("DirSuffix", "_交付版本合集/", Weight=0),
-                ui.Label({"ID": "DirFullPath", "Text":
-                    f"→ {os.path.join(export_root, _EXPORT_SUBDIR, project_name + _EXPORT_SUFFIX)}" if export_root else "请先打开一个项目",
+                B("BtnPick", "选择项目路径"),
+                ui.Label({"ID": "DirProjName", "Text":
+                    f"项目: {project_name}" if export_root else "未指定项目路径",
                     "StyleSheet": "color:rgb(180,180,180);font-size:11px;", "Weight": 1}),
                 ui.Label({"ID": "DirStatus", "Text": "已存在" if dir_exists else "需创建",
                     "StyleSheet": "color:rgb(50,180,80);font-size:11px;" if dir_exists else "color:rgb(235,110,0);font-size:11px;",
@@ -291,7 +290,10 @@ def show():
     win.RecalcLayout()
 
     items = win.GetItems()
-    dir_edit = items["DirNameEdit"]
+
+    # ── 可变状态（用户可手动选择其他路径）──
+    _export_root = export_root
+    _project_name = project_name
 
     def _read_checked(id_list):
         result = []
@@ -328,12 +330,12 @@ def show():
         _update_stats()
 
     def _on_confirm(ev):
-        proj_name = dir_edit.Text.strip()
-        if not proj_name or proj_name == _PLACEHOLDER_NAME:
-            disp.ShowMessage("提示", "请填写项目名称")
+        nonlocal _export_root, _project_name
+        if not _export_root or _project_name == _PLACEHOLDER_NAME:
+            disp.ShowMessage("提示", "请先选择项目或填写项目名称")
             return
-        export_dir = os.path.join(export_root, _EXPORT_SUBDIR, f"{proj_name}{_EXPORT_SUFFIX}")
-        items["DirFullPath"].Text = f"→ {export_dir}"
+        export_dir = os.path.join(_export_root, _EXPORT_SUBDIR, f"{_project_name}{_EXPORT_SUFFIX}")
+        items["DirProjName"].Text = f"项目: {_project_name}"
         if not os.path.isdir(export_dir):
             try:
                 os.makedirs(export_dir, exist_ok=True)
@@ -347,6 +349,24 @@ def show():
             items["DirStatus"].Text = "已存在"
             items["DirStatus"]["StyleSheet"] = "color:rgb(50,180,80);font-size:11px;"
         _log(f"确认路径: {export_dir}")
+
+    def _on_pick(ev):
+        nonlocal _export_root, _project_name
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        path = filedialog.askdirectory(title="选择项目根目录（包含 11_导出 的文件夹）")
+        root.destroy()
+        if not path:
+            return
+        _export_root = path
+        _project_name = _derive_project_name(path) or os.path.basename(path)
+        items["DirProjName"].Text = f"项目: {_project_name}"
+        export_dir = os.path.join(_export_root, _EXPORT_SUBDIR, f"{_project_name}{_EXPORT_SUFFIX}")
+        items["DirStatus"].Text = "已存在" if os.path.isdir(export_dir) else "需创建"
+        items["DirStatus"]["StyleSheet"] = "color:rgb(50,180,80);font-size:11px;" if os.path.isdir(export_dir) else "color:rgb(235,110,0);font-size:11px;"
+        _log(f"手动选择: {path} → {_project_name}")
 
     def _on_submit(ev):
         _log(f"=== 开始提交渲染队列 (v{version_string()}) ===")
@@ -362,12 +382,12 @@ def show():
             disp.ShowMessage("提示", "没有选中渲染预设")
             return
 
-        proj_name = dir_edit.Text.strip()
+        proj_name = _project_name
         if not proj_name or proj_name == _PLACEHOLDER_NAME:
             disp.ShowMessage("提示", "请填写项目名称（占位名「项目名称」不可用）")
             return
 
-        export_dir = os.path.join(export_root, _EXPORT_SUBDIR, f"{proj_name}{_EXPORT_SUFFIX}")
+        export_dir = os.path.join(_export_root, _EXPORT_SUBDIR, f"{proj_name}{_EXPORT_SUFFIX}")
         if not os.path.isdir(export_dir):
             try:
                 os.makedirs(export_dir, exist_ok=True)
@@ -418,6 +438,7 @@ def show():
     win.On["PRCommon"].Clicked = _on_pr_common
     win.On["Submit"].Clicked = _on_submit
     win.On["BtnConfirm"].Clicked = _on_confirm
+    win.On["BtnPick"].Clicked = _on_pick
     win.On["RenderBatchWin"].Close = lambda ev: disp.ExitLoop()
 
     _update_stats()
