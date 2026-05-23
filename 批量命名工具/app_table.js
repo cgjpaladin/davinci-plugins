@@ -143,6 +143,7 @@ function onMethodChange(oldMethod, newMethod, ri){
   const rows = sel.size > 0 ? [...sel] : (ri !== undefined ? [ri] : []);
   // 用传入的 oldMethod 判断是否真的变了
   const changedRows = rows.filter(r => files[r] && files[r].fields.method === oldMethod && oldMethod !== m);
+  call('debug_log',`onMethodChange: rows=${rows.length} sel=${sel.size} changed=${changedRows.length} old='${oldMethod||'(空)'}' new='${m}'`);
   if(!changedRows.length) return;
   // 先写 method，再写 desc
   changedRows.forEach(r => { files[r].fields.method = m; });
@@ -436,6 +437,7 @@ function activateEdit(td, key, i){
       if(key === 'method'){
         // method 由 onMethodChange 写入，这里先撤销（避免 double-write 导致变更检测失败）
         rows.forEach(r => { files[r].fields.method = oldVal; });
+        call('debug_log',`invoking onMethodChange(${oldVal||'(空)'}, ${finalVal})`);
         onMethodChange(oldVal, finalVal, i);
       }
     }
