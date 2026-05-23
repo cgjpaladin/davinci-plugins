@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """渲染队列批量提交工具."""
-import re, os, sys, time
+import re, os, sys
 from datetime import datetime
 
 _COMMON_DELIVERY_RE = re.compile(r"^\d{2}_")
@@ -286,14 +286,18 @@ def show():
         for pn in pr_ok:
             if not project.LoadRenderPreset(pn):
                 failed.append(f"预设加载失败: {pn}"); continue
+            project.SetRenderSettings({"TargetDir": ed})
             _log(f"预设: {pn}")
             for tn in sorted(tl_ok):
                 t = to.get(tn)
                 if not t: failed.append(tn); continue
-                project.SetCurrentTimeline(t)
-                jid = project.AddRenderJob()
-                if jid: ok += 1
-                else: failed.append(f"{tn}->{pn}")
+                try:
+                    project.SetCurrentTimeline(t)
+                    jid = project.AddRenderJob()
+                    if jid: ok += 1
+                    else: failed.append(f"{tn}->{pn}")
+                except Exception as e:
+                    failed.append(f"{tn}->{pn}({e})")
 
         msg = f"成功添加 {ok} 个渲染任务"
         if failed: msg += f"\n跳过 {len(failed)} 个: " + " ".join(failed[:10])
