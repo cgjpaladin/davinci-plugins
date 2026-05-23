@@ -3,7 +3,7 @@
 
 PRODUCT_NAME = "渲染队列工具"
 BRAND_NAME = "达芬奇插件工坊"
-__version__ = "0.0.10"
+__version__ = "0.0.12"
 __channel__ = "dev"
 
 
