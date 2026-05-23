@@ -183,23 +183,21 @@ def show():
             # ── 时间线 | 渲染预设 ──
             L("TLSection", "时间线 & 渲染预设", StyleSheet="font-size:14px;font-weight:bold;"),
             ui.HGroup({"ID": "MainPanels", "Spacing": 8, "Weight": 10}, [
-                ui.VGroup({"Weight": 1, "Spacing": 2}, [
+                ui.VGroup({"Weight": 1, "Spacing": 2, "FixedSize": [-1, 380]}, [
                     ui.HGroup({"Weight": 0}, [
                         L("TLTitle", "时间线", Weight=1),
                         L("TLCount", f"{len(compliant)} 合规 / {len(skipped)} 跳过"),
                     ]),
-                    ui.ScrollArea({"ID": "TLScroll", "Weight": 10, "MinimumSize": [200, 200]},
-                        ui.VGroup({"Weight": 0, "Spacing": 0}, tl_widgets)),
+                    *tl_widgets,
                     HG(B("TLSelectAll", "全选合规")),
                 ]),
                 ui.VGroup({"Weight": 0, "Spacing": 0}, VLINE_LABELS()),
-                ui.VGroup({"Weight": 1, "Spacing": 2}, [
+                ui.VGroup({"Weight": 1, "Spacing": 2, "FixedSize": [-1, 380]}, [
                     ui.HGroup({"Weight": 0}, [
                         L("PRTitle", "渲染预设", Weight=1),
                         L("PRCount", f"{sum(1 for n in presets if _delivery_default(n))}/{len(presets)} 已选"),
                     ]),
-                    ui.ScrollArea({"ID": "PRScroll", "Weight": 10, "MinimumSize": [200, 200]},
-                        ui.VGroup({"Weight": 0, "Spacing": 0}, pr_widgets)),
+                    *pr_widgets,
                     HG(B("PRCommon", "常用交付合集")),
                 ]),
             ]),
@@ -215,7 +213,7 @@ def show():
     win = disp.AddWindow({
         "WindowTitle": f"{PRODUCT_NAME} v{version_string()}",
         "ID": "RenderBatchWin",
-        "Geometry": [100, 100, 580, 600],
+        "Geometry": [100, 100, 580, 680],
     }, win_layout)
     win.RecalcLayout()
     items = win.GetItems()
