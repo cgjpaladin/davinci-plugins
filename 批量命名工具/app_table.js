@@ -180,6 +180,7 @@ function renderList(force){
 
   const rows = [...tbody.querySelectorAll('tr')];
   if(force || rows.length !== files.length){
+    call('debug_log',`renderList: FORCE rows=${rows.length} files=${files.length}`);
     tbody.innerHTML = '';
     files.forEach((f,i)=>{ tbody.appendChild(_buildRow(f,i)); });
   } else {
@@ -297,16 +298,20 @@ function _initTBodyClick(){
 function rowClick(e, i){
   if(window._activeCancel){ window._activeCancel(); window._activeCancel = null; }
   if(e.metaKey || e.ctrlKey){
-    if(sel.has(i)) sel.delete(i); else sel.add(i);
+    if(sel.has(i)){sel.delete(i);call('debug_log',`rowClick: Cmd-del ${i} sel=${sel.size}`);}
+    else{sel.add(i);call('debug_log',`rowClick: Cmd-add ${i} sel=${sel.size}`);}
   } else if(e.shiftKey && sel.size > 0){
     const s = [...sel].sort((a,b)=>a-b);
     const lo = Math.min(s[0], i);
     const hi = Math.max(s[0], i);
     for(let j=lo; j<=hi; j++) sel.add(j);
+    call('debug_log',`rowClick: Shift ${lo}-${hi} sel=${sel.size}`);
   } else if(sel.has(i)){
-    return; // 单击已选中行 → 不改变选择（双击字段列时保留多选）
+    call('debug_log',`rowClick: SKIP already-selected ${i} sel=${sel.size}`);
+    return;
   } else {
     sel.clear(); sel.add(i);
+    call('debug_log',`rowClick: single ${i} sel=${sel.size}`);
   }
   renderList(); updButtons();
 }
@@ -359,7 +364,8 @@ function buildCellTD(key, ff, i){
 }
 
 function activateEdit(td, key, i){
-  if(td.classList.contains('editing')) return;
+  if(td.classList.contains('editing')){call('debug_log',`activateEdit: SKIP already editing ${key}`);return;}
+  call('debug_log',`activateEdit: key=${key} i=${i} oldVal='${td.dataset.value||'(空)'}' sel=${sel.size}`);
   if(window._activeCancel){ window._activeCancel(); window._activeCancel = null; }
   if(sel.size > 1 && sel.has(i)){
     const lbls = {ep:'Ep 集数',sc:'Sc 场次',gr:'Gr 小场次',desc:'镜头描述',author:'制作者',method:'制作方式',ver:'版本号',status:'通过情况'};
@@ -439,6 +445,7 @@ function activateEdit(td, key, i){
     el.remove(); // 物理销毁编辑控件，杜绝残留
     td.classList.remove('editing');
     if(cancel){
+      call('debug_log',`commit: CANCEL ${key} restore='${oldVal||'(空)'}'`);
       td.textContent = oldVal || (oldVal===''||oldVal==='请选择'||oldVal==='请手动输入…'?'—':oldVal);
       if(oldVal === '' || oldVal === '请选择' || oldVal === '请手动输入…') td.classList.add('empty');
       return;
@@ -454,6 +461,7 @@ function activateEdit(td, key, i){
       call('debug_log',`edit ${key}: ${oldVal||'(空)'} → ${finalVal||'(空)'} on ${rows.length} row(s)`);
       if(key === 'method'){
         rows.forEach(r => { files[r].fields.method = oldVal; });
+        call('debug_log',`commit: METHOD old='${oldVal||'(空)'}' new='${finalVal}' → onMethodChange`);
         onMethodChange(oldVal, finalVal, i);
         return;
       }
@@ -461,6 +469,7 @@ function activateEdit(td, key, i){
       return;
     }
     // 值没变 → 恢复显示，增量更新
+    call('debug_log',`commit: NOCHANGE ${key} val='${finalVal||'(空)'}'`);
     const s = document.createElement('span');
     s.textContent = oldVal || (oldVal===''||oldVal==='请选择'||oldVal==='请手动输入…'?'—':oldVal);
     td.appendChild(s);
