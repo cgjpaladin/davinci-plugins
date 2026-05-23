@@ -130,18 +130,17 @@ def show():
 
     disp = bmd.UIDispatcher(ui)
 
-    # ── 构建 CheckBox ──
-    tl_ids, tl_map = [], {}
-    tl_widgets = []
-    for i, n in enumerate(compliant):
-        cid = f"TLCB_{i}"; tl_ids.append(cid); tl_map[cid] = n
-        tl_widgets.append(CB(cid, n, True, True))
-    for i, n in enumerate(skipped):
-        cid = f"TLSKP_{i}"; tl_ids.append(cid); tl_map[cid] = n
-        tl_widgets.append(CB(cid, f"{n} (不合规)", False, False))
-    if not tl_widgets:
-        tl_widgets.append(L("TLNone", "当前文件夹无时间线"))
+    # ── 时间线 TextEdit（自带滚动）──
+    tl_text = ""
+    if compliant:
+        tl_text = "\n".join(compliant)
+    if skipped:
+        if tl_text: tl_text += "\n"
+        tl_text += "\n".join(f"（跳过）{n}" for n in skipped)
+    if not tl_text:
+        tl_text = "当前文件夹无时间线"
 
+    # ── 预设 CheckBox ──
     pr_ids, pr_map = [], {}
     pr_widgets = []
     for i, n in enumerate(presets):
@@ -166,16 +165,17 @@ def show():
             SEP(),
             L("Section", "时间线 & 渲染预设", StyleSheet="font-size:14px;font-weight:bold;"),
             ui.HGroup({"ID": "Main", "Spacing": 8, "Weight": 10}, [
-                ui.VGroup({"Weight": 1, "Spacing": 1, "FixedSize": [240, 350]}, [
+                ui.VGroup({"Weight": 1, "Spacing": 2}, [
                     ui.HGroup({"Weight": 0}, [
                         L("TLTitle", "时间线", Weight=1),
                         L("TLCount", f"{len(compliant)} 合规 / {len(skipped)} 跳过"),
                     ]),
-                    *tl_widgets,
-                    ui.HGroup({"Weight": 0}, [B("TLAll", "全选合规")]),
+                    ui.TextEdit({"ID": "TLText", "Text": tl_text,
+                        "Weight": 10, "FixedSize": [220, 300]}),
+                    ui.HGroup({"Weight": 0}, [B("TLAll", "全不选")]),
                 ]),
                 ui.VGroup({"Weight": 0, "Spacing": 0}, VLINES()),
-                ui.VGroup({"Weight": 1, "Spacing": 1, "FixedSize": [240, 350]}, [
+                ui.VGroup({"Weight": 1, "Spacing": 2}, [
                     ui.HGroup({"Weight": 0}, [
                         L("PRTitle", "渲染预设", Weight=1),
                         L("PRCount", f"{sum(1 for n in presets if _delivery_default(n))}/{len(presets)} 已选"),
@@ -191,6 +191,7 @@ def show():
     win.RecalcLayout()
     items = win.GetItems()
     _root, _name = root, name
+    _tl_all = True  # 全选/全不选
 
     def _read_checked(ids):
         r = []
@@ -201,15 +202,14 @@ def show():
         return r
 
     def _update_stats():
-        tl = len(_read_checked(tl_ids))
-        pr = len(_read_checked(pr_ids))
-        items["Stats"].Text = f"{tl} x {pr} = {tl * pr} 个渲染任务"
+        tl_c = len(compliant) if _tl_all else 0
+        pr_c = len(_read_checked(pr_ids))
+        items["Stats"].Text = f"{tl_c} x {pr_c} = {tl_c * pr_c} 个渲染任务"
 
     def _on_tl_all(ev):
-        for cid in tl_ids:
-            if cid.startswith("TLSKP_"): continue
-            try: items[cid].Checked = True
-            except: pass
+        nonlocal _tl_all
+        _tl_all = not _tl_all
+        items["TLAll"].Text = "全不选" if _tl_all else "全选合规"
         _update_stats()
 
     def _on_pr_all(ev):
@@ -260,7 +260,7 @@ def show():
 
     def _on_submit(ev):
         _log(f"=== 提交渲染 (v{version_string()}) ===")
-        tl_ok = [tl_map[c] for c in _read_checked(tl_ids) if not c.startswith("TLSKP_")]
+        tl_ok = compliant if _tl_all else []
         pr_ok = [pr_map[c] for c in _read_checked(pr_ids)]
         if not tl_ok: disp.ShowMessage("提示", "没有选中合规时间线"); return
         if not pr_ok: disp.ShowMessage("提示", "没有选中渲染预设"); return
