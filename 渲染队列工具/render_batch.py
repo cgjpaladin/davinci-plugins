@@ -241,20 +241,17 @@ def show():
         "Geometry": [100, 100, 580, 600],
     }, [
         ui.VGroup({"ID": "RootV", "Spacing": 6}, [
-            # ── 输出目录 ──
+            # ── 输出目录（去字幕风格：一行搞定）──
             ui.HGroup({"Spacing": 8, "Weight": 0}, [
                 B("BtnConfirm", "✓ 确认此路径"),
-                ui.Label({"ID": "DirFullPath", "Text":
-                    f"{os.path.join(export_root, _EXPORT_SUBDIR, project_name + _EXPORT_SUFFIX)}" if export_root else "请先打开一个项目",
-                    "StyleSheet": "color:rgb(180,180,180);font-size:11px;", "Weight": 1}),
-            ]),
-            ui.HGroup({"Spacing": 4, "Weight": 0}, [
-                ui.Label({"ID": "DirNameHint", "Text": "项目名",
-                    "StyleSheet": "color:rgb(150,150,150);font-size:12px;", "Weight": 0}),
                 LE("DirNameEdit", project_name),
                 L("DirSuffix", "_交付版本合集/", Weight=0),
-                ui.Label({"ID": "DirStatus", "Text": "目录已存在" if dir_exists else "目录不存在",
-                    "StyleSheet": "font-size:11px;" if dir_exists else "font-size:11px;color:rgb(235,110,0);", "Weight": 0}),
+                ui.Label({"ID": "DirFullPath", "Text":
+                    f"→ {os.path.join(export_root, _EXPORT_SUBDIR, project_name + _EXPORT_SUFFIX)}" if export_root else "请先打开一个项目",
+                    "StyleSheet": "color:rgb(180,180,180);font-size:11px;", "Weight": 1}),
+                ui.Label({"ID": "DirStatus", "Text": "已存在" if dir_exists else "需创建",
+                    "StyleSheet": "color:rgb(50,180,80);font-size:11px;" if dir_exists else "color:rgb(235,110,0);font-size:11px;",
+                    "Weight": 0}),
             ]),
             # ── 分割线 ──
             ui.Label({"ID": "Sep1", "Text": "━" * 80, "StyleSheet": "font-size:6px;color:#666;"}),
@@ -333,20 +330,22 @@ def show():
     def _on_confirm(ev):
         proj_name = dir_edit.Text.strip()
         if not proj_name or proj_name == _PLACEHOLDER_NAME:
-            disp.ShowMessage("提示", "请填写项目名称（占位名「项目名称」不可用）")
+            disp.ShowMessage("提示", "请填写项目名称")
             return
         export_dir = os.path.join(export_root, _EXPORT_SUBDIR, f"{proj_name}{_EXPORT_SUFFIX}")
+        items["DirFullPath"].Text = f"→ {export_dir}"
         if not os.path.isdir(export_dir):
             try:
                 os.makedirs(export_dir, exist_ok=True)
-                items["DirStatus"].Text = "目录已创建"
-                items["DirStatus"]["StyleSheet"] = "font-size:11px;color:rgb(50,180,80);"
+                items["DirStatus"].Text = "已创建"
+                items["DirStatus"]["StyleSheet"] = "color:rgb(50,180,80);font-size:11px;"
             except Exception as e:
+                items["DirStatus"].Text = "创建失败"
                 disp.ShowMessage("错误", f"创建目录失败: {e}")
                 return
         else:
-            items["DirStatus"].Text = "目录已存在"
-        items["DirFullPath"].Text = export_dir
+            items["DirStatus"].Text = "已存在"
+            items["DirStatus"]["StyleSheet"] = "color:rgb(50,180,80);font-size:11px;"
         _log(f"确认路径: {export_dir}")
 
     def _on_submit(ev):
