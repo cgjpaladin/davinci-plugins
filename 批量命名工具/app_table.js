@@ -58,9 +58,11 @@ async function init(){
 
   const cfg=await call('get_config');
   methodDescMap=cfg.method_desc_map||{};_nameFmt=cfg.name_format||[];
-  // 收集所有预置镜头描述值供碰撞检测
+  // 收集所有预置镜头描述值供碰撞检测 & 下拉过滤
   _reservedDesc.clear();
-  for(const v of Object.values(methodDescMap)){
+  window._lockedValues = new Set();
+  for(const [k, v] of Object.entries(methodDescMap)){
+    if(v.mode === 'locked' && v.value) window._lockedValues.add(v.value);
     if(v.value)_reservedDesc.add(v.value);
     if(v.values)v.values.forEach(x=>{_reservedDesc.add(x)});
   }
@@ -386,12 +388,30 @@ function activateEdit(td, key, i){
     if(cfg.mode === 'locked'){
       el = document.createElement('input'); el.type = 'text'; el.value = cfg.value || ''; el.readOnly = true;
     } else if(cfg.mode === 'dropdown'){
-      el = document.createElement('select');
-      (cfg.values||[]).forEach(opt => {
-        const o = document.createElement('option'); o.value = opt; o.textContent = opt;
-        if(opt === oldVal) o.selected = true;
-        el.appendChild(o);
+      // 过滤：排除其他方法的锁定值，保留占位符和自由输入项
+      const locked = window._lockedValues || new Set();
+      const rawOpts = (cfg.values||[]).filter(opt => {
+        if(opt === '请选择' || opt === '请手动输入…') return true;
+        return !locked.has(opt);
       });
+      if(rawOpts.includes('请手动输入…')){
+        // 自由输入 → 改用 input + 碰撞检测
+        el = document.createElement('select');
+        rawOpts.filter(o => o !== '请手动输入…').forEach(opt => {
+          const o = document.createElement('option'); o.value = opt; o.textContent = opt;
+          if(opt === oldVal) o.selected = true;
+          el.appendChild(o);
+        });
+        const o = document.createElement('option'); o.value = '__free__'; o.textContent = '✐ 手动输入…';
+        el.appendChild(o);
+      } else {
+        el = document.createElement('select');
+        rawOpts.forEach(opt => {
+          const o = document.createElement('option'); o.value = opt; o.textContent = opt;
+          if(opt === oldVal) o.selected = true;
+          el.appendChild(o);
+        });
+      }
     } else {
       el = document.createElement('input'); el.type = 'text'; el.value = oldVal;
       el.placeholder = cfg.hint || '输入镜头描述';
@@ -446,14 +466,34 @@ function activateEdit(td, key, i){
     renderList();
   };
 
-  // SELECT: change/Escape only. Click-outside → revert without commit.
-  if(isSelect){
-    const cancel = () => commit(true);
-    window._activeCancel = cancel;
-    el.addEventListener('change', () => { window._activeCancel = null; commit(false); });
-    el.addEventListener('keydown', e => {
-      if(e.key === 'Escape'){ window._activeCancel = null; commit(true); e.preventDefault(); }
-    });
+    // SELECT: change/Escape only. Click-outside → revert without commit.
+    if(isSelect){
+      const cancel = () => commit(true);
+      window._activeCancel = cancel;
+      el.addEventListener('change', () => {
+        if(el.value === '__free__'){
+          // 自由输入 → 切换为 input
+          el.remove();
+          const input = document.createElement('input');
+          input.type = 'text'; input.placeholder = '输入镜头描述';
+          input.value = (oldVal === '请手动输入…' || oldVal === '请选择') ? '' : oldVal;
+          td.appendChild(input);
+          input.focus(); input.select();
+          // 重新绑定 INPUT 事件
+          let _focused = false;
+          window._activeCancel = () => commit(true);
+          input.addEventListener('focus', () => { _focused = true; });
+          input.addEventListener('keydown', e => {
+            if(e.key === 'Enter'){ e.preventDefault(); window._activeCancel = null; commit(false); }
+            if(e.key === 'Escape'){ input.value = oldVal; window._activeCancel = null; commit(true); }
+          });
+          input.addEventListener('blur', () => {
+            setTimeout(() => { if(_focused){ window._activeCancel = null; commit(false); } }, 100);
+          });
+        } else {
+          window._activeCancel = null; commit(false);
+        }
+      });
   } else {
     // INPUT: 响应 Enter / Escape / blur
     let _focused = false;
