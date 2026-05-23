@@ -202,7 +202,6 @@ tbody td{
   border-bottom:1px solid var(--tbl-border);
   font-size:13px;line-height:1.2;color:var(--tbl-cell);
   white-space:nowrap;
-  transition:background .08s;
   height:32px;
 }
 tbody tr{transition:background .06s}
@@ -249,7 +248,7 @@ td.editing input,td.editing select{max-width:100%}
 .col-author.editing input{width:64px}
 
 /* ── Empty cell ── */
-td.empty{color:var(--tbl-dim);font-style:italic;background:rgba(192,64,64,.06)}
+td.empty{color:var(--tbl-dim);font-style:italic}
 
 /* ── Readonly cell (TK) ── */
 td.readonly{cursor:default;color:var(--tbl-dim)}
@@ -264,9 +263,6 @@ td.locked{cursor:default;color:var(--tbl-dim);font-style:italic}
 /* ── Editable cell: hint ── */
 td:not(.col-num):not(.col-thumb):not(.col-base):not(.readonly):not(.locked):not(.empty){
   cursor:cell;
-}
-td:not(.col-num):not(.col-thumb):not(.col-base):not(.readonly):hover{
-  background:rgba(255,255,255,.03);
 }
 
 /* ── Cell editing state ── */

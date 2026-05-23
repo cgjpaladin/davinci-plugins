@@ -405,6 +405,15 @@ function activateEdit(td, key, i){
   if(el.tagName === 'INPUT' && !el.readOnly){ el.focus(); el.select(); }
   else { el.focus(); }
 
+  // 制作者：实时过滤非中文
+  if(key === 'author'){
+    el.addEventListener('input', () => {
+      const pos = el.selectionStart;
+      el.value = el.value.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g, '');
+      el.selectionStart = el.selectionEnd = Math.min(pos, el.value.length);
+    });
+  }
+
   // ═══ Commit logic ═══
   const commit = (cancel) => {
     td.classList.remove('editing');
