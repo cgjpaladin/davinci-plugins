@@ -297,8 +297,8 @@ function rowClick(e, i){
     const lo = Math.min(s[0], i);
     const hi = Math.max(s[0], i);
     for(let j=lo; j<=hi; j++) sel.add(j);
-  } else if(sel.size === 1 && sel.has(i)){
-    return; // clicking already-single-selected row: do nothing
+  } else if(sel.has(i)){
+    return; // 单击已选中行 → 不改变选择（双击字段列时保留多选）
   } else {
     sel.clear(); sel.add(i);
   }
