@@ -634,6 +634,12 @@ async function loadThumbs(){
   call('debug_log','loadThumbs done: '+(r?r.total:0)+' thumbs');
 }
 
+async function loadThumbsEx(paths){
+  call('debug_log','loadThumbsEx: '+paths.length+' files');
+  const r=await call('generate_thumbnails',paths);
+  call('debug_log','loadThumbsEx done: '+(r?r.total:0)+' thumbs');
+}
+
 function setThumb(path,thumb){
   _thumbs[path]=thumb;
   const el=document.querySelector(`[data-path="${CSS.escape(path)}"]`);
@@ -680,7 +686,12 @@ function onDropResult(result){
     if(result.subdirs_skipped) msg+=` · ${result.subdirs_skipped} 个子文件夹跳过`;
     if(result.truncated) msg+=` (上限${result.max}个)`;
     renderList();toast(msg);
-    loadThumbs();
+    // 只生成新文件的缩略图，已有缩略图的不重复生成
+    const newPaths = fresh.map(f=>f.path).filter(p => !_thumbs[p]);
+    if(newPaths.length){
+      call('debug_log',`loadThumbs: ${newPaths.length} new (skipped ${fresh.length - newPaths.length} cached)`);
+      loadThumbsEx(newPaths);
+    }
   }
 }
 
