@@ -183,10 +183,6 @@ function renderList(force){
     call('debug_log',`renderList: FORCE rows=${rows.length} files=${files.length}`);
     tbody.innerHTML = '';
     files.forEach((f,i)=>{ tbody.appendChild(_buildRow(f,i)); });
-    // 重建后恢复已缓存的缩略图
-    for(const [p, t] of Object.entries(_thumbs)){
-      setThumbDOM(p, t);
-    }
   } else {
     files.forEach((f,i)=>{
       const tr = rows[i];
@@ -646,10 +642,6 @@ async function loadThumbsEx(paths){
 
 function setThumb(path,thumb){
   _thumbs[path]=thumb;
-  setThumbDOM(path, thumb);
-}
-
-function setThumbDOM(path, thumb){
   const el=document.querySelector(`[data-path="${CSS.escape(path)}"]`);
   if(!el)return;
   let thumbEl=el.querySelector('.cell-thumb');

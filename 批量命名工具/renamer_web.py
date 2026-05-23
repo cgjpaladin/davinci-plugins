@@ -474,7 +474,7 @@ if __name__ == "__main__":
             result = api._process_paths(paths)
             _window.evaluate_js(f"onDropResult({json.dumps(result)})")
         _window.dom.document.events.dragover += DOMEventHandler(lambda e: e, prevent_default=True)
-        _window.dom.document.events.drop += DOMEventHandler(_on_drop, prevent_default=True, stop_propagation=True, debounce=3000)
+        _window.dom.document.events.drop += DOMEventHandler(_on_drop, prevent_default=True, stop_propagation=True, debounce=500)
         _log.info("DOM drop handler bound")
 
     _window.events.loaded += _bind_drop
