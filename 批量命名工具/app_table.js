@@ -87,8 +87,9 @@ async function init(){
   // 列宽拖拽
   _initColResize();
 
-  // 浏览器预览模式：注册 mock 拖放（仅在确认非 pywebview 时）
-  if(!window.pywebview){
+  // 浏览器预览模式：注册 mock 拖放（500ms 后确认无 pywebview 才激活）
+  setTimeout(() => {
+    if(window.pywebview) return;
     const dz=document.getElementById('fileList');
     dz.addEventListener('dragover',e=>{e.preventDefault()});
     dz.addEventListener('drop',e=>{
@@ -104,7 +105,7 @@ async function init(){
       renderList();updButtons();
       toast('已追加 '+mockFiles.length+' 个文件 (预览模式)');
     });
-  }
+  }, 500);
   // 自测（仅在无 pywebview 时运行）
   setTimeout(() => { if(!window.pywebview) _runSelfTest(); }, 500);
   _initTBodyClick();
