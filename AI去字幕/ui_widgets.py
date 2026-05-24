@@ -309,7 +309,7 @@ _sys.stderr = _UIStderr()
 
 # ── 子线程 → 主线程 UI 状态桥 ──
 _ui_lock = threading.Lock()
-_ui_pending = {"status": "", "balance": "", "progress": -1.0, "btn_scan": None, "btn_start": None, "btn_pick": None, "btn_stop": None, "warn": None}
+_ui_pending = {"status": "", "balance": "", "progress": -1.0, "phase": "", "btn_scan": None, "btn_start": None, "btn_pick": None, "btn_stop": None, "warn": None}
 
 # ── 时间估算常量（实测数据 2026-05-08）──
 # 公式：sum(片段秒数)×2.3 + 60 秒（含上传+API+下载固定开销）
@@ -317,17 +317,16 @@ _ui_pending = {"status": "", "balance": "", "progress": -1.0, "btn_scan": None, 
 import time as _time_module
 # 以下全局变量由子线程写入、主线程轮询读取。CPython GIL 保证单值赋值原子性，
 # 且使用模式为"一写多读"无竞态条件，无需额外锁。
-_t_start = 0.0          # 处理开始时间
-_task_count = 0         # 待处理总数
-_t_estimated = 0.0      # 预估总秒数（扫描时计算）
 _t_last_update = 0.0    # 上次 UI 更新
 
-_phase_text = ""         # 当前阶段描述（处理线程设，轮询循环读）
-
 def _st(t):
-    """处理线程调用：仅记录阶段文本，不写 UI（避免与倒计时冲突）"""
-    global _phase_text
-    _phase_text = t
+    """进度阶段文本——直写 ST_LB（不再走倒计时缓冲）"""
+    try:
+        itm[ST_LB].Text = t
+    except Exception:
+        _event_log(f"[ui_widgets] _st 写 ST_LB 失败")
+    with _ui_lock:
+        _ui_pending["phase"] = t
 
 # _update_countdown 已废弃 (2026-05-24)：进度条重构后使用 pipeline 内回调取代
 
@@ -437,9 +436,11 @@ def _apply_ui_state():
         with _ui_lock:
             st = _ui_pending["status"]
             pg = _ui_pending["progress"]
+            ph = _ui_pending.get("phase", "")
             bs = _ui_pending["btn_scan"]; b1 = _ui_pending["btn_start"]
             bp = _ui_pending["btn_pick"]; b2 = _ui_pending["btn_stop"]
             wl = _ui_pending["warn"]
+        if ph: itm[ST_LB].Text = ph  # 备用写 ST_LB
         if bs is not None: itm[BTN_SCAN].Enabled = bs
         if b1 is not None: itm[BTN_START].Enabled = b1
         if bp is not None: itm[BTN_PICK].Enabled = bp

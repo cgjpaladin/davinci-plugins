@@ -97,7 +97,6 @@ def start_process(*_):
     thr = threading.Thread(target=process, daemon=True)
     thr.start()
 
-    _t_start_local = time.time()
     while thr.is_alive():
         _flush_log()
         _apply_ui_state()
