@@ -51,6 +51,11 @@ class SubtitlePipeline(BasePipeline):
     PROGRESS_SCALE = 0.78
     PHASE_DOWNLOAD = "⬇ 下载中"
     PHASE_REPLACE = "🔧 替换中"
+    # 倒计时阈值
+    ETA_MIN_RATIO = 0.05      # ratio 超此值才显示倒计时
+    ETA_MIN_ELAPSED = 3       # 至少过 3 秒才显示（避免早期波动）
+    ETA_UPDATE_DELTA = 0.01   # ratio 变化 <1% 不更新倒计时
+    ETA_NEARLY_DONE = 5       # 剩余 ≤5 秒显示"即将完成"
 
     def __init__(self):
         super().__init__()
@@ -227,10 +232,10 @@ class SubtitlePipeline(BasePipeline):
                 _phase_start[0] = _time.time()
 
             elapsed = _time.time() - _phase_start[0]
-            if ratio > 0.05 and ratio > _last_ratio[0] + 0.01 and elapsed > 3:
+            if ratio > self.ETA_MIN_RATIO and ratio > _last_ratio[0] + self.ETA_UPDATE_DELTA and elapsed > self.ETA_MIN_ELAPSED:
                 _last_ratio[0] = ratio
                 remaining = elapsed / ratio * (1 - ratio)
-                if remaining < 5:
+                if remaining < self.ETA_NEARLY_DONE:
                     self.ui.set_phase(f"{label} · 即将完成...")
                 else:
                     mins, secs = divmod(int(remaining), 60)
