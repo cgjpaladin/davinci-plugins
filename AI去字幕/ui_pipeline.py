@@ -226,9 +226,8 @@ def _refresh_scan_display():
     stats = _show_clip_stats(clips, od, fps, df, start_frame)
     need, pts, yuan = stats["need"], stats["pts"], stats["yuan"]
     if need > 0:
-        need_secs = stats["need_secs"]
-        avg = max(60, min(120, need_secs / max(1, need) * 3))
-        total_time = int(need * avg / 60)
+        est_secs = 150 + max(0, need - 1) * 15
+        total_time = int(math.ceil(est_secs / 60))
         ui.log_info(f"预估: ≤¥{yuan} (≤{pts} 积分) | 约 {total_time} 分钟")
         ui.log_info("")  # 章节尾部空行
         ui.set_status("就绪")
