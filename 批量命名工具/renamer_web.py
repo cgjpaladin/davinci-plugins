@@ -472,8 +472,10 @@ if __name__ == "__main__":
             # 过滤已发送的指纹（pywebview 的 evaluate_js 会重复执行）
             fresh = [f for f in result.get('files', []) if f.get('fp','') not in _sent_fps]
             for f in fresh: _sent_fps.add(f.get('fp',''))
+            dropped = len(result.get('files', [])) - len(fresh)
             result['files'] = fresh
             result['total'] = len(fresh)
+            result['duplicates'] = result.get('duplicates', 0) + dropped
             duplicates = result.get('duplicates', 0)
             if duplicates and not fresh:
                 _window.evaluate_js(f'toast("全部重复 · {duplicates} 个已跳过")')
