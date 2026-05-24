@@ -130,9 +130,7 @@ def _show_estimate(clips, od, fps, df, start_frame, allow_unknown=False):
     return stats
 
 def scan_io(*_):
-    """扫描时间线 IO 范围内标橙色的片段，显示缓存/预估信息。每次点击扫描按钮触发。
-    注：片段遍历逻辑与 _refresh_scan_display() 有约50行重复，修改任一处需同步另一处。
-    """
+    """扫描时间线 IO 范围内标橙色的片段，显示缓存/预估信息。每次点击扫描按钮触发。"""
     _reset_title()  # 清除上一次的完成态
     _clear_engine_error()
     global _version_checked
