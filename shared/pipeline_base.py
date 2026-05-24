@@ -77,6 +77,12 @@ class BasePipeline(ABC):
         "ops_logging": True,           # 运营日志（session_start/end）
     }
 
+    # ── 进度里程碑（base 类常量，子类可覆盖）──
+    MILESTONE_ENV_OK     = 0.10  # 环境自检通过
+    MILESTONE_PREPARE    = 0.12  # 任务准备完成
+    MILESTONE_DOWNLOAD   = 0.82  # 开始下载
+    MILESTONE_COMPLETE   = 1.0   # 全部完成
+
     def __init_subclass__(cls, **kwargs):
         """模块加载时自动校验子类完整性（参考交付自检 _validate_field_map 模式）。
 
@@ -251,7 +257,7 @@ class BasePipeline(ABC):
             self._report["project"] = self._project.GetName()
             self._report["timeline"] = self._timeline.GetName()
             self._log_action(f"已连接: {self._report['resolve']} / {self._report['project']} / {self._report['timeline']}")
-            self.ui.set_progress(0.10)
+            self.ui.set_progress(self.MILESTONE_ENV_OK)
             return True
         except Exception as e:
             self._report["error"] = str(e)
@@ -340,7 +346,7 @@ class BasePipeline(ABC):
         from core import download_and_apply
 
         total = len(results)
-        self.ui.set_progress(0.82)
+        self.ui.set_progress(self.MILESTONE_DOWNLOAD)
 
         # 逐文件进度（进日志区，不只是状态栏）
         downloaded = [0]  # 闭包捕获
@@ -377,7 +383,7 @@ class BasePipeline(ABC):
         cache_hits = self._report.get("cache_hits", 0)
         elapsed = int(time.time() - self._t_start)
         self.log.ok(f"🎉 全部完成！（{cache_hits}个缓存命中）  耗时 {elapsed} 秒")
-        self.ui.set_progress(1.0)
+        self.ui.set_progress(self.MILESTONE_COMPLETE)
         self.ui.set_status("完成（缓存）")
         self.ui.notify(self.PRODUCT_NAME, f"全部由缓存完成（{cache_hits}个片段）")
         self.ui.log_info("")  # 章节尾部空行
@@ -418,7 +424,7 @@ class BasePipeline(ABC):
         # 完成通知
         yuan = self._report.get("cost", {}).get("yuan", 0)
         self.log.completion_summary(total_success, total_all, int(t_done - self._t_start), yuan)
-        self.ui.set_progress(1.0)
+        self.ui.set_progress(self.MILESTONE_COMPLETE)
         self.ui.set_status("完成")
         self.ui.notify(self.PRODUCT_NAME, f"{total_success}个片段处理完成")
         self.ui.log_info("")  # 章节尾部空行
@@ -491,7 +497,7 @@ class BasePipeline(ABC):
         """展示扫描结果。子类可覆盖以自定义格式。"""
         if clips:
             self.ui.log_info(f"🎬 扫描到 {len(clips)} 个片段")
-            self.ui.set_progress(0.10)
+            self.ui.set_progress(self.MILESTONE_ENV_OK)
         else:
             self.ui.log_info("IO 内无符合筛选的片段")
             self.ui.set_status("无有效片段")
@@ -514,14 +520,14 @@ class BasePipeline(ABC):
 
         if not tasks:
             self.log.ok(f"全部由缓存完成！({cache_hits}个)")
-            self.ui.set_progress(1.0)
+            self.ui.set_progress(self.MILESTONE_COMPLETE)
             self.ui.set_status("完成（缓存）")
             _log_ops.ops({"event": "session_end", "success": 0,
                            "fail": 0, "total": 0,
                            "cache_hits": cache_hits})
             return [], True
 
-        self.ui.set_progress(0.12)
+        self.ui.set_progress(self.MILESTONE_PREPARE)
         return tasks, False
 
     def _before_submit(self, tasks: list) -> list:

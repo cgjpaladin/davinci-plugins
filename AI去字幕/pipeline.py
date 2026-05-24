@@ -51,6 +51,10 @@ class SubtitlePipeline(BasePipeline):
     PROGRESS_SCALE = 0.78
     PHASE_DOWNLOAD = "⬇ 下载中"
     PHASE_REPLACE = "🔧 替换中"
+    # 产品层进度里程碑
+    MILESTONE_BEFORE_SUBMIT = 0.05  # _before_submit
+    MILESTONE_ADAPTER_DONE   = 0.80  # adapter 完成后
+    MILESTONE_REPLACE_DONE   = 0.92  # 替换完成
     # 倒计时阈值
     ETA_MIN_RATIO = 0.05      # ratio 超此值才显示倒计时
     ETA_MIN_ELAPSED = 3       # 至少过 3 秒才显示（避免早期波动）
@@ -120,7 +124,7 @@ class SubtitlePipeline(BasePipeline):
                            f"{sr.valid}/{sr.total} 符合筛选")
         else:
             self.ui.log_info(f"🎬 扫描到 {len(clips)} 个片段")
-        self.ui.set_progress(0.20)
+        self.ui.set_progress(self.MILESTONE_ENV_OK)  # 扫描完成进度 = 环境自检同级别
         self._report.setdefault("scan", {})["clips_count"] = len(clips)
 
         # 记录扫描结果到运营日志
@@ -204,7 +208,7 @@ class SubtitlePipeline(BasePipeline):
                 mp_color=t.mp_color, alt_tl_items=t.alt_tl_items,
             ))
 
-        self.ui.set_progress(0.80)
+        self.ui.set_progress(self.MILESTONE_ADAPTER_DONE)
         self.ui.set_status("下载处理结果...")
         return results
 
@@ -251,7 +255,7 @@ class SubtitlePipeline(BasePipeline):
         self.ui.set_phase(self.PHASE_DOWNLOAD)
         output_files = super()._download_apply(results)
         self.ui.set_phase(self.PHASE_REPLACE)
-        self.ui.set_progress(0.92)
+        self.ui.set_progress(self.MILESTONE_REPLACE_DONE)
         return output_files
 
     # ═══════════════════════════════════════
@@ -282,7 +286,7 @@ class SubtitlePipeline(BasePipeline):
             return
 
         self.ui.log_info("✅ 环境自检通过 (SMB/API/OSS/DVR)")
-        self.ui.set_progress(0.05)
+        self.ui.set_progress(self.MILESTONE_BEFORE_SUBMIT)
 
     def _preflight(self):
         """CLI OSS 预检。"""
