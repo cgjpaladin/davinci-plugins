@@ -173,6 +173,11 @@ class RenamerAPI:
         _log.info(f"ECHO: {x!r}")
         return {"received": x}
 
+    def reset_fingerprints(self):
+        """清空内容指纹缓存——文件列表清空时调用，允许重新拖入同一批文件"""
+        RenamerAPI._seen_fp.clear()
+        _log.info("_seen_fp cleared")
+
     def _process_paths(self, paths_):
         _log.info(f"_process_paths: {len(paths_)} paths → scanning")
         MAX_FILES = 100
@@ -203,10 +208,12 @@ class RenamerAPI:
                 RenamerAPI._seen_fp.add(fp_key)
                 parsed = parse_filename(p)
                 fields = {}
+                # ver/status 有合理默认值；其余字段未解析时留空
+                _DEFAULTABLE = {'ver', 'status'}
                 for fd in FIELD_CONFIG:
                     k = fd["key"]
                     if parsed and k in parsed: fields[k] = parsed[k]
-                    elif defaults and k in defaults and k not in _EMPTY_KEYS: fields[k] = defaults.get(k, fd["def"])
+                    elif defaults and k in defaults and k in _DEFAULTABLE: fields[k] = defaults.get(k, fd["def"])
                     elif k in _EMPTY_KEYS: fields[k] = ""
                     else: fields[k] = fd["def"]
                 if parsed: parsed_count += 1
@@ -233,7 +240,7 @@ class RenamerAPI:
                             for fd in FIELD_CONFIG:
                                 k = fd["key"]
                                 if parsed and k in parsed: fields[k] = parsed[k]
-                                elif defaults and k in defaults and k not in _EMPTY_KEYS: fields[k] = defaults.get(k, fd["def"])
+                                elif defaults and k in defaults and k in _DEFAULTABLE: fields[k] = defaults.get(k, fd["def"])
                                 elif k in _EMPTY_KEYS: fields[k] = ""
                                 else: fields[k] = fd["def"]
                             if parsed: parsed_count += 1
