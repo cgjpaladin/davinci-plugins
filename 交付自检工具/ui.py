@@ -727,7 +727,7 @@ _cached_sections = []
 # Tree 渲染
 # ═══════════════════════════════════════════
 
-def _render_group(group_name, sections, tree):
+def _render_group(group_name, sections, tree, parent_group=""):
     """渲染一个 group 或 subgroup 的检查结果到右侧 Tree"""
     tree.Clear()
     _setup_tree_header(tree)
@@ -743,8 +743,11 @@ def _render_group(group_name, sections, tree):
                     _set_row(row, row_data)
                     tree.AddTopLevelItem(row)
     else:
-        # 是 subgroup → 只渲染该子类
-        secs = [s for s in sections if s.get("subgroup") == group_name and s.get("group") == group_name]
+        # 是 subgroup → 用 parent_group 与 group_name 双重过滤
+        if parent_group:
+            secs = [s for s in sections if s.get("subgroup") == group_name and s.get("group") == parent_group]
+        else:
+            secs = [s for s in sections if s.get("subgroup") == group_name]
         for sec in secs:
             for row_data in sec["rows"]:
                 row = tree.NewItem()
@@ -1577,9 +1580,10 @@ def _start_check():
 
             # 子类行
             for sg in subgroups:
-                if any(s.get("subgroup") == sg and s["rows"] for s in sections):
+                if any(s.get("subgroup") == sg and s.get("group") == name and s["rows"] for s in sections):
                     child = group_tree.NewItem()
                     child.Text[0] = f"  · {sg}"
+                    child.Text[1] = name   # 存父组名，供 _on_group_click 解歧义
                     group_tree.AddTopLevelItem(child)
 
         if first_group:
@@ -1776,7 +1780,9 @@ def _on_group_click(ev):
     text = item.Text[0]
     text_stripped = text.lstrip()
     if text_stripped.startswith("· "):
-        _render_group(text_stripped[2:], _cached_sections, tree)
+        sg = text_stripped[2:]
+        parent_group = item.Text[1] if item.Text[1] else ""
+        _render_group(sg, _cached_sections, tree, parent_group=parent_group)
     else:
         _render_group(text, _cached_sections, tree)
 
