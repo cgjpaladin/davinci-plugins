@@ -297,14 +297,13 @@ function _initTBodyClick(){
 
     if(isField){
       const now = Date.now();
-      const cellId = `${i}:${key}`;
-      const sameCell = (window._lastCellId === cellId && (now - (window._lastTime||0)) < 350);
-      window._lastCellId = cellId; window._lastTime = now;
-      if(sameCell){
+      if(e.detail >= 2){
+        // 浏览器原生双击
         clearTimeout(window._shrinkTimer);
-        call('debug_log',`dblClick: activate ${key} on row ${i}`);
+        call('debug_log',`dblClick (detail=${e.detail}): activate ${key} on row ${i}`);
         activateEdit(td, key, i);
       } else {
+        window._lastCellId = `${i}:${key}`; window._lastTime = now;
         call('debug_log',`singleClick: rowClick ${i}`);
         rowClick(e, i);
       }
