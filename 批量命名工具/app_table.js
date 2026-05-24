@@ -109,6 +109,7 @@ async function init(){
   // 自测（仅在无 pywebview 时运行）
   setTimeout(() => { if(!window.pywebview) _runSelfTest(); }, 500);
   _initTBodyClick();
+  renderList();  // 首次渲染（空状态或 mock 数据）
 }
 // ═══ init — 轮询等待 pywebview 桥接 ═══
 let _ready=false;
