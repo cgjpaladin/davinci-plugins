@@ -4,10 +4,6 @@
 # 注意: DaVinci Fusion 内 __file__ 不存在，需 fallback
 import subprocess, os, sys, time, socket, json
 
-# 外挂 Python 路径从 deploy.json 读取（每台机器独立配置）
-from deploy_config import get_python_path
-_PYTHON = get_python_path()
-
 # __file__ 在 DaVinci Fusion 引擎内不存在，fallback 到已知路径
 try:
     _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -26,9 +22,10 @@ for _d in _SHARED_CANDIDATES:
         sys.path.insert(0, _d)
         break
 
-from deploy_config import load as _load_deploy_config
+from deploy_config import load as _load_deploy_config, get_python_path
 
 _deploy = _load_deploy_config()
+_PYTHON = get_python_path()
 _SMB_ROOT = _deploy.get("smb_root", "/Volumes/MYJC/06_Software/达芬奇脚本")
 _DEV_HOSTS = set(_deploy.get("dev_hosts", ["BryandeMac-mini.local", "BryandeMac-mini"]))
 _DEV_DIR_BASE = os.path.expanduser(
