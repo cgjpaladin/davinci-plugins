@@ -494,7 +494,9 @@ function activateEdit(td, key, i){
     const sr = DIGIT_STRICT[key];
     if(sr && v && !sr.test(v)){
       toast(`请输入正确格式`);
-      el.focus();
+      el.remove(); td.classList.remove('editing');
+      td.textContent = oldVal || '—';
+      if(!oldVal) td.classList.add('empty');
       return;
     }
     el.remove(); // 物理销毁编辑控件，杜绝残留
