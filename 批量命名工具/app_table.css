@@ -328,6 +328,7 @@ td.editing select{
 }
 .sb-left{display:flex;align-items:center;gap:6px}
 .sb-dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+#resultMsg{margin-left:10px;color:var(--accent);font-size:var(--fs-sm)}
 
 /* ── Drop overlay ── */
 .drop-overlay{

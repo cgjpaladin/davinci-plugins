@@ -922,6 +922,6 @@ function _runSelfTest(){
 
 // ═══ Toast ═══
 let tt;function toast(m){call('debug_log','TOAST: '+m);const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2500)}
-function result(m){document.getElementById('statusText').textContent=m}
+function result(m){document.getElementById('resultMsg').textContent=m}
 
 setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');
