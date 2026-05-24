@@ -233,10 +233,10 @@ def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expec
     ]:
         actual = timeline.GetTrackCount(track_type)
         if actual == expected:
-            results.append(_make_result("pass", detail=f"{label}轨道: {actual} (通过)"))
+            results.append(_make_result("pass", detail=f"{label}轨道: {actual} (通过)", is_summary=True))
         else:
             results.append(_make_result("fail",
-                detail=f"{label}轨道: 当前 {actual} 轨", reason=f"应为 {expected} 轨"))
+                detail=f"{label}轨道: 当前 {actual} 轨", reason=f"应为 {expected} 轨", is_summary=True))
 
     # ═══ 音频检查 ═══
     actual_audio = timeline.GetTrackCount("audio")
@@ -936,9 +936,9 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     start_tc = timeline.GetStartTimecode()
     if start_tc != "00:00:00:00":
         results.append(_make_result("fail",
-            detail=f"起始时码 {start_tc}", reason="应为 00:00:00:00"))
+            detail=f"起始时码 {start_tc}", reason="应为 00:00:00:00", is_summary=True))
     else:
-        results.append(_make_result("pass", detail="起始时码: 00:00:00:00 (通过)"))
+        results.append(_make_result("pass", detail="起始时码: 00:00:00:00 (通过)", is_summary=True))
 
     # ── ② 时长检测 ──
     total_frames = timeline.GetEndFrame()
