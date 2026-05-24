@@ -39,6 +39,10 @@ ACTIVE_PROVIDER = "wuhenai"
 # 切换优先级只需改这一行
 ADAPTER_PRIORITY = ["wuhenai", "ghostcut"]
 
+# ── 时间预估（基于 62 条真实 session 统计, 2026-05-24）──
+EST_BASE_SECS = 150    # 单片段基础耗时（秒）
+EST_PER_CLIP_SECS = 15 # 每增加一个片段的边际耗时（秒）
+
 # ── OSS 流量定价（阿里云）──
 # 杭州区域折扣价，2026-05-05
 OSS_PRICE_PER_GB = 0.12  # 人民币/GB（外网流出流量）

@@ -42,6 +42,15 @@ class SubtitlePipeline(BasePipeline):
 
     PRODUCT_NAME = "AI去字幕"
     SECTION_AI_PROCESSING = "AI去字幕中"
+    PHASE_LABELS = {
+        "upload":     "⬆ 上传中",
+        "submit":     "📤 提交中",
+        "processing": "🤖 AI处理中",
+    }
+    PROGRESS_BASE = 0.10
+    PROGRESS_SCALE = 0.78
+    PHASE_DOWNLOAD = "⬇ 下载中"
+    PHASE_REPLACE = "🔧 替换中"
 
     def __init__(self):
         super().__init__()
@@ -199,34 +208,24 @@ class SubtitlePipeline(BasePipeline):
     # ═══════════════════════════════════════
 
     def _get_progress_callback(self):
-        """统一进度回调：adapter 全局 ratio→宽绿条 0.10-0.80 + 阶段标签 + 动态倒计时"""
+        """统一进度回调：adapter 全局 ratio→宽绿条 + 阶段标签 + 动态倒计时"""
         import time as _time
-
-        # adapter ratio 是全局进度（0=开始上传, ~0.9=AI接近完成）
-        # 映射到绿条: 0.10 + ratio * 0.78 → 0.10 ~ 0.80
-        SCALE = 0.78
-        BASE = 0.10
+        labels = self.PHASE_LABELS
+        base = self.PROGRESS_BASE
+        scale = self.PROGRESS_SCALE
 
         _phase_start = [_time.time()]
         _last_label = [""]
         _last_ratio = [0.0]
 
         def cb(phase, ratio):
-            unified = BASE + ratio * SCALE
-            self.ui.set_progress(unified)
+            self.ui.set_progress(base + ratio * scale)
 
-            # 阶段标签
-            label = {
-                "upload":     "⬆ 上传中",
-                "submit":     "📤 提交中",
-                "processing": "🤖 AI处理中",
-            }.get(phase, phase)
-
+            label = labels.get(phase, phase)
             if label != _last_label[0]:
                 _last_label[0] = label
                 _phase_start[0] = _time.time()
 
-            # 动态倒计时（处理阶段才显示，ratio变化>0.03）
             elapsed = _time.time() - _phase_start[0]
             if ratio > 0.05 and ratio > _last_ratio[0] + 0.01 and elapsed > 3:
                 _last_ratio[0] = ratio
@@ -244,9 +243,9 @@ class SubtitlePipeline(BasePipeline):
 
     def _download_apply(self, results: list) -> list:
         """覆盖基类：加下载/替换阶段标签"""
-        self.ui.set_phase("⬇ 下载中")
+        self.ui.set_phase(self.PHASE_DOWNLOAD)
         output_files = super()._download_apply(results)
-        self.ui.set_phase("🔧 替换中")
+        self.ui.set_phase(self.PHASE_REPLACE)
         self.ui.set_progress(0.92)
         return output_files
 

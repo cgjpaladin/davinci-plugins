@@ -187,8 +187,9 @@ def scan_io(*_):
 
         # 批量并行——GPU并发处理，总耗时 ≈ 基础150s + 每个额外片段15s（上传边际）
         # 基于 62 条真实 session 统计：单片段中位132s(无痕)/143s(鬼手), 每+1片段≈+15s
+        from pricing_defaults import EST_BASE_SECS, EST_PER_CLIP_SECS
         n_clips = len(clips)
-        est_secs = 150 + max(0, n_clips - 1) * 15
+        est_secs = EST_BASE_SECS + max(0, n_clips - 1) * EST_PER_CLIP_SECS
         total_time = max(1, math.ceil(est_secs / 60)) if need > 0 else 0
         if need > 0 and od:
             ui.log_info(f"预估: ≤¥{yuan} (≤{pts} 积分) | 约 {total_time} 分钟")
@@ -225,7 +226,8 @@ def _refresh_scan_display():
     stats = _show_clip_stats(clips, od, fps, df, start_frame)
     need, pts, yuan = stats["need"], stats["pts"], stats["yuan"]
     if need > 0:
-        est_secs = 150 + max(0, need - 1) * 15
+        from pricing_defaults import EST_BASE_SECS, EST_PER_CLIP_SECS
+        est_secs = EST_BASE_SECS + max(0, need - 1) * EST_PER_CLIP_SECS
         total_time = int(math.ceil(est_secs / 60))
         ui.log_info(f"预估: ≤¥{yuan} (≤{pts} 积分) | 约 {total_time} 分钟")
         ui.log_info("")  # 章节尾部空行
