@@ -344,13 +344,11 @@ def _pg(r):
     for m in (0.10, 0.25, 0.50, 0.75, 0.90, 1.0):
         if ratio >= m > _pg_last_milestone:
             _pg_last_milestone = m
-            elapsed = int(_time_module.time() - _t_start) if _t_start > 0 else 0
-            _event_log(f"进度 {int(m*100)}%  |  已过 {elapsed}秒  |  预估 {_t_estimated:.0f}秒")
+            _event_log(f"进度 {int(m*100)}%")
             break
     if ratio == 0:
         _pg_last_milestone = 0
     try:
-        _st._last_ratio = ratio
         # 100% 时：先让父容器算出真实宽度，再据此填满进度条
         if ratio >= 1.0:
             try: itm["pg_group"].RecalcLayout()
