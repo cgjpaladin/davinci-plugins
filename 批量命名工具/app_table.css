@@ -215,8 +215,6 @@ tbody td.col-num::before{
   content:'';position:absolute;left:0;top:0;bottom:0;width:4px;
   background:transparent;
 }
-tbody tr.rdy:not(.sel):not(.warn):not(.warn-zero):not(.warn-size):not(.warn-dbl) td.col-num::before{background:var(--green)}
-tbody tr.mis:not(.sel):not(.warn):not(.warn-zero):not(.warn-size):not(.warn-dbl) td.col-num::before{background:var(--yellow)}
 
 /* ── Selected ── */
 tbody tr.sel td.col-num::before{background:var(--tbl-accent)}
@@ -249,10 +247,10 @@ td.editing input,td.editing select{max-width:100%}
 /* ── Empty cell ── */
 td.empty{color:var(--tbl-dim);font-style:italic;background:#2d1212}
 
-/* ── Row completion (border-left) ── */
-#fileList tbody tr.row-full td:first-child{border-left:3px solid var(--green)}
-#fileList tbody tr.row-most td:first-child{border-left:3px solid var(--yellow)}
-#fileList tbody tr.row-empty td:first-child{border-left:3px solid var(--red)}
+/* ── Row completion dots (col-num ::before) ── */
+tbody tr.row-full td.col-num::before{background:var(--green)}
+tbody tr.row-most td.col-num::before{background:var(--yellow)}
+tbody tr.row-empty td.col-num::before{background:var(--red)}
 
 /* ── Readonly cell (TK) ── */
 td.readonly{cursor:default;color:var(--tbl-dim);font-style:italic}
