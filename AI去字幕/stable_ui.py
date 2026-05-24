@@ -23,8 +23,6 @@ from ui_widgets import (
     _st, _pg, _bal, _set_btn, _set_proj,
     _event_log, _log_file, _log_action,
     _ui_lock, _ui_pending,
-    _t_start, _t_estimated, _task_count,
-    _update_countdown,
     BAL_LB, OSS_LB, PROJ_LB, PATH_LB,
     BTN_SCAN, BTN_START, BTN_STOP, BTN_PICK, BTN_CONFIRM, BTN_UNDO,
     COLOR_CB, LOG_LB, ST_LB, PG_BAR,
@@ -104,14 +102,6 @@ def start_process(*_):
         _flush_log()
         _apply_ui_state()
         disp.StepLoop(100)
-
-        # 超时保护
-        elapsed = time.time() - _t_start_local
-        if hasattr(_update_countdown, '_timeout_warned') and not _update_countdown._timeout_warned:
-            if _uw._t_estimated > 0 and elapsed > _uw._t_estimated * 2:
-                warn(f"⚠ 处理超时: 实际 {elapsed:.0f}秒 > 预估 {_t_estimated:.0f}秒×2，可能网络波动")
-                _event_log(f"超时告警: elapsed={elapsed:.0f}s > estimated={_t_estimated:.0f}s×2")
-                _update_countdown._timeout_warned = True
 
     _flush_log()
     _apply_ui_state()

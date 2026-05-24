@@ -329,36 +329,8 @@ def _st(t):
     global _phase_text
     _phase_text = t
 
-def _update_countdown():
-    """每轮轮询调用：唯一写 PROJ_LB 的函数，整合阶段 + 倒计时 + 进度条"""
-    try:
-        if _t_start <= 0 or _t_estimated <= 0:
-            return
-        now = _time_module.time()
-        elapsed = now - _t_start
-        remaining = max(0, _t_estimated - elapsed)
-        ratio = getattr(_st, '_last_ratio', 0)
+# _update_countdown 已废弃 (2026-05-24)：进度条重构后使用 pipeline 内回调取代
 
-        mins, secs = divmod(int(remaining), 60)
-        if remaining > 5:
-            time_str = f"还剩 {secs}秒" if mins == 0 else f"还剩 {mins}分{secs}秒"
-        elif remaining > 0:
-            time_str = "即将完成..."
-        else:
-            time_str = _phase_text or "处理中..."  # 超时了还在跑，不显示 0 秒
-
-        phase = _phase_text or "AI 处理中..."
-        # 百分比：只在 adapter 报了真实进度时显示（批量模式），不造假的
-        pct_str = f"  {int(ratio*100)}%" if ratio > 0.05 else ""
-        itm[PROJ_LB].Text = f"⏳ {phase}{pct_str}  ·  {time_str}"
-
-        # 进度条：时间驱动也行，比没有好
-        est_ratio = min(0.95, elapsed / _t_estimated)
-        actual = max(ratio, est_ratio)
-        if actual > 0:
-            _pg(actual)
-    except Exception as e:
-        _event_log(f"_update_countdown 异常: {e}")
 
 _pg_last_milestone = 0  # 上次记录的进度里程碑
 

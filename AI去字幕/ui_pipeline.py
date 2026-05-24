@@ -50,7 +50,6 @@ from ui_widgets import (
     _st, _pg, _bal, _flash_completion, _reset_title, _flag_engine_error, _clear_engine_error, _set_btn, _set_proj,
     _event_log, _log_file, _log_action,
     _ui_lock, _ui_pending,
-    _t_start, _task_count,
     BAL_LB, API_CB, OSS_LB, PROJ_LB, PATH_LB,
     BTN_SCAN, BTN_START, BTN_STOP, BTN_PICK, BTN_UNDO,
     COLOR_CB, LOG_LB, ST_LB, PG_BAR,
