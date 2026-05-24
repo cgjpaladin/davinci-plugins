@@ -315,7 +315,6 @@ function _initTBodyClick(){
 }
 
 function rowClick(e, i){
-  if(window._activeCancel){ window._activeCancel(); window._activeCancel = null; }
   if(e.metaKey || e.ctrlKey){
     if(sel.has(i)){sel.delete(i);call('debug_log',`rowClick: Cmd-del ${i} sel=${sel.size}`);}
     else{sel.add(i);call('debug_log',`rowClick: Cmd-add ${i} sel=${sel.size}`);}
@@ -530,7 +529,7 @@ function activateEdit(td, key, i){
             if(e.key === 'Escape'){ input.value = oldVal; window._activeCancel = null; commit(true); }
           });
           input.addEventListener('blur', () => {
-            if(_focused && window._activeCancel){ window._activeCancel = null; _focused = false; commit(false); }
+            if(window._activeCancel){ window._activeCancel = null; commit(false); }
           });
         } else {
           window._activeCancel = null; commit(false);
@@ -546,7 +545,7 @@ function activateEdit(td, key, i){
       if(e.key === 'Escape'){ el.value = oldVal; window._activeCancel = null; commit(true); }
     });
     el.addEventListener('blur', () => {
-      if(_focused && window._activeCancel){ window._activeCancel = null; _focused = false; commit(false); }
+      if(window._activeCancel){ window._activeCancel = null; commit(false); }
     });
   }
 }
