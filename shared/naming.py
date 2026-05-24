@@ -205,7 +205,8 @@ def parse_filename(path):
         if k in d:
             result[k] = d[k]
     # method 不从文件名读——由 desc 反查（文件名里 method 仅作展示）
-    result["method"] = DESC_TO_METHOD.get(result.get("desc", ""), "角色专属版")
+    if result.get("desc"):
+        result["method"] = DESC_TO_METHOD.get(result["desc"], "角色专属版")
     return result
 
 
