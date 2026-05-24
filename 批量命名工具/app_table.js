@@ -484,7 +484,7 @@ function activateEdit(td, key, i){
       rows.forEach(r => { files[r].fields[key] = finalVal; });
       call('debug_log',`edit ${key}: ${oldVal||'(空)'} → ${finalVal||'(空)'} on ${rows.length} row(s)`);
       if(key === 'method'){
-        rows.forEach(r => { files[r].fields.method = oldVal; });
+        rows.forEach(r => { files[r].fields.method = finalVal; });
         call('debug_log',`commit: METHOD old='${oldVal||'(空)'}' new='${finalVal}' → onMethodChange`);
         onMethodChange(oldVal, finalVal, i);
         return;
