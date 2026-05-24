@@ -76,8 +76,9 @@ async function init(){
   // 绑定事件（在元素创建后）
   _bindInspectorListeners();
 
-  // 浏览器预览模式：注册 mock 拖放（仅在确认非 pywebview 时）
-  if(!window.pywebview){
+  // 浏览器预览模式：注册 mock 拖放（500ms 后确认无 pywebview 才激活）
+  setTimeout(() => {
+    if(window.pywebview) return;
     const dz=document.getElementById('fileList');
     dz.addEventListener('dragover',e=>{e.preventDefault()});
     dz.addEventListener('drop',e=>{
@@ -93,7 +94,7 @@ async function init(){
       renderList();updButtons();
       toast('已追加 '+mockFiles.length+' 个文件 (预览模式)');
     });
-  }
+  }, 500);
 }
 // ═══ init — 轮询等待 pywebview 桥接 ═══
 let _ready=false;
