@@ -18,9 +18,9 @@ if variant == 'table':
     html = open('renamer_table.html', encoding='utf-8').read()
     out_name = 'renamer_table.html'
 else:
-    css  = open('app.css', encoding='utf-8').read()
-    js   = open('app.js', encoding='utf-8').read()
-    html = open('renamer_web.html', encoding='utf-8').read()
+    css  = open('card/app.css', encoding='utf-8').read()
+    js   = open('card/app.js', encoding='utf-8').read()
+    html = open('card/renamer_web.html', encoding='utf-8').read()
     out_name = 'renamer_web.html'
 
 # 注入 git hash + branch + 构建时间

@@ -14,8 +14,8 @@ if "%VARIANT%"=="table" (
     set HTML_BUNDLE=_build\renamer_table.html
     set APP_NAME=批量命名工具-表格版
 ) else (
-    set JS_FILE=app.js
-    set HTML_FILE=renamer_web.html
+    set JS_FILE=card\app.js
+    set HTML_FILE=card\renamer_web.html
     set HTML_BUNDLE=_build\renamer_web.html
     set APP_NAME=批量命名工具-卡片版
 )
