@@ -505,7 +505,7 @@ function onDropResult(result){
     call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}`);
     const exist=new Set(files.map(f=>f.fp||f.path));
     const fresh=result.files.filter(f=>!(exist.has(f.fp||f.path)));
-    const dup=result.files.length-fresh.length;
+    const dup=result.duplicates||(result.files.length-fresh.length);
     // 如果完全重复，跳过（不清空现有）
     if(fresh.length===0){toast(`全部重复 · ${dup} 个已跳过`);return}
     files=files.concat(fresh);call("debug_log",`FILES list: ${files.length} total (added ${fresh.length})`);
