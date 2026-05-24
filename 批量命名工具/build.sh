@@ -50,7 +50,6 @@ $SYSPY -m PyInstaller \
   --add-data "../shared:shared" \
   --collect-data webview \
   --hidden-import webview \
-  --hidden-import webview.platforms.cocoa \
   --hidden-import bottle \
   --noconfirm \
   renamer_web.py
