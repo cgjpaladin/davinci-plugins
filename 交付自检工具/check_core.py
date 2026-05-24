@@ -805,7 +805,7 @@ def check_subtitle_linebreak(timeline, fps=25.0, io_range=None) -> list:
     return results
 
 
-def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn=False, whitelist_path=None) -> list:
+def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn=False, whitelist_path=None, debug_log=None) -> list:
     """检测字幕含违禁词。
 
     Args:
@@ -1098,7 +1098,7 @@ def check_subtitle_typo(timeline, fps=25.0, io_range=None) -> list:
     return [_make_result("pass", detail="错别字校对 (未开发)", is_summary=True)]
 
 
-def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list:
+def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_log=None) -> list:
     """检测视频轨可见片段的黑边：缩放不足、位移、旋转导致的未覆盖区域。"""
     import math
     issues = []
@@ -1219,7 +1219,7 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None) -> list
     return results
 
 
-def check_speed(timeline, project_fps=25.0, io_range=None) -> list:
+def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> list:
     """检测视频轨片段变速问题：慢放但未使用光流或帧混合。"""
     issues = []
     video_count = timeline.GetTrackCount("video")
@@ -1268,7 +1268,7 @@ def check_speed(timeline, project_fps=25.0, io_range=None) -> list:
     return results
 
 
-def check_video_clamping(timeline, threshold_frames=1, fps=25.0, io_range=None) -> list:
+def check_video_clamping(timeline, threshold_frames=1, fps=25.0, io_range=None, debug_log=None) -> list:
     """检测视频轨夹帧：启用的视频片段时长 ≤ X 帧。"""
     issues = []
     video_count = timeline.GetTrackCount("video")
@@ -1519,7 +1519,7 @@ def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list
                          is_summary=True)] + issues
 
 
-def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
+def check_offline_clips(timeline, fps=25.0, io_range=None, debug_log=None) -> list:
     """检查当前时间线是否存在脱机文件（使用共享缓存）。
 
     达芬奇两种脱机模式：
@@ -1576,7 +1576,7 @@ def check_offline_clips(timeline, fps=25.0, io_range=None) -> list:
                          is_summary=True)] + issues
 
 
-def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
+def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None, debug_log=None) -> list:
     """检查视频越轨（前置：视频轨数=5）。
     ① 实拍素材（含摄影机元数据）放在了 V4/V5 — 应放 V1-V3
     ② 尾板素材（未完待续/定格转场/全剧终）放在了 V1-V3 — 应放 V4-V5
@@ -1589,6 +1589,7 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None) -> list:
     # ── 前置：视频轨数必须为 5 ──
     video_count = timeline.GetTrackCount("video")
     if video_count != len(VIDEO_TRACK_PRESET):
+        if debug_log: debug_log(f"视频越轨跳过: 轨数 {video_count} ≠ {len(VIDEO_TRACK_PRESET)}")
         return [_make_result("fail",
             detail=f"视频轨数 {video_count}≠{len(VIDEO_TRACK_PRESET)}，跳过视频越轨检测",
             is_summary=True)]
@@ -1770,7 +1771,7 @@ def _audio_color_detail(color, vi, name):
             f"{cat}请放 {dest}")
 
 
-def check_audio_color_tracks(timeline, fps=25.0, io_range=None) -> list:
+def check_audio_color_tracks(timeline, fps=25.0, io_range=None, debug_log=None) -> list:
     """检查音频媒体池颜色越轨（前置：音轨数=10 且名称匹配预设）。
 
     短剧项目音频轨道颜色约定：
@@ -1788,6 +1789,7 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None) -> list:
     # ── 前置①：音轨数必须为 10 ──
     audio_count = timeline.GetTrackCount("audio")
     if audio_count != len(AUDIO_TRACK_PRESET):
+        if debug_log: debug_log(f"音频越轨跳过: 音轨数 {audio_count} ≠ {len(AUDIO_TRACK_PRESET)}")
         return [_make_result("fail",
             detail=f"音轨数 {audio_count}≠{len(AUDIO_TRACK_PRESET)}，跳过音频越轨检测",
             is_summary=True)]
@@ -1801,6 +1803,7 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None) -> list:
             names_ok = False
             break
     if not names_ok:
+        if debug_log: debug_log("音频越轨跳过: 轨名与预设不匹配")
         return [_make_result("fail",
             detail="音频轨名称与预设不符，跳过音频越轨检测",
             is_summary=True)]

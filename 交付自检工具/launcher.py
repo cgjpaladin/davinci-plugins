@@ -50,6 +50,9 @@ if not _UI_SCRIPT:
     raise FileNotFoundError(f"找不到 ui.py")
 
 _log.launcher(f"启动 ui: {_UI_SCRIPT}")
+_log.launcher(f"Python: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}  ({_PYTHON})")
+_log.launcher(f"路由: {'DEV(本地优先)' if socket.gethostname() in _DEV_HOSTS else 'SMB(全公司)'}  (host={socket.gethostname()})")
+_log.launcher(f"SMB: {'已挂载' if os.path.isdir(_SMB_ROOT) else '未挂载'}  ({_SMB_ROOT})")
 
 if '--dry-run' in sys.argv:
     import socket

@@ -1492,7 +1492,7 @@ def _start_check():
                 all_results = list(check["run_fn"](
                     timeline=timeline, fps=fps, project=project,
                     personal_enabled=itm[CHK_CENSOR_PERSONAL].Checked,
-                    io_range=io_range))
+                    io_range=io_range, debug_log=_action_log))
             except Exception:
                 import traceback
                 _action_log(f"❌ {check['section']}检查崩溃: {traceback.format_exc()}")
