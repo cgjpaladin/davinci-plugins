@@ -188,6 +188,16 @@ function renderList(force){
 
   const rows = [...tbody.querySelectorAll('tr')];
   if(force || rows.length !== files.length){
+    // 去重：pywebview evaluate_js 重放可能产生幽灵条目
+    const seen = new Set(); const deduped = [];
+    for(const f of files){
+      const k = f.fp || f.path;
+      if(!seen.has(k)){seen.add(k); deduped.push(f);}
+    }
+    if(deduped.length !== files.length){
+      call('debug_log',`renderList: dedup ${files.length}→${deduped.length}`);
+      files = deduped;
+    }
     call('debug_log',`renderList: FORCE rows=${rows.length} files=${files.length} f0=${files[1]?.path?.slice(-40)||'none'}`);
     tbody.innerHTML = '';
     files.forEach((f,i)=>{ tbody.appendChild(_buildRow(f,i)); });
