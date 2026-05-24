@@ -1508,6 +1508,17 @@ def _start_check():
                 rest = all_results
                 _action_log(f"⚠ {check['section']} 检查缺少 is_summary=True 汇总行 — 请给 check_core 函数加上")
 
+            # 逐条记录检查结果到日志
+            for r in rest:
+                detail = r.get("detail", "")
+                track = r.get("track", "")
+                tc = r.get("timecode", "")
+                line = f"  {track} {tc}  {detail}" if track else detail
+                if r.get("status") == "pass":
+                    pass  # 通过的不要噪音
+                else:
+                    _action_log(line)
+
             for r in rest:
                 is_fail, is_warn, is_pass = _process_result(r, section_rows)
                 if is_pass:
