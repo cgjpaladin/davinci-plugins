@@ -176,8 +176,7 @@ class RenamerAPI:
         MAX_FILES = 100
         files = []; duplicates = 0; subdirs = 0; truncated = False
         seen_fp = set()  # 本批指纹，不跨批
-        defaults = _saved_defaults
-        _EMPTY_KEYS = {'ep','sc','gr','ver'}
+        _EMPTY_KEYS = {'ep','sc','gr','tk','ver'}  # TK 由扫描自动计算，不继承解析值
         VIDEO_EXT = {'.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw'}
         parsed_count = 0; no_parse_count = 0
         for p_ in paths_[:MAX_FILES]:
@@ -231,7 +230,6 @@ class RenamerAPI:
                             for fd in FIELD_CONFIG:
                                 k = fd["key"]
                                 if parsed and k in parsed: fields[k] = parsed[k]
-                                elif k in _EMPTY_KEYS: fields[k] = ""
                                 elif k in _EMPTY_KEYS: fields[k] = ""
                                 else: fields[k] = fd["def"]
                             if parsed: parsed_count += 1
