@@ -156,6 +156,11 @@ function onMethodChange(oldMethod, newMethod, ri){
     changedRows.forEach(r => { files[r].fields.desc = ''; });
   }
   renderList(true); updButtons();
+  // desc 高亮闪现
+  changedRows.forEach(r => {
+    const td = document.querySelector(`#fileList tbody tr[data-index="${r}"] td.col-desc`);
+    if(td){td.classList.add('flash');setTimeout(()=>td.classList.remove('flash'),400)}
+  });
   call('debug_log',`method→desc: ${changedRows.length} rows → desc='${files[changedRows[0]].fields.desc||'(空)'}' (mode=${cfg.mode})`);
 }
 function _checkDescCollision(v){
@@ -617,7 +622,7 @@ async function doRename(){
     r.renamed.forEach(rn=>{const f=files.find(x=>x.path===rn.old_path);if(f)f.path=rn.new_path});
     // 缩略图 key 同步更新
     r.renamed.forEach(rn=>{if(_thumbs[rn.old_path]){_thumbs[rn.new_path]=_thumbs[rn.old_path];delete _thumbs[rn.old_path]}});
-    toast(`完成 ${r.ok}/${r.total}`)}
+    toast(`完成 ${r.ok}/${r.total}`); result(`✅ 重命名完成 ${r.ok}/${r.total}`)}
   if(r.fail&&r.fail.length){setTimeout(()=>toast('失败: '+r.fail.join('; ')),2000)}
   renderList();updButtons();
 }
@@ -642,7 +647,7 @@ async function doUndo(){
   call('debug_log','undo: starting');
   const r=await call('do_undo');
   call('debug_log','undo: ok='+r.ok+' remaining='+(r.remaining||0)+' type='+(r.type||'rename'));
-  toast(r.msg);
+  toast(r.msg);result(r.msg);
   undoAvail=(r.remaining||0)>0;
   if(r.type === 'archive'){
     // 撤销归档：去掉 archived 标记（rn.new_path = 源路径）
@@ -679,7 +684,7 @@ async function doArchive(){
     sel.clear();
     undoAvail = true;
   }
-  let m=`归档完成 ${r.ok} 个`;if(r.dup>0)m+=` · ${r.dup} 个重复已跳过`;if(r.fail&&r.fail.length>0)m+=` · ${r.fail.length} 失败`;toast(m);
+  let m=`归档完成 ${r.ok} 个`;if(r.dup>0)m+=` · ${r.dup} 个重复已跳过`;if(r.fail&&r.fail.length>0)m+=` · ${r.fail.length} 失败`;toast(m);result(m);
   renderList();updButtons();
 }
 // ═══ Thumbnails ═══
@@ -917,5 +922,6 @@ function _runSelfTest(){
 
 // ═══ Toast ═══
 let tt;function toast(m){call('debug_log','TOAST: '+m);const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2500)}
+function result(m){document.getElementById('statusText').textContent=m}
 
 setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');

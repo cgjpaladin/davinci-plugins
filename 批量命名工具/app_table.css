@@ -249,6 +249,13 @@ td.editing input,td.editing select{max-width:100%}
 /* ── Empty cell ── */
 td.empty{color:var(--tbl-dim);font-style:italic;background:#2d1212}
 
+/* ── Desc flash ── */
+td.col-desc.flash{animation:descFlash .35s ease-out}
+@keyframes descFlash{
+  0%{background:rgba(255,180,0,.3)}
+  100%{background:transparent}
+}
+
 /* ── Row completion dots (col-num ::before) ── */
 tbody tr.row-full td.col-num::before{background:var(--green)}
 tbody tr.row-most td.col-num::before{background:var(--yellow)}
