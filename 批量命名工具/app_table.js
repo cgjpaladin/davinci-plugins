@@ -301,6 +301,7 @@ function _initTBodyClick(){
       const sameCell = (window._lastCellId === cellId && (now - (window._lastTime||0)) < 350);
       window._lastCellId = cellId; window._lastTime = now;
       if(sameCell){
+        clearTimeout(window._shrinkTimer);
         call('debug_log',`dblClick: activate ${key} on row ${i}`);
         activateEdit(td, key, i);
       } else {
@@ -326,12 +327,17 @@ function rowClick(e, i){
     call('debug_log',`rowClick: Shift ${lo}-${hi} sel=${sel.size}`);
   } else if(sel.has(i)){
     if(sel.size > 1){
-      // 多选态点已选行 → 收缩为单选此行
-      sel.clear(); sel.add(i);
-      call('debug_log',`rowClick: shrink-to ${i} sel=${sel.size}`);
+      // 多选态点已选行 → 延迟 350ms：双击编辑，单击收缩
+      clearTimeout(window._shrinkTimer);
+      window._shrinkTimer = setTimeout(() => {
+        sel.clear(); sel.add(i);
+        call('debug_log',`rowClick: shrink-to ${i} sel=${sel.size}`);
+        renderList(); updButtons();
+      }, 350);
+      return;
     } else {
       call('debug_log',`rowClick: SKIP already-single ${i}`);
-      return; // 单选态点同一行 → 不动
+      return;
     }
   } else {
     sel.clear(); sel.add(i);
