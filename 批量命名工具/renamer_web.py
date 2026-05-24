@@ -286,7 +286,7 @@ class RenamerAPI:
             except:
                 pass
         if batch:
-            _undo_stack.append(batch)
+            _undo_stack.append({"type": "rename", "pairs": [(op, np) for op, np in batch]})
         _log.info(f"do_rename: {ok} ok, batch={len(batch)}, stack_depth={len(_undo_stack)}")
         return {"ok": ok, "fail": fail, "total": len(files), "renamed": renamed, "stack_depth": len(_undo_stack)}
 
@@ -294,17 +294,26 @@ class RenamerAPI:
         global _undo_stack
         if not _undo_stack:
             return {"ok": 0, "msg": "没有可撤销的操作"}
-        batch = _undo_stack.pop()
+        entry = _undo_stack.pop()
+        # 兼容旧格式: list of tuples
+        if isinstance(entry, list):
+            entry = {"type": "rename", "pairs": entry}
+        typ = entry.get("type", "rename")
+        pairs = entry.get("pairs", [])
         ud = 0; renamed = []
-        for op, np in batch:
+        for op, np in pairs:
             try:
-                os.rename(np, op)
-                renamed.append({"old_path": np, "new_path": op})
+                if typ == "archive":
+                    os.remove(np)  # 删除已归档的文件
+                    renamed.append({"old_path": np, "new_path": op})  # 通知 JS 还原文件引用
+                else:
+                    os.rename(np, op)
+                    renamed.append({"old_path": np, "new_path": op})
                 ud += 1
             except:
                 pass
-        _log.info(f"do_undo: {ud}/{len(batch)} reversed, remaining batches: {len(_undo_stack)}")
-        return {"ok": ud, "msg": f"已撤销 {ud} 个", "remaining": len(_undo_stack), "renamed": renamed}
+        _log.info(f"do_undo: {ud}/{len(pairs)} {typ} reversed, remaining batches: {len(_undo_stack)}")
+        return {"ok": ud, "msg": f"已撤销 {ud} 个", "remaining": len(_undo_stack), "renamed": renamed, "type": typ}
 
     def validate_dest(self, dest):
         v = str(dest).strip()
@@ -346,8 +355,8 @@ class RenamerAPI:
                             h = _hash_file(fp)
                             if h not in seen: seen[h] = fp
                     except: pass
-                if len(seen) > 100: break
         # 逐文件处理
+        archived = []
         for f in files:
             fd = f.get("fields", {})
             ext = f.get("ext", ".mp4")
@@ -365,7 +374,7 @@ class RenamerAPI:
                     parts = sample.split('_Tk00_', 1)
                     if len(parts) == 2:
                         tk_prefix = parts[0] + '_Tk'
-                        tk_suffix = '_' + parts[1]
+                        tk_suffix = parts[1]  # parts[1] 已自带前导 _
                         for fn in os.listdir(folder):
                             if not (fn.startswith(tk_prefix) and fn.endswith(tk_suffix + ext)): continue
                             m = re.search(r'\bTk(0[1-9]|[1-9]\d)(?:_|\.mp4|\.mov|\.mxf|\.avi|\.mkv|$)', fn)
@@ -387,16 +396,30 @@ class RenamerAPI:
             except:
                 fd['tk'] = '01'
                 target = build_folder(dest, type('E',(),{'fields':fd,'ext':ext})())
-            # 哈希去重
+            # 目标路径碰撞检测（同字段不同内容 → 会覆盖，不应发生）
             try:
+                if os.path.exists(target):
+                    # 尝试找下一个可用 TK
+                    orig_tk = fd.get('tk', '01')
+                    for n in range(int(orig_tk)+1, 100):
+                        fd['tk'] = str(n).zfill(2)
+                        alt = os.path.join(folder, build_filename(fd) + ext)
+                        if not os.path.exists(alt):
+                            target = alt; break
+                    else:
+                        fail.append(f'{os.path.basename(target)}: TK 已满(99)'); continue
+                # 哈希去重
                 src_hash = _hash_file(f["path"])
                 if src_hash in seen: dup += 1; continue
                 shutil.copy2(f["path"], target)
-                seen[src_hash] = target  # 防同一批内重复
+                seen[src_hash] = target
+                archived.append((f["path"], target))
                 ok += 1
             except Exception as e:
                 fail.append(os.path.basename(f["path"]) + ": " + str(e))
-        return {"ok": ok, "dup": dup, "fail": fail, "total": len(files)}
+        if archived:
+            _undo_stack.append({"type": "archive", "pairs": archived})
+        return {"ok": ok, "dup": dup, "fail": fail, "total": len(files), "archived": [{"old": src, "new": dst} for src, dst in archived], "stack_depth": len(_undo_stack)}
 
 
 # 自动检测打包后的 HTML 文件（支持卡片版/表格版）

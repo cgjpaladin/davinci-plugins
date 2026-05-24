@@ -75,7 +75,7 @@ async function init(){
   const baseTh = theadTr.querySelector('.col-base');
   // 字段顺序与 build_filename 一致：desc → method → author → ver → status
   const headerKeys = ['ep','sc','gr','tk','desc','method','author','ver','status'];
-  const headerLabels = {ep:'Ep',sc:'Sc',gr:'Gr',tk:'Tk',desc:'镜头描述',method:'制作方式',author:'制作者',ver:'v',status:'通过'};
+  const headerLabels = {ep:'Ep 集数',sc:'Sc 场次',gr:'Gr 小场次',tk:'Tk 次数',desc:'镜头描述',method:'制作方式',author:'制作者',ver:'v 版本',status:'通过'};
   headerKeys.forEach(k => {
     const th = document.createElement('th');
     th.className = 'col-'+k;
@@ -208,6 +208,7 @@ function renderList(force){
       const ff = {...f.fields, tk: _computeTK(i)};
       const ready = ff.ep && ff.sc && ff.gr && ff.desc && ff.author && ff.method && ff.ver && ff.status;
       tr.classList.add(ready?'rdy':'mis');
+      if(f.archived) tr.classList.add('archived');
       const fillCount = [ff.ep, ff.sc, ff.gr, ff.desc, ff.method, ff.author, ff.ver, ff.status].filter(Boolean).length;
       tr.classList.add(fillCount === 8 ? 'row-full' : fillCount >= 5 ? 'row-most' : 'row-empty');
       const tags = f.tags||[];
@@ -227,6 +228,7 @@ function _buildRow(f,i){
   const ready = ff.ep && ff.sc && ff.gr && ff.desc && ff.author && ff.method && ff.ver && ff.status;
   if(sel.has(i)) tr.classList.add('sel');
   tr.classList.add(ready?'rdy':'mis');
+  if(f.archived) tr.classList.add('archived');
   // 行完成度色条
   const fillCount = [ff.ep, ff.sc, ff.gr, ff.desc, ff.method, ff.author, ff.ver, ff.status].filter(Boolean).length;
   tr.classList.add(fillCount === 8 ? 'row-full' : fillCount >= 5 ? 'row-most' : 'row-empty');
@@ -294,6 +296,7 @@ function _initTBodyClick(){
     if(!tr) return;
     const i = parseInt(tr.dataset.index);
     if(isNaN(i)) return;
+    if(files[i] && files[i].archived) return;  // 已归档，不可编辑
     if(td.classList.contains('editing')) return;
     const key = td.dataset.key;
     call('debug_log',`click: td=${td.className} i=${i} key=${key||'-'} detail=${e.detail}`);
@@ -634,7 +637,29 @@ function buildName(f){
   const raw=_nameFmt.map(s=>s.pfx+(f[s.key]||'')).join('_');
   return raw.replace(/_+/g,'_').replace(/_$/,'');
 }
-async function doUndo(){call('debug_log','undo: starting');const r=await call('do_undo');call('debug_log','undo: ok='+r.ok+' remaining='+(r.remaining||0));toast(r.msg);undoAvail=(r.remaining||0)>0;if(r.renamed){r.renamed.forEach(rn=>{const f=files.find(x=>x.path===rn.old_path);if(f)f.path=rn.new_path;if(_thumbs[rn.old_path]){_thumbs[rn.new_path]=_thumbs[rn.old_path];delete _thumbs[rn.old_path]}})};renderList();updButtons()}
+async function doUndo(){
+  call('debug_log','undo: starting');
+  const r=await call('do_undo');
+  call('debug_log','undo: ok='+r.ok+' remaining='+(r.remaining||0)+' type='+(r.type||'rename'));
+  toast(r.msg);
+  undoAvail=(r.remaining||0)>0;
+  if(r.type === 'archive'){
+    // 撤销归档：去掉 archived 标记（rn.new_path = 源路径）
+    if(r.renamed){
+      r.renamed.forEach(rn => {
+        const f=files.find(x=>x.path===rn.new_path);
+        if(f) delete f.archived;
+      });
+    }
+  }else if(r.renamed){
+    r.renamed.forEach(rn=>{
+      const f=files.find(x=>x.path===rn.old_path);
+      if(f)f.path=rn.new_path;
+      if(_thumbs[rn.old_path]){_thumbs[rn.new_path]=_thumbs[rn.old_path];delete _thumbs[rn.old_path]}
+    });
+  }
+  renderList();updButtons();
+}
 
 function removeSelected(){if(sel.size===0)return;call('debug_log','remove: '+sel.size+' files');files=files.filter((_,i)=>!sel.has(i));sel.clear();renderList();toast('已移除')}
 async function doArchive(){
@@ -647,7 +672,14 @@ async function doArchive(){
   call('debug_log','archive: starting');
   const r=await call('do_archive',sfs,dest);
   call('debug_log','archive: result='+JSON.stringify({ok:r.ok,total:r.total,dup:r.dup||0}));
+  if(r.ok>0){
+    // 标记已归档
+    srt.forEach(i => { files[i].archived = true; });
+    sel.clear();
+    undoAvail = true;
+  }
   let m=`归档完成 ${r.ok} 个`;if(r.dup>0)m+=` · ${r.dup} 个重复已跳过`;if(r.fail&&r.fail.length>0)m+=` · ${r.fail.length} 失败`;toast(m);
+  renderList();updButtons();
 }
 // ═══ Thumbnails ═══
 async function loadThumbs(){

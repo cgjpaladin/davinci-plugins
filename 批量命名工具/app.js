@@ -241,6 +241,7 @@ function renderList(){
     let ff={...f.fields,tk:_computeTK(i)},nm=buildName(ff);
     const ready=ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status;
     d.classList.add(ready?'rdy':'mis');
+    if(f.archived) d.classList.add('archived');
     // 自动检查标注
     const tt=f.tags;if(tt&&tt.length){if(tt.includes('zero'))d.classList.add('warn-zero');if(tt.includes('size'))d.classList.add('warn-size');if(tt.includes('dbl_ext'))d.classList.add('warn-dbl')}
     const th=document.createElement('div');th.className='fl-thumb';
@@ -429,23 +430,32 @@ function buildTK(i){
   }
   return String(n).padStart(2,'0');
 }
-function _computeTK(i){
-  const fs=files[i].fields;
-  const k=fs.ep+'|'+fs.sc+'|'+fs.gr+'|'+(fs.desc||'')+'|'+(fs.method||'')+'|'+fs.ver;
-  let n=0;
-  for(let j=0;j<=i;j++){
-    const g=files[j].fields;
-    const jk=g.ep+'|'+g.sc+'|'+g.gr+'|'+(g.desc||'')+'|'+(g.method||'')+'|'+g.ver;
-    if(jk===k)n++;
-  }
-  return String(n).padStart(2,'0');
-}
+function _computeTK(i){return buildTK(i)}
 let _nameFmt=[];
 function buildName(f){
   const raw=_nameFmt.map(s=>s.pfx+(f[s.key]||'')).join('_');
   return raw.replace(/_+/g,'_').replace(/_$/,'');
 }
-async function doUndo(){const r=await call('do_undo');toast(r.msg);undoAvail=(r.remaining||0)>0;if(r.renamed){r.renamed.forEach(rn=>{const f=files.find(x=>x.path===rn.old_path);if(f)f.path=rn.new_path;if(_thumbs[rn.old_path]){_thumbs[rn.new_path]=_thumbs[rn.old_path];delete _thumbs[rn.old_path]}})};renderList();updButtons()}
+async function doUndo(){
+  const r=await call('do_undo');
+  toast(r.msg);
+  undoAvail=(r.remaining||0)>0;
+  if(r.type === 'archive'){
+    if(r.renamed){
+      r.renamed.forEach(rn => {
+        const f=files.find(x=>x.path===rn.new_path);
+        if(f) delete f.archived;
+      });
+    }
+  }else if(r.renamed){
+    r.renamed.forEach(rn=>{
+      const f=files.find(x=>x.path===rn.old_path);
+      if(f)f.path=rn.new_path;
+      if(_thumbs[rn.old_path]){_thumbs[rn.new_path]=_thumbs[rn.old_path];delete _thumbs[rn.old_path]}
+    });
+  }
+  renderList();updButtons();
+}
 
 function removeSelected(){if(sel.size===0)return;files=files.filter((_,i)=>!sel.has(i));sel.clear();renderList();toast('已移除')}
 async function doArchive(){
@@ -458,7 +468,13 @@ async function doArchive(){
   call('debug_log','archive: starting');
   const r=await call('do_archive',sfs,dest);
   call('debug_log','archive: result='+JSON.stringify({ok:r.ok,total:r.total,dup:r.dup||0}));
+  if(r.ok>0){
+    srt.forEach(i => { files[i].archived = true; });
+    sel.clear();
+    undoAvail = true;
+  }
   let m=`归档完成 ${r.ok} 个`;if(r.dup>0)m+=` · ${r.dup} 个重复已跳过`;if(r.fail&&r.fail.length>0)m+=` · ${r.fail.length} 失败`;toast(m);
+  renderList();updButtons();
 }
 // ═══ Thumbnails ═══
 async function loadThumbs(){

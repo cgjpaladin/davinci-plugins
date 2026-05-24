@@ -1356,6 +1356,7 @@ def _start_check():
 
         _action_log(f"▶ 开始检查 (轨道模板={_track_values}, 夹帧阈值={_clamp_value})")
         itm[HINT_LB].Text = "检查中..."
+        itm[HINT_LB]["StyleSheet"] = "color:rgb(130,130,130);font-size:10px;"  # 重置样式
 
         resolve = bmd.scriptapp("Resolve")
         if not resolve:
@@ -1578,18 +1579,18 @@ def _start_check():
         elapsed_ms = int((time.time() - _start_time) * 1000)
         jump_hint = "💡 点击结果行可跳转到对应时间码"
         if has_failures:
-            hint = f"❌ 未通过 {fail_count} 项"
+            itm[HINT_LB].Text = f"❌ {fail_count} 项未通过，请修复后重新检查"
             if has_warnings:
-                hint += f"，⚠ {warn_count} 项警告"
-            hint += f"  |  {jump_hint}"
+                itm[HINT_LB].Text += f"，⚠ {warn_count} 项警告"
+            itm[HINT_LB].Text += f"  |  {jump_hint}"
             _action_log("❌ 检查未通过 — 请修复上述问题")
         elif has_warnings:
-            hint = f"⚠ {warn_count} 项警告  |  {jump_hint}"
+            itm[HINT_LB].Text = f"⚠ {warn_count} 项警告  |  {jump_hint}"
             _action_log("⚠ 有警告 — 请检查")
         else:
-            hint = f"✅ 通过  |  {jump_hint}"
+            itm[HINT_LB].Text = "全部检查通过 ✓  现在可以交付渲染了"
+            itm[HINT_LB]["StyleSheet"] = "color:rgb(50,205,50);font-size:10px;"
             _action_log("✅ 所有检查通过")
-        itm[HINT_LB].Text = hint
 
         # ── 结果持久化 ──
         try:

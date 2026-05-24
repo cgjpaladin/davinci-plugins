@@ -252,6 +252,11 @@ tbody tr.row-full td.col-num::before{background:var(--green)}
 tbody tr.row-most td.col-num::before{background:var(--yellow)}
 tbody tr.row-empty td.col-num::before{background:var(--red)}
 
+/* ── Archived row ── */
+tbody tr.archived{opacity:.45}
+tbody tr.archived td{color:var(--tbl-dim)!important}
+tbody tr.archived td.empty{background:transparent}
+
 /* ── Readonly cell (TK) ── */
 td.readonly{cursor:default;color:var(--tbl-dim);font-style:italic}
 
