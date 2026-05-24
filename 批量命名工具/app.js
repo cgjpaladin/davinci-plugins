@@ -631,6 +631,6 @@ document.getElementById('fileList').addEventListener('wheel',e=>{
 });
 
 // ═══ Toast ═══
-let tt;function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2500)}
+let tt;function toast(m){call('debug_log','TOAST card: '+m);const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2500)}
 
 setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');
