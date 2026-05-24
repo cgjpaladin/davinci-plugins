@@ -196,12 +196,9 @@ function renderList(force){
       if(!seen.has(k)){seen.add(k); deduped.push(f);}
     }
     if(deduped.length !== files.length){
-      call('debug_log',`renderList: dedup ${files.length}→${deduped.length}`);
       files = deduped;
-    } else if(files.length > 1){
-      call('debug_log',`renderList: NO dedup f0_fp=${files[0].fp?.slice(0,20)||'?'} f1_fp=${files[1].fp?.slice(0,20)||'?'} f0_path=${files[0].path?.slice(-30)} f1_path=${files[1].path?.slice(-30)}`);
     }
-    call('debug_log',`renderList: FORCE rows=${rows.length} files=${files.length} f0=${files[1]?.path?.slice(-40)||'none'}`);
+    call('debug_log',`renderList: FORCE rows=${rows.length} files=${files.length}`);
     tbody.innerHTML = '';
     files.forEach((f,i)=>{ tbody.appendChild(_buildRow(f,i)); });
   } else {
@@ -706,7 +703,6 @@ function onDropResult(result){
   if(result.truncated) msg+=` (上限${result.max}个)`;
   renderList();toast(msg);
   loadThumbs();
-  window._inDrop = false;
 }
 
 // ═══ Keyboard ═══

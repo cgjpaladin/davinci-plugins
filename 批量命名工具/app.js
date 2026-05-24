@@ -230,6 +230,8 @@ function descSelect(vs){
 }
 // ═══ File List ═══
 function renderList(){
+  // 去重（pywebview 重放安全网）
+  const seen=new Set(); files=files.filter(f=>{const k=f.fp||f.path;if(seen.has(k))return false;seen.add(k);return true});
   const ct=document.getElementById('fileList');ct.innerHTML='';
   if(files.length===0){ct.innerHTML='<div class="fl-empty">拖放文件到此处 或 点击 +文件</div>';document.getElementById('fileCount').innerHTML='文件列表 · 0 个';updButtons();return}
   const srt=[...sel].sort((a,b)=>a-b);
