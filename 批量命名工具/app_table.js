@@ -798,6 +798,7 @@ function _initColResize(){
 
 // ═══ Self-test (mock mode) ═══
 function _runSelfTest(){
+  call('debug_log','_runSelfTest: START');
   const ok=[],fail=[];
   function t(name,fn){try{fn();ok.push(name)}catch(e){fail.push(name+': '+e.message)}}
   t('files array',()=>{if(!Array.isArray(files))throw new Error('files not array')});
