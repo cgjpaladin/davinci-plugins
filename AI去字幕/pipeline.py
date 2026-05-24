@@ -161,7 +161,6 @@ class SubtitlePipeline(BasePipeline):
             self.log.progress(i, len(tasks), t.name, "处理中")
 
         self.ui.set_status("AI 处理中...")
-        self.ui.set_progress(0.40)
 
         t0 = time.time()
         api_results = adapter.process_batch(
@@ -191,7 +190,7 @@ class SubtitlePipeline(BasePipeline):
                 mp_color=t.mp_color, alt_tl_items=t.alt_tl_items,
             ))
 
-        self.ui.set_progress(0.60)
+        self.ui.set_progress(0.80)
         self.ui.set_status("下载处理结果...")
         return results
 
@@ -200,38 +199,44 @@ class SubtitlePipeline(BasePipeline):
     # ═══════════════════════════════════════
 
     def _get_progress_callback(self):
-        """统一进度回调：映射 adapter phase→宽绿条 0.10-0.80 + 阶段标签 + 动态倒计时"""
+        """统一进度回调：adapter 全局 ratio→宽绿条 0.10-0.80 + 阶段标签 + 动态倒计时"""
         import time as _time
 
-        PHASE_MAP = {
-            "upload":     ("⬆ 上传中",   0.10, 0.07),
-            "submit":     ("📤 提交中",   0.17, 0.03),
-            "processing": ("🤖 AI处理中", 0.20, 0.60),
-        }
+        # adapter ratio 是全局进度（0=开始上传, ~0.9=AI接近完成）
+        # 映射到绿条: 0.10 + ratio * 0.78 → 0.10 ~ 0.80
+        SCALE = 0.78
+        BASE = 0.10
 
         _phase_start = [_time.time()]
         _last_label = [""]
+        _last_ratio = [0.0]
 
         def cb(phase, ratio):
-            if phase not in PHASE_MAP:
-                return
-            label, base, span = PHASE_MAP[phase]
-            unified = base + ratio * span
+            unified = BASE + ratio * SCALE
             self.ui.set_progress(unified)
+
+            # 阶段标签
+            label = {
+                "upload":     "⬆ 上传中",
+                "submit":     "📤 提交中",
+                "processing": "🤖 AI处理中",
+            }.get(phase, phase)
 
             if label != _last_label[0]:
                 _last_label[0] = label
                 _phase_start[0] = _time.time()
 
+            # 动态倒计时（处理阶段才显示，ratio变化>0.03）
             elapsed = _time.time() - _phase_start[0]
-            if ratio > 0.03 and elapsed > 2:
+            if ratio > 0.05 and ratio > _last_ratio[0] + 0.01 and elapsed > 3:
+                _last_ratio[0] = ratio
                 remaining = elapsed / ratio * (1 - ratio)
                 if remaining < 5:
-                    eta_text = "即将完成..."
+                    self.ui.set_phase(f"{label} · 即将完成...")
                 else:
                     mins, secs = divmod(int(remaining), 60)
                     eta_text = f"约剩 {mins}分{secs}秒" if mins > 0 else f"约剩 {secs}秒"
-                self.ui.set_phase(f"{label} · {eta_text}")
+                    self.ui.set_phase(f"{label} · {eta_text}")
             else:
                 self.ui.set_phase(label)
 
@@ -240,11 +245,9 @@ class SubtitlePipeline(BasePipeline):
     def _download_apply(self, results: list) -> list:
         """覆盖基类：加下载/替换阶段标签"""
         self.ui.set_phase("⬇ 下载中")
-        self.ui.set_progress(0.80)
         output_files = super()._download_apply(results)
-        self.ui.set_phase("🔧 替换回时间线")
-        self.ui.set_progress(0.90)
-        # super 内部调用了 download_and_apply，替换在回调里完成
+        self.ui.set_phase("🔧 替换中")
+        self.ui.set_progress(0.92)
         return output_files
 
     # ═══════════════════════════════════════

@@ -340,7 +340,7 @@ class BasePipeline(ABC):
         from core import download_and_apply
 
         total = len(results)
-        self.ui.set_progress(0.65)
+        self.ui.set_progress(0.82)
 
         # 逐文件进度（进日志区，不只是状态栏）
         downloaded = [0]  # 闭包捕获
@@ -491,7 +491,7 @@ class BasePipeline(ABC):
         """展示扫描结果。子类可覆盖以自定义格式。"""
         if clips:
             self.ui.log_info(f"🎬 扫描到 {len(clips)} 个片段")
-            self.ui.set_progress(0.20)
+            self.ui.set_progress(0.10)
         else:
             self.ui.log_info("IO 内无符合筛选的片段")
             self.ui.set_status("无有效片段")
@@ -521,7 +521,7 @@ class BasePipeline(ABC):
                            "cache_hits": cache_hits})
             return [], True
 
-        self.ui.set_progress(0.25)
+        self.ui.set_progress(0.12)
         return tasks, False
 
     def _before_submit(self, tasks: list) -> list:
