@@ -203,7 +203,7 @@ tbody td{
   white-space:nowrap;
   height:32px;
 }
-tbody tr{transition:background .06s}
+tbody tr{}
 /* ── Ready / missing ── */
 tbody tr.rdy .col-num{color:var(--green)}
 tbody tr.mis .col-num{color:var(--yellow)}
