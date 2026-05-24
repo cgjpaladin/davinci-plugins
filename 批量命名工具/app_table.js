@@ -191,7 +191,7 @@ function renderList(force){
     // 去重：pywebview evaluate_js 重放可能产生幽灵条目
     const seen = new Set(); const deduped = [];
     for(const f of files){
-      const k = f.fp || f.path;
+      const k = f.fp || f.basename || f.path.split('/').pop().split('\\').pop() || f.path;
       if(!seen.has(k)){seen.add(k); deduped.push(f);}
     }
     if(deduped.length !== files.length){
