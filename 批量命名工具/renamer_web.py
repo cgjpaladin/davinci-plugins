@@ -474,7 +474,12 @@ if __name__ == "__main__":
             for f in fresh: _sent_fps.add(f.get('fp',''))
             result['files'] = fresh
             result['total'] = len(fresh)
-            _window.evaluate_js(f"onDropResult({json.dumps(result)})")
+            duplicates = result.get('duplicates', 0)
+            if duplicates and not fresh:
+                _window.evaluate_js(f'toast("全部重复 · {duplicates} 个已跳过")')
+            else:
+                _window.evaluate_js(f"onDropResult({json.dumps(result)})")
+
         _window.dom.document.events.dragover += DOMEventHandler(lambda e: e, prevent_default=True)
         _window.dom.document.events.drop += DOMEventHandler(_on_drop, prevent_default=True, stop_propagation=True)
         _log.info("DOM drop handler bound")
