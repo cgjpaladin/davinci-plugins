@@ -1614,15 +1614,15 @@ def _start_check():
                 "has_warnings": has_warnings,
                 "pass": pass_count, "fail": fail_count, "warn": warn_count,
                 "sections": [
-                    {"group": s["group"], "section": s["section"],
+                    {"group": s["group"], "section": s["title"],
                      "all_ok": s["all_ok"],
                      "fails": [{k: v for k, v in r.items() if not k.startswith("_")}
-                               for r in s.get("rows", []) if "❌" in str(r.get("detail", ""))]}
+                               for r in s.get("rows", []) if r.get("status") == "fail"]}
                     for s in sections
                 ],
             })
-        except Exception:
-            pass
+        except Exception as e:
+            _action_log(f"⚠ 结果持久化写入失败: {e}")
 
     except Exception as e:
         import traceback
