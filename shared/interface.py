@@ -84,12 +84,11 @@ class CLIPipelineUI(PipelineUI):
 class DaVinciPipelineUI(PipelineUI):
     """输出到达芬奇控件（通过 ui_widgets 提供的 itm/_st/_pg 等）"""
 
-    def __init__(self, itm, _st, _pg, _bal, dlg, _event_log):
+    def __init__(self, itm, _st, _pg, dlg, _event_log):
         from ui_widgets import LOG_LB, ST_LB, PG_BAR
         self._itm = itm
         self._st = _st
         self._pg = _pg
-        self._bal = _bal
         self._dlg = dlg
         self._event_log = _event_log
         self._LOG_LB = LOG_LB

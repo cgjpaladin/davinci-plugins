@@ -20,7 +20,7 @@ from ui_widgets import (
     itm, dlg, disp, _state, WIN_ID, MODE,
     _CLIP_COLORS, _SELECTED_COLOR,
     _check_smb, _flush_log, _apply_ui_state,
-    _st, _pg, _bal, _set_btn, _set_proj,
+    _st, _pg, _set_btn, _set_proj,
     _event_log, _log_file, _log_action,
     _ui_lock, _ui_pending,
     BAL_LB, OSS_LB, PROJ_LB, PATH_LB,

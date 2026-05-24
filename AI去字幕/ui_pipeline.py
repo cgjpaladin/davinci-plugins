@@ -47,14 +47,13 @@ from ui_widgets import (
     itm, dlg, disp, _state, WIN_ID, MODE,
     _CLIP_COLORS,
     _check_smb, _flush_log, _apply_ui_state,
-    _st, _pg, _bal, _flash_completion, _reset_title, _flag_engine_error, _clear_engine_error, _set_btn, _set_proj,
+    _st, _pg, _flash_completion, _reset_title, _flag_engine_error, _clear_engine_error, _set_btn, _set_proj,
     _event_log, _log_file, _log_action,
     _ui_lock, _ui_pending,
     BAL_LB, API_CB, OSS_LB, PROJ_LB, PATH_LB,
     BTN_SCAN, BTN_START, BTN_STOP, BTN_PICK, BTN_UNDO,
     COLOR_CB, LOG_LB, ST_LB, PG_BAR,
 )
-import ui_widgets as _uw  # 用于跨模块写全局变量
 
 # ── UI 抽象层 ──
 ui = DaVinciPipelineUI(itm, _st, _pg, _bal, dlg, _event_log)
@@ -441,7 +440,7 @@ def process(*_):
 
         # ── 执行 ──
         pipeline.run(
-            ui=DaVinciPipelineUI(itm, _st, _pg, _bal, dlg, _event_log),
+            ui=DaVinciPipelineUI(itm, _st, _pg, dlg, _event_log),
             project_root=pr, mode=MODE,
             clips=clips, batch=True,
             stop_check=lambda: _state["stop"],

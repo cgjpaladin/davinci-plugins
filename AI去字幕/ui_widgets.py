@@ -410,10 +410,6 @@ def _clear_engine_error():
 def _log_action(action: str):
     """记录用户操作到日志"""
     _log_file(f"[操作] {action}")
-
-def _bal(t):
-    pass  # BAL_LB 已移除，余额改在引擎下拉框里显示
-
 def _set_btn(scan=None, start=None, pick=None, stop=None, warn=None):
     """设置按钮状态（主线程直写 + 子线程挂起）"""
     try:
