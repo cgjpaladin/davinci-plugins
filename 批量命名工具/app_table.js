@@ -623,7 +623,7 @@ async function doRename(){
     // 缩略图 key 同步更新
     r.renamed.forEach(rn=>{if(_thumbs[rn.old_path]){_thumbs[rn.new_path]=_thumbs[rn.old_path];delete _thumbs[rn.old_path]}});
     toast(`完成 ${r.ok}/${r.total}`); result(`✅ 重命名完成 ${r.ok}/${r.total}`)}
-  if(r.fail&&r.fail.length){setTimeout(()=>toast('失败: '+r.fail.join('; ')),2000)}
+  if(r.fail&&r.fail.length){result(`✅ 重命名完成 ${r.ok}/${r.total}  ·  ⚠️ ${r.fail.join('; ')}`)}
   renderList();updButtons();
 }
 function buildTK(i){
