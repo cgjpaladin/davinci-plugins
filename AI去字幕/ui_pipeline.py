@@ -56,7 +56,7 @@ from ui_widgets import (
 )
 
 # ── UI 抽象层 ──
-ui = DaVinciPipelineUI(itm, _st, _pg, _bal, dlg, _event_log)
+ui = DaVinciPipelineUI(itm, _st, _pg, dlg, _event_log)
 
 # ── 媒体池自动导航 ──
 def discover_folders():
