@@ -209,6 +209,8 @@ function renderList(force){
       const ff = {...f.fields, tk: _computeTK(i)};
       const ready = ff.ep && ff.sc && ff.gr && ff.desc && ff.author && ff.method && ff.ver && ff.status;
       tr.classList.add(ready?'rdy':'mis');
+      const fillCount = [ff.ep, ff.sc, ff.gr, ff.desc, ff.method, ff.author, ff.ver, ff.status].filter(Boolean).length;
+      tr.classList.add(fillCount === 8 ? 'row-full' : fillCount >= 5 ? 'row-most' : 'row-empty');
       const tags = f.tags||[];
       if(tags.length) tr.classList.add('warn');
       if(tags.includes('zero')) tr.classList.add('warn-zero');
@@ -226,6 +228,9 @@ function _buildRow(f,i){
   const ready = ff.ep && ff.sc && ff.gr && ff.desc && ff.author && ff.method && ff.ver && ff.status;
   if(sel.has(i)) tr.classList.add('sel');
   tr.classList.add(ready?'rdy':'mis');
+  // 行完成度色条
+  const fillCount = [ff.ep, ff.sc, ff.gr, ff.desc, ff.method, ff.author, ff.ver, ff.status].filter(Boolean).length;
+  tr.classList.add(fillCount === 8 ? 'row-full' : fillCount >= 5 ? 'row-most' : 'row-empty');
   const tags = f.tags||[];
   if(tags.length) tr.classList.add('warn');
   if(tags.includes('zero')) tr.classList.add('warn-zero');

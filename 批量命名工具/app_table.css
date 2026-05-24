@@ -247,7 +247,12 @@ td.editing input,td.editing select{max-width:100%}
 .col-author.editing input{width:64px}
 
 /* ── Empty cell ── */
-td.empty{color:var(--tbl-dim);font-style:italic}
+td.empty{color:var(--tbl-dim);font-style:italic;background:#1a0f0f}
+
+/* ── Row completion (border-left) ── */
+#fileList tbody tr.row-full{border-left:3px solid var(--green)}
+#fileList tbody tr.row-most{border-left:3px solid var(--yellow)}
+#fileList tbody tr.row-empty{border-left:3px solid var(--red)}
 
 /* ── Readonly cell (TK) ── */
 td.readonly{cursor:default;color:var(--tbl-dim);font-style:italic}
