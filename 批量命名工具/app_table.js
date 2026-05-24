@@ -482,14 +482,23 @@ function activateEdit(td, key, i){
   // ═══ Commit logic ═══
   const commit = (cancel) => {
     const v = (el.value||'').trim();
-    el.remove(); // 物理销毁编辑控件，杜绝残留
-    td.classList.remove('editing');
     if(cancel){
+      el.remove();
+      td.classList.remove('editing');
       call('debug_log',`commit: CANCEL ${key} restore='${oldVal||'(空)'}'`);
       td.textContent = oldVal || (oldVal===''||oldVal==='请选择'||oldVal==='请手动输入…'?'—':oldVal);
       if(oldVal === '' || oldVal === '请选择' || oldVal === '请手动输入…') td.classList.add('empty');
       return;
     }
+    // 严格校验（Enter 提交路径之前只在 blur 拦，补上）
+    const sr = DIGIT_STRICT[key];
+    if(sr && v && !sr.test(v)){
+      toast(`请输入正确格式`);
+      el.focus();
+      return;
+    }
+    el.remove(); // 物理销毁编辑控件，杜绝残留
+    td.classList.remove('editing');
     let finalVal = v;
     if(key === 'author') finalVal = v.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g, '');
     if(key === 'desc') finalVal = v.replace(/_/g, '');
