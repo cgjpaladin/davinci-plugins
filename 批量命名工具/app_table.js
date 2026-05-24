@@ -188,7 +188,7 @@ function renderList(force){
 
   const rows = [...tbody.querySelectorAll('tr')];
   if(force || rows.length !== files.length){
-    call('debug_log',`renderList: FORCE rows=${rows.length} files=${files.length}`);
+    call('debug_log',`renderList: FORCE rows=${rows.length} files=${files.length} f0=${files[1]?.path?.slice(-40)||'none'}`);
     tbody.innerHTML = '';
     files.forEach((f,i)=>{ tbody.appendChild(_buildRow(f,i)); });
   } else {
