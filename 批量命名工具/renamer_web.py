@@ -196,7 +196,9 @@ class RenamerAPI:
                     fp_key = f"{st.st_size}:{hashlib.md5(open(p,'rb').read(65536)).hexdigest()}"
                 except OSError:
                     fp_key = p  # fallback to path
-                if fp_key in RenamerAPI._seen_fp: duplicates += 1; continue
+                if fp_key in RenamerAPI._seen_fp:
+                    duplicates += 1; _log.info(f"  _seen_fp HIT: {fp_key[:40]}")
+                    continue
                 RenamerAPI._seen_fp.add(fp_key)
                 parsed = parse_filename(p)
                 fields = {}
