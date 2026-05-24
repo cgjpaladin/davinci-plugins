@@ -530,7 +530,7 @@ function activateEdit(td, key, i){
             if(e.key === 'Escape'){ input.value = oldVal; window._activeCancel = null; commit(true); }
           });
           input.addEventListener('blur', () => {
-            setTimeout(() => { if(_focused){ window._activeCancel = null; commit(false); } }, 100);
+            if(_focused && window._activeCancel){ window._activeCancel = null; _focused = false; commit(false); }
           });
         } else {
           window._activeCancel = null; commit(false);
@@ -546,7 +546,7 @@ function activateEdit(td, key, i){
       if(e.key === 'Escape'){ el.value = oldVal; window._activeCancel = null; commit(true); }
     });
     el.addEventListener('blur', () => {
-      setTimeout(() => { if(_focused){ window._activeCancel = null; commit(false); } }, 100);
+      if(_focused && window._activeCancel){ window._activeCancel = null; _focused = false; commit(false); }
     });
   }
 }
