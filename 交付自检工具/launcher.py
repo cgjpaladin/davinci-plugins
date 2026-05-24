@@ -11,9 +11,18 @@ try:
 except NameError:
     _HERE = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊"
 
-# ═══ 部署配置（统一入口 shared/deploy_config.py）═══
-# 先加 shared/ 路径再导入
-sys.path.insert(0, os.path.join(_HERE, '..', 'shared'))
+# ═══ 加载 shared/ 模块 ═══
+# 搜索顺序: ① 项目目录 ② ~/WorkBuddy/... ③ SMB
+_SHARED_CANDIDATES = [
+    os.path.join(_HERE, '..', 'shared'),
+    os.path.expanduser("~/WorkBuddy/达芬奇插件工坊/shared"),
+    "/Volumes/MYJC/06_Software/达芬奇脚本/shared",
+]
+for _d in _SHARED_CANDIDATES:
+    if os.path.isdir(_d):
+        sys.path.insert(0, _d)
+        break
+
 from deploy_config import load as _load_deploy_config
 
 _deploy = _load_deploy_config()
@@ -22,9 +31,6 @@ _DEV_HOSTS = set(_deploy.get("dev_hosts", ["BryandeMac-mini.local", "BryandeMac-
 _DEV_DIR_BASE = os.path.expanduser(
     _deploy.get("dev_dir", "~/WorkBuddy/达芬奇插件工坊")
 )
-
-# 让 shared/ 可导入（SMB 备用）
-sys.path.insert(0, os.path.join(_SMB_ROOT, 'shared'))
 
 from log_writer import get_logger
 _log = get_logger("交付自检工具")
