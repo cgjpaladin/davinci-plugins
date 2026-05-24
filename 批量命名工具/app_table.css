@@ -229,14 +229,16 @@ tbody tr.warn-dbl td.col-num::before{background:#c080d0}
 tbody tr.warn td{background:var(--tbl-row-warn)}
 
 /* ── Column widths (table-layout:fixed, all explicit) ── */
-.col-num{text-align:left;padding-right:12px!important;padding-left:8px;width:44px;position:relative;font-size:13px}
+.col-num{text-align:left;padding-right:12px!important;padding-left:8px;width:44px;position:relative}
+td.col-num{font-size:13px}
 .col-thumb{width:calc(52px * var(--thumb-scale, 1));padding:4px!important;overflow:hidden}
 .col-ep,.col-sc,.col-gr,.col-tk,.col-ver{text-align:left;width:60px}
 .col-status{text-align:left;width:66px}
 .col-desc{text-align:left;width:100px}
 .col-author{text-align:left;width:64px}
 .col-method{text-align:left;width:100px}
-.col-base{text-align:left;width:auto;font-size:13px}
+.col-base{text-align:left;width:auto}
+td.col-base{font-size:13px}
 td span{display:inline}
 
 /* ── Editing: don't let input blow up column width ── */
