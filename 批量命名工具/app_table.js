@@ -165,6 +165,14 @@ function _checkDescCollision(v){
    ═════════════════════════════ */
 function renderList(force){
   if(window._activeCancel){ window._activeCancel(); window._activeCancel = null; }
+  // 按 fp 去重（pywebview 重放可能产生幽灵条目）
+  const seen = new Set();
+  files = files.filter(f => {
+    const k = f.fp || f.path;
+    if(seen.has(k)){call('debug_log','renderList: DROP dup fp='+k.slice(0,50));return false}
+    seen.add(k); return true;
+  });
+
   const tbody = document.querySelector('#fileList tbody');
   const empty = document.querySelector('#fileList .fl-empty');
   const thead = document.querySelector('#fileList thead');
