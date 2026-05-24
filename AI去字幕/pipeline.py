@@ -53,7 +53,7 @@ class SubtitlePipeline(BasePipeline):
     PHASE_REPLACE = "🔧 替换中"
     # 产品层进度里程碑
     MILESTONE_BEFORE_SUBMIT = 0.05  # _before_submit
-    MILESTONE_ADAPTER_DONE   = 0.80  # adapter 完成后
+    MILESTONE_ADAPTER_DONE   = 0.81  # adapter 完成后 (>= max: PROGRESS_BASE+0.9*PROGRESS_SCALE≈0.80)
     MILESTONE_REPLACE_DONE   = 0.92  # 替换完成
     # 倒计时阈值
     ETA_MIN_RATIO = 0.05      # ratio 超此值才显示倒计时
