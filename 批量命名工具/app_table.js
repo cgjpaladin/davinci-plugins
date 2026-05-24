@@ -105,8 +105,8 @@ async function init(){
       toast('已追加 '+mockFiles.length+' 个文件 (预览模式)');
     });
   }
-  // 自测（mock 模式）
-  if(!window.pywebview) setTimeout(() => _runSelfTest(), 500);
+  // 自测（仅在无 pywebview 时运行）
+  setTimeout(() => { if(!window.pywebview) _runSelfTest(); }, 500);
   _initTBodyClick();
 }
 // ═══ init — 轮询等待 pywebview 桥接 ═══
@@ -191,7 +191,7 @@ function renderList(force){
     // 去重：pywebview evaluate_js 重放可能产生幽灵条目
     const seen = new Set(); const deduped = [];
     for(const f of files){
-      const k = f.fp || f.basename || f.path.split('/').pop().split('\\').pop() || f.path;
+      const k = f.fp || f.path;
       if(!seen.has(k)){seen.add(k); deduped.push(f);}
     }
     if(deduped.length !== files.length){
