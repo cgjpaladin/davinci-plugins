@@ -120,6 +120,15 @@ def _show_clip_stats(clips, od, fps, df, start_frame, allow_unknown=False):
     return {"cache_hits": cache_hits, "need_secs": need_secs, "need_pts": need_pts,
             "need": need, "pts": pts, "yuan": yuan}
 
+def _show_estimate(clips, od, fps, df, start_frame, allow_unknown=False):
+    """展示片段统计 + 时间预估。scan_io() 和 _refresh_scan_display() 共用。"""
+    from pricing_defaults import EST_BASE_SECS, EST_PER_CLIP_SECS
+    stats = _show_clip_stats(clips, od, fps, df, start_frame, allow_unknown)
+    n_clips = len(clips)
+    est_secs = EST_BASE_SECS + max(0, n_clips - 1) * EST_PER_CLIP_SECS
+    stats["est_minutes"] = max(1, math.ceil(est_secs / 60)) if stats["need"] > 0 else 0
+    return stats
+
 def scan_io(*_):
     """扫描时间线 IO 范围内标橙色的片段，显示缓存/预估信息。每次点击扫描按钮触发。
     注：片段遍历逻辑与 _refresh_scan_display() 有约50行重复，修改任一处需同步另一处。
@@ -214,9 +223,10 @@ def _refresh_scan_display():
 
     itm[LOG_LB].Text = ""
     ui.log_info("\n── ① 扫描选区 ──")
-    _show_estimate(clips, od, fps, df, start_frame)
-    ui.log_info("")  # 章节尾部空行
-    ui.set_status("就绪")
+    stats = _show_estimate(clips, od, fps, df, start_frame)
+    need, total_time = stats["need"], stats["est_minutes"]
+    if need > 0:
+        ui.log_info(f"预估: ≤¥{stats['yuan']} (≤{stats['pts']} 积分) | 约 {total_time} 分钟")
 
 
 # ── 余额 + 引擎选择 ──
