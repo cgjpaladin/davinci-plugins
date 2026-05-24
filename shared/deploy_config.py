@@ -21,3 +21,13 @@ def get_smb_mount(default="/Volumes/MYJC") -> str:
     """读取 SMB 挂载点。"""
     cfg = load()
     return cfg.get("smb_mount", default) or default
+
+
+def get_python_path(default="/Library/Frameworks/Python.framework/Versions/3.13/bin/python3") -> str:
+    """读取外挂 Python 路径（用于 subprocess 启动 UI）。
+    
+    每台机器在 deploy.json 中配置自己的 python_path。
+    Python 版本升级时改 JSON 不动代码。
+    """
+    cfg = load()
+    return cfg.get("python_path", default) or default

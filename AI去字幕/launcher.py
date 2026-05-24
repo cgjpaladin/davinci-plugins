@@ -4,13 +4,9 @@
 # 注意: DaVinci Fusion 内 __file__ 不存在，需 fallback
 import subprocess, os, sys, time, socket, json
 
-# 查找可用 Python（DaVinci 内 PATH 不含 WorkBuddy 管理版本）
-_PYTHON_CANDIDATES = [
-    "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
-    os.path.expanduser("~/.workbuddy/binaries/python/versions/3.13.12/bin/python3.13"),
-    "/usr/bin/python3",
-]
-_PYTHON = next((p for p in _PYTHON_CANDIDATES if os.path.exists(p)), "/usr/bin/python3")
+# 外挂 Python 路径从 deploy.json 读取（每台机器独立配置）
+from deploy_config import get_python_path
+_PYTHON = get_python_path()
 
 # __file__ 在 DaVinci Fusion 引擎内不存在，fallback 到已知路径
 try:
