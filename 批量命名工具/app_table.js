@@ -165,7 +165,6 @@ function _checkDescCollision(v){
    TABLE renderList (replaces card view)
    ═════════════════════════════ */
 function renderList(force){
-  if(window._activeCancel){ window._activeCancel(); window._activeCancel = null; }
   // 按 fp 去重（pywebview 重放可能产生幽灵条目）
   const seen = new Set();
   files = files.filter(f => {
@@ -301,14 +300,12 @@ function _initTBodyClick(){
     const isField = key && key !== 'tk' && !td.classList.contains('locked') && !td.classList.contains('readonly');
 
     if(isField){
-      const now = Date.now();
       if(e.detail >= 2){
         // 浏览器原生双击
         clearTimeout(window._shrinkTimer);
         call('debug_log',`dblClick (detail=${e.detail}): activate ${key} on row ${i}`);
         activateEdit(td, key, i);
       } else {
-        window._lastCellId = `${i}:${key}`; window._lastTime = now;
         call('debug_log',`singleClick: rowClick ${i}`);
         rowClick(e, i);
       }
