@@ -2,9 +2,15 @@
 # launcher.py — AI去字幕 启动器
 # 部署到达芬奇 Fusion/Scripts/Edit/，通过 subprocess 外挂外部 Python 进程运行 UI
 # 注意: DaVinci Fusion 内 __file__ 不存在，需 fallback
-import subprocess, os, sys, time, socket, json, shutil
+import subprocess, os, sys, time, socket, json
 
-_PYTHON = shutil.which("python3.13") or shutil.which("python3.12") or "/usr/bin/python3"
+# 查找可用 Python（DaVinci 内 PATH 不含 WorkBuddy 管理版本）
+_PYTHON_CANDIDATES = [
+    "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
+    os.path.expanduser("~/.workbuddy/binaries/python/versions/3.13.12/bin/python3.13"),
+    "/usr/bin/python3",
+]
+_PYTHON = next((p for p in _PYTHON_CANDIDATES if os.path.exists(p)), "/usr/bin/python3")
 
 # __file__ 在 DaVinci Fusion 引擎内不存在，fallback 到已知路径
 try:
