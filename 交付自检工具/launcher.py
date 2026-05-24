@@ -12,6 +12,8 @@ except NameError:
     _HERE = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊"
 
 # ═══ 部署配置（统一入口 shared/deploy_config.py）═══
+# 先加 shared/ 路径再导入
+sys.path.insert(0, os.path.join(_HERE, '..', 'shared'))
 from deploy_config import load as _load_deploy_config
 
 _deploy = _load_deploy_config()
@@ -21,8 +23,7 @@ _DEV_DIR_BASE = os.path.expanduser(
     _deploy.get("dev_dir", "~/WorkBuddy/达芬奇插件工坊")
 )
 
-# 让 shared/ 可导入
-sys.path.insert(0, os.path.join(_HERE, '..', 'shared'))
+# 让 shared/ 可导入（SMB 备用）
 sys.path.insert(0, os.path.join(_SMB_ROOT, 'shared'))
 
 from log_writer import get_logger
