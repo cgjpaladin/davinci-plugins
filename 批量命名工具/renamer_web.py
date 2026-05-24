@@ -495,7 +495,14 @@ if __name__ == "__main__":
     def _bind_drop():
         from webview.dom import DOMEventHandler
         _sent_fps = set()  # 已发送的 fp 集合，防 evaluate_js 重复执行
+        _last_drop = 0     # 上次 drop 时间戳，防 WKWebView 双火事件
         def _on_drop(e):
+            import time
+            now = time.time()
+            if now - _last_drop < 1.5:
+                _log.debug(f"  drop debounced ({now - _last_drop:.1f}s)")
+                return
+            _last_drop = now
             files = e['dataTransfer']['files']
             paths = []
             for f in files:
