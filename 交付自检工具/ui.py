@@ -689,9 +689,9 @@ window_layout = [
                       "Weight": 0, "WordWrap": True, "MinimumSize": [0, 22]}),
             ui.HGroup({"Spacing": 8}, [
                 ui.Label({"ID": HINT_LB, "Text": "请点击「开始检查」",
-                          "StyleSheet": "color:rgb(130,130,130);font-size:10px", "Weight": 0,
-                          "MinimumSize": [260, 16]}),
-                ui.Label({"Text": " ", "Weight": 1}),
+                          "StyleSheet": "color:rgb(130,130,130);font-size:10px", "Weight": 1,
+                          "WordWrap": True, "MinimumSize": [0, 22]}),
+                ui.Label({"Text": " ", "Weight": 0}),
                 ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | v{version_string()}",
                           "StyleSheet": "color:rgb(100,100,100);font-size:10px", "Weight": 0}),
             ]),
