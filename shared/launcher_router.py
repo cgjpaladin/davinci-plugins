@@ -12,14 +12,7 @@
 import sys, os, json, socket
 
 
-def _load_deploy_config():
-    """读取部署配置，不存在返回空 dict"""
-    cfg_path = os.path.expanduser("~/达芬奇插件工坊/deploy.json")
-    try:
-        with open(cfg_path) as f:
-            return json.load(f)
-    except Exception:
-        return {}
+from deploy_config import load as _load_deploy_config
 
 _deploy = _load_deploy_config()
 _SMB_ROOT = _deploy.get("smb_root", "/Volumes/MYJC/06_Software/达芬奇脚本")

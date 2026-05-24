@@ -11,13 +11,7 @@ try:
 except NameError:
     _HERE = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊"
 
-def _load_deploy_config():
-    cfg_path = os.path.expanduser("~/达芬奇插件工坊/deploy.json")
-    try:
-        with open(cfg_path) as f:
-            return json.load(f)
-    except Exception:
-        return {}
+from deploy_config import load as _load_deploy_config
 
 _deploy = _load_deploy_config()
 _SMB_ROOT = _deploy.get("smb_root", "/Volumes/MYJC/06_Software/达芬奇脚本")

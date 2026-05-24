@@ -1448,21 +1448,9 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
 
 _SMB_PREFIX = "/Volumes/MYJC"
 
-def _load_smb_prefix():
-    """从 deploy.json 读取 SMB 挂载点，不存在则用默认值。"""
-    import json as _json
-    cfg_path = os.path.expanduser("~/达芬奇插件工坊/deploy.json")
-    try:
-        with open(cfg_path) as f:
-            cfg = _json.load(f)
-        prefix = cfg.get("smb_mount", _SMB_PREFIX)
-        if prefix:
-            return prefix
-    except Exception:
-        pass
-    return _SMB_PREFIX
+from deploy_config import get_smb_mount
 
-_SMB_PREFIX = _load_smb_prefix()
+_SMB_PREFIX = get_smb_mount(default="/Volumes/MYJC")
 
 # ── 片段文件信息缓存（脱机+路径检测共享，避免重复 IPC）──
 _clip_files_cache = None  # {(track, name): {"start": int, "mp": item|None, "path": str|None}}
