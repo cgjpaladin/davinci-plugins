@@ -50,13 +50,12 @@ from ui_widgets import (
     _st, _pg, _bal, _flash_completion, _reset_title, _flag_engine_error, _clear_engine_error, _set_btn, _set_proj,
     _event_log, _log_file, _log_action,
     _ui_lock, _ui_pending,
-    _t_start, _t_estimated, _task_count,
-    _update_countdown,
+    _t_start, _task_count,
     BAL_LB, API_CB, OSS_LB, PROJ_LB, PATH_LB,
     BTN_SCAN, BTN_START, BTN_STOP, BTN_PICK, BTN_UNDO,
     COLOR_CB, LOG_LB, ST_LB, PG_BAR,
 )
-import ui_widgets as _uw  # 用于跨模块写全局变量 _t_start/_t_estimated/_task_count
+import ui_widgets as _uw  # 用于跨模块写全局变量
 
 # ── UI 抽象层 ──
 ui = DaVinciPipelineUI(itm, _st, _pg, _bal, dlg, _event_log)
@@ -371,10 +370,9 @@ def process(*_):
         # UI 的 scan_io() 已经展示过扫描结果，跳过管道内的重复展示
         pipeline._show_scan_summary = lambda clips: None
 
-        # 进度回调
+        # 进度回调（adapter 进度由 pipeline._get_progress_callback 统一管理）
         def _on_progress(phase, ratio):
-            _st._last_ratio = ratio
-            ui.set_progress(ratio)
+            ui.set_progress(ratio)  # fallback：如果 base 某些路径不走新回调
 
         # UI 专属：并发锁 + 校验
         def _ui_before_submit(tasks):
@@ -436,10 +434,6 @@ def process(*_):
             if not tasks:
                 return [], True  # 全部缓存完成 → 仍会走最终报告
 
-            # 设置倒计时（_update_countdown 在稳定版轮询中消费）
-            _uw._t_start = time.time()
-            _uw._t_estimated = estimate_processing_time(tasks) if tasks else 60
-            _uw._task_count = len(tasks)
             return tasks, False
 
         pipeline._do_prepare = _ui_do_prepare

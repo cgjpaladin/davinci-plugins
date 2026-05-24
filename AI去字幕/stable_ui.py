@@ -103,7 +103,6 @@ def start_process(*_):
     while thr.is_alive():
         _flush_log()
         _apply_ui_state()
-        _update_countdown()
         disp.StepLoop(100)
 
         # 超时保护

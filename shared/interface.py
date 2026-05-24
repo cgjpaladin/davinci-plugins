@@ -96,6 +96,10 @@ class DaVinciPipelineUI(PipelineUI):
         self._ST_LB = ST_LB
         self._PG_BAR = PG_BAR
 
+    def set_phase(self, text: str):
+        """更新进度阶段标签（ST_LB）"""
+        self._st(text)
+
     def log_info(self, msg: str):
         from ui_widgets import _ui_write
         _ui_write(f"  {msg}")
