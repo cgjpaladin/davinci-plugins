@@ -48,8 +48,6 @@ _window = None  # 存引用
 
 
 class RenamerAPI:
-    _seen_fp = set()
-
     def pick_dest_folder(self):
         """打开文件夹选择框，返回路径"""
         result = _window.create_file_dialog(webview.FOLDER_DIALOG)
@@ -173,15 +171,11 @@ class RenamerAPI:
         _log.info(f"ECHO: {x!r}")
         return {"received": x}
 
-    def reset_fingerprints(self):
-        """清空内容指纹缓存——文件列表清空时调用，允许重新拖入同一批文件"""
-        RenamerAPI._seen_fp.clear()
-        _log.info("_seen_fp cleared")
-
     def _process_paths(self, paths_):
         _log.info(f"_process_paths: {len(paths_)} paths → scanning")
         MAX_FILES = 100
         files = []; duplicates = 0; subdirs = 0; truncated = False
+        seen_fp = set()  # 本批指纹，不跨批
         defaults = _saved_defaults
         _EMPTY_KEYS = {'ep','sc','gr','ver'}
         VIDEO_EXT = {'.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw'}
@@ -204,8 +198,8 @@ class RenamerAPI:
                     fp_key = f"{st.st_size}:{hashlib.md5(open(p,'rb').read(65536)).hexdigest()}"
                 except OSError:
                     fp_key = p  # fallback to path
-                if fp_key in RenamerAPI._seen_fp: duplicates += 1; continue
-                RenamerAPI._seen_fp.add(fp_key)
+                if fp_key in seen_fp: duplicates += 1; continue
+                seen_fp.add(fp_key)
                 parsed = parse_filename(p)
                 fields = {}
                 # ver/status 有合理默认值；其余字段未解析时留空
@@ -495,14 +489,7 @@ if __name__ == "__main__":
     def _bind_drop():
         from webview.dom import DOMEventHandler
         _sent_fps = set()  # 已发送的 fp 集合，防 evaluate_js 重复执行
-        _last_drop = 0     # 上次 drop 时间戳，防 WKWebView 双火事件
         def _on_drop(e):
-            import time
-            now = time.time()
-            if now - _last_drop < 1.5:
-                _log.debug(f"  drop debounced ({now - _last_drop:.1f}s)")
-                return
-            _last_drop = now
             files = e['dataTransfer']['files']
             paths = []
             for f in files:

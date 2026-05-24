@@ -187,7 +187,6 @@ function renderList(force){
     empty.classList.add('show');
     if(thead) thead.style.display = 'none';
     updCount(); updButtons();
-    call('reset_fingerprints');  // 清空内容指纹，允许重新拖入同一批文件
     return;
   }
   empty.classList.remove('show');
