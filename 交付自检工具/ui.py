@@ -736,7 +736,7 @@ def _render_group(group_name, sections, tree):
     if all_sg:
         # 是 group → 渲染其下所有 subgroup 的行
         for sg in all_sg:
-            secs = [s for s in sections if s.get("subgroup") == sg]
+            secs = [s for s in sections if s.get("subgroup") == sg and s.get("group") == group_name]
             for sec in secs:
                 for row_data in sec["rows"]:
                     row = tree.NewItem()
@@ -744,7 +744,7 @@ def _render_group(group_name, sections, tree):
                     tree.AddTopLevelItem(row)
     else:
         # 是 subgroup → 只渲染该子类
-        secs = [s for s in sections if s.get("subgroup") == group_name]
+        secs = [s for s in sections if s.get("subgroup") == group_name and s.get("group") == group_name]
         for sec in secs:
             for row_data in sec["rows"]:
                 row = tree.NewItem()
