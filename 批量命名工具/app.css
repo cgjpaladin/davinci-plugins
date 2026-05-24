@@ -179,6 +179,7 @@ body{
 }
 .sb-left{display:flex;align-items:center;gap:6px}
 .sb-dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+#resultMsg{margin-left:10px;color:var(--accent,#e8870a);font-size:10px}
 .drop-overlay{
   position:absolute;inset:0;background:rgba(232,135,10,.08);
   border:2px dashed var(--accent);display:none;align-items:center;justify-content:center;

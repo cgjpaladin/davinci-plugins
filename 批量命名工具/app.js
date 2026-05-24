@@ -95,6 +95,7 @@ async function init(){
       toast('已追加 '+mockFiles.length+' 个文件 (预览模式)');
     });
   }, 500);
+  renderList();  // 首次渲染（空状态）
 }
 // ═══ init — 轮询等待 pywebview 桥接 ═══
 let _ready=false;
@@ -415,8 +416,8 @@ async function doRename(){
     r.renamed.forEach(rn=>{const f=files.find(x=>x.path===rn.old_path);if(f)f.path=rn.new_path});
     // 缩略图 key 同步更新
     r.renamed.forEach(rn=>{if(_thumbs[rn.old_path]){_thumbs[rn.new_path]=_thumbs[rn.old_path];delete _thumbs[rn.old_path]}});
-    toast(`完成 ${r.ok}/${r.total}`)}
-  if(r.fail&&r.fail.length){setTimeout(()=>toast('失败: '+r.fail.join('; ')),2000)}
+    toast(`完成 ${r.ok}/${r.total}`); result(`✅ 重命名完成 ${r.ok}/${r.total}`)}
+  if(r.fail&&r.fail.length){result(`✅ 重命名完成 ${r.ok}/${r.total}  ·  ⚠️ ${r.fail.join('; ')}`)}
   renderList();updButtons();
 }
 function buildTK(i){
@@ -438,7 +439,7 @@ function buildName(f){
 }
 async function doUndo(){
   const r=await call('do_undo');
-  toast(r.msg);
+  toast(r.msg);result(r.msg);
   undoAvail=(r.remaining||0)>0;
   if(r.type === 'archive'){
     if(r.renamed){
@@ -473,7 +474,7 @@ async function doArchive(){
     sel.clear();
     undoAvail = true;
   }
-  let m=`归档完成 ${r.ok} 个`;if(r.dup>0)m+=` · ${r.dup} 个重复已跳过`;if(r.fail&&r.fail.length>0)m+=` · ${r.fail.length} 失败`;toast(m);
+  let m=`归档完成 ${r.ok} 个`;if(r.dup>0)m+=` · ${r.dup} 个重复已跳过`;if(r.fail&&r.fail.length>0)m+=` · ${r.fail.length} 失败`;toast(m);result(m);
   renderList();updButtons();
 }
 // ═══ Thumbnails ═══
@@ -650,5 +651,6 @@ document.getElementById('fileList').addEventListener('wheel',e=>{
 
 // ═══ Toast ═══
 let tt;function toast(m){call('debug_log','TOAST card: '+m);const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2500)}
+function result(m){call('debug_log','result: '+m);document.getElementById('resultMsg').textContent=m}
 
 setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');
