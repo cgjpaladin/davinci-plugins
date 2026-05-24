@@ -3,7 +3,7 @@
 时间线检查 — 配置
 """
 
-__version__ = "2.0.20"
+__version__ = "2.0.21"
 __channel__ = "dev"
 
 def version_string():
