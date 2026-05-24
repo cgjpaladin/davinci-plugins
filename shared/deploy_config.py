@@ -23,11 +23,34 @@ def get_smb_mount(default="/Volumes/MYJC") -> str:
     return cfg.get("smb_mount", default) or default
 
 
-def get_python_path(default="/Library/Frameworks/Python.framework/Versions/3.13/bin/python3") -> str:
-    """读取外挂 Python 路径（用于 subprocess 启动 UI）。
+def get_python_path() -> str:
+    """自动发现外挂 Python 路径（用于 subprocess 启动 UI）。
     
-    每台机器在 deploy.json 中配置自己的 python_path。
-    Python 版本升级时改 JSON 不动代码。
+    跳过达芬奇自带的 Python。优先取最新框架安装版。
+    装好 Python 即可，无需 JSON 配置。
     """
-    cfg = load()
-    return cfg.get("python_path", default) or default
+    import glob as _glob
+
+    candidates = []
+    # 官版安装器：自动匹配 3.10~3.99，排序取最新
+    candidates.extend(sorted(_glob.glob(
+        "/Library/Frameworks/Python.framework/Versions/3.*/bin/python3"
+    ), reverse=True))
+    # Homebrew (Apple Silicon / Intel)
+    candidates.extend(sorted(_glob.glob("/opt/homebrew/bin/python3*"), reverse=True))
+    candidates.extend(sorted(_glob.glob("/usr/local/bin/python3*"), reverse=True))
+    # 最后兜底
+    candidates.append("/usr/bin/python3")
+
+    for p in candidates:
+        if not _os.path.exists(p):
+            continue
+        try:
+            real = _os.path.realpath(p)
+        except Exception:
+            real = p
+        if "/DaVinci Resolve/" in real:
+            continue  # 跳过达芬奇自带的
+        return p
+
+    return "/usr/bin/python3"
