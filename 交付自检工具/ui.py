@@ -1133,7 +1133,6 @@ def _process_result(r, rows_list):
         cols["detail"]:   f"{icon} | {r.get('detail', '')}",
         cols["reason"]:   r.get("reason", ""),
     })
-    _action_log(r.get("detail", ""))
     return r["status"] == "fail", r["status"] == "warn", False
 
 
