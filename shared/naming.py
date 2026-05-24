@@ -185,11 +185,17 @@ def _build_filename_re():
 
 FILENAME_RE = _build_filename_re()
 
+# Fallback: 只认 Ep/Sc/Gr/Tk 前缀 + v/status 后缀，中间不拆 desc/method/author
+FALLBACK_RE = re.compile(
+    r"^Ep(?P<ep>\d{2,3})_Sc(?P<sc>\d{2,3})_Gr(?P<gr>\d{2,3})_Tk(?P<tk>\d{2,3})_"
+    r".*"
+    r"_v(?P<ver>\d{2,3}(?:\.\d+)?)_(?P<status>\w+)(?P<ext>\.[^.]+)$")
+
 
 def parse_filename(path):
     """解析已命名文件 → {field_key: value}，失败返回 None"""
     name = os.path.basename(path)
-    m = FILENAME_RE.match(name)
+    m = FILENAME_RE.match(name) or FALLBACK_RE.match(name)
     if not m:
         return None
     d = m.groupdict()
