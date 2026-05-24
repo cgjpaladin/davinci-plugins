@@ -309,7 +309,7 @@ _sys.stderr = _UIStderr()
 
 # ── 子线程 → 主线程 UI 状态桥 ──
 _ui_lock = threading.Lock()
-_ui_pending = {"status": "", "balance": "", "progress": -1.0, "phase": "", "btn_scan": None, "btn_start": None, "btn_pick": None, "btn_stop": None, "warn": None}
+_ui_pending = {"status": "", "progress": -1.0, "phase": "", "btn_scan": None, "btn_start": None, "btn_pick": None, "btn_stop": None, "warn": None}
 
 # ── 时间估算常量（实测数据 2026-05-08）──
 # 公式：sum(片段秒数)×2.3 + 60 秒（含上传+API+下载固定开销）
