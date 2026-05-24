@@ -256,8 +256,7 @@ def _ui_write_direct(msg: str):
         pass
 
 def _ui_write(msg: str):
-    _ui_write_direct(msg)
-    _log.ui(msg)  # 同步写 UI 日志文件
+    _ui_write_direct(msg)  # 内部已含 _log.ui 文件持久化
 
 # ── 关键事件日志 ──
 def _event_log(msg: str):
