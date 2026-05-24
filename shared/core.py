@@ -72,7 +72,7 @@ from subtitle_state import acquire_lock, release_lock
 import ledger
 from log_writer import get_logger as _get_logger
 from camera_detect import is_camera_footage
-_log_ops = _get_logger("AI去字幕")
+_log_ops = _get_logger(os.environ.get("WORKBUDDY_PRODUCT", "AI去字幕"))
 # (record_original, find_output, session_start 等) 不加前缀容易与本地函数混淆
 
 # ═══════════════════════════════════════════

@@ -32,7 +32,7 @@ from pricing import estimate_cost, point_to_yuan, oss_tracker
 from pipeline_utils import validate_task, calc_cache_savings
 from pipeline_log import StepLogger
 from log_writer import get_logger as _get_logger
-_log_ops = _get_logger("AI去字幕")
+_log_ops = _get_logger(os.environ.get("WORKBUDDY_PRODUCT", "AI去字幕"))
 
 
 # ═══════════════════════════════════════════

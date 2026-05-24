@@ -88,6 +88,7 @@ if '--dry-run' in sys.argv:
 # 启动外部 Python 进程（stdout/stderr 保留给子进程，不归 log_writer 管）
 _env = os.environ.copy()
 _env["PYTHONIOENCODING"] = "utf-8"
+_env["WORKBUDDY_PRODUCT"] = "AI去字幕"
 _proc = subprocess.Popen([_PYTHON, _STABLE_UI], env=_env)
 
 # ═══ 看门狗：达芬奇退出时杀掉孤儿子进程 ═══

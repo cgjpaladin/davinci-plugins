@@ -7,10 +7,11 @@ curl 的子进程调用绕过 Python SSL 栈，作为兜底。
 """
 
 import json
+import os
 import subprocess
 from log_writer import get_logger
 
-_log = get_logger("AI去字幕")
+_log = get_logger(os.environ.get("WORKBUDDY_PRODUCT", "AI去字幕"))
 
 
 def curl_post(url: str, headers: dict, data_bytes: bytes, timeout: int = 30) -> dict:
