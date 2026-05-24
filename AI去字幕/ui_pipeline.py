@@ -225,6 +225,8 @@ def _refresh_scan_display():
     need, total_time = stats["need"], stats["est_minutes"]
     if need > 0:
         ui.log_info(f"预估: ≤¥{stats['yuan']} (≤{stats['pts']} 积分) | 约 {total_time} 分钟")
+        ui.log_info("")  # 章节尾部空行
+        ui.set_status("就绪")
 
 
 # ── 余额 + 引擎选择 ──
