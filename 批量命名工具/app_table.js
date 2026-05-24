@@ -372,13 +372,14 @@ function buildCellTD(key, ff, i){
     if(!cfg){
       const s = document.createElement('span'); s.textContent = '—';
       td.appendChild(s);
-      td.classList.add('readonly');
+      td.classList.add('readonly','empty');
       return td;
     }
     if(cfg.mode === 'locked'){
       const s = document.createElement('span'); s.textContent = v || '—';
       td.appendChild(s);
       td.classList.add('locked');
+      if(!v) td.classList.add('empty');
       return td;
     }
   }
