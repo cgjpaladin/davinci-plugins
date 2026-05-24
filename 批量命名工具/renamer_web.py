@@ -174,12 +174,13 @@ class RenamerAPI:
         return {"received": x}
 
     def _process_paths(self, paths_):
-        _log.info(f"_process_paths received {len(paths_)} paths")
+        _log.info(f"_process_paths: {len(paths_)} paths → scanning")
         MAX_FILES = 100
         files = []; duplicates = 0; subdirs = 0; truncated = False
         defaults = _saved_defaults
         _EMPTY_KEYS = {'ep','sc','gr','ver'}
         VIDEO_EXT = {'.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw'}
+        parsed_count = 0; no_parse_count = 0
         for p_ in paths_[:MAX_FILES]:
             if len(files) >= MAX_FILES: truncated = True; break
             p = str(p_).strip()
@@ -187,7 +188,9 @@ class RenamerAPI:
 
             if os.path.isfile(p):
                 ext = os.path.splitext(p)[1].lower()
-                if ext not in VIDEO_EXT: continue
+                if ext not in VIDEO_EXT:
+                    _log.debug(f"  skip non-video: {os.path.basename(p)}")
+                    continue
                 if p in {f["path"] for f in files}: duplicates += 1; continue
                 # 内容指纹：size + 前 64KB hash（同一文件走不同路径也能去重）
                 try:
@@ -206,6 +209,9 @@ class RenamerAPI:
                     elif defaults and k in defaults and k not in _EMPTY_KEYS: fields[k] = defaults.get(k, fd["def"])
                     elif k in _EMPTY_KEYS: fields[k] = ""
                     else: fields[k] = fd["def"]
+                if parsed: parsed_count += 1
+                else: no_parse_count += 1
+                _log.debug(f"  + {os.path.basename(p)} parsed={bool(parsed)} ep={fields.get('ep','')} sc={fields.get('sc','')} gr={fields.get('gr','')} desc={fields.get('desc','')}|method={fields.get('method','')}|author={fields.get('author','')}|v{fields.get('ver','')}|{fields.get('status','')}")
                 files.append({"path":p,"basename":os.path.basename(p),"ext":os.path.splitext(os.path.basename(p))[1],"fields":fields,"fp":fp_key})
             elif os.path.isdir(p):
                 try:
@@ -230,11 +236,14 @@ class RenamerAPI:
                                 elif defaults and k in defaults and k not in _EMPTY_KEYS: fields[k] = defaults.get(k, fd["def"])
                                 elif k in _EMPTY_KEYS: fields[k] = ""
                                 else: fields[k] = fd["def"]
+                            if parsed: parsed_count += 1
+                            else: no_parse_count += 1
+                            _log.debug(f"  + {os.path.basename(fp)} parsed={bool(parsed)} ep={fields.get('ep','')} sc={fields.get('sc','')}")
                             files.append({"path":fp,"basename":os.path.basename(fp),"ext":os.path.splitext(os.path.basename(fp))[1],"fields":fields,"fp":fp_key2})
                         elif os.path.isdir(fp): subdirs += 1
                 except: pass
 
-        _log.info(f"_process_paths: {len(files)} files, {duplicates} dup, {subdirs} subdirs skip, truncated={truncated}")
+        _log.info(f"_process_paths: {len(files)} files, {parsed_count} parsed, {no_parse_count} raw, {duplicates} dup, {subdirs} subdirs, truncated={truncated}")
         # 自动检查
         anomalies = set()
         try:
@@ -260,6 +269,7 @@ class RenamerAPI:
     def do_rename(self, files):
         global _undo_stack
         ok = 0; fail = []; batch = []; renamed = []
+        _log.info(f"do_rename: {len(files)} files")
         for f in files:
             p = f["path"]
             d = os.path.dirname(p)
@@ -268,11 +278,13 @@ class RenamerAPI:
             np = os.path.join(d, nm)
             if os.path.exists(np) and os.path.normcase(np) != os.path.normcase(p):
                 fail.append(os.path.basename(p) + " → 已存在")
+                _log.warning(f"  rename collision: {os.path.basename(p)} → {os.path.basename(np)}")
                 continue
             try:
                 os.rename(p, np)
                 batch.append((p, np))
                 renamed.append({"old_path": p, "new_path": np})
+                _log.debug(f"  ✓ {os.path.basename(p)} → {os.path.basename(np)}")
                 ok += 1
             except Exception as e:
                 fail.append(os.path.basename(p) + ": " + str(e))
@@ -415,8 +427,10 @@ class RenamerAPI:
                 seen[src_hash] = target
                 archived.append((f["path"], target))
                 ok += 1
+                _log.debug(f"  ✓ {os.path.basename(f['path'])} → {os.path.basename(target)}")
             except Exception as e:
                 fail.append(os.path.basename(f["path"]) + ": " + str(e))
+                _log.warning(f"  ✗ {os.path.basename(f['path'])}: {e}")
         if archived:
             _undo_stack.append({"type": "archive", "pairs": archived})
         return {"ok": ok, "dup": dup, "fail": fail, "total": len(files), "archived": [{"old": src, "new": dst} for src, dst in archived], "stack_depth": len(_undo_stack)}
@@ -490,7 +504,7 @@ if __name__ == "__main__":
                                 paths.append(sfp)
                     except: pass
             if not paths: return
-            _log.info(f"DOM drop: {len(paths)} items")
+            _log.info(f"DOM drop: {len(paths)} items [{', '.join(os.path.basename(p) for p in paths[:5])}{'...' if len(paths)>5 else ''}]")
             result = api._process_paths(paths)
             # 过滤已发送的指纹（pywebview 的 evaluate_js 会重复执行）
             fresh = [f for f in result.get('files', []) if f.get('fp','') not in _sent_fps]
