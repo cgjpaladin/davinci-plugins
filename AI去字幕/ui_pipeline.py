@@ -47,7 +47,7 @@ from ui_widgets import (
     itm, dlg, disp, _state, WIN_ID, MODE,
     _CLIP_COLORS,
     _check_smb, _flush_log, _apply_ui_state,
-    _st, _pg, _bal, _flash_completion, _reset_title, _set_btn, _set_proj,
+    _st, _pg, _bal, _flash_completion, _reset_title, _flag_engine_error, _clear_engine_error, _set_btn, _set_proj,
     _event_log, _log_file, _log_action,
     _ui_lock, _ui_pending,
     _t_start, _t_estimated, _task_count,
@@ -128,6 +128,7 @@ def scan_io(*_):
     注：片段遍历逻辑与 _refresh_scan_display() 有约50行重复，修改任一处需同步另一处。
     """
     _reset_title()  # 清除上一次的完成态
+    _clear_engine_error()
     global _version_checked
     # 扫描不依赖 SMB（片段数据来自达芬奇 API），版本检查失败降级不阻塞
     if not _version_checked:
@@ -456,6 +457,10 @@ def process(*_):
         # 处理完成后刷新引擎余额
         refresh_bal()
         _flash_completion()
+        if getattr(pipeline, '_engine_failed', False):
+            eng = pipeline.manual_engine
+            other = "鬼手剪辑" if eng == "无痕AI 2.1" else "无痕AI 2.1"
+            _flag_engine_error(eng, other)
 
     except Exception as e:
         ui.log_fail(f"{e}")

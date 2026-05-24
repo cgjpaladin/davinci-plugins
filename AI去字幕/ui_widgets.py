@@ -423,6 +423,21 @@ def _reset_title():
         dlg.SetWindowTitle("AI去字幕")
     except Exception:
         pass
+def _flag_engine_error(old_engine: str, other_engine: str):
+    """引擎挂了：状态栏标红，提示切换"""
+    try:
+        itm[PROJ_LB].Text = f"⚠ {old_engine} 不可用，请切换到 {other_engine} 重试"
+        itm[PROJ_LB].StyleSheet = "color:rgb(255,80,80);font-size:13px;font-weight:bold"
+    except Exception:
+        pass
+
+def _clear_engine_error():
+    """清除引擎错误标记"""
+    try:
+        itm[PROJ_LB].StyleSheet = "color:rgb(200,200,200);font-size:13px"
+    except Exception:
+        pass
+
 def _log_action(action: str):
     """记录用户操作到日志"""
     _log_file(f"[操作] {action}")

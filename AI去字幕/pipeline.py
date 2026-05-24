@@ -48,7 +48,8 @@ class SubtitlePipeline(BasePipeline):
         self._adapter = None
         self._scan_report = None
         self._io_info = None
-        self.manual_engine = "auto"   # "auto" / "无痕AI 2.1" / "GhostCut"
+        self.manual_engine = "auto"
+        self._engine_failed = False   # UI 用来标记引擎错误
 
     # ═══════════════════════════════════════
     # 适配器
@@ -69,6 +70,7 @@ class SubtitlePipeline(BasePipeline):
 
     def _retry_with_fallback(self, tasks, batch):
         """引擎失败提示，不自动切（用户手动换）"""
+        self._engine_failed = True
         self.log.fail(f"处理失败，引擎 '{self.manual_engine}' 不可用，请更换引擎后重试")
         return super()._retry_with_fallback(tasks, batch)
 
@@ -133,6 +135,7 @@ class SubtitlePipeline(BasePipeline):
         # API 健康预检——手动模式不切备选，直接报错
         if hasattr(adapter, 'check_health') and not adapter.check_health():
             if self.manual_engine != "auto":
+                self._engine_failed = True
                 self.log.fail(f"引擎 '{self.manual_engine}' 不可用，请更换引擎后重试")
                 return [SubtitleResult(success=False, error_message=f"引擎不可用: {self.manual_engine}") for _ in tasks]
             cls_name = adapter.__class__.__name__
