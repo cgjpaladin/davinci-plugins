@@ -408,9 +408,25 @@ def _log_file(msg: str):
     except Exception:
         pass
 
+def _flash_completion():
+    """处理完成：进度条变绿 + 窗口标题显示 ✅"""
+    try:
+        itm[PG_BAR].StyleSheet = "min-height:8px;max-height:8px;background-color:rgb(39,221,102);border-radius:3px"
+        dlg.SetWindowTitle("✅ 完成 - AI去字幕")
+    except Exception:
+        pass  # UI 更新失败不阻塞主流程
+
+def _reset_title():
+    """恢复窗口标题和进度条颜色"""
+    try:
+        itm[PG_BAR].StyleSheet = "min-height:8px;max-height:8px;background-color:rgb(102,221,39);border-radius:3px"
+        dlg.SetWindowTitle("AI去字幕")
+    except Exception:
+        pass
 def _log_action(action: str):
     """记录用户操作到日志"""
     _log_file(f"[操作] {action}")
+
 def _bal(t):
     pass  # BAL_LB 已移除，余额改在引擎下拉框里显示
 
