@@ -10,7 +10,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(BASE)
 
 # 检测版本
-variant = 'table' if len(sys.argv) > 1 and sys.argv[1] == 'card' else 'table'
+variant = 'card' if len(sys.argv) > 1 and sys.argv[1] == 'card' else 'table'
 # 默认表格版；传 'card' 走卡片版
 
 if variant == 'table':
