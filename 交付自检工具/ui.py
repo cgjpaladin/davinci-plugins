@@ -524,12 +524,13 @@ def _ts():
     return time.strftime("%m-%d %H:%M:%S")
 
 def _action_log(msg: str):
+    _stderr_msg = msg  # try 外捕获，确保文件写入失败时 stderr 仍能输出
     try:
         _log.ui(f"[{_ts()}] {msg}")
-        if any(k in msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
-            print(msg, file=sys.stderr)
     except Exception:
         pass
+    if any(k in _stderr_msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
+        print(_stderr_msg, file=sys.stderr)
 
 
 # ═══════════════════════════════════════════

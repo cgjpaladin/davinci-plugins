@@ -250,12 +250,13 @@ def _ui_write_direct(msg: str):
     else:
         _log_queue.put(msg)
     # 文件持久化（本地）+ stderr（确保 ResolveDebug.txt 可见）
+    _stderr_msg = msg  # 在 try 外捕获，确保文件写入失败时 stderr 仍能输出
     try:
         _log.ui(msg)
-        if any(k in msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
-            print(msg, file=sys.stderr)
     except Exception:
         pass
+    if any(k in _stderr_msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
+        print(_stderr_msg, file=sys.stderr)
 
 def _ui_write(msg: str):
     _ui_write_direct(msg)  # 内部已含 _log.ui 文件持久化
@@ -263,7 +264,10 @@ def _ui_write(msg: str):
 # ── 关键事件日志 ──
 def _event_log(msg: str):
     """关键事件日志。同时写插件文件 + stderr（确保 ResolveDebug.txt 也能看到）"""
-    _log.ui(msg)
+    try:
+        _log.ui(msg)
+    except Exception:
+        pass
     if any(k in msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
         print(msg, file=sys.stderr)
 
