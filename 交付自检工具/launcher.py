@@ -2,9 +2,8 @@
 # launcher.py — 交付自检工具 启动器
 import subprocess, os, sys, time, socket, json
 
-_PYTHON = "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
-if not os.path.exists(_PYTHON):
-    _PYTHON = "/usr/bin/python3"
+# 壳已经选了正确的 Python，直接用当前进程的
+_PYTHON = sys.executable
 
 try:
     _HERE = os.path.dirname(os.path.abspath(__file__))
