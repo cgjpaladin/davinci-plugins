@@ -258,7 +258,7 @@ CLIP_COLOR = _env("COLOR", "Orange")  # 裁缝老师用橘黄
 # ============================================================
 ADAPTER_CONFIGS = {
     "ghostcut": {
-        "name": "GhostCut",     # 显示名，改名只改这里
+        "name": "鬼手",     # 显示名，改名只改这里
         "enabled": True,
         "app_key": GHOSTCUT_APP_KEY,
         "app_secret": GHOSTCUT_APP_SECRET,

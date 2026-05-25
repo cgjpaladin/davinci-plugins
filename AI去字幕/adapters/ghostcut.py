@@ -86,7 +86,7 @@ def _auto_mask(task: SubtitleTask):
 
 
 class GhostCutAdapter(BaseAdapter):
-    """鬼手剪辑去字幕适配器"""
+    """鬼手去字幕适配器"""
 
     BASE_URL = "https://api.zhaoli.com"
     CREATE_TASK = "/v-w-c/gateway/ve/work/free"
@@ -109,7 +109,7 @@ class GhostCutAdapter(BaseAdapter):
         self._crf = config.get("crf")  # None=默认17, 15=更高画质
         
         if not self.app_key or not self.app_secret:
-            raise ValueError("GhostCut 适配器需要 app_key 和 app_secret")
+            raise ValueError(f"{self.name} 适配器需要 app_key 和 app_secret")
 
     def _build_extra_options(self, extra_inpaint_config: dict) -> str:
         """构建 extraOptions JSON。CRF 开关：None=跳过, 15=高画质。"""
@@ -147,7 +147,7 @@ class GhostCutAdapter(BaseAdapter):
         except (urllib.error.URLError, OSError, ssl.SSLError) as e:
             # SSL/网络错误 → curl fallback
             reason = str(e.reason) if hasattr(e, 'reason') else str(e)
-            _log_ops.ops({"event": "http_fallback", "adapter": "GhostCut",
+            _log_ops.ops({"event": "http_fallback", "adapter": self.name,
                            "reason": reason[:100]})
             from http_fallback import curl_post
             return curl_post(f"{self.BASE_URL}{path}", headers, body_bytes)
@@ -228,7 +228,7 @@ class GhostCutAdapter(BaseAdapter):
         try:
             work_id = resp["body"]["dataList"][0]["id"]
         except (KeyError, IndexError) as e:
-            raise RuntimeError(f"GhostCut 返回异常: {json.dumps(resp, ensure_ascii=False)}") from e
+            raise RuntimeError(f"鬼手 返回异常: {json.dumps(resp, ensure_ascii=False)}") from e
         
         return str(work_id)
 

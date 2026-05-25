@@ -167,7 +167,7 @@ class SubtitlePipeline(BasePipeline):
                     mp_color=t.mp_color, alt_tl_items=t.alt_tl_items,
                 ) for t in tasks]
             cls_name = adapter.__class__.__name__
-            exclude = "wuhenai" if adapter.key == "wuhenai_v21" else "ghostcut" if adapter.key == "ghostcut" else ""
+            exclude = adapter.provider_key
             _log_ops.ops({"event": "adapter_health_fail", "adapter": cls_name})
             fallback = create_preferred_adapter(exclude=exclude)
             if fallback and hasattr(fallback, 'check_health') and fallback.check_health():

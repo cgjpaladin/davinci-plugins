@@ -79,6 +79,10 @@ class WuhenAIV21Adapter(BaseAdapter):
     _PRESIGNED_DOWNLOAD_TTL = 3600  # 下载用预签名 URL 1小时有效期（防泄漏）
     _MAX_FILE_SIZE = 100 * 1024 * 1024  # 上传文件上限 100MB
 
+    @property
+    def provider_key(self) -> str:
+        return "wuhenai"  # pricing/ADAPTER_PRIORITY 用这个 key
+
     def __init__(self, config: dict):
         super().__init__("wuhenai_v21", config)
         self.api_key = config.get("api_key", "")
@@ -161,7 +165,7 @@ class WuhenAIV21Adapter(BaseAdapter):
             raise RuntimeError(f"API {e.code}: {err_body[:300]}") from e
         except (urllib.error.URLError, OSError, ssl.SSLError) as e:
             reason = str(e.reason) if hasattr(e, 'reason') else str(e)
-            _ops.ops({"event": "http_fallback", "adapter": "无痕AI",
+            _ops.ops({"event": "http_fallback", "adapter": self.name,
                        "reason": reason[:100]})
             from http_fallback import curl_post
             result = curl_post(url, headers, data)
@@ -187,7 +191,7 @@ class WuhenAIV21Adapter(BaseAdapter):
             raise RuntimeError(f"API {e.code}: {err_body[:300]}") from e
         except (urllib.error.URLError, OSError, ssl.SSLError) as e:
             reason = str(e.reason) if hasattr(e, 'reason') else str(e)
-            _ops.ops({"event": "http_fallback", "adapter": "无痕AI",
+            _ops.ops({"event": "http_fallback", "adapter": self.name,
                        "reason": reason[:100]})
             from http_fallback import curl_get
             result = curl_get(url, headers)

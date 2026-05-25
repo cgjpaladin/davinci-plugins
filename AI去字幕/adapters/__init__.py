@@ -85,6 +85,12 @@ class BaseAdapter(ABC):
         self._output_path: Optional[str] = None  # process() 设置，wait_for_result() 消费
         self._logger = print  # 默认 stdout；外部可注入 set_logger(callback)
 
+    @property
+    def provider_key(self) -> str:
+        """pricing/ADAPTER_PRIORITY 用的内部 key（可能不同于 config key）。
+        子类可覆盖以映射 config key → pricing key。"""
+        return self.key
+
     def set_logger(self, callback):
         """注入日志回调。callback(level: str, msg: str) — level: info/warn/error/debug。
         

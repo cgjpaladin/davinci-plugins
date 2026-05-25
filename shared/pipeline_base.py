@@ -476,7 +476,7 @@ class BasePipeline(ABC):
     def _retry_with_fallback(self, tasks: list, batch: bool) -> list:
         """全部失败时自动切备用 adapter 重试。"""
         current = self._get_adapter()
-        current_key = current.key
+        current_key = current.provider_key
         _log_ops.ops({"event": "adapter_fallback_all_fail", "from": current.name})
         self.log.info(f"切换到备用 adapter（跳过 {current.name}）")
 
