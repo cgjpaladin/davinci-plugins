@@ -526,6 +526,8 @@ def _ts():
 def _action_log(msg: str):
     try:
         _log.ui(f"[{_ts()}] {msg}")
+        if "❌" in msg or "Error" in msg or "失败" in msg:
+            print(msg, file=sys.stderr)
     except Exception:
         pass
 

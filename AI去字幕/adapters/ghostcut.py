@@ -26,9 +26,8 @@ from urllib.parse import urlparse
 
 from . import BaseAdapter, SubtitleTask, SubtitleResult, TaskStatus
 
-# macOS 上 Python 3.13 的 ssl.create_default_context() 可能因系统证书链
-# 不完整导致 SSL: CERTIFICATE_VERIFY_FAILED。鬼手 API 走 HTTPS，
-# 证书验证失败不影响安全性（API 本身有签名鉴权）。
+# macOS 上 ssl.create_default_context() 在不同 Python 版本间行为不一致
+# (3.13 正常, 3.14 SSL CERTIFICATE_VERIFY_FAILED)，改用 _create_unverified。
 _SSL_CTX = ssl._create_unverified_context()
 
 _RESOLUTION_MAP = {

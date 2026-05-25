@@ -249,9 +249,11 @@ def _ui_write_direct(msg: str):
             pass
     else:
         _log_queue.put(msg)
-    # 文件持久化（本地）
+    # 文件持久化（本地）+ stderr（确保 ResolveDebug.txt 可见）
     try:
         _log.ui(msg)
+        if "❌" in msg or "Error" in msg or "失败" in msg or "Traceback" in msg:
+            print(msg, file=sys.stderr)
     except Exception:
         pass
 
@@ -260,8 +262,10 @@ def _ui_write(msg: str):
 
 # ── 关键事件日志 ──
 def _event_log(msg: str):
-    """关键事件日志（本地持久化）"""
+    """关键事件日志。同时写插件文件 + stderr（确保 ResolveDebug.txt 也能看到）"""
     _log.ui(msg)
+    if "❌" in msg or "Error" in msg or "失败" in msg:
+        print(msg, file=sys.stderr)
 
 def _check_smb():
     """全局 SMB 健康检查 + 自动重挂。返回 True=在线"""
