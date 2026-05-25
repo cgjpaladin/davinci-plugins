@@ -10,7 +10,8 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(BASE)
 
 # 检测版本
-variant = 'table' if len(sys.argv) > 1 and sys.argv[1] == 'table' else 'card'
+variant = 'table' if len(sys.argv) > 1 and sys.argv[1] == 'card' else 'table'
+# 默认表格版；传 'card' 走卡片版
 
 if variant == 'table':
     css  = open('app_table.css', encoding='utf-8').read()
@@ -31,7 +32,7 @@ try:
 except:
     h = 'dev'; b = '?'
 ts = datetime.now().strftime('%m-%d %H:%M')
-js = js.replace("const APP_VERSION='DEV'", f"const APP_VERSION='{h}'")
+js = js.replace("const APP_VERSION='3.0'", f"const APP_VERSION='{h}'")
 js = js.replace("const APP_BRANCH=''", f"const APP_BRANCH='{b}'")
 js = js.replace("const APP_BUILD_TIME=''", f"const APP_BUILD_TIME='{ts}'")
 

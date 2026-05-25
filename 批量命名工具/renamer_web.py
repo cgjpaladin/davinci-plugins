@@ -351,18 +351,19 @@ class RenamerAPI:
                     if not chunk: break
                     h.update(chunk)
             return h.digest()
-        # 扫目标文件夹，预建 {hash: path}（同内容只保留一条）
+        # 扫目标文件夹，预建 {hash: path}（同内容只保留一条，限 200 个文件）
         seen = {}  # hash bytes → path
         if os.path.isdir(dest):
             for root, dirs, filenames in os.walk(dest):
                 for fn in filenames:
+                    if len(seen) >= 200: break
                     fp = os.path.join(root, fn)
                     try:
                         sz = os.path.getsize(fp)
                         if sz > 0:
                             h = _hash_file(fp)
                             if h not in seen: seen[h] = fp
-                    except: pass
+                    except OSError: pass
         # 逐文件处理
         archived = []
         for f in files:
