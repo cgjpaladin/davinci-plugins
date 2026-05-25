@@ -78,8 +78,9 @@ class BaseAdapter(ABC):
       - 不需要取消的适配器接受参数但不使用即可
     """
 
-    def __init__(self, name: str, config: dict):
-        self.name = name
+    def __init__(self, key: str, config: dict):
+        self.key = key
+        self.name = config.get("name", key)  # 显示名从config读，key兜底
         self.config = config
         self._output_path: Optional[str] = None  # process() 设置，wait_for_result() 消费
         self._logger = print  # 默认 stdout；外部可注入 set_logger(callback)

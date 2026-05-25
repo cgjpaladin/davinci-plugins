@@ -263,7 +263,7 @@ def refresh_bal():
                 current_idx = len(items) - 1
         except Exception:
             role = "主力" if key == main_key else "备用"
-            label = "鬼手剪辑" if key == "ghostcut" else "无痕AI 2.1"
+            label = ADAPTER_CONFIGS[key].get("name", key)
             items.append(f"{label}（{role}）离线")
 
     # 写入下拉框
@@ -290,13 +290,23 @@ def refresh_bal():
             continue
 
 def get_selected_engine():
-    """返回用户选择的引擎"""
+    """返回用户选择的引擎显示名"""
     sel = itm[API_CB].CurrentText
-    if "无痕" in sel:
-        return "无痕AI 2.1"
-    if "鬼手" in sel or "Ghost" in sel:
-        return "GhostCut"
-    return ADAPTER_PRIORITY[0]  # 兜底：主力
+    for key in ADAPTER_PRIORITY:
+        name = ADAPTER_CONFIGS[key].get("name", key)
+        if name in sel or key in sel:
+            return name
+    return ADAPTER_CONFIGS[ADAPTER_PRIORITY[0]].get("name", ADAPTER_PRIORITY[0])
+
+
+def get_selected_engine_key():
+    """返回用户选择的引擎 config key"""
+    sel = itm[API_CB].CurrentText
+    for key in ADAPTER_PRIORITY:
+        name = ADAPTER_CONFIGS[key].get("name", key)
+        if name in sel:
+            return key
+    return ADAPTER_PRIORITY[0]
 
 
 # ── 阿里云余额 ──
@@ -360,6 +370,7 @@ def process(*_):
 
         pipeline = SubtitlePipeline()
         pipeline.manual_engine = get_selected_engine()
+        pipeline.manual_engine_key = get_selected_engine_key()
 
         # ── UI 专属钩子 ──
 
@@ -451,7 +462,9 @@ def process(*_):
         _flash_completion()
         if getattr(pipeline, '_engine_failed', False):
             eng = pipeline.manual_engine
-            other = "鬼手剪辑" if eng == "无痕AI 2.1" else "无痕AI 2.1"
+            eng_key = getattr(pipeline, 'manual_engine_key', None)
+            alt_key = "ghostcut" if eng_key == "wuhenai_v21" else "wuhenai_v21"
+            other = ADAPTER_CONFIGS.get(alt_key, {}).get("name", alt_key)
             _flag_engine_error(eng, other)
 
     except Exception as e:

@@ -258,6 +258,7 @@ CLIP_COLOR = _env("COLOR", "Orange")  # 裁缝老师用橘黄
 # ============================================================
 ADAPTER_CONFIGS = {
     "ghostcut": {
+        "name": "GhostCut",     # 显示名，改名只改这里
         "enabled": True,
         "app_key": GHOSTCUT_APP_KEY,
         "app_secret": GHOSTCUT_APP_SECRET,
@@ -265,6 +266,7 @@ ADAPTER_CONFIGS = {
         # "crf": 15,  # 取消注释启用高画质（默认17, 15≈视觉无损+）
     },
     "wuhenai_v21": {
+        "name": "无痕AI 2.1",   # 显示名，改名只改这里
         "enabled": True,
         "api_key": WUHENAI_V2_API_KEY,
         "oss_access_key_id": OSS_ACCESS_KEY_ID,

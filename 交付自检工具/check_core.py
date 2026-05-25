@@ -1088,16 +1088,6 @@ def check_tailboard(timeline, fps=25.0, io_range=None) -> list:
     ]
 
 
-# ── 待开发 ──
-
-def check_subtitle_typo(timeline, fps=25.0, io_range=None) -> list:
-    """字幕错别字校对 — 通过 LLM API 比对 ASR 字幕与剧本。
-    方案见: 外部调研报告/LLM字幕校对方案设计.md
-    待 API key 配置 + 千问/豆包接入后实现。
-    """
-    return [_make_result("pass", detail="错别字校对 (未开发)", is_summary=True)]
-
-
 def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_log=None) -> list:
     """检测视频轨可见片段的黑边：缩放不足、位移、旋转导致的未覆盖区域。"""
     import math
@@ -1249,7 +1239,7 @@ def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> li
                 mp = _get_cached(it, "mp")
                 if mp:
                     try:
-                        if mp.GetClipProperty("Type") == "静帧":
+                        if mp.GetClipProperty("Type") in ("静帧", "Still"):
                             continue
                     except Exception:
                         pass
@@ -1446,7 +1436,6 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
     ]
 
 
-_SMB_PREFIX = "/Volumes/MYJC"
 
 from deploy_config import get_smb_mount
 
@@ -1556,7 +1545,7 @@ def check_offline_clips(timeline, fps=25.0, io_range=None, debug_log=None) -> li
         seen_mp.add(mp_uid)
         # 复合片段/内部合成无外部文件，跳过脱机检测
         mp_type = info.get("mp_type", "")
-        if mp_type in ("复合", "合成"):
+        if mp_type in ("复合", "合成", "Compound", "Fusion Composition"):
             continue
         path = info["path"]
         if path:
@@ -1679,7 +1668,7 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None, debug_log=Non
                             _type_cache[mp_uid] = mp.GetClipProperty("Type") or ""
                         except Exception:
                             _type_cache[mp_uid] = ""
-                    is_text = _type_cache[mp_uid] in ("Text", "Text+")
+                    is_text = _type_cache[mp_uid] in ("Text", "Text+", "文本", "文本+")
             else:
                 # 时间线上直接创建的文本片段（无MP）
                 is_text = name.startswith("文本") or name in ("Text", "Text+")

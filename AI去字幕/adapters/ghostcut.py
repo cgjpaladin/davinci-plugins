@@ -102,7 +102,7 @@ class GhostCutAdapter(BaseAdapter):
     }
 
     def __init__(self, config: dict):
-        super().__init__("GhostCut", config)
+        super().__init__("ghostcut", config)
         self.app_key = config.get("app_key")
         self.app_secret = config.get("app_secret")
         self.default_model = config.get("model", "pro")

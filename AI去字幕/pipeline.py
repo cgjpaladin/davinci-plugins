@@ -67,6 +67,7 @@ class SubtitlePipeline(BasePipeline):
         self._scan_report = None
         self._io_info = None
         self.manual_engine = "auto"
+        self.manual_engine_key = None  # config key, e.g. "ghostcut"
         self._engine_failed = False   # UI 用来标记引擎错误
 
     # ═══════════════════════════════════════
@@ -75,10 +76,10 @@ class SubtitlePipeline(BasePipeline):
 
     def _get_adapter(self):
         if self._adapter is None:
-            if self.manual_engine == "无痕AI 2.1":
+            if self.manual_engine_key == "wuhenai_v21":
                 from adapters import create_wuhenai_adapter
                 self._adapter = create_wuhenai_adapter()
-            elif self.manual_engine == "GhostCut":
+            elif self.manual_engine_key == "ghostcut":
                 from adapters import create_ghostcut_adapter
                 self._adapter = create_ghostcut_adapter()
             else:
@@ -154,9 +155,11 @@ class SubtitlePipeline(BasePipeline):
         if hasattr(adapter, 'check_health') and not adapter.check_health():
             if self.manual_engine != "auto":
                 self._engine_failed = True
-                alt = "GhostCut" if self.manual_engine == "无痕AI 2.1" else "无痕AI 2.1"
+                alt_key = "ghostcut" if self.manual_engine_key == "wuhenai_v21" else "wuhenai_v21"
+                # 手动模式不自动切备选，只提示
+                alt_name = ADAPTER_CONFIGS.get(alt_key, {}).get("name", alt_key)
                 self.log.fail(f"引擎 '{self.manual_engine}' 不可用")
-                self.log.warn(f"请切换到 {alt} 重试（若 {alt} 也不可用，则 API 可能暂时故障）")
+                self.log.warn(f"请切换到 {alt_name} 重试（若 {alt_name} 也不可用，则 API 可能暂时故障）")
                 return [ResultItem(
                     mp_item=t.mp_item, name=t.name, path=t.path,
                     result=SubtitleResult(success=False, error_message=f"引擎不可用: {self.manual_engine}"),
@@ -164,7 +167,7 @@ class SubtitlePipeline(BasePipeline):
                     mp_color=t.mp_color, alt_tl_items=t.alt_tl_items,
                 ) for t in tasks]
             cls_name = adapter.__class__.__name__
-            exclude = "wuhenai" if "Wuhen" in cls_name else "ghostcut" if "Ghost" in cls_name else ""
+            exclude = "wuhenai" if adapter.key == "wuhenai_v21" else "ghostcut" if adapter.key == "ghostcut" else ""
             _log_ops.ops({"event": "adapter_health_fail", "adapter": cls_name})
             fallback = create_preferred_adapter(exclude=exclude)
             if fallback and hasattr(fallback, 'check_health') and fallback.check_health():

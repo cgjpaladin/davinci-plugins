@@ -80,7 +80,7 @@ class WuhenAIV21Adapter(BaseAdapter):
     _MAX_FILE_SIZE = 100 * 1024 * 1024  # 上传文件上限 100MB
 
     def __init__(self, config: dict):
-        super().__init__("无痕AI 2.1", config)
+        super().__init__("wuhenai_v21", config)
         self.api_key = config.get("api_key", "")
         self.access_key_id = config.get("oss_access_key_id", "")
         self.access_key_secret = config.get("oss_access_key_secret", "")
