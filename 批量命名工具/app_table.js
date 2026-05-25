@@ -118,13 +118,10 @@ function _tryStart(){
   const live=!!(window.pywebview&&window.pywebview.api);
   if(!live){document.getElementById('debugMode').textContent='⏳'+Math.floor(Date.now()/1000)%100;return}
   _ready=true;
-  document.getElementById('debugMode').textContent='✔ Live';
-  // 测试桥接
-  window.pywebview.api.echo('hello').then(r=>{
-    document.getElementById('debugMode').textContent='✔ '+r.received;
-    if(window._tryIv)clearInterval(window._tryIv);
-    init();
-  }).catch(()=>{init()});
+  if(window._tryIv)clearInterval(window._tryIv);
+  init().catch(()=>{
+    document.getElementById('debugMode').textContent='❌ 启动失败';
+  });
 }
 window._tryIv=setInterval(_tryStart,300);
 
