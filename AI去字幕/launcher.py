@@ -22,10 +22,11 @@ for _d in _SHARED_CANDIDATES:
         sys.path.insert(0, _d)
         break
 
-from deploy_config import load as _load_deploy_config, get_python_path
+from deploy_config import load as _load_deploy_config
 
 _deploy = _load_deploy_config()
-_PYTHON = get_python_path()
+# 壳已经选了正确的 Python，直接用当前进程的
+_PYTHON = sys.executable
 _SMB_ROOT = _deploy.get("smb_root", "/Volumes/MYJC/06_Software/达芬奇脚本")
 _DEV_HOSTS = set(_deploy.get("dev_hosts", ["BryandeMac-mini.local", "BryandeMac-mini"]))
 _DEV_DIR_BASE = os.path.expanduser(

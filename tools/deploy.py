@@ -48,9 +48,11 @@ def deploy(project_name, dry_run=False):
     # 确保子文件夹存在
     os.makedirs(DAVINCI_EDIT, exist_ok=True)
     
-    src = os.path.join(project_dir, "launcher.py")
+    src = os.path.join(project_dir, "shell.py")  # 优先永久壳
     if not os.path.exists(src):
-        print(f"❌ launcher.py 不存在: {src}")
+        src = os.path.join(project_dir, "launcher.py")
+    if not os.path.exists(src):
+        print(f"❌ 无 shell.py 或 launcher.py: {project_dir}")
         return False
     
     # 读版本号，本地 launcher 带版本后缀
