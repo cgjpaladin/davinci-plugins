@@ -68,7 +68,7 @@ async function init(){
   window._fieldKeys=_allFields.filter(f=>f.key!=='tk'&&!(f.dv)).map(f=>f.key);
   window._fieldKeysAll=_allFields.filter(f=>f.key!=='tk').map(f=>f.key);
   window._fieldLabels={};_allFields.forEach(f=>{window._fieldLabels[f.key]=f.label});
-  const v=APP_VERSION||'?',br=APP_BRANCH||'',t=APP_BUILD_TIME||'';document.getElementById('debugMode').textContent=cfg.dev?(br+'@v'+v+' '+t):('v'+v);
+  document.getElementById('debugMode').textContent=cfg.dev?('🔧 '+APP_VERSION):'';
 
   // 动态生成表头（单一事实来源，防止 HTML/JS 列序漂移）
   const theadTr = document.querySelector('#fileList thead tr');
@@ -116,7 +116,7 @@ let _ready=false;
 function _tryStart(){
   if(_ready)return;
   const live=!!(window.pywebview&&window.pywebview.api);
-  if(!live){document.getElementById('debugMode').textContent='⏳'+Math.floor(Date.now()/1000)%100;return}
+  if(!live)return;
   _ready=true;
   if(window._tryIv)clearInterval(window._tryIv);
   init().catch(()=>{
