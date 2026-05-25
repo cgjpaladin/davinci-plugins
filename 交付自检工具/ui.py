@@ -526,7 +526,7 @@ def _ts():
 def _action_log(msg: str):
     try:
         _log.ui(f"[{_ts()}] {msg}")
-        if "❌" in msg or "Error" in msg or "失败" in msg:
+        if any(k in msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
             print(msg, file=sys.stderr)
     except Exception:
         pass

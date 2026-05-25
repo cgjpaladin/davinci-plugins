@@ -19,6 +19,8 @@ pipeline_log.py — Pipeline 步骤日志器
     log.progress(1, 3, "EP02_g1_01.mp4", "处理中")
 """
 
+import sys
+
 from interface import PipelineUI
 
 
@@ -72,9 +74,11 @@ class StepLogger:
 
     def fail(self, msg: str):
         self.ui.log_fail(msg)
+        print(msg, file=sys.stderr)
 
     def warn(self, msg: str):
         self.ui.log_warn(msg)
+        print(msg, file=sys.stderr)
 
     # ── 专用格式 ──
 
