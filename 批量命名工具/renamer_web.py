@@ -39,7 +39,7 @@ if os.path.exists(CFG_FILE):
     try:
         with open(CFG_FILE, "r", encoding="utf-8") as f:
             _saved_defaults = json.load(f)
-    except:
+    except Exception:
         pass
 
 THUMB_MAX = 100  # 缩略图批次上限
@@ -155,7 +155,7 @@ class RenamerAPI:
                 fp = os.path.join(folder, f)
                 if os.path.isfile(fp):
                     paths.append(os.path.realpath(fp))
-        except:
+        except Exception:
             pass
         return self._process_paths(paths)
 
@@ -237,7 +237,7 @@ class RenamerAPI:
                             _log.debug(f"  + {os.path.basename(fp)} parsed={bool(parsed)} ep={fields.get('ep','')} sc={fields.get('sc','')}")
                             files.append({"path":fp,"basename":os.path.basename(fp),"ext":os.path.splitext(os.path.basename(fp))[1],"fields":fields,"fp":fp_key2})
                         elif os.path.isdir(fp): subdirs += 1
-                except: pass
+                except Exception: pass
 
         _log.info(f"_process_paths: {len(files)} files, {parsed_count} parsed, {no_parse_count} raw, {duplicates} dup, {subdirs} subdirs, truncated={truncated}")
         # 自动检查
@@ -291,7 +291,7 @@ class RenamerAPI:
                     json.dump(sv, fp, ensure_ascii=False, indent=2)
                 global _saved_defaults
                 _saved_defaults = sv
-            except:
+            except Exception:
                 pass
         if batch:
             _undo_stack.append({"type": "rename", "pairs": [(op, np) for op, np in batch]})
@@ -318,7 +318,7 @@ class RenamerAPI:
                     os.rename(np, op)
                     renamed.append({"old_path": np, "new_path": op})
                 ud += 1
-            except:
+            except Exception:
                 pass
         _log.info(f"do_undo: {ud}/{len(pairs)} {typ} reversed, remaining batches: {len(_undo_stack)}")
         return {"ok": ud, "msg": f"已撤销 {ud} 个", "remaining": len(_undo_stack), "renamed": renamed, "type": typ}
@@ -392,7 +392,7 @@ class RenamerAPI:
                 if nxt > 99: fail.append(f'{fd.get("ep","?")}_{fd.get("sc","?")}: TK 已满(99)'); continue
                 fd['tk'] = str(nxt).zfill(2)
                 target = os.path.join(folder, build_filename(fd) + ext)
-            except:
+            except Exception:
                 fd['tk'] = '01'
                 target = build_folder(dest, type('E',(),{'fields':fd,'ext':ext})())
             # 目标路径碰撞检测（同字段不同内容 → 会覆盖，不应发生）
@@ -456,7 +456,7 @@ if __name__ == "__main__":
         try:
             urllib.request.urlopen(f"http://127.0.0.1:{port}", timeout=0.5)
             break
-        except:
+        except Exception:
             time.sleep(0.1)
 
     api = RenamerAPI()
@@ -488,7 +488,7 @@ if __name__ == "__main__":
                             sfp = os.path.realpath(os.path.join(fp, sf))
                             if os.path.isfile(sfp):
                                 paths.append(sfp)
-                    except: pass
+                    except Exception: pass
             if not paths: return
             _log.info(f"DOM drop: {len(paths)} items [{', '.join(os.path.basename(p) for p in paths[:5])}{'...' if len(paths)>5 else ''}]")
             result = api._process_paths(paths)

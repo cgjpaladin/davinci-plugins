@@ -1,23 +1,33 @@
 @echo off
-REM 批量命名工具 - Windows 打包脚本
-REM 用法: build_win.bat         卡片版
-REM       build_win.bat table  表格版
+REM 批量命名工具 - Windows 打包脚本 (v3.0)
+REM 用法: build_win.bat table  表格版（推荐）
+REM       build_win.bat        卡片版（备用）
+REM 前提: Python 3.11-3.12（webview 不支持 ≥3.13）+ ffmpeg.exe 在项目目录
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 set VARIANT=%1
-if "%VARIANT%"=="" set VARIANT=card
+if "%VARIANT%"=="" set VARIANT=table
+
+REM Python 版本检测（webview 仅支持 ≤3.12）
+python --version 2>&1 | findstr /r "3\.1[12]\." >nul
+if errorlevel 1 (
+    echo ❌ 需要 Python 3.11-3.12，当前版本:
+    python --version
+    echo 请安装 Python 3.11 或 3.12，或使用 py -3.11 命令
+    exit /b 1
+)
 
 if "%VARIANT%"=="table" (
     set JS_FILE=app_table.js
     set HTML_FILE=renamer_table.html
     set HTML_BUNDLE=_build\renamer_table.html
-    set APP_NAME=批量命名工具-表格版
+    set APP_NAME=批量命名工具-v3.0
 ) else (
     set JS_FILE=card\app.js
     set HTML_FILE=card\renamer_web.html
     set HTML_BUNDLE=_build\renamer_web.html
-    set APP_NAME=批量命名工具-卡片版
+    set APP_NAME=批量命名工具-卡片版-v3.0
 )
 
 REM 清理
@@ -33,10 +43,11 @@ if errorlevel 1 ( echo 拼接失败 & exit /b 1 )
 REM 打包 (--add-data 在 Windows 用分号分隔)
 pyinstaller ^
   --onedir --windowed ^
-  --name "批量命名工具" ^
+  --name "%APP_NAME%" ^
   --icon app_icon.ico ^
   --add-data "%HTML_BUNDLE%;." ^
   --add-data "..\shared;shared" ^
+  --add-binary "ffmpeg.exe;." ^
   --collect-data webview ^
   --hidden-import webview ^
   --hidden-import webview.platforms.edgechromium ^
@@ -45,8 +56,16 @@ pyinstaller ^
   renamer_web.py
 if errorlevel 1 ( echo 打包失败 & exit /b 1 )
 
-REM 输出到桌面
-set DESK=%USERPROFILE%\Desktop\%APP_NAME%
-if exist "%DESK%" rmdir /s /q "%DESK%"
-xcopy /e /i /q "dist\批量命名工具" "%DESK%"
+REM Windows 图标缓存绕过：先用临时名再改名
+set DESK=%USERPROFILE%\Desktop
+set TMPEXE="%DESK%\_%APP_NAME%.exe"
+if exist %TMPEXE% del /f /q %TMPEXE%
+copy "dist\%APP_NAME%\%APP_NAME%.exe" %TMPEXE% >nul
+ping 127.0.0.1 -n 2 >nul
+move /Y %TMPEXE% "%DESK%\%APP_NAME%.exe" >nul
+
+REM 输出文件夹
+set DST="%DESK%\%APP_NAME%"
+if exist %DST% rmdir /s /q %DST%
+xcopy /e /i /q "dist\%APP_NAME%" %DST%
 echo ✅ %APP_NAME% 已输出到桌面
