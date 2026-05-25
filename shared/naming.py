@@ -8,10 +8,10 @@ import os, re
 # 字段配置
 # ============================================================
 FIELD_CONFIG = [
-    {"key":"ep",     "name":"Ep",  "label":"Ep 集数",   "def":"01","regex":r"^\d{2,3}$","hint":"01"},
-    {"key":"sc",     "name":"Sc",  "label":"Sc 场次",   "def":"01","regex":r"^\d{2,3}$","hint":"01"},
-    {"key":"gr",     "name":"Gr",  "label":"Gr 小场次", "def":"01","regex":r"^\d{2,3}$","hint":"01"},
-    {"key":"tk",     "name":"Tk",  "label":"Tk 次数",   "def":"01","regex":r"^\d{2,3}$","inc":True,"hint":"01"},
+    {"key":"ep",     "name":"Ep",  "label":"Ep 集数",   "def":"","regex":r"^\d{2,3}$","hint":"01"},
+    {"key":"sc",     "name":"Sc",  "label":"Sc 场次",   "def":"","regex":r"^\d{2,3}$","hint":"01"},
+    {"key":"gr",     "name":"Gr",  "label":"Gr 小场次", "def":"","regex":r"^\d{2,3}$","hint":"01"},
+    {"key":"tk",     "name":"Tk",  "label":"Tk 次数",   "def":"","regex":r"^\d{2,3}$","inc":True,"hint":"01"},
     {"key":"desc",   "name":"",    "label":"镜头描述",   "def":"","hint":"由制作方式决定"},
     {"key":"method", "name":"",    "label":"制作方式",   "def":"","dv":["请选择","智能分镜版","双轨版","角色专属版"]},
     {"key":"author", "name":"",    "label":"制作者",     "def":"","hint":"请输入姓名"},
