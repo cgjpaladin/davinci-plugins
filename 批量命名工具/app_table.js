@@ -68,7 +68,7 @@ async function init(){
   window._fieldKeys=_allFields.filter(f=>f.key!=='tk'&&!(f.dv)).map(f=>f.key);
   window._fieldKeysAll=_allFields.filter(f=>f.key!=='tk').map(f=>f.key);
   window._fieldLabels={};_allFields.forEach(f=>{window._fieldLabels[f.key]=f.label});
-  const v=APP_VERSION||'?',br=APP_BRANCH||'',t=APP_BUILD_TIME||'';document.getElementById('debugMode').textContent=(cfg.dev?'🔧 DEV ':'')+(br&&br!='main'?br+'@':'')+'v'+v+(t?' '+t:'');
+  const v=APP_VERSION||'?',br=APP_BRANCH||'',t=APP_BUILD_TIME||'';document.getElementById('debugMode').textContent=cfg.dev?(br+'@v'+v+' '+t):('v'+v);
 
   // 动态生成表头（单一事实来源，防止 HTML/JS 列序漂移）
   const theadTr = document.querySelector('#fileList thead tr');
