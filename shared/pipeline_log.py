@@ -43,20 +43,19 @@ class StepLogger:
         """跳过编号（不输出标题）。UI 预扫描已由 scan_io() 单独展示 ①。"""
         self._step_num += count
 
-    def begin(self, name: str):
+    def begin(self, name: str, skip: bool = False):
         """开始一个步骤。自动编号 + 打印分割标题。
-
-        空行放在上一章节尾部而非当前章节头部：
-        - 第一个章节：不输出前导空行（日志区顶部不留空白）
-        - 后续章节：前导一个空行作为与上一章节的分隔
+        
+        skip=True 时显示「(跳过)」标记——用于全缓存路径，让用户知道跳过了什么。
         """
         if not self._first_section:
-            self.ui.log_info("")  # 与前一个章节之间的分隔空行
+            self.ui.log_info("")
         self._first_section = False
 
         self._step_num += 1
         num = self._CIRCLED[self._step_num - 1] if self._step_num <= len(self._CIRCLED) else f"({self._step_num})"
-        self.ui.log_info(f"── {num} {name} ──")
+        suffix = "（跳过）" if skip else ""
+        self.ui.log_info(f"── {num} {name}{suffix} ──")
 
     @property
     def step_num(self) -> int:

@@ -222,6 +222,7 @@ class SubtitlePipeline(BasePipeline):
 
         self.ui.set_progress(self.MILESTONE_ADAPTER_DONE)
         self.ui.set_status("下载处理结果...")
+        self._step("AI去字幕")
         return results
 
     # ═══════════════════════════════════════
@@ -263,10 +264,10 @@ class SubtitlePipeline(BasePipeline):
         return cb
 
     def _download_apply(self, results: list) -> list:
-        """覆盖基类：加下载/替换阶段标签"""
-        self.ui.set_phase(self.PHASE_DOWNLOAD)
+        """覆盖基类：加下载/替换步骤"""
+        self._step("下载")
         output_files = super()._download_apply(results)
-        self.ui.set_phase(self.PHASE_REPLACE)
+        self._step("替换")
         self.ui.set_progress(self.MILESTONE_REPLACE_DONE)
         return output_files
 

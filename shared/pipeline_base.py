@@ -167,29 +167,27 @@ class BasePipeline(ABC):
 
         # ── 3. 初始化项目状态 ──
         self._init_project_state()
-
-        # ── 4. 复用缓存 ──
-        self.log.begin("复用缓存")
         tasks, all_cache = self._do_prepare(clips, mode)
+
+        # ── 全缓存 → 跳过中间步骤 ──
         if all_cache:
-            self.log.skip(2)  # 跳过 ③AI处理、④替换，直接到 ⑤最终报告
-            self.log.begin("最终报告")
+            self._step("上传", skip=True)
+            self._step("AI去字幕", skip=True)
+            self._step("下载", skip=True)
+            self._step("替换", skip=True)
+            self._step("完成")
             self._all_cache_report()
             return self._report
 
-        # ── 5. Dry-run ──
         if dry_run:
             self._handle_dry_run(tasks)
             return self._report
 
-        # ── 6. AI 处理 ──
-        self.log.begin(self.SECTION_AI_PROCESSING)
-
+        # ── ② 上传 ──
+        self._step("上传")
         if not self._check_balance(tasks, mode):
             return self._report
-
         tasks = self._validate_tasks(tasks)
-
         tasks = self._before_submit(tasks)
         if self._get_stop_check()() or not tasks:
             return self._report
@@ -197,31 +195,42 @@ class BasePipeline(ABC):
         results = self._submit(tasks, batch)
         self._t_prep_end = time.time()
 
-        # ── 自动 fallback：全部失败 → 切备用 adapter 重试 ──
+        # 自动 fallback：全部失败 → 切备用 adapter 重试
         if results and all(not (r and getattr(r.result, 'success', False)) for r in results):
             self.log.warn(f"{self._get_adapter().name} 全部失败，切换到备用...")
             results = self._retry_with_fallback(tasks, batch)
             self._t_prep_end = time.time()
-
         if not results:
             return self._report
 
-        # ── 替换回时间线 ──
-        output_files = self._download_apply(results)
-        self.log.begin("替换回时间线")
+        # ③ AI去字幕 在子类 _submit 结束时调用
+        # ④ 下载 / ⑤ 替换 在子类 _download_apply 内调用
 
-        # ── 校验输出 ──
+        # ── 下游处理 ──
+        output_files = self._download_apply(results)
         self._show_replace_summary(output_files, len(results))
         self._do_post_check(output_files)
 
-        # ── 最终报告 ──
-        self.log.begin("最终报告")
+        # ── ⑥ 完成 ──
+        self._step("完成")
         self._final_report(results, output_files)
 
         if report_json:
             self._write_report_json(report_json)
 
         return self._report
+
+    # ═══════════════════════════════════════
+    # 步骤管理
+    # ═══════════════════════════════════════
+
+    def _step(self, name: str, skip: bool = False):
+        """声明流水线步骤。StepLogger 自动编号。
+        
+        子类在 _submit/_download_apply 内按实际阶段调用。
+        全缓存时用 skip=True 标记。
+        """
+        self.log.begin(name, skip=skip)
 
     # ═══════════════════════════════════════
     # 内部初始化
