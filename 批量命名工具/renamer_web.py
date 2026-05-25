@@ -372,28 +372,18 @@ class RenamerAPI:
             target = build_folder(dest, type('E',(),{'fields':fd,'ext':ext})())
             folder = os.path.dirname(target)
             os.makedirs(folder, exist_ok=True)
-            # 扫描文件夹找最大 TK（同 desc 归一组）
+            # 扫描文件夹找最大 TK（同 Ep/Sc/Gr/desc/method/author/ver/status 归一组）
             try:
                 max_tk = 0
                 if os.path.isdir(folder):
-                    # 用 tk='00' 构建模板，split 精准切分前后缀
+                    # 用 tk='00' 构建模板，split 精准切分前缀
                     fd_copy = dict(fd); fd_copy['tk'] = '00'
                     sample = build_filename(fd_copy)
                     parts = sample.split('_Tk00_', 1)
                     if len(parts) == 2:
                         tk_prefix = parts[0] + '_Tk'
-                        tk_suffix = parts[1]  # parts[1] 已自带前导 _
                         for fn in os.listdir(folder):
-                            if not (fn.startswith(tk_prefix) and fn.endswith(tk_suffix + ext)): continue
-                            m = re.search(r'\bTk(0[1-9]|[1-9]\d)(?:_|\.mp4|\.mov|\.mxf|\.avi|\.mkv|$)', fn)
-                            if m:
-                                max_tk = max(max_tk, int(m.group(1)))
-                    else:
-                        # 回退：旧方法
-                        fd_copy['tk'] = '??'
-                        prefix = build_filename(fd_copy).replace('??', '')
-                        for fn in os.listdir(folder):
-                            if not fn.startswith(prefix): continue
+                            if not fn.startswith(tk_prefix): continue
                             m = re.search(r'\bTk(0[1-9]|[1-9]\d)(?:_|\.mp4|\.mov|\.mxf|\.avi|\.mkv|$)', fn)
                             if m:
                                 max_tk = max(max_tk, int(m.group(1)))
