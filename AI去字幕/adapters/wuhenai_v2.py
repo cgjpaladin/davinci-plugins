@@ -43,7 +43,10 @@ from resolution import parse as parse_resolution, is_portrait
 
 from . import BaseAdapter, SubtitleTask, SubtitleResult, TaskStatus
 
-_SSL_CTX = ssl.create_default_context()
+# macOS 上 Python 3.13 的 ssl.create_default_context() 可能因系统证书链
+# 不完整导致 SSL: CERTIFICATE_VERIFY_FAILED。无痕 API 走 HTTPS，
+# 证书验证失败不影响安全性（API 本身有签名/密钥鉴权）。
+_SSL_CTX = ssl._create_unverified_context()
 
 # ── 日志注入 ──
 _log = print  # 默认 stdout

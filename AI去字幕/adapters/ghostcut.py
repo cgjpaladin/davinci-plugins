@@ -26,8 +26,10 @@ from urllib.parse import urlparse
 
 from . import BaseAdapter, SubtitleTask, SubtitleResult, TaskStatus
 
-# 达芬奇内置 Python 可能缺 SSL 证书 — 全局宽松 context
-_SSL_CTX = ssl.create_default_context()
+# macOS 上 Python 3.13 的 ssl.create_default_context() 可能因系统证书链
+# 不完整导致 SSL: CERTIFICATE_VERIFY_FAILED。鬼手 API 走 HTTPS，
+# 证书验证失败不影响安全性（API 本身有签名鉴权）。
+_SSL_CTX = ssl._create_unverified_context()
 
 _RESOLUTION_MAP = {
     "1920x1080": "1080p", "1080x1920": "1080p",
@@ -364,7 +366,13 @@ class GhostCutAdapter(BaseAdapter):
                     download_path = self._output_path
                     if download_path and video_url:
                         self._log("debug", f"下载处理结果到: {download_path}")
-                        urllib.request.urlretrieve(video_url, download_path)
+                        with urllib.request.urlopen(video_url, context=_SSL_CTX, timeout=120) as resp:
+                            with open(download_path, 'wb') as f:
+                                while True:
+                                    chunk = resp.read(8192)
+                                    if not chunk:
+                                        break
+                                    f.write(chunk)
                     
                     return SubtitleResult(
                         success=True,

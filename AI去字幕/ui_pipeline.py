@@ -17,7 +17,9 @@ import hashlib
 import base64
 import urllib.request
 import urllib.parse
+import ssl
 
+_ALI_CTX = ssl._create_unverified_context()  # 阿里云 API SSL 兼容
 # shared/ 模块路径
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
 
@@ -321,7 +323,7 @@ def refresh_oss_bal():
         url = 'https://business.aliyuncs.com/?' + '&'.join(
             f'{_enc(k)}={_enc(params[k])}' for k in sorted_keys + ['Signature'])
         req = urllib.request.Request(url)
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=10, context=_ALI_CTX) as resp:
             data = json.loads(resp.read())
         if data.get('Success'):
             cash = data['Data']['AvailableCashAmount']

@@ -57,6 +57,9 @@ import unicodedata
 import urllib.request
 from copy import deepcopy
 from typing import Optional, NamedTuple, Callable, Any
+import ssl
+
+_DL_CTX = ssl._create_unverified_context()  # OSS 下载 SSL 兼容
 
 from config import (
     DEFAULT_MODE, MAX_SOURCE_DURATION,
@@ -599,7 +602,14 @@ def download_and_apply(
 
         try:
             is_remote = result.output_path.startswith("http")
-            urllib.request.urlretrieve(result.output_path, dl)
+            # urlretrieve 不支持传 SSL context，用手动下载代替
+            with urllib.request.urlopen(result.output_path, context=_DL_CTX, timeout=120) as resp:
+                with open(dl, 'wb') as f:
+                    while True:
+                        chunk = resp.read(8192)
+                        if not chunk:
+                            break
+                        f.write(chunk)
             if is_remote:
                 oss_tracker.track_download(os.path.getsize(dl))
         except Exception as e:

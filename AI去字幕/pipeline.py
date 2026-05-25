@@ -31,7 +31,7 @@ from core import (
     connect_resolve, scan_io_clips, prepare_tasks, get_io,
     download_and_apply, post_check,
 )
-from adapters import SubtitleTask, create_preferred_adapter
+from adapters import SubtitleTask, SubtitleResult, create_preferred_adapter
 from log_writer import get_logger as _get_logger
 _log_ops = _get_logger("AI去字幕")
 from pricing import estimate_cost, point_to_yuan
@@ -154,8 +154,15 @@ class SubtitlePipeline(BasePipeline):
         if hasattr(adapter, 'check_health') and not adapter.check_health():
             if self.manual_engine != "auto":
                 self._engine_failed = True
-                self.log.fail(f"引擎 '{self.manual_engine}' 不可用，请更换引擎后重试")
-                return [SubtitleResult(success=False, error_message=f"引擎不可用: {self.manual_engine}") for _ in tasks]
+                alt = "GhostCut" if self.manual_engine == "无痕AI 2.1" else "无痕AI 2.1"
+                self.log.fail(f"引擎 '{self.manual_engine}' 不可用")
+                self.log.warn(f"请切换到 {alt} 重试（若 {alt} 也不可用，则 API 可能暂时故障）")
+                return [ResultItem(
+                    mp_item=t.mp_item, name=t.name, path=t.path,
+                    result=SubtitleResult(success=False, error_message=f"引擎不可用: {self.manual_engine}"),
+                    elapsed=0, tl_item=t.tl_item, tl_color=t.tl_color,
+                    mp_color=t.mp_color, alt_tl_items=t.alt_tl_items,
+                ) for t in tasks]
             cls_name = adapter.__class__.__name__
             exclude = "wuhenai" if "Wuhen" in cls_name else "ghostcut" if "Ghost" in cls_name else ""
             _log_ops.ops({"event": "adapter_health_fail", "adapter": cls_name})
@@ -169,8 +176,13 @@ class SubtitlePipeline(BasePipeline):
                 cls_name = adapter.__class__.__name__
                 self._adapter = None
                 _log_ops.ops({"event": "adapter_fallback", "from": cls_name, "to": "none"})
-                self.log.fail(f"API 不可用（{cls_name}），备选也失败")
-                return [SubtitleResult(success=False, error_message="API不可用") for _ in tasks]
+                self.log.fail(f"{cls_name} 不可用，备选也失败，API 可能暂时故障")
+                return [ResultItem(
+                    mp_item=t.mp_item, name=t.name, path=t.path,
+                    result=SubtitleResult(success=False, error_message="API不可用"),
+                    elapsed=0, tl_item=t.tl_item, tl_color=t.tl_color,
+                    mp_color=t.mp_color, alt_tl_items=t.alt_tl_items,
+                ) for t in tasks]
         api_tasks = [SubtitleTask(**t.kwargs) for t in tasks]
         provider = adapter.name
 

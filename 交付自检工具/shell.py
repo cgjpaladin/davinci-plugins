@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AI去字幕 — 永久壳
+"""交付自检工具 — 永久壳
 
 部署到每台机器的 Fusion/Scripts/Edit/ 目录，**永远不更新**。
 只做三件事：找 Python → 启动 SMB 上的真实 launcher → 看门狗。
@@ -35,7 +35,7 @@ try:
 except Exception:
     pass
 _smb = _cfg.get("smb_root", "/Volumes/MYJC/06_Software/达芬奇脚本")
-_launcher = f"{_smb}/AI去字幕/launcher.py"
+_launcher = f"{_smb}/交付自检工具/launcher.py"
 
 # 3. 启动 SMB 上的真实 launcher
 _p = subprocess.Popen([_python, _launcher])
