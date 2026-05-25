@@ -203,9 +203,10 @@ class BasePipeline(ABC):
         if not results:
             return self._report
 
-        # ③ AI去字幕 在子类 _submit 结束时调用
-        # ④ 下载 / ⑤ 替换 在子类 _download_apply 内调用
+        # ── ③ AI去字幕 ──
+        self._step("AI去字幕")
 
+        # ④ 下载 / ⑤ 替换 在子类 _download_apply 内调用
         # ── 下游处理 ──
         output_files = self._download_apply(results)
         self._show_replace_summary(output_files, len(results))
