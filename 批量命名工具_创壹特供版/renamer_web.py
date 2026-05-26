@@ -69,6 +69,8 @@ class RenamerAPI:
                     except Exception:
                         pass
                     img.thumbnail((120, 120), Image.LANCZOS)
+                    if img.mode in ('RGBA', 'P'):
+                        img = img.convert('RGB')
                     buf = _sys_io.BytesIO()
                     img.save(buf, format='JPEG', quality=80)
                     b64 = base64.b64encode(buf.getvalue()).decode()
