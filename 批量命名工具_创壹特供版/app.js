@@ -17,7 +17,7 @@ let files=[], _firstDrop=true, sel=new Set(), undoAvail=false, _thumbs={};
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,ver:/^\d{0,2}$/};
 const DIGIT_STRICT={ep:/^(0[1-9]|[1-9]\d{1,2})$/,sc:/^(0[1-9]|[1-9]\d)$/,ver:/^(0[1-9]|[1-9]\d)$/};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
-const _REQUIRED_KEYS=['ep','sc','shot','tk','type','author','ver','status'];
+const _REQUIRED_KEYS=['ep','sc','shot','type','author','ver','status'];
 const _REQUIRED_PIC=[..._REQUIRED_KEYS,'desc'];
 
 // ═══ API ═══
