@@ -186,7 +186,7 @@ function buildCellTD(key,ff,i){
   const v=ff[key]||'';td.dataset.value=v;
   if(key==='tk'){td.appendChild(Object.assign(document.createElement('span'),{textContent:v}));td.classList.add('readonly');return td}
   if(key==='type'){td.appendChild(Object.assign(document.createElement('span'),{textContent:v||'—'}));td.classList.add('readonly');if(!v)td.classList.add('empty');return td}
-  if(key==='desc'&&ff.type==='AIVID'){const s=Object.assign(document.createElement('span'),{textContent:'—视频无需描述'});td.appendChild(s);td.classList.add('readonly','empty');return td}
+  if(key==='desc'&&ff.type==='AIVID'){td.appendChild(Object.assign(document.createElement('span'),{textContent:'—'}));td.classList.add('readonly','empty');return td}
   const s=document.createElement('span');s.textContent=v||'—';
   if(v===''||v==='请选择'){s.textContent='—';td.classList.add('empty')}
   td.appendChild(s);
