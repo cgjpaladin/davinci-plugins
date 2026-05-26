@@ -1,6 +1,7 @@
 const APP_VERSION='DEV';
 const APP_BRANCH='';
 const APP_BUILD_TIME='';
+const IS_PRODUCTION=false;
 // 创壹特供版 v1.0 — 表格版前端
 // ═══ 立即执行 ═══
 document.addEventListener('DOMContentLoaded',()=>{
@@ -55,7 +56,7 @@ async function init(){
   _nameFmt=cfg.name_format||[];
   const _allFields=cfg.fields||[];
   window._fieldLabels={};_allFields.forEach(f=>{window._fieldLabels[f.key]=f.label});
-  dm.textContent=cfg.dev?('🔧 '+APP_VERSION):'📋';
+  dm.textContent=IS_PRODUCTION?'📋':(cfg.dev?('🔧 '+APP_VERSION):'📋');
   dm.onclick=()=>{window.pywebview.api.debug_log('').then(r=>{const t=(r.log||[]).join('\n');if(t)navigator.clipboard.writeText(t).then(()=>toast('已复制 '+(r.log||[]).length+' 条日志'));else toast('无日志')})};
 
   const theadTr=document.querySelector('#fileList thead tr');

@@ -20,6 +20,7 @@ ts = datetime.now().strftime('%m-%d %H:%M')
 js = js.replace("const APP_VERSION='DEV'", f"const APP_VERSION='{h}'")
 js = js.replace("const APP_BRANCH=''", f"const APP_BRANCH='{b}'")
 js = js.replace("const APP_BUILD_TIME=''", f"const APP_BUILD_TIME='{ts}'")
+js = js.replace("const IS_PRODUCTION=false", "const IS_PRODUCTION=true")
 
 html = html.replace('/* CSS_PLACEHOLDER */', css)
 html = html.replace('// JS_PLACEHOLDER', js)

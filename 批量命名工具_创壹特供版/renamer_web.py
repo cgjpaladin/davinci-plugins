@@ -24,7 +24,7 @@ try:
 except Exception:
     pass
 
-_BASE_DIR = getattr(sys, '_MEIPASS', '') or os.path.dirname(os.path.abspath(__file__))
+_BASE_DIR = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
 _SHARED_DIR = os.path.join(_BASE_DIR, 'shared')
 if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
     sys.path.insert(0, os.path.dirname(_SHARED_DIR))
@@ -116,7 +116,7 @@ class RenamerAPI:
             elif nm == "V":     fmt.append({"pfx":"V","key":"ver"})
             elif k == "status": fmt.append({"pfx":"","key":"status"})
             else:               fmt.append({"pfx":"","key":k})
-        is_dev = '.app/Contents/MacOS/' not in sys.executable
+        is_dev = not getattr(sys, '_MEIPASS', False)
         return {
             "fields": FIELD_CONFIG,
             "dev": is_dev,
