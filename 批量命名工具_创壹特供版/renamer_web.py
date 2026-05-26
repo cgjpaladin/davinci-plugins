@@ -116,7 +116,7 @@ class RenamerAPI:
             elif nm == "V":     fmt.append({"pfx":"V","key":"ver"})
             elif k == "status": fmt.append({"pfx":"","key":"status"})
             else:               fmt.append({"pfx":"","key":k})
-        is_dev = not getattr(sys, 'frozen', False)
+        is_dev = not (getattr(sys, 'frozen', False) or bool(getattr(sys, '_MEIPASS', '')))
         return {
             "fields": FIELD_CONFIG,
             "dev": is_dev,
