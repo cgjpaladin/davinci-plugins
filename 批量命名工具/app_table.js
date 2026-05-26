@@ -872,9 +872,6 @@ function _initColResize(){
     _resizing.th.style.minWidth=nw+'px';
     _resizing.th.classList.remove('resizing');
     if(_resizing.ghost){_resizing.ghost.remove();_resizing.ghost=null}
-    // 记录所有列宽
-    const allW = [...document.querySelectorAll('#fileList thead th')].map(t => t.textContent+'='+(t.style.width||getComputedStyle(t).width));
-    call('debug_log','COL WIDTHS: '+allW.join(' | '));
     _resizing=null;
   });
 }
