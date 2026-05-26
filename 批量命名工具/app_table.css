@@ -185,6 +185,7 @@ thead th{
   padding:8px 12px 6px;
   border-bottom:2px solid #1e2028;
   white-space:nowrap;
+  vertical-align:bottom;
   position:relative;overflow:visible;
 }
 thead th::after{
