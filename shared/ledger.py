@@ -129,13 +129,13 @@ def find_latest_by_path(original_path: str, action: str = "completed") -> Option
 
 def find_output(original_path: str) -> Optional[str]:
     """
-    查缓存：按 original_path 查找处理完成记录，输出文件还存在。
-    避免同名文件跨项目误匹配。
+    查缓存：按 original_path 查找处理完成记录，输出文件还存在且非空。
+    避免同名文件跨项目误匹配，避免 0 字节坏文件被当作缓存命中。
     """
     r = find_latest_by_path(original_path, "completed")
     if r:
         path = r.get("output_path", "")
-        if path and os.path.exists(path):
+        if path and os.path.exists(path) and os.path.getsize(path) > 0:
             return path
     return None
 

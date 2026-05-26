@@ -1,4 +1,4 @@
-const APP_VERSION='3.0';
+const APP_VERSION='3.1';
 const APP_BRANCH='';
 const APP_BUILD_TIME='';
 // ═══ 立即执行 — 确认脚本加载 ═══

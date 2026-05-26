@@ -604,6 +604,7 @@ def download_and_apply(
             is_remote = result.output_path.startswith("http")
             # urlretrieve 不支持传 SSL context，用手动下载代替
             with urllib.request.urlopen(result.output_path, context=_DL_CTX, timeout=120) as resp:
+                expected_size = int(resp.headers.get("Content-Length", 0))
                 with open(dl, 'wb') as f:
                     while True:
                         chunk = resp.read(8192)
@@ -620,10 +621,18 @@ def download_and_apply(
             continue
 
         # 下载后快速校验（文件存在 + 大小正常），不合格不替换
-        if not os.path.exists(dl) or os.path.getsize(dl) == 0:
+        actual_size = os.path.getsize(dl) if os.path.exists(dl) else 0
+        if actual_size == 0:
             fail_list.append({"name": name, "error": "下载文件为空或不存在"})
             if on_fail:
                 on_fail(clean_name, "下载文件为空或不存在")
+            release_lock(name)
+            continue
+        if expected_size and actual_size < expected_size:
+            fail_list.append({"name": name,
+                "error": f"下载不完整: 预期{expected_size}字节，实际{actual_size}字节"})
+            if on_fail:
+                on_fail(clean_name, f"下载不完整 ({actual_size}/{expected_size})")
             release_lock(name)
             continue
 
