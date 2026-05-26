@@ -250,7 +250,7 @@ function _buildRow(f,i){
 
   const tdNum = document.createElement('td');
   tdNum.className = 'col-num'; tdNum.dataset.row = i;
-  const pl=files.length>=100?3:files.length>=10?2:1;
+  const pl = Math.max(2, String(files.length).length);
   tdNum.appendChild(Object.assign(document.createElement('span'),{textContent:String(i+1).padStart(pl,'0')}));
   tr.appendChild(tdNum);
 
