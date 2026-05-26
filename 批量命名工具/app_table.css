@@ -201,7 +201,7 @@ tbody td{
   padding:8px 12px;
   border-bottom:1px solid var(--tbl-border);
   font-size:13px;line-height:1.2;color:var(--tbl-cell);
-  white-space:nowrap;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   height:32px;
 }
 tbody tr{}

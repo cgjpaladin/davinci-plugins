@@ -237,7 +237,7 @@ class RenamerAPI:
                         elif os.path.isdir(fp): subdirs += 1
                 except Exception: pass
 
-        _log.info(f"_process_paths: {len(files)} files, {parsed_count} parsed, {no_parse_count} raw, {duplicates} dup")
+        _log.info(f"_process_paths: {len(files)} files, {parsed_count} parsed, {no_parse_count} raw, {duplicates} dup, {skipped} skipped")
         anomalies = set()
         try:
             sp = [(fp, os.path.getsize(fp)) for f in files for fp in [f["path"]] if os.path.getsize(fp) > 0]
