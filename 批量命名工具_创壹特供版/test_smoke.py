@@ -53,9 +53,9 @@ print(f"   输出: {result}")
 
 # ═══ 4. 多镜 build ═══
 print("\n4. 多镜 build")
-fields2 = {"ep":"01","sc":"01","shot":"01/02/03","tk":"01","desc":"","type":"AIVID","author":"李四","ver":"02","status":"KP"}
+fields2 = {"ep":"01","sc":"01","shot":"01-02-03","tk":"01","desc":"","type":"AIVID","author":"李四","ver":"02","status":"KP"}
 result2 = build_filename(fields2)
-check("多镜 SH01/02/03", "SH01/02/03" in result2)
+check("多镜 SH01-02-03", "SH01-02-03" in result2)
 print(f"   输出: {result2}")
 
 # ═══ 5. 命名 ↔ 解析 ═══

@@ -1,16 +1,15 @@
 """
 批量命名工具 · 创壹特供版 v1.0
-Python 后端 + HTML/CSS 前端（卡片版）
+Python 后端 + HTML/CSS 前端（表格版）
 """
-import os, sys, json, re, statistics, io as _sys_io
+import os, sys, json, statistics, io as _sys_io
 from urllib.parse import unquote
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared.naming_createone import (
-    FIELD_CONFIG, DISPLAY_FIELDS,
+    FIELD_CONFIG,
     build_filename, parse_filename,
     MEDIA_EXT, VIDEO_EXT, IMAGE_EXT, ext_to_type,
-    sanitize_text, sanitize_desc,
 )
 from shared.naming_checks import check_zero_byte, check_double_ext
 

@@ -10,11 +10,11 @@ import os, re, unicodedata
 FIELD_CONFIG = [
     {"key":"ep",     "name":"EP",  "label":"集数",    "def":"",   "regex":r"^\d{2,3}$",           "hint":"01"},
     {"key":"sc",     "name":"SC",  "label":"场次",    "def":"",   "regex":r"^\d{2}$",             "hint":"01"},
-    {"key":"shot",   "name":"SH",  "label":"镜号",    "def":"",   "regex":r"^\d{2}(/\d{2})*$",    "hint":"01"},
+    {"key":"shot",   "name":"SH",  "label":"镜号",    "def":"",   "regex":r"^\d{2}(-\d{2})*$",     "hint":"01"},
     {"key":"tk",     "name":"TK",  "label":"次数",    "def":"",   "regex":r"^\d{2}$",   "inc":True,"hint":"01"},
     {"key":"desc",   "name":"",    "label":"镜头描述", "def":"",   "desc_only":True,               "hint":"仅图片"},
     {"key":"type",   "name":"",    "label":"类型",    "def":"",   "auto":True},
-    {"key":"author", "name":"",    "label":"制作者",  "def":"",                                    "hint":"请输入姓名"},
+    {"key":"author", "name":"",    "label":"制作者",  "def":"",                                    "hint":"英文姓名"},
     {"key":"ver",    "name":"V",   "label":"版本号",  "def":"01", "regex":r"^\d{2}$",             "hint":"01"},
     {"key":"status", "name":"",    "label":"状态",    "def":"",   "dv":["请选择","OK","KP","NG"],  "required":True},
 ]
@@ -117,7 +117,7 @@ def build_filename(fields):
         nm = fd["name"]; k = fd["key"]
         if nm == "EP":   parts.append(f"EP{v}")
         elif nm == "SC": parts.append(f"SC{v}")
-        elif nm == "SH": parts.append(f"SH{v}")
+        elif nm == "SH": parts.append(f"SH{v.replace('/','-')}")
         elif nm == "TK": parts.append(f"TK{v}")
         elif nm == "V":  parts.append(f"V{v}")
         elif k == "status": parts.append(v)
@@ -148,7 +148,7 @@ def _build_filename_re():
         elif nm == "SC":
             segments.append(f"SC(?P<{k}>\\d{{2}})")
         elif nm == "SH":
-            segments.append(f"SH(?P<{k}>\\d{{2}}(?:/\\d{{2}})*)")
+            segments.append(f"SH(?P<{k}>\\d{{2}}(?:-\\d{{2}})*)")
         elif nm == "TK":
             segments.append(f"TK(?P<{k}>\\d{{2}})")
         elif nm == "V":
@@ -167,7 +167,7 @@ FILENAME_RE = _build_filename_re()
 
 # Fallback: 只认 EP/SC/SH/TK 前缀 + V/status 后缀
 FALLBACK_RE = re.compile(
-    r"^EP(?P<ep>\d{2,3})_SC(?P<sc>\d{2})_SH(?P<shot>\d{2}(?:/\d{2})*)_TK(?P<tk>\d{2})_"
+    r"^EP(?P<ep>\d{2,3})_SC(?P<sc>\d{2})_SH(?P<shot>\d{2}(?:-\d{2})*)_TK(?P<tk>\d{2})_"
     r".*"
     r"_V(?P<ver>\d{2})_(?P<status>\w+)(?P<ext>\.[^.]+)$")
 

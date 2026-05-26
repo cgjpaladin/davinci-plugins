@@ -12,13 +12,13 @@
 <div class="titlebar">
   <span class="tb-dots"><span class="tb-dot a"></span><span class="tb-dot b"></span><span class="tb-dot b"></span></span>
   <span>批量文件命名工具 · 创壹特供版</span>
-  <span style="color:#444;font-size:9px" id="debugMode">loading...</span>
+  <span style="color:#444;font-size:9px;cursor:pointer" id="debugMode" title="点击复制调试日志">loading...</span>
 </div>
 
-<!-- Inspector — 由 JS 从 FIELD_CONFIG 动态生成 -->
+<!-- Inspector — 表格版隐藏 -->
 <div class="inspector" id="inspector"></div>
 
-<!-- Action Bar — 仅重命名+撤销（无归档/路径） -->
+<!-- Action Bar — 仅重命名+撤销 -->
 <div class="action-bar">
   <button class="hero-btn" id="btnRename" disabled>批量重命名</button>
   <button class="hero-undo" id="btnUndo" disabled>↩ 撤销</button>
@@ -31,11 +31,24 @@
     <div class="fl-bar-right">
       <span class="zoom-label" id="zoomLabel">100%</span>
       <input type="range" class="zoom-slider" id="zoomSlider" min="50" max="200" value="100" step="1">
-      <button class="fl-btn" id="btnAdd">+ 添加</button>
     </div>
   </div>
   <div class="fl-body" id="fileList">
-    <div class="fl-empty">拖放文件到此处 或 点击 +文件</div>
+    <table>
+      <thead><tr>
+        <th class="col-num">序号</th>
+        <th class="col-thumb">缩略图</th>
+        <th class="col-base">原文件名</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="fl-empty">
+      <div>
+        <div class="fl-empty-icon">📁</div>
+        <div class="fl-empty-text">拖放素材到此处，或点击按钮</div>
+        <button class="fl-empty-btn" id="btnAddBig">+ 添加</button>
+      </div>
+    </div>
   </div>
   <div class="drop-overlay" id="dropOverlay"><span>释放以添加文件</span></div>
 </div>
