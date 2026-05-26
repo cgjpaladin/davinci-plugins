@@ -250,7 +250,8 @@ function _buildRow(f,i){
 
   const tdNum = document.createElement('td');
   tdNum.className = 'col-num'; tdNum.dataset.row = i;
-  tdNum.appendChild(Object.assign(document.createElement('span'),{textContent:String(i+1).padStart(2,'0')}));
+  const pl=files.length>=100?3:files.length>=10?2:1;
+  tdNum.appendChild(Object.assign(document.createElement('span'),{textContent:String(i+1).padStart(pl,'0')}));
   tr.appendChild(tdNum);
 
   const tdThumb = document.createElement('td');

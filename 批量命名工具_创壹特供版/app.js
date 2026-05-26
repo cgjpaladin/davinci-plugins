@@ -142,7 +142,8 @@ function _buildRow(f,i){
   if(tags.includes('dbl_ext'))tr.classList.add('warn-dbl');
 
   const tdNum=document.createElement('td');tdNum.className='col-num';tdNum.dataset.row=i;
-  tdNum.appendChild(Object.assign(document.createElement('span'),{textContent:String(i+1).padStart(2,'0')}));tr.appendChild(tdNum);
+  const pl=files.length>=100?3:files.length>=10?2:1;
+  tdNum.appendChild(Object.assign(document.createElement('span'),{textContent:String(i+1).padStart(pl,'0')}));tr.appendChild(tdNum);
   const tdThumb=document.createElement('td');tdThumb.className='col-thumb';
   const tsrc=_thumbs[f.path];
   if(tsrc){const img=document.createElement('img');img.className='cell-thumb';img.src=tsrc;img.alt='';tdThumb.appendChild(img)}
