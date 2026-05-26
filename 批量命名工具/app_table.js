@@ -381,7 +381,7 @@ function buildCellTD(key, ff, i){
     const method = files[i].fields.method || '';
     const cfg = methodDescMap[method];
     if(!cfg){
-      const s = document.createElement('span'); s.textContent = '—';
+      const s = document.createElement('span'); s.textContent = '—'; s.title='请先选择制作方式';
       td.appendChild(s);
       td.classList.add('readonly','empty');
       return td;
