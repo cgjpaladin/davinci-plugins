@@ -68,7 +68,14 @@ async function init(){
   window._fieldKeys=_allFields.filter(f=>f.key!=='tk'&&!(f.dv)).map(f=>f.key);
   window._fieldKeysAll=_allFields.filter(f=>f.key!=='tk').map(f=>f.key);
   window._fieldLabels={};_allFields.forEach(f=>{window._fieldLabels[f.key]=f.label});
-  document.getElementById('debugMode').textContent=cfg.dev?('🔧 '+APP_VERSION):'';
+  dm.textContent = cfg.dev ? ('🔧 '+APP_VERSION) : '📋';
+  dm.onclick = () => {
+    window.pywebview.api.debug_log('').then(r => {
+      const text = (r.log||[]).join('\n');
+      if(text) navigator.clipboard.writeText(text).then(() => toast('已复制 '+r.log.length+' 条日志'));
+      else toast('无日志');
+    });
+  };
 
   // 动态生成表头（单一事实来源，防止 HTML/JS 列序漂移）
   const theadTr = document.querySelector('#fileList thead tr');
@@ -503,12 +510,13 @@ function activateEdit(td, key, i){
     if(key === 'desc') finalVal = v.replace(/_/g, '');
     if(key === 'desc' && finalVal && !isSelect) _checkDescCollision(finalVal);
 
-    if(finalVal !== oldVal){
+    const isMulti = sel.size > 1;
+    if(finalVal !== oldVal || isMulti){
       if(key === 'method'){
         onMethodChange(oldVal, finalVal, i);
         return;
       }
-      const rows = sel.size > 1 ? [...sel] : [i];
+      const rows = isMulti ? [...sel] : [i];
       rows.forEach(r => { files[r].fields[key] = finalVal; });
       call('debug_log',`edit ${key}: ${oldVal||'(空)'} → ${finalVal||'(空)'} on ${rows.length} row(s)`);
       renderList(true);

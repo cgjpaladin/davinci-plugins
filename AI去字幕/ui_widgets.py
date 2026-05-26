@@ -218,45 +218,74 @@ _main_thread = threading.current_thread()
 
 _LOG_MAX_LINES = 200
 _log_line_count = 0
+_last_ui_msg = ""       # 重复折叠：上一条UI显示内容
+_last_ui_count = 0      # 重复折叠：连续相同次数
+_dup_flush_needed = False
 
 def _ui_write_direct(msg: str):
-    """主线程直写 TextEdit + 文件持久化；子线程只入队"""
-    global _log_line_count
-    on_main = threading.current_thread() is _main_thread
-    if on_main:
-        try:
-            te = itm[LOG_LB]
-            _log_line_count += 1
-            if _log_line_count > _LOG_MAX_LINES:
-                current = te.PlainText or ""
-                lines = (current + msg).split("\n")
-                te.PlainText = "\n".join(lines[-_LOG_MAX_LINES:])
-                _log_line_count = _LOG_MAX_LINES
-                try:
-                    te.MoveCursor("End", "MoveAnchor")
-                    te.EnsureCursorVisible()
-                except Exception:  # 日志截断是非关键路径，失败静默
-                    pass
-            else:
-                te.Append(msg + "\n")
-        except Exception:  # _event_log 轮转失败不阻塞 UI
-            _log.ui("UI 刷新失败")
-        # 追加后自动滚到底部
-        try:
-            te.MoveCursor("End", "MoveAnchor")
-            te.EnsureCursorVisible()
-        except Exception:  # _event_log 写入失败不阻塞 UI
-            pass
-    else:
-        _log_queue.put(msg)
-    # 文件持久化（本地）+ stderr（确保 ResolveDebug.txt 可见）
-    _stderr_msg = msg  # 在 try 外捕获，确保文件写入失败时 stderr 仍能输出
+    """主线程直写 TextEdit + 文件持久化；子线程只入队。
+    UI 显示时连续相同消息折叠为 ×N，但文件日志和 stderr 保留全量。"""
+    global _log_line_count, _last_ui_msg, _last_ui_count, _dup_flush_needed
+    
+    # ── 文件持久化 + stderr（全量，不折叠）──
+    _stderr_msg = msg
     try:
         _log.ui(msg)
     except Exception:
         pass
     if any(k in _stderr_msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
         print(_stderr_msg, file=sys.stderr)
+    
+    # ── UI 显示（重复折叠）──
+    on_main = threading.current_thread() is _main_thread
+    if not on_main:
+        _log_queue.put(msg)
+        return
+    
+    if msg == _last_ui_msg:
+        _last_ui_count += 1
+        _dup_flush_needed = True
+        return
+    
+    if _dup_flush_needed:
+        _flush_dup_count()
+    
+    _last_ui_msg = msg
+    _last_ui_count = 1
+    
+    try:
+        te = itm[LOG_LB]
+        _log_line_count += 1
+        if _log_line_count > _LOG_MAX_LINES:
+            current = te.PlainText or ""
+            lines = (current + msg).split("\n")
+            te.PlainText = "\n".join(lines[-_LOG_MAX_LINES:])
+            _log_line_count = _LOG_MAX_LINES
+        else:
+            te.Append(msg + "\n")
+    except Exception:
+        _log.ui("UI 刷新失败")
+    try:
+        te.MoveCursor("End", "MoveAnchor")
+        te.EnsureCursorVisible()
+    except Exception:
+        pass
+
+
+def _flush_dup_count():
+    """输出被折叠的重复消息计数"""
+    global _dup_flush_needed, _last_ui_count, _last_ui_msg
+    _dup_flush_needed = False
+    n = _last_ui_count
+    _last_ui_count = 0
+    if n > 1:
+        try:
+            te = itm[LOG_LB]
+            te.Append(f"  … （以上重复 {n} 次）\n")
+            te.MoveCursor("End", "MoveAnchor")
+            te.EnsureCursorVisible()
+        except Exception:
+            pass
 
 def _ui_write(msg: str):
     _ui_write_direct(msg)  # 内部已含 _log.ui 文件持久化

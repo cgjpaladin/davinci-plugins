@@ -263,7 +263,8 @@ def refresh_bal():
                 current_idx = len(items) - 1
         except Exception:
             role = "主力" if key == main_key else "备用"
-            label = ADAPTER_CONFIGS[key].get("name", key)
+            cfg_key = _pricing_to_config(key)
+            label = ADAPTER_CONFIGS.get(cfg_key, {}).get("name", key)
             items.append(f"{label}（{role}）离线")
 
     # 写入下拉框
@@ -291,22 +292,33 @@ def refresh_bal():
 
 def get_selected_engine():
     """返回用户选择的引擎显示名"""
+    from pricing_defaults import ADAPTER_PRIORITY
+    from config import ADAPTER_CONFIGS
     sel = itm[API_CB].CurrentText
-    for key in ADAPTER_PRIORITY:
-        name = ADAPTER_CONFIGS[key].get("name", key)
-        if name in sel or key in sel:
+    for pricing_key in ADAPTER_PRIORITY:
+        cfg_key = _pricing_to_config(pricing_key)
+        name = ADAPTER_CONFIGS[cfg_key].get("name", cfg_key)
+        if name in sel or cfg_key in sel:
             return name
-    return ADAPTER_CONFIGS[ADAPTER_PRIORITY[0]].get("name", ADAPTER_PRIORITY[0])
+    return ADAPTER_CONFIGS[_pricing_to_config(ADAPTER_PRIORITY[0])].get("name", ADAPTER_PRIORITY[0])
 
 
 def get_selected_engine_key():
     """返回用户选择的引擎 config key"""
+    from pricing_defaults import ADAPTER_PRIORITY
+    from config import ADAPTER_CONFIGS
     sel = itm[API_CB].CurrentText
-    for key in ADAPTER_PRIORITY:
-        name = ADAPTER_CONFIGS[key].get("name", key)
+    for pricing_key in ADAPTER_PRIORITY:
+        cfg_key = _pricing_to_config(pricing_key)
+        name = ADAPTER_CONFIGS[cfg_key].get("name", cfg_key)
         if name in sel:
-            return key
-    return ADAPTER_PRIORITY[0]
+            return cfg_key
+    return _pricing_to_config(ADAPTER_PRIORITY[0])
+
+
+def _pricing_to_config(pricing_key: str) -> str:
+    """pricing key → config key 映射。只有 wuhenai→wuhenai_v21 需要转换。"""
+    return "wuhenai_v21" if pricing_key == "wuhenai" else pricing_key
 
 
 # ── 阿里云余额 ──
@@ -484,7 +496,13 @@ def process(*_):
 
 
 # ── 停止 ──
+_stop_last_click = 0
 def stop(*_):
+    global _stop_last_click
+    now = time.monotonic()
+    if now - _stop_last_click < 1.0:  # UIManager 可能双火，防抖
+        return
+    _stop_last_click = now
     _log_action("停止")
     if _state["processing"]:
         _state["stop"] = True; ui.log_warn("停止中...")

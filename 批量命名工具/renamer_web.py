@@ -163,9 +163,16 @@ class RenamerAPI:
         _log.info(f"add_files_by_paths paths={[str(p)[:80] for p in (paths or [])[:5]]}")
         return self._process_paths(paths)
 
+    _dbg_buf = []  # 内存调试日志（最后 500 条）
+
     def debug_log(self, msg):
-        _log.info(f"[JS] {msg}")
-        return "ok"
+        if msg:
+            self._dbg_buf.append(msg)
+            if len(self._dbg_buf) > 500:
+                self._dbg_buf = self._dbg_buf[-500:]
+            _log.info(f"[JS] {msg}")
+            return "ok"
+        return {"log": list(self._dbg_buf)}
 
     def echo(self, x):
         _log.info(f"ECHO: {x!r}")

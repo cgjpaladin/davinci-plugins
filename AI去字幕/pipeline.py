@@ -26,6 +26,7 @@ from config import (
     __version__, version_string, DEFAULT_MODE, MODE_LABELS,
     CLIP_COLOR, API_TIMEOUT, SMB_MOUNT, DEBUG, SCAN_ONLY,
     get_output_dir, get_log_dir, PLUGIN_DIR, SMB_AI_PROJECT,
+    ADAPTER_CONFIGS,
 )
 from core import (
     connect_resolve, scan_io_clips, prepare_tasks, get_io,
