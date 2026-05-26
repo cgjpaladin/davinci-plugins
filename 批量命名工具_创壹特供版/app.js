@@ -186,7 +186,7 @@ function buildCellTD(key,ff,i){
   const v=ff[key]||'';td.dataset.value=v;
   if(key==='tk'){td.appendChild(Object.assign(document.createElement('span'),{textContent:v}));td.classList.add('readonly');return td}
   if(key==='type'){td.appendChild(Object.assign(document.createElement('span'),{textContent:v||'—'}));td.classList.add('readonly');if(!v)td.classList.add('empty');return td}
-  if(key==='desc'&&ff.type==='AIVID'){const s=Object.assign(document.createElement('span'),{textContent:'—'});s.title='视频无需描述';td.appendChild(s);td.classList.add('readonly','empty');return td}
+  if(key==='desc'&&ff.type==='AIVID'){const s=Object.assign(document.createElement('span'),{textContent:'—视频无需描述'});td.appendChild(s);td.classList.add('readonly','empty');return td}
   const s=document.createElement('span');s.textContent=v||'—';
   if(v===''||v==='请选择'){s.textContent='—';td.classList.add('empty')}
   td.appendChild(s);
@@ -360,11 +360,13 @@ function onDropResult(result){
   call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}`);
   const exist=new Set(files.map(f=>f.fp||f.path));
   const fresh=result.files.filter(f=>!(exist.has(f.fp||f.path)));
-  const dup=result.duplicates||(result.files.length-fresh.length);
+  const dup=result.duplicates||0;
+  const sk=result.skipped||0;
+  if(fresh.length===0&&dup===0&&sk>0){toast(`${sk} 个格式不支持`);return}
   if(fresh.length===0){toast(`全部重复 · ${dup} 个已跳过`);return}
   fresh.forEach(f=>{if(!f._shots){f._shots=(f.fields.shot||'').split('-').filter(v=>v);if(!f._shots.length)f._shots=['']}});
   files=files.concat(fresh);
-  let msg=`已追加 ${fresh.length} 个文件`;if(dup)msg+=` · ${dup} 个重复跳过`;if(result.subdirs_skipped)msg+=` · ${result.subdirs_skipped} 个子文件夹跳过`;if(result.truncated)msg+=` (上限${result.max}个)`;
+  let msg=`已追加 ${fresh.length} 个文件`;if(dup)msg+=` · ${dup} 个重复跳过`;if(sk)msg+=` · ${sk} 个格式不支持`;if(result.subdirs_skipped)msg+=` · ${result.subdirs_skipped} 个子文件夹跳过`;if(result.truncated)msg+=` (上限${result.max}个)`;
   renderList();toast(msg);loadThumbs();
 }
 

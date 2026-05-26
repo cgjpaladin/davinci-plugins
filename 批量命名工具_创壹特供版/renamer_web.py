@@ -173,7 +173,7 @@ class RenamerAPI:
     def _process_paths(self, paths_):
         _log.info(f"_process_paths: {len(paths_)} paths -> scanning")
         MAX_FILES = 100
-        files = []; duplicates = 0; subdirs = 0; truncated = False
+        files = []; duplicates = 0; subdirs = 0; skipped = 0; truncated = False
         seen_fp = set()
         _EMPTY_KEYS = {'ep','sc','shot','tk','ver'}
         parsed_count = 0; no_parse_count = 0
@@ -186,7 +186,7 @@ class RenamerAPI:
                 ext = os.path.splitext(p)[1].lower()
                 if ext not in MEDIA_EXT:
                     _log.debug(f"  skip non-media: {os.path.basename(p)}")
-                    continue
+                    skipped += 1; continue
                 if p in {f["path"] for f in files}: duplicates += 1; continue
                 try:
                     import hashlib
@@ -214,7 +214,7 @@ class RenamerAPI:
                         fp = os.path.join(p, f)
                         if os.path.isfile(fp):
                             ext2 = os.path.splitext(fp)[1].lower()
-                            if ext2 not in MEDIA_EXT: continue
+                            if ext2 not in MEDIA_EXT: skipped += 1; continue
                             if fp in {x["path"] for x in files}: duplicates += 1; continue
                             try:
                                 st = os.stat(fp)
@@ -256,7 +256,7 @@ class RenamerAPI:
             if check_double_ext(f["basename"]): tags.append("dbl_ext")
             if f["path"] in anomalies: tags.append("size")
             f["tags"] = tags
-        return {"files":files,"total":len(files),"duplicates":duplicates,"subdirs_skipped":subdirs,"truncated":truncated,"max":MAX_FILES}
+        return {"files":files,"total":len(files),"duplicates":duplicates,"skipped":skipped,"subdirs_skipped":subdirs,"truncated":truncated,"max":MAX_FILES}
 
     def do_rename(self, files):
         global _undo_stack
