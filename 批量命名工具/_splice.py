@@ -32,7 +32,7 @@ try:
 except:
     h = 'dev'; b = '?'
 ts = datetime.now().strftime('%m-%d %H:%M')
-js = js.replace("const APP_VERSION='3.1'", f"const APP_VERSION='{h}'")
+js = js.replace("const APP_VERSION='3.2'", f"const APP_VERSION='{h}'")
 js = js.replace("const APP_BRANCH=''", f"const APP_BRANCH='{b}'")
 js = js.replace("const APP_BUILD_TIME=''", f"const APP_BUILD_TIME='{ts}'")
 
