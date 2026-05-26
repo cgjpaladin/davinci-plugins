@@ -155,7 +155,7 @@ tbody td{
   padding:8px 12px;
   border-bottom:1px solid var(--tbl-border);
   font-size:13px;line-height:1.2;color:var(--tbl-cell);
-  white-space:nowrap;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   height:32px;
 }
 tbody tr.rdy .col-num{color:var(--green)}
@@ -184,10 +184,10 @@ td.col-num{font-size:13px}
 .col-ep,.col-sc,.col-tk,.col-ver{text-align:left;width:60px}
 .col-shot{text-align:left;width:80px}
 .col-status{text-align:left;width:66px}
-.col-desc{text-align:left;width:120px}
+.col-desc{text-align:left;width:149px}
 .col-author{text-align:left;width:64px}
 .col-type{text-align:left;width:72px}
-.col-base{text-align:left;width:auto}
+.col-base{text-align:left;width:80px}
 td.col-base{font-size:13px}
 td span{display:inline}
 
