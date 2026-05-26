@@ -186,7 +186,7 @@ function buildCellTD(key,ff,i){
   const v=ff[key]||'';td.dataset.value=v;
   if(key==='tk'){td.appendChild(Object.assign(document.createElement('span'),{textContent:v}));td.classList.add('readonly');return td}
   if(key==='type'){td.appendChild(Object.assign(document.createElement('span'),{textContent:v||'—'}));td.classList.add('readonly');if(!v)td.classList.add('empty');return td}
-  if(key==='desc'&&ff.type==='AIVID'){td.appendChild(Object.assign(document.createElement('span'),{textContent:'—'}));td.classList.add('readonly','empty');return td}
+  if(key==='desc'&&ff.type==='AIVID'){const s=Object.assign(document.createElement('span'),{textContent:'—'});s.title='视频无需描述';td.appendChild(s);td.classList.add('readonly','empty');return td}
   const s=document.createElement('span');s.textContent=v||'—';
   if(v===''||v==='请选择'){s.textContent='—';td.classList.add('empty')}
   td.appendChild(s);
@@ -256,7 +256,7 @@ function activateShotEdit(td,i,oldVal){
     // 实时只允许数字
     ip.addEventListener('input',()=>{let x=ip.value.replace(/[^\d]/g,'');if(x.length>2)x=x.slice(0,2);if(x!==ip.value)ip.value=x});
     // 失焦补零
-    ip.addEventListener('blur',()=>{const x=ip.value.replace(/[^\d]/g,'');if(x&&x.length<2){ip.value=x.padStart(2,'0')}});
+    ip.addEventListener('blur',()=>{const x=ip.value.replace(/[^\d]/g,'');if(x&&x.length<2&&parseInt(x,10)>0){ip.value=x.padStart(2,'0')}});
     r.appendChild(ip);const btn=document.createElement('button');btn.textContent='+';btn.className='shot-act shot-add-btn';r.appendChild(btn);return r}
 
   shots.forEach(v=>ct.appendChild(_mkRow(v)));
@@ -268,7 +268,7 @@ function activateShotEdit(td,i,oldVal){
 
   const commit=(cancel)=>{
     if(cancel){td.textContent='';td.classList.remove('editing');td.appendChild(Object.assign(document.createElement('span'),{textContent:oldVal||'—'}));if(!oldVal)td.classList.add('empty');return}
-    const vals=[...ct.querySelectorAll('input')].map(ip=>{let v=ip.value.replace(/[^\d]/g,'');if(v.length>2)v=v.slice(0,2);return v?v.padStart(2,'0'):''}).filter(v=>v);
+    const vals=[...ct.querySelectorAll('input')].map(ip=>{let v=ip.value.replace(/[^\d]/g,'');if(v.length>2)v=v.slice(0,2);const n=parseInt(v,10);return (n>0&&n<100)?String(n).padStart(2,'0'):''}).filter(v=>v);
     const nv=vals.join('-');
     const isMulti=sel.size>1;const rows=isMulti?[...sel]:[i];
     rows.forEach(r=>{files[r].fields.shot=nv||'';files[r]._shots=vals.length?vals:['']});
