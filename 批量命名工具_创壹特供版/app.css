@@ -177,14 +177,15 @@ tbody tr.warn-size td.col-num::before{background:var(--yellow)}
 tbody tr.warn-dbl td.col-num::before{background:#c080d0}
 tbody tr.warn td{background:var(--tbl-row-warn)}
 
-.col-num{width:44px;padding-left:8px;position:relative}
+.col-num{text-align:left;padding-right:12px!important;padding-left:8px;width:44px;position:relative}
+td.col-num{font-size:13px}
 .col-thumb{width:calc(52px * var(--thumb-scale, 1));padding:4px!important;overflow:hidden}
-.col-ep,.col-sc,.col-tk,.col-ver{width:60px}
-.col-shot{width:80px}
-.col-status{width:66px}
-.col-desc{width:120px}
-.col-author{width:64px}
-.col-type{width:72px}
+.col-ep,.col-sc,.col-tk,.col-ver{text-align:left;width:60px}
+.col-shot{text-align:left;width:80px}
+.col-status{text-align:left;width:66px}
+.col-desc{text-align:left;width:120px}
+.col-author{text-align:left;width:64px}
+.col-type{text-align:left;width:72px}
 .col-base{width:auto}
 td.col-base{font-size:13px}
 td span{display:inline}
