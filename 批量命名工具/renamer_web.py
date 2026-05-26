@@ -181,7 +181,7 @@ class RenamerAPI:
     def _process_paths(self, paths_):
         _log.info(f"_process_paths: {len(paths_)} paths → scanning")
         MAX_FILES = 100
-        files = []; duplicates = 0; subdirs = 0; truncated = False
+        files = []; duplicates = 0; skipped = 0; subdirs = 0; truncated = False
         seen_fp = set()  # 本批指纹，不跨批
         _EMPTY_KEYS = {'ep','sc','gr','tk','ver'}  # TK 由扫描自动计算，不继承解析值
         VIDEO_EXT = {'.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw'}
@@ -195,6 +195,7 @@ class RenamerAPI:
                 ext = os.path.splitext(p)[1].lower()
                 if ext not in VIDEO_EXT:
                     _log.debug(f"  skip non-video: {os.path.basename(p)}")
+                    skipped += 1
                     continue
                 if p in {f["path"] for f in files}: duplicates += 1; continue
                 # 内容指纹：size + 前 64KB hash（同一文件走不同路径也能去重）
@@ -246,7 +247,7 @@ class RenamerAPI:
                         elif os.path.isdir(fp): subdirs += 1
                 except Exception: pass
 
-        _log.info(f"_process_paths: {len(files)} files, {parsed_count} parsed, {no_parse_count} raw, {duplicates} dup, {subdirs} subdirs, truncated={truncated}")
+        _log.info(f"_process_paths: {len(files)} files, {parsed_count} parsed, {no_parse_count} raw, {duplicates} dup, {skipped} skipped, {subdirs} subdirs, truncated={truncated}")
         # 自动检查
         anomalies = set()
         try:
@@ -267,7 +268,7 @@ class RenamerAPI:
             if check_double_ext(f["basename"]): tags.append("dbl_ext")
             if f["path"] in anomalies: tags.append("size")
             f["tags"] = tags
-        return {"files":files,"total":len(files),"duplicates":duplicates,"subdirs_skipped":subdirs,"truncated":truncated,"max":MAX_FILES}
+        return {"files":files,"total":len(files),"duplicates":duplicates,"skipped":skipped,"subdirs_skipped":subdirs,"truncated":truncated,"max":MAX_FILES}
 
     def do_rename(self, files):
         global _undo_stack

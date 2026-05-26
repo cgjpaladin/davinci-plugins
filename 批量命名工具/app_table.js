@@ -753,12 +753,15 @@ function onDropResult(result){
   call('debug_log',`onDropResult #${_dropCount}: ${result.files.length} files, existing=${files.length}`);
   const exist=new Set(files.map(f=>f.fp||f.path));
   const fresh=result.files.filter(f=>!(exist.has(f.fp||f.path)));
-  const dup = result.duplicates || (result.files.length - fresh.length);
+  const dup = result.duplicates || 0;
+  const sk = result.skipped || 0;
+  if(fresh.length===0 && dup===0 && sk>0){toast(`${sk} 个格式不支持`);return}
   if(fresh.length===0){toast(`全部重复 · ${dup} 个已跳过`);return}
   files=files.concat(fresh);
   call("debug_log",`FILES list: ${files.length} total (added ${fresh.length})`);
   let msg=`已追加 ${fresh.length} 个文件`;
   if(dup) msg+=` · ${dup} 个重复跳过`;
+  if(sk) msg+=` · ${sk} 个格式不支持`;
   if(result.subdirs_skipped) msg+=` · ${result.subdirs_skipped} 个子文件夹跳过`;
   if(result.truncated) msg+=` (上限${result.max}个)`;
   renderList();toast(msg);
