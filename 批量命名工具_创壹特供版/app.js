@@ -421,6 +421,7 @@ document.addEventListener('keydown',e=>{
 
 // ═══ 审查模式 ═══
 let _reviewIdx=-1;
+let _mediaBlobUrl=null;
 let _metaGen=0;
 const _speeds=[0.5,1,2];let _speedI=1;
 function formatTime(s){if(!isFinite(s)||s<0)return'0:00';const m=Math.floor(s/60),sec=Math.floor(s%60);return m+':'+String(sec).padStart(2,'0')}
@@ -430,12 +431,19 @@ async function openReview(i){
   // 标题
   const tk=buildTK(i);
   document.getElementById('reviewFilename').textContent=`EP${ff.ep||'__'}_SC${ff.sc||'__'}_SH${ff.shot||'__'}_TK${tk}${ff.type?'_'+ff.type:''}_${ff.author||'__'}_V${ff.ver||'__'}_${ff.status||'__'}`;
-  // 媒体 — 通过本地 HTTP 服务器访问（避免 file:// 跨域问题）
+  // 媒体 — 通过 JS API 获取二进制数据 → Blob URL（绕过 HTTP 静态文件兼容问题）
   const video=document.getElementById('reviewVideo');video.removeAttribute('src');
   const img=document.getElementById('reviewImage');img.removeAttribute('src');
-  const mediaUrl=`${location.origin}/media?p=`+encodeURIComponent(f.path);
-  if(isVideo){video.src=mediaUrl;video.style.display='';img.style.display='none';_speedI=1;document.getElementById('rcSpeed').textContent='1×';video.playbackRate=1;video.play().catch(()=>{});initReviewControls(video)}
-  else{img.src=mediaUrl;img.style.display='';video.style.display='none';video.pause();document.getElementById('reviewControls').style.display='none'}
+  // 清理旧 Blob URL
+  if(_mediaBlobUrl){URL.revokeObjectURL(_mediaBlobUrl);_mediaBlobUrl=null}
+  try{const r=await call('get_media_data',f.path);if(r&&r.data){
+    const bytes=Uint8Array.from(atob(r.data),c=>c.charCodeAt(0));
+    const blob=new Blob([bytes],{type:r.mime});
+    _mediaBlobUrl=URL.createObjectURL(blob);
+    if(isVideo){video.src=_mediaBlobUrl;video.style.display='';img.style.display='none';_speedI=1;document.getElementById('rcSpeed').textContent='1×';video.playbackRate=1;video.play().catch(()=>{});initReviewControls(video)}
+    else{img.src=_mediaBlobUrl;img.style.display='';video.style.display='none';video.pause();document.getElementById('reviewControls').style.display='none'}
+  }else{toast('无法加载媒体文件')}
+  }catch(e){toast('媒体加载失败: '+e.message)}
   // 字段
   buildReviewFields(ff,isVideo);
   // 状态高亮
@@ -452,6 +460,7 @@ async function openReview(i){
 function closeReview(){
   const v=document.getElementById('reviewVideo');v.pause();v.removeAttribute('src');v.load();
   document.getElementById('reviewImage').removeAttribute('src');
+  if(_mediaBlobUrl){URL.revokeObjectURL(_mediaBlobUrl);_mediaBlobUrl=null}
   if(_rcInterval){clearInterval(_rcInterval);_rcInterval=null}
   _reviewIdx=-1;document.getElementById('reviewOverlay').classList.remove('show');
   document.getElementById('reviewControls').style.display='';

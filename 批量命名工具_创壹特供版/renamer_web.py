@@ -356,6 +356,18 @@ class RenamerAPI:
         except Exception:
             return None
 
+    def get_media_data(self, path):
+        """返回媒体文件 base64 + MIME（审查面板用 Blob URL）"""
+        import base64
+        ext = os.path.splitext(path)[1].lower()
+        mime_map = {'.mp4':'video/mp4','.mov':'video/quicktime','.avi':'video/x-msvideo','.mkv':'video/x-matroska','.webm':'video/webm','.mxf':'application/mxf','.m4v':'video/mp4','.flv':'video/x-flv','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.bmp':'image/bmp','.tiff':'image/tiff','.gif':'image/gif','.webp':'image/webp','.tif':'image/tiff'}
+        try:
+            with open(path, 'rb') as f:
+                data = base64.b64encode(f.read()).decode('ascii')
+            return {'data': data, 'mime': mime_map.get(ext, 'application/octet-stream'), 'size': os.path.getsize(path)}
+        except Exception:
+            return None
+
 
 # ============================================================
 # 主入口
@@ -364,53 +376,12 @@ HTML_FILE_NAME = "renamer_web.html"
 HTML_FILE = os.path.join(_BASE_DIR, HTML_FILE_NAME)
 
 if __name__ == "__main__":
-    import threading, socket, io as _io, re as _re, urllib.parse as _up
-    from bottle import route, run, static_file, request, HTTPError, response
-
-    # 媒体 MIME 映射（审查模式播放用）
-    _MIME_MAP = {
-        '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.avi': 'video/x-msvideo',
-        '.mkv': 'video/x-matroska', '.mxf': 'application/mxf', '.mts': 'video/mp2t',
-        '.webm': 'video/webm', '.m4v': 'video/mp4', '.flv': 'video/x-flv',
-        '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-        '.bmp': 'image/bmp', '.tiff': 'image/tiff', '.gif': 'image/gif',
-        '.webp': 'image/webp', '.tif': 'image/tiff',
-    }
+    import threading, socket, io as _io
+    from bottle import route, run, static_file
 
     @route('/')
     def index():
         return static_file(HTML_FILE_NAME, root=_BASE_DIR)
-
-    @route('/media')
-    def serve_media():
-        """直接文件服务：支持 Range 请求（视频拖动）、正确 MIME 类型"""
-        from bottle import response as _resp
-        p = _up.unquote(request.query.get('p', ''))
-        if not p or not os.path.isfile(p):
-            _resp.status = 404; return "File not found"
-        ext = os.path.splitext(p)[1].lower()
-        mime = _MIME_MAP.get(ext, 'application/octet-stream')
-        size = os.path.getsize(p)
-        _resp.set_header('Accept-Ranges', 'bytes')
-        _resp.set_header('Content-Type', mime)
-        # Range 请求（视频拖动必须）
-        range_header = request.environ.get('HTTP_RANGE', '')
-        if range_header:
-            m = _re.match(r'bytes=(\d+)-(\d*)', range_header)
-            if m:
-                start = int(m.group(1))
-                end = int(m.group(2)) if m.group(2) else size - 1
-                end = min(end, size - 1)
-                length = end - start + 1
-                _resp.status = 206
-                _resp.set_header('Content-Range', f'bytes {start}-{end}/{size}')
-                _resp.set_header('Content-Length', str(length))
-                with open(p, 'rb') as f:
-                    f.seek(start)
-                    return f.read(length)
-        _resp.set_header('Content-Length', str(size))
-        with open(p, 'rb') as f:
-            return f.read()
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(('127.0.0.1', 0))

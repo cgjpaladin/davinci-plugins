@@ -46,6 +46,13 @@ if [ ! -f "$INSTALL_DIR/.env" ]; then
     cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env" 2>/dev/null || true
 fi
 
-osascript -e 'display dialog "安装完成！\n\n1. 重启达芬奇\n2. 菜单 Workspace → Scripts → 交付自检工具\n\nAI校对需要 DeepSeek Key:\n编辑 说明.txt 查看获取方法" buttons {"好的"} default button 1 with icon note'
+# ── 输入 API Key ──
+API_KEY=$(osascript -e 'text returned of (display dialog "请输入 DeepSeek API Key（没有可留空，以后补）\n\n获取地址: platform.deepseek.com → API Keys" default answer "" buttons {"跳过", "保存"} default button "保存" with icon note)' 2>/dev/null)
+if [ -n "$API_KEY" ]; then
+    sed -i '' "s/DEEPSEEK_KEY=.*/DEEPSEEK_KEY=$API_KEY/" "$INSTALL_DIR/.env"
+    echo "  ✅ API Key 已保存"
+fi
+
+osascript -e 'display dialog "安装完成！\n\n1. 重启达芬奇\n2. 菜单 Workspace → Scripts → 交付自检工具" buttons {"好的"} default button 1 with icon note'
 
 open "$INSTALL_DIR"
