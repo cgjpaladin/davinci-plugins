@@ -549,7 +549,11 @@ function buildReviewFields(ff,isVideo){
     else if(key==='desc'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim()})}
     else{ip.addEventListener('input',()=>{files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
     const sr=DIGIT_STRICT[key];
-    if(sr){ip.addEventListener('blur',()=>{let v=ip.value.replace(/[^\d]/g,'');if(v&&sr.test(v.padStart(2,'0'))){v=v.padStart(2,'0');ip.value=v;files[_reviewIdx].fields[key]=v}else if(!v){files[_reviewIdx].fields[key]=''}else{ip.value=ff[key]||'';files[_reviewIdx].fields[key]=ff[key]||''};updateReviewTitle()})}
+    // 实时反馈：已填绿框
+    const updFill=()=>{const v=ip.value.trim();if(v)ip.classList.add('rf-filled');else ip.classList.remove('rf-filled');updateReviewMeta()};
+    ip.addEventListener('input',updFill);ip.addEventListener('blur',updFill);
+    if(ip.value.trim())ip.classList.add('rf-filled');
+    if(sr){ip.addEventListener('blur',()=>{let v=ip.value.replace(/[^\d]/g,'');if(v&&sr.test(v.padStart(2,'0'))){v=v.padStart(2,'0');ip.value=v;files[_reviewIdx].fields[key]=v}else if(!v){files[_reviewIdx].fields[key]=''}else{ip.value=ff[key]||'';files[_reviewIdx].fields[key]=ff[key]||''};updateReviewTitle();updFill()})}
   })});
 }
 
@@ -563,6 +567,23 @@ function updateReviewTitle(){
   if(_reviewIdx<0)return;
   const ff=files[_reviewIdx].fields;const tk=buildTK(_reviewIdx);
   document.getElementById('reviewFilename').textContent=`EP${ff.ep||'__'}_SC${ff.sc||'__'}_SH${ff.shot||'__'}_TK${tk}${ff.type?'_'+ff.type:''}_${ff.author||'__'}_V${ff.ver||'__'}_${ff.status||'__'}`;
+}
+function updateReviewMeta(){
+  if(_reviewIdx<0)return;
+  const ff=files[_reviewIdx].fields;
+  const req=ff.type==='AIPIC'?_REQUIRED_PIC:_REQUIRED_KEYS;
+  const filled=req.filter(k=>ff[k]&&ff[k]!=='请选择').length;
+  const total=req.length;
+  const el=document.getElementById('reviewMeta');
+  // 保留媒体元数据的第一部分（📹 🖼），替换后半段
+  const parts=el.innerHTML.split('</span>');
+  const mediaPart=parts.length>1?parts.slice(0,1).join('</span>')+'</span>':el.innerHTML;
+  // 添加就绪计数
+  const readyHtml=`<span style="color:${filled===total?'var(--green)':'var(--yellow)'}">${filled}/${total} 就绪</span>`;
+  // 简单追加
+  if(!el._readySpan){el._readySpan=document.createElement('span');el.appendChild(el._readySpan)}
+  el._readySpan.innerHTML=readyHtml.replace(/<span[^>]*>/,'').replace('</span>','');
+  el._readySpan.style.cssText=`color:${filled===total?'var(--green)':'var(--yellow)'};margin-left:8px`;
 }
 function setReviewStatus(st){call('debug_log',`setReviewStatus: ${st}`);files[_reviewIdx].fields.status=st;highlightStatusBtn(st);updateReviewTitle();renderList(true)}
 
