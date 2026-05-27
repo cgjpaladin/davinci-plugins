@@ -194,7 +194,7 @@ function _initTBodyClick(){
     call('debug_log',`click: td=${td.className} i=${i} key=${key||'-'} detail=${e.detail}`);
     const isField=key&&key!=='tk'&&!td.classList.contains('readonly');
     // 缩略图双击 → 审查模式
-    if(td.classList.contains('col-thumb')&&e.detail>=2){clearTimeout(window._shrinkTimer);if(files[i])openReview(i);return}
+    if(td.classList.contains('col-thumb')&&e.detail>=2){call('debug_log',`review: thumb dblclick i=${i}`);clearTimeout(window._shrinkTimer);if(files[i])openReview(i);return}
     if(isField){if(e.detail>=2){clearTimeout(window._shrinkTimer);activateEdit(td,key,i)}else{rowClick(e,i)}return}
     rowClick(e,i);
   });
@@ -478,9 +478,11 @@ async function openReview(i){
   document.getElementById('reviewNext').disabled=i>=files.length-1;
   // 显示
   document.getElementById('reviewOverlay').classList.add('show');
+  call('debug_log',`openReview: DONE i=${i} overlay=shown`);
 }
 
 function closeReview(){
+  call('debug_log','closeReview: START');
   const v=document.getElementById('reviewVideo');v.pause();v.removeAttribute('src');v.load();
   document.getElementById('reviewImage').removeAttribute('src');
   if(_mediaBlobUrl){URL.revokeObjectURL(_mediaBlobUrl);_mediaBlobUrl=null}
@@ -492,6 +494,7 @@ function closeReview(){
 
 async function navReview(dir){
   const next=_reviewIdx+dir;if(next<0||next>=files.length)return;
+  call('debug_log',`navReview: dir=${dir} from=${_reviewIdx} to=${next}`);
   _reviewIdx=next;
   const f=files[next];const ff=f.fields;const isVideo=ff.type==='AIVID';
   // 标题
@@ -520,6 +523,7 @@ async function navReview(dir){
   document.getElementById('reviewNext').disabled=next>=files.length-1;
   // 已编辑数据同步到表格
   renderList(true);
+  call('debug_log',`navReview: DONE to=${next}`);
 }
 
 function buildReviewFields(ff,isVideo){
@@ -558,7 +562,7 @@ function updateReviewTitle(){
   const ff=files[_reviewIdx].fields;const tk=buildTK(_reviewIdx);
   document.getElementById('reviewFilename').textContent=`EP${ff.ep||'__'}_SC${ff.sc||'__'}_SH${ff.shot||'__'}_TK${tk}${ff.type?'_'+ff.type:''}_${ff.author||'__'}_V${ff.ver||'__'}_${ff.status||'__'}`;
 }
-function setReviewStatus(st){files[_reviewIdx].fields.status=st;highlightStatusBtn(st);updateReviewTitle();renderList(true)}
+function setReviewStatus(st){call('debug_log',`setReviewStatus: ${st}`);files[_reviewIdx].fields.status=st;highlightStatusBtn(st);updateReviewTitle();renderList(true)}
 document.getElementById('rsOK').addEventListener('click',()=>setReviewStatus('OK'));
 document.getElementById('rsKP').addEventListener('click',()=>setReviewStatus('KP'));  
 document.getElementById('rsNG').addEventListener('click',()=>setReviewStatus('NG'));
@@ -570,6 +574,7 @@ document.getElementById('reviewOverlay').addEventListener('dragover',e=>{e.preve
 document.getElementById('reviewOverlay').addEventListener('drop',e=>{e.preventDefault()});
 
 async function loadMediaMeta(path,isVideo,video,img){
+  call('debug_log',`loadMediaMeta: video=${isVideo} gen=${_metaGen}`);
   const meta=document.getElementById('reviewMeta');meta.innerHTML='';
   const parts=[];
   const f=files[_reviewIdx];
@@ -599,6 +604,7 @@ async function loadMediaMeta(path,isVideo,video,img){
 // ═══ 自定义播放控制 ═══
 let _rcInterval=null;
 function initReviewControls(video){
+  call('debug_log','initReviewControls');
   const ctrls=document.getElementById('reviewControls');ctrls.style.display='';
   // 清理旧监听器
   if(ctrls._init){video.removeEventListener('timeupdate',ctrls._ontu);video.removeEventListener('ended',ctrls._onend)}
