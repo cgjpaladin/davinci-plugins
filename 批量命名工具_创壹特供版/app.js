@@ -586,12 +586,14 @@ function initReviewControls(video){
   const upd=()=>{if(!video.duration)return;seek.value=(video.currentTime/video.duration)*100;time.textContent=formatTime(video.currentTime)+' / '+formatTime(video.duration);frame.textContent='帧 '+Math.floor(video.currentTime*25)}
   if(_rcInterval)clearInterval(_rcInterval);
   _rcInterval=setInterval(upd,200);
+  const togglePlay=()=>{if(video.paused){video.play();playBtn.textContent='⏸'}else{video.pause();playBtn.textContent='▶'}};
+  video.onclick=togglePlay;
   const ontu=()=>{if(!video.seeking)upd()};
   const onend=()=>{playBtn.textContent='▶';clearInterval(_rcInterval)};
   video.addEventListener('timeupdate',ontu);video.addEventListener('ended',onend);
   ctrls._ontu=ontu;ctrls._onend=onend;ctrls._init=true;
   playBtn.textContent=video.paused?'▶':'⏸';
-  playBtn.onclick=()=>{if(video.paused){video.play();playBtn.textContent='⏸'}else{video.pause();playBtn.textContent='▶'}};
+  playBtn.onclick=togglePlay;
   seek.oninput=()=>{video.currentTime=(seek.value/100)*video.duration;upd()};
   vol.oninput=()=>{video.volume=vol.value/100};
   speedBtn.onclick=()=>{_speedI=(_speedI+1)%3;const s=_speeds[_speedI];video.playbackRate=s;speedBtn.textContent=s+'×'};
