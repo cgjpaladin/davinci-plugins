@@ -30,6 +30,7 @@ python3 _splice.py
 # 打包（使用系统 Python，避开沙箱限制）
 $SYSPY -m PyInstaller \
   --onedir --windowed \
+  --target-arch universal2 \
   --name "批量命名工具-创壹特供版" \
   --icon app_icon.icns \
   --add-data "$HTML_BUNDLE:." \
