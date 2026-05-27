@@ -223,6 +223,7 @@ td.empty{color:var(--tbl-dim);font-style:italic;background:#2d1212}
 .shot-add-btn:hover{background:rgba(106,154,58,.15);border-color:var(--green)}
 .shot-del-btn{background:transparent;color:var(--red)}
 .shot-del-btn:hover{background:rgba(192,64,64,.15);border-color:var(--red)}
+.shot-hint{font-size:9px;color:#444;margin-top:4px;text-align:center}
 
 /* Row completion dots */
 tbody tr.row-full td.col-num::before{background:var(--green)}

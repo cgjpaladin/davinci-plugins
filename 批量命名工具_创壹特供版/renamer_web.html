@@ -20,8 +20,8 @@
 
 <!-- Action Bar — 仅重命名+撤销 -->
 <div class="action-bar">
-  <button class="hero-btn" id="btnRename" disabled>批量重命名</button>
-  <button class="hero-undo" id="btnUndo" disabled>↩ 撤销</button>
+  <button class="hero-btn" id="btnRename" disabled title="选中文件后重命名 (Ctrl+Enter)">批量重命名</button>
+  <button class="hero-undo" id="btnUndo" disabled title="撤销上次重命名 (Ctrl+Z)">↩ 撤销</button>
 </div>
 
 <!-- File List -->
@@ -93,9 +93,9 @@
       <div class="review-sidebar">
         <div class="review-fields" id="reviewFields"></div>
         <div class="review-status">
-          <button class="rs-ok" id="rsOK">OK</button>
-          <button class="rs-kp" id="rsKP">KP</button>
-          <button class="rs-ng" id="rsNG">NG</button>
+          <button class="rs-ok" id="rsOK" title="通过 — 素材合格">OK</button>
+          <button class="rs-kp" id="rsKP" title="需修改 — 保留待改">KP</button>
+          <button class="rs-ng" id="rsNG" title="不合格 — 标记废弃">NG</button>
         </div>
         <div class="review-meta" id="reviewMeta"></div>
         <div class="review-nav">
@@ -110,12 +110,12 @@
       <button class="rc-btn" id="rcPlay" title="播放/暂停 (Space)">▶</button>
       <span class="rc-time" id="rcTime">0:00 / 0:00</span>
       <span class="rc-frame" id="rcFrame">帧 0</span>
-      <input type="range" class="rc-seek" id="rcSeek" min="0" max="100" value="0" step="0.1">
-      <button class="rc-btn" id="rcSpeed" title="播放速度">1×</button>
-      <button class="rc-btn" id="rcStepBack" title="后退1帧 (←)">◀◀</button>
-      <button class="rc-btn" id="rcStepFwd" title="前进1帧 (→)">▶▶</button>
-      <button class="rc-btn" id="rcSnap" title="截图保存">📷</button>
-      <input type="range" class="rc-volume" id="rcVolume" min="0" max="100" value="100">
+      <input type="range" class="rc-seek" id="rcSeek" min="0" max="100" value="0" step="0.1" title="拖拽跳转">
+      <button class="rc-btn" id="rcSpeed" title="速度切换 (0.5x / 1x / 2x)">1×</button>
+      <button class="rc-btn" id="rcStepBack" title="后退1帧 (,)">◀◀</button>
+      <button class="rc-btn" id="rcStepFwd" title="前进1帧 (.)">▶▶</button>
+      <button class="rc-btn" id="rcSnap" title="截图当前帧">📷</button>
+      <input type="range" class="rc-volume" id="rcVolume" min="0" max="100" value="100" title="音量">
       <button class="rc-btn" id="rcFS" title="全屏 (F)">⛶</button>
     </div>
   </div>

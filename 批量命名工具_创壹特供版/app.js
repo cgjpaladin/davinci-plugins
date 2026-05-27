@@ -169,7 +169,7 @@ function _buildRow(f,i){
   const tdNum=document.createElement('td');tdNum.className='col-num';tdNum.dataset.row=i;
   const pl=files.length>=100?3:files.length>=10?2:1;
   tdNum.appendChild(Object.assign(document.createElement('span'),{textContent:String(i+1).padStart(pl,'0')}));tr.appendChild(tdNum);
-  const tdThumb=document.createElement('td');tdThumb.className='col-thumb';
+  const tdThumb=document.createElement('td');tdThumb.className='col-thumb';tdThumb.title='双击预览';
   const tsrc=_thumbs[f.path];
   if(tsrc){const img=document.createElement('img');img.className='cell-thumb';img.src=tsrc;img.alt='';tdThumb.appendChild(img)}
   else{const div=document.createElement('div');div.className='cell-thumb';div.style.background=`linear-gradient(135deg,${tc[i%tc.length]},${tc[(i+2)%tc.length]})`;tdThumb.appendChild(div)}
@@ -288,6 +288,8 @@ function activateShotEdit(td,i,oldVal){
 
   shots.forEach(v=>ct.appendChild(_mkRow(v)));
   _updShotBtns(ct);
+  // 提示
+  const hint=document.createElement('div');hint.className='shot-hint';hint.textContent='+ 添加镜号 · − 删除 · ESC 取消';ct.appendChild(hint);
   td.appendChild(ct);
   ct.querySelector('input').focus();
 
@@ -324,8 +326,8 @@ function updButtons(){
   document.getElementById('btnRename').disabled=!(hs&&af);
   document.getElementById('btnUndo').disabled=!undoAvail;
   const dot=document.querySelector('.sb-dot');
-  if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');return}
-  if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，可以重命名');return}
+  if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  拖入文件开始  ·  Ctrl+Z 撤销  ·  Del 移除');return}
+  if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，点击重命名  ·  Ctrl+Enter 重命名');return}
   const missing=[];const _lbs=window._fieldLabels||{};
   const fdType=fd.type||''; const chkKeys=fdType==='AIPIC'?_REQUIRED_PIC:_REQUIRED_KEYS;
   for(const k of chkKeys){if(!fd[k]||fd[k]==='请选择')missing.push(_lbs[k]||k)}
@@ -333,7 +335,7 @@ function updButtons(){
   if(warn.length){const wl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};dot.style.background='var(--red)';setStatus('⚠ '+[...new Set(warn)].map(w=>wl[w]||w).join(' · '));return}
   dot.style.background='var(--yellow)';
   let ok=0;files.forEach(f=>{const ff=f.fields;const req=ff.type==='AIPIC'?_REQUIRED_PIC:_REQUIRED_KEYS;if(req.every(k=>ff[k]&&ff[k]!=='请选择'))ok++});
-  setStatus((missing.length?('缺失: '+missing.join(' · ')):'')+'  ·  '+ok+'/'+files.length+' 就绪');
+  setStatus((missing.length?('双击单元格编辑 · 缺失: '+missing.join(' · ')):'双击单元格编辑字段')+'  ·  '+ok+'/'+files.length+' 就绪');
 }
 
 // ═══ Dialog ═══
@@ -432,6 +434,7 @@ document.addEventListener('keydown',e=>{
     }
   }
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();doRename();return}
   if((e.key==='Delete'||e.key==='Backspace')&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){e.preventDefault();removeSelected()}
   if((e.key==='ArrowUp'||e.key==='ArrowDown')&&sel.size===1&&files.length>0){if(e.target.tagName!=='INPUT'||(e.key==='ArrowUp'&&e.target.selectionStart===0)||(e.key==='ArrowDown'&&e.target.selectionStart===e.target.value.length)){e.preventDefault();const cur=[...sel][0];const next=cur+(e.key==='ArrowDown'?1:-1);if(next>=0&&next<files.length){sel.clear();sel.add(next);renderList();updButtons()}}}
   if((e.key==='Home'||e.key==='End')&&sel.size===1&&files.length>0){if(e.target.tagName!=='INPUT'||e.target.selectionStart===0){e.preventDefault();const i=e.key==='Home'?0:files.length-1;sel.clear();sel.add(i);renderList();updButtons()}}
