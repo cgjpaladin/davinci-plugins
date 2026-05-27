@@ -169,7 +169,7 @@ function _buildRow(f,i){
   const tdNum=document.createElement('td');tdNum.className='col-num';tdNum.dataset.row=i;
   const pl=files.length>=100?3:files.length>=10?2:1;
   tdNum.appendChild(Object.assign(document.createElement('span'),{textContent:String(i+1).padStart(pl,'0')}));tr.appendChild(tdNum);
-  const tdThumb=document.createElement('td');tdThumb.className='col-thumb';tdThumb.title='双击预览';
+  const tdThumb=document.createElement('td');tdThumb.className='col-thumb';tdThumb.title='单击预览';
   const tsrc=_thumbs[f.path];
   if(tsrc){const img=document.createElement('img');img.className='cell-thumb';img.src=tsrc;img.alt='';tdThumb.appendChild(img)}
   else{const div=document.createElement('div');div.className='cell-thumb';div.style.background=`linear-gradient(135deg,${tc[i%tc.length]},${tc[(i+2)%tc.length]})`;tdThumb.appendChild(div)}
@@ -289,7 +289,7 @@ function activateShotEdit(td,i,oldVal){
   shots.forEach(v=>ct.appendChild(_mkRow(v)));
   _updShotBtns(ct);
   // 提示
-  const hint=document.createElement('div');hint.className='shot-hint';hint.textContent='+ 添加镜号 · − 删除 · ESC 取消';ct.appendChild(hint);
+  const hint=document.createElement('div');hint.className='shot-hint';hint.textContent='+ 添加镜号 · − 删除 · ENTER 提交 · ESC 取消 · 点击外部提交';ct.appendChild(hint);
   td.appendChild(ct);
   ct.querySelector('input').focus();
 
@@ -404,10 +404,10 @@ function onDropResult(result){
 
 // ═══ Keyboard ═══
 document.addEventListener('keydown',e=>{
-  // 非审查模式：空格键 → 打开审阅（优先选中文件，其次第一个文件）
-  if(_reviewIdx<0&&e.key===' '&&e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA'&&files.length>0){
+  // 非审查模式：空格键 → 打开审阅（仅在有选中文件时，打开第一个选中文件）
+  if(_reviewIdx<0&&e.key===' '&&e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA'&&sel.size>0){
     e.preventDefault();
-    const idx=sel.size>0?Math.min(...sel):0;
+    const idx=Math.min(...sel);
     if(files[idx])openReview(idx);
     return;
   }
@@ -607,12 +607,13 @@ function reviewShotEdit(ip){
   shots.forEach(v=>ct.appendChild(_mkRow(v)));
   function _updBtns(c){const rows=c.querySelectorAll('.shot-edit-row');rows.forEach((r,j)=>{const btn=r.querySelector('button');if(j===rows.length-1){btn.textContent='+';btn.className='shot-act shot-add-btn';btn.onclick=()=>{c.appendChild(_mkRow(''));_updBtns(c);c.querySelectorAll('input')[c.querySelectorAll('input').length-1].focus()}}else{btn.textContent='−';btn.className='shot-act shot-del-btn';btn.onclick=()=>{if(c.querySelectorAll('.shot-edit-row').length<=1)return;r.remove();_updBtns(c)}}})}
   _updBtns(ct);
+  const hint=document.createElement('div');hint.className='shot-hint';hint.textContent='+ 添加镜号 · − 删除 · ENTER 提交 · ESC 取消 · 点击外部提交';ct.appendChild(hint);
   const commit=(restoreOld)=>{
     const vals=restoreOld?[]:
       [...ct.querySelectorAll('input')].map(inp=>{let v=inp.value.replace(/[^\d]/g,'').slice(0,2);const n=parseInt(v,10);return(n>0&&n<100)?String(n).padStart(2,'0'):''}).filter(v=>v);
     const nv=restoreOld?oldVal:vals.join('-');
     ip.value=nv;files[_reviewIdx].fields.shot=nv||'';files[_reviewIdx]._shots=vals.length?vals:[''];
-    ct.remove();ip.style.display='';updateReviewTitle();
+    ct.remove();ip.style.display='';updateReviewTitle();updateReviewMeta();
   };
   ct.addEventListener('keydown',e=>{if(e.key==='Escape'){commit(true)}if(e.key==='Enter'&&e.target.tagName==='INPUT'){e.preventDefault();commit()}});
   // 点击外部 → 提交
