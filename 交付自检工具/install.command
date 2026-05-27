@@ -12,7 +12,7 @@ echo ""
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "→ 安装到 $INSTALL_DIR"
 rm -rf "$INSTALL_DIR"
-cp -r "$SCRIPT_DIR/交付自检工具" "$INSTALL_DIR"
+cp -r "$SCRIPT_DIR" "$INSTALL_DIR"
 echo "  ✅ 文件拷贝完成"
 
 # 2. 创建 Fusion Scripts 壳
