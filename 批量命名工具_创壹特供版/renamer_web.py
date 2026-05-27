@@ -43,6 +43,12 @@ THUMB_MAX = 100
 _undo_stack = []
 _window = None
 
+def _has_pil():
+    try:
+        import PIL; return True
+    except ImportError:
+        return False
+
 
 class RenamerAPI:
     def generate_thumbnails(self, paths):
@@ -54,12 +60,15 @@ class RenamerAPI:
                 test = os.path.join(pfx, exe_name) if pfx else 'ffmpeg'
                 if os.path.exists(test): ffmpeg = test; break
         if not ffmpeg: ffmpeg = 'ffmpeg'
-        _log.info(f"generate_thumbnails: {len(paths)} files")
+        _log.info(f"generate_thumbnails: {len(paths)} files, ffmpeg={ffmpeg} PIL={'ok' if _has_pil() else 'MISSING'}")
         total = 0
         for p in paths[:THUMB_MAX]:
             try:
                 ext = os.path.splitext(p)[1].lower()
                 if ext in IMAGE_EXT:
+                    if not _has_pil():
+                        _log.warning(f"  thumb skip {os.path.basename(p)}: PIL not installed")
+                        continue
                     from PIL import Image
                     img = Image.open(p)
                     # EXIF 自变换
@@ -79,13 +88,16 @@ class RenamerAPI:
                         _window.evaluate_js(f"setThumb({_json.dumps(p)},{_json.dumps(thumb)})")
                     total += 1
                 else:
+                    if not shutil.which(ffmpeg) and not os.path.exists(ffmpeg):
+                        _log.warning(f"  thumb skip {os.path.basename(p)}: ffmpeg not found")
+                        continue
                     tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
                     tmp.close()
                     kw = dict(capture_output=True, timeout=8)
                     if _sys.platform == 'win32':
                         kw['creationflags'] = subprocess.CREATE_NO_WINDOW
                     for ss in ('00:00:01', '00:00:00.1'):
-                        subprocess.run(
+                        rv = subprocess.run(
                             [ffmpeg, '-y', '-ss', ss, '-i', p, '-vframes', '1',
                              '-vf', 'scale=120:120:force_original_aspect_ratio=decrease',
                              '-q:v', '8', tmp.name],

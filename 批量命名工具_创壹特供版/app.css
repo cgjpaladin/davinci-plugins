@@ -95,6 +95,8 @@ body{
 .hero-undo:hover{color:var(--text);border-color:var(--text-dim)}
 .hero-undo:disabled{color:#4a4a4a;cursor:not-allowed}
 .hero-undo:disabled:hover{color:#4a4a4a;border-color:var(--border)}
+.hero-export{padding:8px 14px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:transparent;color:#888;font-size:12px;white-space:nowrap}
+.hero-export:hover{color:var(--text);border-color:var(--green)}
 
 .file-section{
   flex:1;display:flex;flex-direction:column;border-bottom:1px solid var(--border);
@@ -112,8 +114,6 @@ body{
 .zoom-slider{-webkit-appearance:none;appearance:none;width:60px;height:3px;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
 .zoom-slider::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:var(--accent);cursor:pointer}
 .zoom-label{color:var(--text-dim);font-size:9px;width:24px;text-align:center;flex-shrink:0}
-.fl-btn-export{background:transparent;border:1px solid transparent;color:var(--text-dim);font-size:14px;padding:2px 6px;border-radius:3px;cursor:pointer}
-.fl-btn-export:hover{background:#2a2a2a;color:var(--text)}
 .fl-body{flex:1;overflow:auto}
 
 .fl-empty{
