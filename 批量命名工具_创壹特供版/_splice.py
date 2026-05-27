@@ -1,5 +1,5 @@
 """build.sh 用：拼接 CSS + HTML + JS，注入 git hash。创壹特供版 — 仅卡片版"""
-import subprocess, os, sys
+import subprocess, os, sys, re
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(BASE)
@@ -17,7 +17,7 @@ try:
 except:
     h = 'dev'; b = '?'
 ts = datetime.now().strftime('%m-%d %H:%M')
-js = js.replace("const APP_VERSION='DEV'", f"const APP_VERSION='{h}'")
+js = re.sub(r"const APP_VERSION='[^']*'", f"const APP_VERSION='{h}'", js)
 js = js.replace("const APP_BRANCH=''", f"const APP_BRANCH='{b}'")
 js = js.replace("const APP_BUILD_TIME=''", f"const APP_BUILD_TIME='{ts}'")
 js = js.replace("const IS_PRODUCTION=false", "const IS_PRODUCTION=true")

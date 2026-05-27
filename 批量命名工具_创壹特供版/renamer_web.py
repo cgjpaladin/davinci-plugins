@@ -184,10 +184,6 @@ class RenamerAPI:
             return "ok"
         return {"log": list(self._dbg_buf)}
 
-    def echo(self, x):
-        _log.info(f"ECHO: {x!r}")
-        return {"received": x}
-
     def _process_paths(self, paths_):
         _log.info(f"_process_paths: {len(paths_)} paths -> scanning")
         MAX_FILES = 100
@@ -399,29 +395,45 @@ class RenamerAPI:
         from openpyxl.utils import get_column_letter
         from PIL import Image as PILImage
 
+        # ── 列定义（单一事实来源）──
+        COLUMNS = [
+            {"header":"缩略图", "key":"thumb",    "width":12, "zfill":False},
+            {"header":"集数",   "key":"ep",       "width":5,  "zfill":True},
+            {"header":"场次",   "key":"sc",       "width":5,  "zfill":True},
+            {"header":"镜号",   "key":"shot",     "width":8,  "zfill":False},
+            {"header":"次数",   "key":"tk",       "width":5,  "zfill":True},
+            {"header":"描述",   "key":"desc",     "width":15, "zfill":False},
+            {"header":"类型",   "key":"type",     "width":8,  "zfill":False},
+            {"header":"作者",   "key":"author",   "width":10, "zfill":False},
+            {"header":"版本",   "key":"ver",      "width":5,  "zfill":True},
+            {"header":"状态",   "key":"status",   "width":6,  "zfill":False},
+            {"header":"文件名", "key":"_newname", "width":40, "zfill":False},
+        ]
+
+        # ── 从 FIELD_CONFIG 推导 ──
+        _PFX = {fd["key"]: fd["name"] for fd in FIELD_CONFIG if fd.get("name")}
+        _FIELDS = [fd["key"] for fd in FIELD_CONFIG]
+
+        # ── 布局常量 ──
+        THUMB_W, THUMB_H_MAX = 72, 60
+        DEFAULT_ROW_H = 15
+
         wb = Workbook()
         ws = wb.active
         ws.title = "文件列表"
 
-        HEADERS = ['缩略图','EP','SC','SH','TK','描述','类型','作者','V','状态','文件名']
-        KEYS = ['thumb','ep','sc','shot','tk','desc','type','author','ver','status','_newname']
-        WIDTHS = [12, 5, 5, 8, 5, 15, 8, 10, 5, 6, 40]
-        NUM_KEYS = {'ep','sc','tk','ver'}
-
-        # 表头
-        for ci, h in enumerate(HEADERS):
-            ws.cell(row=1, column=ci+1, value=h)
-            ws.column_dimensions[get_column_letter(ci+1)].width = WIDTHS[ci]
+        # 表头 + 列宽 + 冻结首行
+        for ci, col in enumerate(COLUMNS):
+            ws.cell(row=1, column=ci+1, value=col["header"])
+            ws.column_dimensions[get_column_letter(ci+1)].width = col["width"]
         ws.freeze_panes = 'A2'
 
         # 数据行
         for rn, row in enumerate(rows):
-            row_h = 15  # 默认行高
-            for ci, k in enumerate(KEYS):
-                val = str(row.get(k, '')) if k != 'thumb' else ''
-                if k in NUM_KEYS and val:
-                    ws.cell(row=rn+2, column=ci+1, value=val.zfill(2))
-                elif k == 'thumb':
+            row_h = DEFAULT_ROW_H
+            for ci, col in enumerate(COLUMNS):
+                k = col["key"]
+                if k == 'thumb':
                     thumb = row.get('thumb', '')
                     if thumb and thumb.startswith('data:image/'):
                         m = _re.match(r'data:image/(\w+);base64,(.+)', thumb)
@@ -433,10 +445,11 @@ class RenamerAPI:
                                 ratio = pw / ph if ph else 1
                                 img = XLImage(io.BytesIO(data))
                                 if ratio >= 1:
-                                    img.width = 72; img.height = max(1, int(72 / ratio))
+                                    img.width = THUMB_W
+                                    img.height = max(1, int(THUMB_W / ratio))
                                 else:
-                                    img.height = 60; img.width = max(1, int(60 * ratio))
-                                # 行高跟随图片高度
+                                    img.height = THUMB_H_MAX
+                                    img.width = max(1, int(THUMB_H_MAX * ratio))
                                 import openpyxl.utils.units as oxu
                                 row_pt = oxu.pixels_to_points(img.height) + 4
                                 row_h = max(row_h, row_pt)
@@ -448,16 +461,19 @@ class RenamerAPI:
                             ws.add_image(img)
                 elif k == '_newname':
                     parts = []
-                    for fk in ('ep','sc','shot','tk','desc','type','author','ver','status'):
+                    for fk in _FIELDS:
                         fv = str(row.get(fk, ''))
                         if fv:
-                            pfxs = {'ep':'EP','sc':'SC','shot':'SH','tk':'TK','ver':'V'}
-                            pfx = pfxs.get(fk, '')
+                            pfx = _PFX.get(fk, '')
                             parts.append(f'{pfx}{fv}' if pfx else fv)
                     name = '_'.join(parts)
                     ws.cell(row=rn+2, column=ci+1, value=name + str(row.get('ext', '')))
                 else:
-                    ws.cell(row=rn+2, column=ci+1, value=val)
+                    val = str(row.get(k, ''))
+                    if col.get("zfill") and val:
+                        ws.cell(row=rn+2, column=ci+1, value=val.zfill(2))
+                    else:
+                        ws.cell(row=rn+2, column=ci+1, value=val)
             ws.row_dimensions[rn+2].height = row_h
 
         buf = io.BytesIO()

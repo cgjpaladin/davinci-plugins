@@ -2,6 +2,7 @@ const APP_VERSION='DEV';
 const APP_BRANCH='';
 const APP_BUILD_TIME='';
 const IS_PRODUCTION=false;
+const EXPORT_FILENAME_PREFIX='批量命名导出_';
 // 创壹特供版 v1.0 — 表格版前端
 // ═══ 立即执行 ═══
 document.addEventListener('DOMContentLoaded',()=>{
@@ -69,6 +70,7 @@ async function init(){
   const _allFields=cfg.fields||[];
   window._fieldLabels={};_allFields.forEach(f=>{window._fieldLabels[f.key]=f.label});
   dm.textContent=IS_PRODUCTION?'📋':(cfg.dev?('🔧 '+APP_VERSION):'📋');
+  const vl=document.getElementById('versionLabel');if(vl)vl.textContent='v'+APP_VERSION;
   dm.onclick=()=>{window.pywebview.api.debug_log('').then(r=>{const t=(r.log||[]).join('\n');if(t)navigator.clipboard.writeText(t).then(()=>toast('已复制 '+(r.log||[]).length+' 条日志'));else toast('无日志')})};
 
   const theadTr=document.querySelector('#fileList thead tr');
@@ -138,9 +140,9 @@ function renderList(force){
       const ready=req.every(k=>ff[k]&&ff[k]!=='请选择');
       tr.classList.add(ready?'rdy':'mis');
       if(f.archived)tr.classList.add('archived');
-      const fillCount=[ff.ep,ff.sc,ff.shot,ff.desc,ff.type,ff.author,ff.ver,ff.status].filter(Boolean).length;
-      const fillMax=ff.type==='AIPIC'?8:7;
-      tr.classList.add(fillCount>=fillMax?'row-full':fillCount>=5?'row-most':'row-empty');
+      const fillCount=req.filter(k=>ff[k]&&ff[k]!=='请选择').length;
+      const fillMax=req.length;
+      tr.classList.add(fillCount>=fillMax?'row-full':fillCount>=Math.ceil(fillMax/2)?'row-most':'row-empty');
       const tags=f.tags||[];if(tags.length)tr.classList.add('warn');
       if(tags.includes('zero'))tr.classList.add('warn-zero');
       if(tags.includes('size'))tr.classList.add('warn-size');
@@ -158,9 +160,9 @@ function _buildRow(f,i){
   if(sel.has(i))tr.classList.add('sel');
   tr.classList.add(ready?'rdy':'mis');
   if(f.archived)tr.classList.add('archived');
-  const fillCount=[ff.ep,ff.sc,ff.shot,ff.desc,ff.type,ff.author,ff.ver,ff.status].filter(Boolean).length;
-  const fillMax=ff.type==='AIPIC'?8:7;
-  tr.classList.add(fillCount>=fillMax?'row-full':fillCount>=5?'row-most':'row-empty');
+  const fillCount=req.filter(k=>ff[k]&&ff[k]!=='请选择').length;
+  const fillMax=req.length;
+  tr.classList.add(fillCount>=fillMax?'row-full':fillCount>=Math.ceil(fillMax/2)?'row-most':'row-empty');
   const tags=f.tags||[];if(tags.length)tr.classList.add('warn');
   if(tags.includes('zero'))tr.classList.add('warn-zero');
   if(tags.includes('size'))tr.classList.add('warn-size');
@@ -704,7 +706,8 @@ async function exportExcel(){
   try{
     const r=await call('export_table',rows);
     if(!r||!r.data){toast('生成失败');return}
-    const dn='批量命名导出_'+new Date().toISOString().slice(0,10)+'.xlsx';
+    const now=new Date(),pad=n=>String(n).padStart(2,'0');
+    const dn=EXPORT_FILENAME_PREFIX+now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'-'+pad(now.getHours())+pad(now.getMinutes())+'.xlsx';
     const sv=await call('save_file',r.data,dn);
     if(sv&&sv.ok){toast('已保存: '+sv.path.split('/').pop());call('debug_log','exportExcel: saved to '+sv.path)}
     else{toast('取消导出')}

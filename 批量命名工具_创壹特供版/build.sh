@@ -44,6 +44,7 @@ $SYSPY -m PyInstaller \
   --hidden-import PIL.ImageOps \
   --hidden-import openpyxl \
   --hidden-import openpyxl.drawing.image \
+  --hidden-import openpyxl.utils.units \
   --noconfirm \
   renamer_web.py
 

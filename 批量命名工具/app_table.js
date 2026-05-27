@@ -754,7 +754,7 @@ async function exportExcel(){
     const r=await call('export_table',rows);
     if(!r||!r.data){toast('生成失败');return}
     const now=new Date(),pad=n=>String(n).padStart(2,'0');
-    const dn=EXPORT_FILENAME_PREFIX+now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'_'+pad(now.getHours())+pad(now.getMinutes())+'.xlsx';
+    const dn=EXPORT_FILENAME_PREFIX+now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'-'+pad(now.getHours())+pad(now.getMinutes())+'.xlsx';
     const sv=await call('save_file',r.data,dn);
     if(sv&&sv.ok){toast('已保存: '+sv.path.split('/').pop());call('debug_log','exportExcel: saved to '+sv.path)}
     else{toast('取消导出')}
