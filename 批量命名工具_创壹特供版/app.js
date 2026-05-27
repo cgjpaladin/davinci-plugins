@@ -404,7 +404,7 @@ document.addEventListener('keydown',e=>{
   if(_reviewIdx>=0&&e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA'){
     if(e.key==='Escape'){e.preventDefault();closeReview();return}
     if(e.key==='o'||e.key==='O'){setReviewStatus('OK');return}
-    if(e.key==='k'||e.key==='K'){setReviewStatus('KP');return}
+    if(e.key==='p'||e.key==='P'){setReviewStatus('KP');return}
     if(e.key==='n'||e.key==='N'){setReviewStatus('NG');return}
     if(e.ctrlKey&&e.key==='ArrowLeft'){e.preventDefault();navReview(-1);return}
     if(e.ctrlKey&&e.key==='ArrowRight'){e.preventDefault();navReview(1);return}
