@@ -333,10 +333,10 @@ function updButtons(){
   document.getElementById('btnUndo').disabled=!undoAvail;
   const dot=document.querySelector('.sb-dot');
   if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  拖入文件开始  ·  Ctrl+Z 撤销  ·  Del 移除');return}
-  if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，点击重命名  ·  Ctrl+Enter 重命名');call('debug_log',`updButtons: GREEN hs=${hs} af=${af}`);return}
+  if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，点击重命名');call('debug_log',`updButtons: GREEN hs=${hs} af=${af}`);return}
   // 全部就绪但未选中 → 绿色
   let ok=0;files.forEach(f=>{const ff=f.fields;const req=ff.type==='AIPIC'?_REQUIRED_PIC:_REQUIRED_KEYS;if(req.every(k=>ff[k]&&ff[k]!=='请选择'))ok++});
-  if(ok===files.length&&files.length>0){dot.style.background='var(--green)';setStatus('全部就绪 · 选中文件后重命名  ·  Ctrl+Enter');call('debug_log',`updButtons: ALL-GREEN ok=${ok}/${files.length}`);return}
+  if(ok===files.length&&files.length>0){dot.style.background='var(--green)';setStatus('全部就绪 · 选中文件后重命名');call('debug_log',`updButtons: ALL-GREEN ok=${ok}/${files.length}`);return}
   const missing=[];const _lbs=window._fieldLabels||{};
   const fdType=fd.type||''; const chkKeys=fdType==='AIPIC'?_REQUIRED_PIC:_REQUIRED_KEYS;
   for(const k of chkKeys){if(!fd[k]||fd[k]==='请选择')missing.push(_lbs[k]||k)}
@@ -447,9 +447,10 @@ document.addEventListener('keydown',e=>{
       if(v.paused){v.play();document.getElementById('rcPlay').textContent='⏸'}
       return;
     }
+    if(e.key==='Home'){const v=document.getElementById('reviewVideo');if(v.src){v.currentTime=0;return}}
+    if(e.key==='End'){const v=document.getElementById('reviewVideo');if(v.src){v.currentTime=v.duration;return}}
   }
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}
-  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();doRename();return}
   if((e.key==='Delete'||e.key==='Backspace')&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){e.preventDefault();removeSelected()}
   if((e.key==='ArrowUp'||e.key==='ArrowDown')&&sel.size===1&&files.length>0){if(e.target.tagName!=='INPUT'||(e.key==='ArrowUp'&&e.target.selectionStart===0)||(e.key==='ArrowDown'&&e.target.selectionStart===e.target.value.length)){e.preventDefault();const cur=[...sel][0];const next=cur+(e.key==='ArrowDown'?1:-1);if(next>=0&&next<files.length){sel.clear();sel.add(next);renderList();updButtons()}}}
   if((e.key==='Home'||e.key==='End')&&sel.size===1&&files.length>0){if(e.target.tagName!=='INPUT'||e.target.selectionStart===0){e.preventDefault();const i=e.key==='Home'?0:files.length-1;sel.clear();sel.add(i);renderList();updButtons()}}
@@ -567,6 +568,8 @@ function buildReviewFields(ff,isVideo){
     ip.addEventListener('input',updFill);ip.addEventListener('blur',updFill);
     if(ip.value.trim())ip.classList.add('rf-filled');
     if(sr){ip.addEventListener('blur',()=>{let v=ip.value.replace(/[^\d]/g,'');if(v&&sr.test(v.padStart(2,'0'))){v=v.padStart(2,'0');ip.value=v;files[_reviewIdx].fields[key]=v}else if(!v){files[_reviewIdx].fields[key]=''}else{ip.value=ff[key]||'';files[_reviewIdx].fields[key]=ff[key]||''};updateReviewTitle();updFill()})}
+    const cycleField=(e)=>{if(e.key==='Tab'||e.key==='Enter'){e.preventDefault();const inputs=[...container.querySelectorAll('input:not([readonly])')];const idx=inputs.indexOf(e.target);const next=inputs[(idx+1)%inputs.length];if(next)next.focus()}};
+    ip.addEventListener('keydown',cycleField);
   })});
 }
 

@@ -636,10 +636,10 @@ function updButtons(){
   const dot=document.querySelector('.sb-dot');
   if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  拖入文件开始  ·  Ctrl+Z 撤销  ·  Del 移除');return}
   // 全就绪
-  if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，可以重命名  ·  Ctrl+Enter 重命名');call('debug_log',`updButtons: GREEN hs=${hs} af=${af}`);return}
+  if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，可以重命名');call('debug_log',`updButtons: GREEN hs=${hs} af=${af}`);return}
   // 全部就绪但未选中 → 绿色
   let allOk=0;const fks=window._fieldKeysAll||['ep','sc','gr','desc','method','author','ver','status'];files.forEach(f=>{const ff=f.fields;if(fks.every(k=>ff[k]))allOk++});
-  if(allOk===files.length&&files.length>0){dot.style.background='var(--green)';setStatus('全部就绪 · 选中文件后重命名  ·  Ctrl+Enter');call('debug_log',`updButtons: ALL-GREEN ok=${allOk}/${files.length}`);return}
+  if(allOk===files.length&&files.length>0){dot.style.background='var(--green)';setStatus('全部就绪 · 选中文件后重命名');call('debug_log',`updButtons: ALL-GREEN ok=${allOk}/${files.length}`);return}
   // 混合态标注（与缺失区分）
   const missing=[];
   const _lbs=window._fieldLabels||{};
@@ -928,6 +928,9 @@ function buildReviewFields(ff,isVideo){
     ip.addEventListener('input',updFill);ip.addEventListener('blur',updFill);
     if(ip.value.trim())ip.classList.add('rf-filled');
     if(sr){ip.addEventListener('blur',()=>{let v=ip.value.replace(/[^\d]/g,'');if(v&&sr.test(v.padStart(2,'0'))){v=v.padStart(2,'0');ip.value=v;files[_reviewIdx].fields[key]=v}else if(!v){files[_reviewIdx].fields[key]=''}else{ip.value=ff[key]||'';files[_reviewIdx].fields[key]=ff[key]||''};updateReviewTitle();updFill()})}
+    // Tab/Enter 切下一个可编辑字段
+    const cycleField=(e)=>{if(e.key==='Tab'||e.key==='Enter'){e.preventDefault();const inputs=[...container.querySelectorAll('input:not([readonly])')];const idx=inputs.indexOf(e.target);const next=inputs[(idx+1)%inputs.length];if(next)next.focus()}};
+    ip.addEventListener('keydown',cycleField);
   })});
 }
 
@@ -1012,10 +1015,11 @@ document.addEventListener('keydown',e=>{
     if(e.key==='.'){const v=document.getElementById('reviewVideo');if(v.src){v.pause();v.currentTime=Math.min(v.duration||999,v.currentTime+1/25);document.getElementById('rcPlay').textContent='▶';return}}
     if(e.key==='j'||e.key==='J'){const v=document.getElementById('reviewVideo');if(!v.src)return;const rates=[1,0.5,0.25,0.1];let ri=rates.indexOf(v.playbackRate);ri=ri<0?0:(ri+1)%rates.length;v.playbackRate=rates[ri];document.getElementById('rcSpeed').textContent=rates[ri]+'×';if(v.paused){v.play();document.getElementById('rcPlay').textContent='⏸'}return}
     if(e.key==='k'||e.key==='K'){const v=document.getElementById('reviewVideo');if(!v.src)return;v.pause();v.playbackRate=1;document.getElementById('rcPlay').textContent='▶';document.getElementById('rcSpeed').textContent='1×';return}
+    if(e.key==='Home'){const v=document.getElementById('reviewVideo');if(v.src){v.currentTime=0;return}}
+    if(e.key==='End'){const v=document.getElementById('reviewVideo');if(v.src){v.currentTime=v.duration;return}}
     if(e.key==='l'||e.key==='L'){const v=document.getElementById('reviewVideo');if(!v.src)return;const rates=[1,2,4,8];let ri=v.paused?0:rates.indexOf(v.playbackRate);ri=ri<0?0:(ri+1)%rates.length;v.playbackRate=rates[ri];document.getElementById('rcSpeed').textContent=rates[ri]+'×';if(v.paused){v.play();document.getElementById('rcPlay').textContent='⏸'}return}
   }
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}
-  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();doRename();return}
   if((e.key==='Delete'||e.key==='Backspace')&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){e.preventDefault();removeSelected()}
   // ↑↓ 切换文件
   if((e.key==='ArrowUp'||e.key==='ArrowDown')&&sel.size===1&&files.length>0){
