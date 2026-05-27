@@ -905,43 +905,72 @@ async function navReview(dir){
 
 function buildReviewFields(ff,isVideo){
   const container=document.getElementById('reviewFields');container.innerHTML='';
+  container.style.gridTemplateColumns='repeat(4,1fr)';
   const fields=[
-    [{key:'ep',label:'Ep',w:1,attr:'inputmode=numeric maxlength=3'},{key:'sc',label:'Sc',w:1,attr:'inputmode=numeric maxlength=2'}],
-    [{key:'gr',label:'Gr',w:1,attr:'inputmode=numeric maxlength=2'},{key:'ver',label:'v',w:1,attr:'inputmode=numeric maxlength=2'}],
+    [{key:'ep',label:'Ep',w:1,attr:'inputmode=numeric maxlength=3'},{key:'sc',label:'Sc',w:1,attr:'inputmode=numeric maxlength=2'},{key:'gr',label:'Gr',w:1,attr:'inputmode=numeric maxlength=2'},{key:'ver',label:'v',w:1,attr:'inputmode=numeric maxlength=2'}],
     [{key:'author',label:'制作者',w:2,attr:'placeholder=\"请输入姓名\"'}],
-    [{key:'desc',label:'镜头描述',w:2,attr:'placeholder=\"镜头描述\"'}],
   ];
+  const initCfg=methodDescMap[ff.method||'']||{mode:'text',hint:'请先选择制作方式'};
+  // desc 重建函数（三种模式：locked / dropdown / text）
+  function _buildDesc(cfg,oldVal){
+    oldVal=oldVal||'';
+    const dw=document.createElement('div');dw.className='rf-full';dw.id='reviewDescWrap';
+    const lb=document.createElement('label');lb.textContent='镜头描述';dw.appendChild(lb);
+    if(cfg.mode==='locked'){
+      const ip=document.createElement('input');ip.type='text';ip.value=cfg.value||'';ip.readOnly=true;ip.classList.add('rf-filled');
+      dw.appendChild(ip);files[_reviewIdx].fields.desc=cfg.value||'';
+    }else if(cfg.mode==='dropdown'){
+      const sel=document.createElement('select');sel.style.cssText='width:100%;background:#2a2a2a;border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:12px;font-family:var(--font-mono);box-sizing:border-box';
+      (cfg.values||[]).filter(o=>o!=='请手动输入…').forEach(opt=>{
+        const o=document.createElement('option');o.value=opt;o.textContent=opt;
+        if(opt===oldVal)o.selected=true;sel.appendChild(o);
+      });
+      const fo=document.createElement('option');fo.value='__free__';fo.textContent='✐ 手动输入…';
+      if(oldVal==='请手动输入…')fo.selected=true;sel.appendChild(fo);
+      sel.addEventListener('change',()=>{
+        if(sel.value==='__free__'){
+          const inp=document.createElement('input');inp.type='text';inp.placeholder='输入镜头描述';inp.value='';
+          inp.style.cssText='width:100%;background:#2a2a2a;border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:12px;font-family:var(--font-mono);box-sizing:border-box';
+          inp.addEventListener('input',()=>{const v=inp.value.replace(/_/g,'');inp.value=v;files[_reviewIdx].fields.desc=v;updateReviewTitle()});
+          sel.replaceWith(inp);inp.focus();
+        }else{files[_reviewIdx].fields.desc=sel.value==='请选择'?'':sel.value;updateReviewTitle()}
+      });
+      dw.appendChild(sel);files[_reviewIdx].fields.desc=oldVal==='请选择'?'':oldVal;
+    }else{
+      const ip=document.createElement('input');ip.type='text';ip.placeholder=cfg.hint||'输入镜头描述';ip.value=oldVal;
+      ip.style.cssText='width:100%;background:#2a2a2a;border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:12px;font-family:var(--font-mono);box-sizing:border-box';
+      ip.addEventListener('input',()=>{const v=ip.value.replace(/_/g,'');ip.value=v;files[_reviewIdx].fields.desc=v});
+      dw.appendChild(ip);
+    }
+    return dw;
+  }
+  // 初始 desc
+  const descWrap=_buildDesc(initCfg,ff.desc||'');
   // method 下拉（联动 desc）
   const mWrap=document.createElement('div');mWrap.className='rf-full';
   const mLb=document.createElement('label');mLb.textContent='制作方式';mWrap.appendChild(mLb);
   const mSel=document.createElement('select');mSel.style.cssText='width:100%;background:#2a2a2a;border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:12px;font-family:var(--font-mono);box-sizing:border-box';
   ['请选择','智能分镜版','双轨版','角色专属版'].forEach(m=>{const o=document.createElement('option');o.value=m==='请选择'?'':m;o.textContent=m;if(m===ff.method)o.selected=true;mSel.appendChild(o)});
-  mWrap.appendChild(mSel);container.appendChild(mWrap);
+  mWrap.appendChild(mSel);
   mSel.addEventListener('change',()=>{
     const nm=mSel.value;files[_reviewIdx].fields.method=nm;
-    const cfg=methodDescMap[nm]||{mode:'text',hint:'输入镜头描述'};
-    const descIp=container.querySelector('input[data-rkey=\"desc\"]');
-    if(!descIp)return;
-    if(cfg.mode==='locked'){files[_reviewIdx].fields.desc=cfg.value||'';descIp.value=cfg.value||'';descIp.readOnly=true;descIp.classList.remove('rf-filled');if(descIp.value.trim())descIp.classList.add('rf-filled')}
-    else{descIp.readOnly=false;descIp.placeholder=cfg.mode==='dropdown'?'请选择镜头描述':(cfg.hint||'输入镜头描述');
-      if(!cfg.value){descIp.value=descIp.value.trim();files[_reviewIdx].fields.desc=descIp.value}
-      else{descIp.value='';files[_reviewIdx].fields.desc=''}}
+    const cfg=methodDescMap[nm]||{mode:'text',hint:'请先选择制作方式'};
+    // 对齐 onMethodChange：非 locked 模式清 desc
+    if(cfg.mode!=='locked')files[_reviewIdx].fields.desc='';
+    const oldWrap=document.getElementById('reviewDescWrap');
+    const newWrap=_buildDesc(cfg,files[_reviewIdx].fields.desc);
+    if(oldWrap)oldWrap.replaceWith(newWrap);
     updateReviewTitle();updateReviewMeta();
   });
-  const initCfg=methodDescMap[ff.method||'']||{mode:'text',hint:'输入镜头描述'};
   fields.forEach(row=>{row.forEach(fd=>{
+    if(fd.key==='desc')return;  // desc 由 _buildDesc 处理
     const wrap=document.createElement('div');wrap.className=fd.w>1?'rf-full':'';
     const lb=document.createElement('label');lb.textContent=fd.label;wrap.appendChild(lb);
     const ip=document.createElement('input');ip.value=ff[fd.key]||'';ip.setAttribute('data-rkey',fd.key);
-    const initLocked=fd.key==='desc'&&initCfg.mode==='locked';
-    if(initLocked){ip.value=initCfg.value||'';ip.readOnly=true;ip.classList.add('rf-filled')}
     if(fd.attr){const attrs=fd.attr.split(' ');attrs.forEach(a=>{const[ak,av]=a.split('=');if(av)ip.setAttribute(ak,av.replace(/\"/g,''));else ip.setAttribute(ak,'')})}
     wrap.appendChild(ip);container.appendChild(wrap);
-    if((fd.attr||'').includes('readonly')&&!initLocked){ip.readOnly=true;return}
-    if(initLocked)return;
     const key=fd.key;
     if(key==='author'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
-    else if(key==='desc'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/_/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim()})}
     else{ip.addEventListener('input',()=>{files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
     const sr=DIGIT_STRICT[key];
     const updFill=()=>{const v=ip.value.trim();if(v)ip.classList.add('rf-filled');else ip.classList.remove('rf-filled');updateReviewMeta()};
@@ -952,6 +981,9 @@ function buildReviewFields(ff,isVideo){
     const cycleField=(e)=>{if(e.key==='Tab'||e.key==='Enter'){e.preventDefault();const inputs=[...container.querySelectorAll('input:not([readonly])')];const idx=inputs.indexOf(e.target);const next=inputs[(idx+1)%inputs.length];if(next)next.focus()}};
     ip.addEventListener('keydown',cycleField);
   })});
+  container.appendChild(descWrap);
+  container.appendChild(mWrap);
+  updateReviewMeta();
 }
 
 function highlightStatusBtn(st){
