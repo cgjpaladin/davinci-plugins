@@ -972,7 +972,7 @@ function buildReviewFields(ff,isVideo){
     wrap.appendChild(ip);container.appendChild(wrap);
     const key=fd.key;
     if(key==='author'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
-    else if(DIGIT_RULES[key]){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(DIGIT_RULES[key],'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value;updateReviewTitle()})}
+    else if(['ep','sc','gr','ver'].includes(key)){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\d]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value;updateReviewTitle()})}
     else{ip.addEventListener('input',()=>{files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
     const sr=DIGIT_STRICT[key];
     const updFill=()=>{const v=ip.value.trim();if(v)ip.classList.add('rf-filled');else ip.classList.remove('rf-filled');updateReviewMeta()};
