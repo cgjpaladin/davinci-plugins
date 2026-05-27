@@ -696,21 +696,18 @@ document.getElementById('btnExport').addEventListener('click',exportExcel);
 
 async function exportExcel(){
   if(files.length===0){toast('无文件可导出');return}
-  toast('导出中…');call('debug_log','exportExcel: '+files.length+' files');
+  toast('生成中…');call('debug_log','exportExcel: '+files.length+' files');
   const rows=files.map((f,i)=>{
     const ff=f.fields;const tk=buildTK(i);
     return {no:i+1,basename:f.basename,ep:ff.ep||'',sc:ff.sc||'',shot:ff.shot||'',tk:tk,desc:ff.desc||'',type:ff.type||'',author:ff.author||'',ver:ff.ver||'',status:ff.status||'',thumb:_thumbs[f.path]||''};
   });
   try{
     const r=await call('export_table',rows);
-    if(r&&r.data){
-      const bytes=Uint8Array.from(atob(r.data),c=>c.charCodeAt(0));
-      const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-      const a=document.createElement('a');a.download='批量命名导出_'+new Date().toISOString().slice(0,10)+'.xlsx';
-      const url=URL.createObjectURL(blob);a.href=url;a.click();
-      setTimeout(()=>URL.revokeObjectURL(url),1000);
-      toast('导出完成');call('debug_log','exportExcel: DONE');
-    }else{toast('导出失败')}
+    if(!r||!r.data){toast('生成失败');return}
+    const dn='批量命名导出_'+new Date().toISOString().slice(0,10)+'.xlsx';
+    const sv=await call('save_file',r.data,dn);
+    if(sv&&sv.ok){toast('已保存: '+sv.path.split('/').pop());call('debug_log','exportExcel: saved to '+sv.path)}
+    else{toast('取消导出')}
   }catch(e){toast('导出失败: '+e.message)}
 }
 document.getElementById('btnUndo').addEventListener('click',doUndo);

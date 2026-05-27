@@ -560,6 +560,23 @@ class RenamerAPI:
         zf.close()
         return {'data': _b64.b64encode(buf.getvalue()).decode('ascii'), 'type': 'xlsx'}
 
+    def save_file(self, data, default_name):
+        """打开原生保存对话框，写入文件。返回 {ok: true/false, path: '...'}"""
+        import base64 as _b64
+        result = _window.create_file_dialog(
+            webview.SAVE_DIALOG, save_filename=default_name,
+            file_types=("Excel 文件 (*.xlsx)",),
+        )
+        if not result:
+            return {"ok": False, "path": ""}
+        try:
+            with open(result, "wb") as f:
+                f.write(_b64.b64decode(data))
+            return {"ok": True, "path": result}
+        except Exception as e:
+            _log.warning(f"save_file failed: {e}")
+            return {"ok": False, "path": result}
+
 
 def _xml_escape(s):
     return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
