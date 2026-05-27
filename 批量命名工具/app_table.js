@@ -910,7 +910,7 @@ function buildReviewFields(ff,isVideo){
     [{key:'ep',label:'Ep',w:1,attr:'inputmode=numeric maxlength=3'},{key:'sc',label:'Sc',w:1,attr:'inputmode=numeric maxlength=2'},{key:'gr',label:'Gr',w:1,attr:'inputmode=numeric maxlength=2'},{key:'ver',label:'v',w:1,attr:'inputmode=numeric maxlength=2'}],
     [{key:'author',label:'制作者',w:2,attr:'placeholder=\"请输入姓名\"'}],
   ];
-  const initCfg=methodDescMap[ff.method||'']||{mode:'text',hint:'请先选择制作方式'};
+  const initCfg=methodDescMap[ff.method||'']||{mode:'text',hint:'请先选择制作方式',readonly:true};
   // desc 重建函数（三种模式：locked / dropdown / text）
   function _buildDesc(cfg,oldVal){
     oldVal=oldVal||'';
@@ -939,7 +939,8 @@ function buildReviewFields(ff,isVideo){
     }else{
       const ip=document.createElement('input');ip.type='text';ip.placeholder=cfg.hint||'输入镜头描述';ip.value=oldVal;
       ip.style.cssText='width:100%;background:#2a2a2a;border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:12px;font-family:var(--font-mono);box-sizing:border-box';
-      ip.addEventListener('input',()=>{const v=ip.value.replace(/_/g,'');ip.value=v;files[_reviewIdx].fields.desc=v});
+      if(cfg.readonly){ip.readOnly=true}
+      else{ip.addEventListener('input',()=>{const v=ip.value.replace(/_/g,'');ip.value=v;files[_reviewIdx].fields.desc=v})}
       dw.appendChild(ip);
     }
     return dw;
@@ -954,7 +955,7 @@ function buildReviewFields(ff,isVideo){
   mWrap.appendChild(mSel);
   mSel.addEventListener('change',()=>{
     const nm=mSel.value;files[_reviewIdx].fields.method=nm;
-    const cfg=methodDescMap[nm]||{mode:'text',hint:'请先选择制作方式'};
+    const cfg=methodDescMap[nm]||{mode:'text',hint:'请先选择制作方式',readonly:true};
     // 对齐 onMethodChange：非 locked 模式清 desc
     if(cfg.mode!=='locked')files[_reviewIdx].fields.desc='';
     const oldWrap=document.getElementById('reviewDescWrap');
