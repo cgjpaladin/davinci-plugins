@@ -14,6 +14,18 @@ window.addEventListener('unhandledrejection',e=>{const msg='Promise错误: '+e.r
 const _origErr=console.error;console.error=function(...a){_origErr.apply(console,a);call('debug_log','CONSOLE: '+a.join(' '))};
 
 let files=[], _firstDrop=true, sel=new Set(), undoAvail=false, _thumbs={};
+let _sortKey=null,_sortAsc=true;
+const _sortKeys={base:'basename',ep:'ep',sc:'sc',shot:'shot',tk:'tk',desc:'desc',type:'type',author:'author',ver:'ver',status:'status'};
+function applySort(){if(!_sortKey||!files.length)return;const key=_sortKeys[_sortKey]||_sortKey;const s0=files[0].fields[key];const cmp=typeof s0==='string'?((a,b)=>(a.fields[key]||'').localeCompare(b.fields[key]||'')):((a,b)=>parseInt(a.fields[key]||0)-parseInt(b.fields[key]||0));files.sort((a,b)=>_sortAsc?cmp(a,b):cmp(b,a))}
+function reindex(){files.forEach((f,i)=>{f._idx=i})}
+function updSortIndicators(){
+  const tr=document.querySelector('#fileList thead tr');if(!tr)return;
+  tr.querySelectorAll('th').forEach(th=>{
+    const t=th.textContent.replace(/ [▲▼]$/,'');th.textContent=t;
+    const cls=th.className.replace('col-','');
+    if(cls===_sortKey)th.textContent=t+(_sortAsc?' ▲':' ▼');
+  });
+}
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,ver:/^\d{0,2}$/};
 const DIGIT_STRICT={ep:/^(0[1-9]|[1-9]\d{1,2})$/,sc:/^(0[1-9]|[1-9]\d)$/,ver:/^(0[1-9]|[1-9]\d)$/};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
@@ -79,22 +91,6 @@ async function init(){
       applySort();renderList(true);updSortIndicators();
     });
   });
-  function updSortIndicators(){
-    theadTr.querySelectorAll('th').forEach(th=>{
-      const t=th.textContent.replace(/ [▲▼]$/,'');th.textContent=t;
-      const cls=th.className.replace('col-','');
-      if(cls===_sortKey)th.textContent=t+(_sortAsc?' ▲':' ▼');
-    });
-  }
-  function applySort(){
-    if(!_sortKey||!files.length)return;
-    const key=_sortKeys[_sortKey]||_sortKey;
-    const s0=files[0].fields[key];
-    const cmp=typeof s0==='string'?((a,b)=>(a.fields[key]||'').localeCompare(b.fields[key]||'')):((a,b)=>parseInt(a.fields[key]||0)-parseInt(b.fields[key]||0));
-    files.sort((a,b)=>_sortAsc?cmp(a,b):cmp(b,a));
-  }
-  function reindex(){files.forEach((f,i)=>{f._idx=i})}
-  // 原始插入顺序
   files.forEach((f,i)=>{f._idx=i});
   _initColResize();
 
