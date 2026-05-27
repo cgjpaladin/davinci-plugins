@@ -192,7 +192,7 @@ def api_post(method):
 if __name__ == '__main__':
     import webview
     import threading
-    from webview import DOMEventHandler
+    from webview.dom import DOMEventHandler
     
     HOST = '127.0.0.1'; PORT = 18882
     bottle_thread = threading.Thread(target=lambda: bottle.run(host=HOST, port=PORT, quiet=True), daemon=True)
@@ -202,6 +202,7 @@ if __name__ == '__main__':
     _window = webview.create_window('批量命名工具 v4.0', f'http://{HOST}:{PORT}', width=1200, height=800, js_api=api)
     
     def _bind_drop():
+        _window.dom.document.events.dragover += DOMEventHandler(lambda e: None, prevent_default=True)
         def _on_drop(e):
             paths = []
             for item in e['dataTransfer']['files']:
