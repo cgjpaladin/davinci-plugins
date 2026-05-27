@@ -613,9 +613,12 @@ function updButtons(){
   document.getElementById('btnArchive').disabled=!(hs&&af);
   document.getElementById('btnUndo').disabled=!undoAvail;
   const dot=document.querySelector('.sb-dot');
-  if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');return}
+  if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  拖入文件开始  ·  Ctrl+Z 撤销  ·  Del 移除');return}
   // 全就绪
-  if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，可以重命名');return}
+  if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，可以重命名  ·  Ctrl+Enter 重命名');return}
+  // 全部就绪但未选中 → 绿色
+  let allOk=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)allOk++});
+  if(allOk===files.length&&files.length>0){dot.style.background='var(--green)';setStatus('全部就绪 · 选中文件后重命名  ·  Ctrl+Enter');return}
   // 混合态标注（与缺失区分）
   const missing=[];
   const _lbs=window._fieldLabels||{};
@@ -626,7 +629,7 @@ function updButtons(){
   if(warn.length){const wl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};dot.style.background='var(--red)';setStatus('⚠ '+[...new Set(warn)].map(w=>wl[w]||w).join(' · '));return}
   dot.style.background='var(--yellow)';
   let t_ok=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)t_ok++});
-  let msg=missing.length?('缺失: '+missing.join(' · ')):'';
+  let msg=missing.length?('双击单元格编辑 · 缺失: '+missing.join(' · ')):'';
   if(!msg)msg='就绪  ·  Ctrl+Z 撤销';
   setStatus(msg+'  ·  '+t_ok+'/'+files.length+' 就绪');
 }
