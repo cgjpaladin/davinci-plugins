@@ -49,8 +49,8 @@ function mock(m,...a){
       case'add_files_via_dialog':case'add_folder_via_dialog':
         r({files:[
           {path:'/mock/ep01_sc01_sh01_aipic.png',basename:'EP01_SC01_SH01_TK01_测试_AIPIC_张三_V01_OK.png',ext:'.png',fields:{ep:'01',sc:'01',shot:'01',desc:'测试',type:'AIPIC',author:'张三',ver:'01',status:'OK'},tags:[],_shots:['01']},
-          {path:'/mock/ep01_sc01_sh01_aivid.mp4',basename:'EP01_SC01_SH01_TK01__AIVID_李四_V01_OK.mp4',ext:'.mp4',fields:{ep:'01',sc:'01',shot:'01',desc:'',type:'AIVID',author:'李四',ver:'01',status:'OK'},tags:[],_shots:['01']},
-          {path:'/mock/ep01_sc01_multi.mp4',basename:'EP01_SC01_SH01-02_TK01__AIVID_王五_V02_KP.mp4',ext:'.mp4',fields:{ep:'01',sc:'01',shot:'01-02',desc:'',type:'AIVID',author:'王五',ver:'02',status:'KP'},tags:[],_shots:['01','02']},
+          {path:'/mock/ep01_sc01_sh01_aivid.mp4',basename:'EP01_SC01_SH01_TK01_AIVID_李四_V01_OK.mp4',ext:'.mp4',fields:{ep:'01',sc:'01',shot:'01',desc:'',type:'AIVID',author:'李四',ver:'01',status:'OK'},tags:[],_shots:['01']},
+          {path:'/mock/ep01_sc01_multi.mp4',basename:'EP01_SC01_SH01-02_TK01_AIVID_王五_V02_KP.mp4',ext:'.mp4',fields:{ep:'01',sc:'01',shot:'01-02',desc:'',type:'AIVID',author:'王五',ver:'02',status:'KP'},tags:[],_shots:['01','02']},
         ],total:3,duplicates:0});break;
       case'debug_log':r('ok');break;
       default:r({});
@@ -79,8 +79,6 @@ async function init(){
   window._headerKeys=headerKeys;
 
   // ── 表头点击排序 ──
-  let _sortKey=null,_sortAsc=true;
-  const _sortKeys={base:'basename',ep:'ep',sc:'sc',shot:'shot',tk:'tk',desc:'desc',type:'type',author:'author',ver:'ver',status:'status'};
   theadTr.querySelectorAll('th').forEach(th=>{
     const cls=th.className.replace('col-','');
     if(cls==='num'||cls==='thumb')return;
