@@ -972,13 +972,14 @@ function buildReviewFields(ff,isVideo){
     wrap.appendChild(ip);container.appendChild(wrap);
     const key=fd.key;
     if(key==='author'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
-    else if(['ep','sc','gr','ver'].includes(key)){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\d]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value;updateReviewTitle()})}
+    else if(key==='ver'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;let v=ip.value.replace(/[^\d.]/g,'');const d=v.indexOf('.');if(d>=0)v=v.slice(0,d+1)+v.slice(d+1).replace(/\./g,'');ip.value=v;ip.selectionStart=ip.selectionEnd=Math.min(pos,v.length);files[_reviewIdx].fields[key]=v;updateReviewTitle()})}
+    else if(['ep','sc','gr'].includes(key)){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\d]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value;updateReviewTitle()})}
     else{ip.addEventListener('input',()=>{files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
     const sr=DIGIT_STRICT[key];
     const updFill=()=>{const v=ip.value.trim();if(v)ip.classList.add('rf-filled');else ip.classList.remove('rf-filled');updateReviewMeta()};
     ip.addEventListener('input',updFill);ip.addEventListener('blur',updFill);
     if(ip.value.trim())ip.classList.add('rf-filled');
-    if(sr){ip.addEventListener('blur',()=>{let v=ip.value.replace(/[^\d]/g,'');if(v&&sr.test(v.padStart(2,'0'))){v=v.padStart(2,'0');ip.value=v;files[_reviewIdx].fields[key]=v}else if(!v){files[_reviewIdx].fields[key]=''}else{ip.value=ff[key]||'';files[_reviewIdx].fields[key]=ff[key]||''};updateReviewTitle();updFill()})}
+    if(sr){ip.addEventListener('blur',()=>{let v=key==='ver'?ip.value.replace(/[^\d.]/g,''):ip.value.replace(/[^\d]/g,'');if(v&&key==='ver'){const d=v.indexOf('.');let intPart=d>=0?v.slice(0,d):v;intPart=intPart.padStart(2,'0');v=d>=0?intPart+v.slice(d):intPart;if(sr.test(v)){ip.value=v;files[_reviewIdx].fields[key]=v}else{ip.value=ff[key]||'';files[_reviewIdx].fields[key]=ff[key]||''}}else if(v&&sr.test(v.padStart(2,'0'))){v=v.padStart(2,'0');ip.value=v;files[_reviewIdx].fields[key]=v}else if(!v){files[_reviewIdx].fields[key]=''}else{ip.value=ff[key]||'';files[_reviewIdx].fields[key]=ff[key]||''};updateReviewTitle();updFill()})}
     // Tab/Enter 切下一个可编辑字段
     const cycleField=(e)=>{if(e.key==='Tab'||e.key==='Enter'){e.preventDefault();const inputs=[...container.querySelectorAll('input:not([readonly])')];const idx=inputs.indexOf(e.target);const next=inputs[(idx+1)%inputs.length];if(next)next.focus()}};
     ip.addEventListener('keydown',cycleField);
