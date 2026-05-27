@@ -532,7 +532,7 @@ function buildReviewFields(ff,isVideo){
   const container=document.getElementById('reviewFields');container.innerHTML='';
   const fields=[
     [{key:'ep',label:'EP',w:1,attr:'inputmode=numeric maxlength=3'},{key:'sc',label:'SC',w:1,attr:'inputmode=numeric maxlength=2'}],
-    [{key:'shot',label:'SH',w:1,attr:'placeholder=\"01-02-03\"'},{key:'ver',label:'V',w:1,attr:'inputmode=numeric maxlength=2'}],
+    [{key:'shot',label:'SH',w:1,attr:'placeholder=\"点击编辑多镜号\" readonly onclick=\"reviewShotEdit(this)\"'},{key:'ver',label:'V',w:1,attr:'inputmode=numeric maxlength=2'}],
     [{key:'author',label:'作者',w:2,attr:'placeholder=\"英文姓名\"'}],
     [{key:'desc',label:'描述',w:2,attr:'placeholder=\"镜头描述\"'+(isVideo?' readonly':'')}],
   ];
@@ -565,6 +565,24 @@ function updateReviewTitle(){
   document.getElementById('reviewFilename').textContent=`EP${ff.ep||'__'}_SC${ff.sc||'__'}_SH${ff.shot||'__'}_TK${tk}${ff.type?'_'+ff.type:''}_${ff.author||'__'}_V${ff.ver||'__'}_${ff.status||'__'}`;
 }
 function setReviewStatus(st){call('debug_log',`setReviewStatus: ${st}`);files[_reviewIdx].fields.status=st;highlightStatusBtn(st);updateReviewTitle();renderList(true)}
+
+// SH 多镜编辑器（审阅模式）
+function reviewShotEdit(ip){
+  const wrap=ip.parentElement;const oldVal=ip.value||'';
+  const shots=oldVal.split('-').filter(v=>v);if(!shots.length)shots.push('');
+  ip.style.display='none';
+  const ct=document.createElement('div');ct.className='shot-edit-panel';ct.style.position='static';ct.style.margin='0';
+  function _mkRow(v){const r=document.createElement('div');r.className='shot-edit-row';const inp=document.createElement('input');inp.value=v||'';inp.setAttribute('inputmode','numeric');
+    inp.addEventListener('input',()=>{let x=inp.value.replace(/[^\d]/g,'');if(x.length>2)x=x.slice(0,2);if(x!==inp.value)inp.value=x});
+    inp.addEventListener('blur',()=>{const x=inp.value.replace(/[^\d]/g,'');if(x&&x.length<2&&parseInt(x,10)>0){inp.value=x.padStart(2,'0')}});
+    r.appendChild(inp);const btn=document.createElement('button');btn.textContent='+';btn.className='shot-act shot-add-btn';r.appendChild(btn);return r}
+  shots.forEach(v=>ct.appendChild(_mkRow(v)));
+  function _updBtns(c){const rows=c.querySelectorAll('.shot-edit-row');rows.forEach((r,j)=>{const btn=r.querySelector('button');if(j===rows.length-1){btn.textContent='+';btn.className='shot-act shot-add-btn';btn.onclick=()=>{c.appendChild(_mkRow(''));_updBtns(c);c.querySelectorAll('input')[c.querySelectorAll('input').length-1].focus()}}else{btn.textContent='−';btn.className='shot-act shot-del-btn';btn.onclick=()=>{if(c.querySelectorAll('.shot-edit-row').length<=1)return;r.remove();_updBtns(c)}}})}
+  _updBtns(ct);
+  const commit=()=>{const vals=[...ct.querySelectorAll('input')].map(inp=>{let v=inp.value.replace(/[^\d]/g,'').slice(0,2);const n=parseInt(v,10);return(n>0&&n<100)?String(n).padStart(2,'0'):''}).filter(v=>v);const nv=vals.join('-');ip.value=nv;files[_reviewIdx].fields.shot=nv||'';files[_reviewIdx]._shots=vals.length?vals:[''];ct.remove();ip.style.display='';updateReviewTitle()};
+  ct.addEventListener('keydown',e=>{if(e.key==='Escape'){ip.value=oldVal;commit()}if(e.key==='Enter'&&e.target.tagName==='INPUT'){e.preventDefault();commit()}});
+  wrap.appendChild(ct);ct.querySelector('input').focus();
+}
 document.getElementById('rsOK').addEventListener('click',()=>setReviewStatus('OK'));
 document.getElementById('rsKP').addEventListener('click',()=>setReviewStatus('KP'));  
 document.getElementById('rsNG').addEventListener('click',()=>setReviewStatus('NG'));
