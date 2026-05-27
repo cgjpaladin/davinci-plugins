@@ -531,7 +531,7 @@ function activateEdit(td, key, i){
 
   // ═══ Commit logic ═══
   const commit = (cancel) => {
-    const v = (el.value||'').trim();
+    let v = (el.value||'').trim();
     if(cancel){
       el.remove();
       td.classList.remove('editing');
@@ -540,14 +540,28 @@ function activateEdit(td, key, i){
       if(oldVal === '' || oldVal === '请选择' || oldVal === '请手动输入…') td.classList.add('empty');
       return;
     }
-    // 严格校验（Enter 提交路径之前只在 blur 拦，补上）
+    // 严格校验（自动补零：输入"1"→"01"通过）
     const sr = DIGIT_STRICT[key];
-    if(sr && v && !sr.test(v)){
-      toast(`请输入正确格式`);
-      el.remove(); td.classList.remove('editing');
-      td.textContent = oldVal || '—';
-      if(!oldVal) td.classList.add('empty');
-      return;
+    if(sr && v){
+      let testVal = v;
+      if(key==='ver'){
+        const d = v.indexOf('.');
+        const intPart = d>=0 ? v.slice(0,d) : v;
+        if(/^\d+$/.test(intPart) && intPart.length < 2){
+          const padded = intPart.padStart(2,'0');
+          testVal = d>=0 ? padded + v.slice(d) : padded;
+        }
+      }else if(/^\d+$/.test(v)){
+        testVal = v.padStart(2,'0');
+      }
+      if(!sr.test(testVal)){
+        toast(`请输入正确格式`);
+        el.remove(); td.classList.remove('editing');
+        td.textContent = oldVal || '—';
+        if(!oldVal) td.classList.add('empty');
+        return;
+      }
+      if(testVal !== v){ v = testVal; el.value = v; }
     }
     el.remove(); // 物理销毁编辑控件，杜绝残留
     td.classList.remove('editing');

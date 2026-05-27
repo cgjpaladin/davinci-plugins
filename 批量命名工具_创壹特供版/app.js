@@ -253,9 +253,16 @@ function activateEdit(td,key,i){
   if(key==='desc'){el.addEventListener('input',()=>{const pos=el.selectionStart;el.value=el.value.replace(/[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9]/g,'');el.selectionStart=el.selectionEnd=Math.min(pos,el.value.length)})}
 
   const commit=(cancel)=>{
-    const v=(el.value||'').trim();
+    let v=(el.value||'').trim();
     if(cancel){el.remove();td.classList.remove('editing');call('debug_log',`commit: CANCEL ${key} restore='${oldVal||'(空)'}'`);td.textContent=oldVal||(oldVal===''||oldVal==='请选择'?'—':oldVal);if(oldVal===''||oldVal==='请选择')td.classList.add('empty');return}
-    const sr=DIGIT_STRICT[key];if(sr&&v&&!sr.test(v)){toast('请输入正确格式');el.remove();td.classList.remove('editing');td.textContent=oldVal||'—';if(!oldVal)td.classList.add('empty');return}
+    // 自动补零（与审查 blur 一致）：输入"1"→"01"通过
+    const sr=DIGIT_STRICT[key];if(sr&&v){
+      let testVal=v;
+      if(key==='ver'){const d=v.indexOf('.');const intPart=d>=0?v.slice(0,d):v;if(/^\d+$/.test(intPart)&&intPart.length<2){const padded=intPart.padStart(2,'0');testVal=d>=0?padded+v.slice(d):padded}}
+      else if(/^\d+$/.test(v))testVal=v.padStart(2,'0');
+      if(!sr.test(testVal)){toast('请输入正确格式');el.remove();td.classList.remove('editing');td.textContent=oldVal||'—';if(!oldVal)td.classList.add('empty');return}
+      if(testVal!==v){v=testVal;el.value=v;}
+    }
     el.remove();td.classList.remove('editing');
     let finalVal=v;
     if(key==='desc')finalVal=v.replace(/[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9]/g,'');
@@ -561,13 +568,15 @@ function buildReviewFields(ff,isVideo){
     const key=fd.key;
     if(key==='author'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^a-zA-Z]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
     else if(key==='desc'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim()})}
+    else if(key==='ver'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;let v=ip.value.replace(/[^\d.]/g,'');const d=v.indexOf('.');if(d>=0)v=v.slice(0,d+1)+v.slice(d+1).replace(/\./g,'');ip.value=v;ip.selectionStart=ip.selectionEnd=Math.min(pos,v.length);files[_reviewIdx].fields[key]=v;updateReviewTitle()})}
+    else if(['ep','sc'].includes(key)){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\d]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value;updateReviewTitle()})}
     else{ip.addEventListener('input',()=>{files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
     const sr=DIGIT_STRICT[key];
     // 实时反馈：已填绿框
     const updFill=()=>{const v=ip.value.trim();if(v)ip.classList.add('rf-filled');else ip.classList.remove('rf-filled');updateReviewMeta()};
     ip.addEventListener('input',updFill);ip.addEventListener('blur',updFill);
     if(ip.value.trim())ip.classList.add('rf-filled');
-    if(sr){ip.addEventListener('blur',()=>{let v=ip.value.replace(/[^\d]/g,'');if(v&&sr.test(v.padStart(2,'0'))){v=v.padStart(2,'0');ip.value=v;files[_reviewIdx].fields[key]=v}else if(!v){files[_reviewIdx].fields[key]=''}else{ip.value=ff[key]||'';files[_reviewIdx].fields[key]=ff[key]||''};updateReviewTitle();updFill()})}
+    if(sr){ip.addEventListener('blur',()=>{let v=key==='ver'?ip.value.replace(/[^\d.]/g,''):ip.value.replace(/[^\d]/g,'');if(v&&key==='ver'){const d=v.indexOf('.');let intPart=d>=0?v.slice(0,d):v;intPart=intPart.padStart(2,'0');v=d>=0?intPart+v.slice(d):intPart;if(sr.test(v)){ip.value=v;files[_reviewIdx].fields[key]=v}else{ip.value=ff[key]||'';files[_reviewIdx].fields[key]=ff[key]||''}}else if(v&&sr.test(v.padStart(2,'0'))){v=v.padStart(2,'0');ip.value=v;files[_reviewIdx].fields[key]=v}else if(!v){files[_reviewIdx].fields[key]=''}else{ip.value=ff[key]||'';files[_reviewIdx].fields[key]=ff[key]||''};updateReviewTitle();updFill()})}
     const cycleField=(e)=>{if(e.key==='Tab'||e.key==='Enter'){e.preventDefault();const inputs=[...container.querySelectorAll('input:not([readonly])')];const idx=inputs.indexOf(e.target);const next=inputs[(idx+1)%inputs.length];if(next)next.focus()}};
     ip.addEventListener('keydown',cycleField);
   })});
