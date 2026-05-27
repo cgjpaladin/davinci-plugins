@@ -33,6 +33,16 @@ INSTALL_DIR="$HOME/Documents/交付自检工具"
 FUSION_SCRIPTS="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# ── 已安装？只更新 API Key ──
+if [ -f "$INSTALL_DIR/.env" ]; then
+    API_KEY=$(osascript -e 'text returned of (display dialog "已安装。\n\n输入 DeepSeek API Key 更新（留空不修改）\n\n获取地址: platform.deepseek.com → API Keys" default answer "" buttons {"取消", "保存"} default button "保存" with icon note)' 2>/dev/null)
+    if [ -n "$API_KEY" ]; then
+        sed -i '' "s/DEEPSEEK_KEY=.*/DEEPSEEK_KEY=$API_KEY/" "$INSTALL_DIR/.env"
+        osascript -e 'display dialog "API Key 已更新！" buttons {"好的"} default button 1 with icon note'
+    fi
+    exit 0
+fi
+
 echo "→ 安装到 $INSTALL_DIR"
 rm -rf "$INSTALL_DIR" 2>/dev/null
 cp -r "$SCRIPT_DIR/交付自检工具" "$INSTALL_DIR"
