@@ -15,7 +15,7 @@ VSVersionInfo(
       [
         StringTable(
           u'040904B0',
-          [StringStruct(u'CompanyName', u'西安幕屿剧创'),
+          [StringStruct(u'CompanyName', u'上海有点杰奏'),
            StringStruct(u'FileDescription', u'批量命名工具-创壹特供版'),
            StringStruct(u'FileVersion', u'1.0.0'),
            StringStruct(u'InternalName', u'renamer-createone'),
