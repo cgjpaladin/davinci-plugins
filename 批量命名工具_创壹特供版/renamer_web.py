@@ -364,24 +364,53 @@ HTML_FILE_NAME = "renamer_web.html"
 HTML_FILE = os.path.join(_BASE_DIR, HTML_FILE_NAME)
 
 if __name__ == "__main__":
-    import threading, socket, io as _io
-    from bottle import route, run, static_file, request, HTTPError
+    import threading, socket, io as _io, re as _re, urllib.parse as _up
+    from bottle import route, run, static_file, request, HTTPError, response
+
+    # 媒体 MIME 映射（审查模式播放用）
+    _MIME_MAP = {
+        '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.avi': 'video/x-msvideo',
+        '.mkv': 'video/x-matroska', '.mxf': 'application/mxf', '.mts': 'video/mp2t',
+        '.webm': 'video/webm', '.m4v': 'video/mp4', '.flv': 'video/x-flv',
+        '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+        '.bmp': 'image/bmp', '.tiff': 'image/tiff', '.gif': 'image/gif',
+        '.webp': 'image/webp', '.tif': 'image/tiff',
+    }
 
     @route('/')
     def index():
         return static_file(HTML_FILE_NAME, root=_BASE_DIR)
 
-    # 审查模式用：服务本地媒体文件（避免 file:// URL 在 WKWebView 中被拦截）
     @route('/media')
     def serve_media():
-        import urllib.parse
-        p = urllib.parse.unquote(request.query.get('p', ''))
+        """直接文件服务：支持 Range 请求（视频拖动）、正确 MIME 类型"""
+        from bottle import response as _resp
+        p = _up.unquote(request.query.get('p', ''))
         if not p or not os.path.isfile(p):
-            return HTTPError(404, "File not found")
+            _resp.status = 404; return "File not found"
         ext = os.path.splitext(p)[1].lower()
-        if ext not in MEDIA_EXT:
-            return HTTPError(403, "Not a media file")
-        return static_file(os.path.basename(p), root=os.path.dirname(p))
+        mime = _MIME_MAP.get(ext, 'application/octet-stream')
+        size = os.path.getsize(p)
+        _resp.set_header('Accept-Ranges', 'bytes')
+        _resp.set_header('Content-Type', mime)
+        # Range 请求（视频拖动必须）
+        range_header = request.environ.get('HTTP_RANGE', '')
+        if range_header:
+            m = _re.match(r'bytes=(\d+)-(\d*)', range_header)
+            if m:
+                start = int(m.group(1))
+                end = int(m.group(2)) if m.group(2) else size - 1
+                end = min(end, size - 1)
+                length = end - start + 1
+                _resp.status = 206
+                _resp.set_header('Content-Range', f'bytes {start}-{end}/{size}')
+                _resp.set_header('Content-Length', str(length))
+                with open(p, 'rb') as f:
+                    f.seek(start)
+                    return f.read(length)
+        _resp.set_header('Content-Length', str(size))
+        with open(p, 'rb') as f:
+            return f.read()
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(('127.0.0.1', 0))

@@ -19,6 +19,10 @@ os.environ["RESOLVE_SCRIPT_LIB"] = "/Applications/DaVinci Resolve/DaVinci Resolv
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
+# 个人版 fallback：shared/ 在同级目录
+_personal_shared = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shared')
+if not os.path.isdir(sys.path[1]) and os.path.isdir(_personal_shared):
+    sys.path.insert(0, _personal_shared)
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 from fusionscript_loader import bmd
