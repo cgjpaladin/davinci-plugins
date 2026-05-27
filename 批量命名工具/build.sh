@@ -51,6 +51,12 @@ $SYSPY -m PyInstaller \
   --collect-data webview \
   --hidden-import webview \
   --hidden-import bottle \
+  --hidden-import PIL \
+  --hidden-import PIL.Image \
+  --hidden-import PIL.ImageOps \
+  --hidden-import openpyxl \
+  --hidden-import openpyxl.drawing.image \
+  --hidden-import openpyxl.utils.units \
   --noconfirm \
   renamer_web.py
 

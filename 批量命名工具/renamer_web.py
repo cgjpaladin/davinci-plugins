@@ -55,19 +55,6 @@ class RenamerAPI:
             return {"path": result[0]}
         return {"path": ""}
 
-    def normalize_path(self, path):
-        """转换粘贴的路径：smb:// → /Volumes/，去掉尾部文件名"""
-        import re as _re
-        v = str(path).strip()
-        # SMB URL → 本地挂载路径
-        v = _re.sub(r'^smb://[\d.]+/', '/Volumes/', v)
-        # 尾部有扩展名 → 可能是文件路径，取父目录
-        if '.' in os.path.basename(v) and not os.path.isdir(v):
-            parent = os.path.dirname(v)
-            if parent and os.path.isdir(parent):
-                v = parent
-        return {"normalized": v, "exists": os.path.isdir(v)}
-
     def generate_thumbnails(self, paths):
         """用 ffmpeg 提取视频第一帧，逐帧推送到 JS（渐进渲染）"""
         import subprocess, base64, tempfile, shutil, sys, json
@@ -173,10 +160,6 @@ class RenamerAPI:
             _log.info(f"[JS] {msg}")
             return "ok"
         return {"log": list(self._dbg_buf)}
-
-    def echo(self, x):
-        _log.info(f"ECHO: {x!r}")
-        return {"received": x}
 
     def _process_paths(self, paths_):
         _log.info(f"_process_paths: {len(paths_)} paths → scanning")
@@ -430,6 +413,116 @@ class RenamerAPI:
         if archived:
             _undo_stack.append({"type": "archive", "pairs": archived})
         return {"ok": ok, "dup": dup, "fail": fail, "total": len(files), "archived": [{"old": src, "new": dst} for src, dst in archived], "stack_depth": len(_undo_stack)}
+
+    def export_table(self, rows):
+        """生成 xlsx 文件（openpyxl，含嵌入缩略图），返回 base64"""
+        import base64 as _b64, io, re as _re
+        from openpyxl import Workbook
+        from openpyxl.drawing.image import Image as XLImage
+        from openpyxl.utils import get_column_letter
+        from PIL import Image as PILImage
+
+        # ── 列定义（单一事实来源，不再并行维护 HEADERS/KEYS/WIDTHS/NUM_KEYS）──
+        COLUMNS = [
+            {"header":"缩略图",  "key":"thumb",    "width":12, "zfill":False},
+            {"header":"Ep",     "key":"ep",       "width":5,  "zfill":True},
+            {"header":"Sc",     "key":"sc",       "width":5,  "zfill":True},
+            {"header":"Gr",     "key":"gr",       "width":5,  "zfill":True},
+            {"header":"Tk",     "key":"tk",       "width":5,  "zfill":True},
+            {"header":"描述",    "key":"desc",     "width":15, "zfill":False},
+            {"header":"制作方式", "key":"method",   "width":10, "zfill":False},
+            {"header":"制作者",   "key":"author",   "width":10, "zfill":False},
+            {"header":"v",      "key":"ver",      "width":5,  "zfill":True},
+            {"header":"通过情况", "key":"status",   "width":6,  "zfill":False},
+            {"header":"文件名",   "key":"_newname", "width":45, "zfill":False},
+        ]
+
+        # ── 从 FIELD_CONFIG 推导（不手写第二份）──
+        _PFX = {fd["key"]: fd["name"] for fd in FIELD_CONFIG if fd.get("name")}
+        _FIELDS = [fd["key"] for fd in FIELD_CONFIG]
+
+        # ── 布局常量 ──
+        THUMB_W, THUMB_H_MAX = 72, 60
+        DEFAULT_ROW_H = 15
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "文件列表"
+
+        # 表头 + 列宽 + 冻结首行
+        for ci, col in enumerate(COLUMNS):
+            ws.cell(row=1, column=ci+1, value=col["header"])
+            ws.column_dimensions[get_column_letter(ci+1)].width = col["width"]
+        ws.freeze_panes = 'A2'
+
+        # 数据行
+        for rn, row in enumerate(rows):
+            row_h = DEFAULT_ROW_H
+            for ci, col in enumerate(COLUMNS):
+                k = col["key"]
+                if k == 'thumb':
+                    thumb = row.get('thumb', '')
+                    if thumb and thumb.startswith('data:image/'):
+                        m = _re.match(r'data:image/(\w+);base64,(.+)', thumb)
+                        if m:
+                            data = _b64.b64decode(m.group(2))
+                            try:
+                                pil = PILImage.open(io.BytesIO(data))
+                                pw, ph = pil.size
+                                ratio = pw / ph if ph else 1
+                                img = XLImage(io.BytesIO(data))
+                                if ratio >= 1:
+                                    img.width = THUMB_W
+                                    img.height = max(1, int(THUMB_W / ratio))
+                                else:
+                                    img.height = THUMB_H_MAX
+                                    img.width = max(1, int(THUMB_H_MAX * ratio))
+                                import openpyxl.utils.units as oxu
+                                row_pt = oxu.pixels_to_points(img.height) + 4
+                                row_h = max(row_h, row_pt)
+                            except Exception:
+                                img = XLImage(io.BytesIO(data))
+                                img.width = 60; img.height = 45
+                                row_h = max(row_h, 50)
+                            img.anchor = f'{get_column_letter(ci+1)}{rn+2}'
+                            ws.add_image(img)
+                elif k == '_newname':
+                    parts = []
+                    for fk in _FIELDS:
+                        fv = str(row.get(fk, ''))
+                        if fv:
+                            pfx = _PFX.get(fk, '')
+                            parts.append(f'{pfx}{fv}' if pfx else fv)
+                    name = '_'.join(parts)
+                    ws.cell(row=rn+2, column=ci+1, value=name + str(row.get('ext', '')))
+                else:
+                    val = str(row.get(k, ''))
+                    if col.get("zfill") and val:
+                        ws.cell(row=rn+2, column=ci+1, value=val.zfill(2))
+                    else:
+                        ws.cell(row=rn+2, column=ci+1, value=val)
+            ws.row_dimensions[rn+2].height = row_h
+
+        buf = io.BytesIO()
+        wb.save(buf)
+        return {'data': _b64.b64encode(buf.getvalue()).decode('ascii'), 'type': 'xlsx'}
+
+    def save_file(self, data, default_name):
+        """打开原生保存对话框，写入文件。返回 {ok: true/false, path: '...'}"""
+        import base64 as _b64
+        result = _window.create_file_dialog(
+            webview.SAVE_DIALOG, save_filename=default_name,
+            file_types=("Excel 文件 (*.xlsx)",),
+        )
+        if not result:
+            return {"ok": False, "path": ""}
+        try:
+            with open(result, "wb") as f:
+                f.write(_b64.b64decode(data))
+            return {"ok": True, "path": result}
+        except Exception as e:
+            _log.warning(f"save_file failed: {e}")
+            return {"ok": False, "path": result}
 
 
 # 自动检测打包后的 HTML 文件（支持卡片版/表格版）

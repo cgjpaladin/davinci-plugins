@@ -1,6 +1,7 @@
-const APP_VERSION='3.3';
+const APP_VERSION='3.4';
 const APP_BRANCH='';
 const APP_BUILD_TIME='';
+const EXPORT_FILENAME_PREFIX='批量命名导出_';
 // ═══ 立即执行 — 确认脚本加载 ═══
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('debugMode').textContent='JS ✓';
@@ -14,7 +15,7 @@ window.onerror=function(m,s,l,c,e){const msg='JS错误: '+(m||'未知')+' @ '+(s
 window.addEventListener('unhandledrejection',e=>{const msg='Promise错误: '+e.reason;toast(msg);call('debug_log',msg)});
 const _origErr=console.error;console.error=function(...a){_origErr.apply(console,a);call('debug_log','CONSOLE: '+a.join(' '))};
 
-let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
+let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, undoAvail=false, _thumbs={};
 let _sortKey=null,_sortAsc=true;
 const _sortKeys={base:'basename',ep:'ep',sc:'sc',gr:'gr',tk:'tk',desc:'desc',method:'method',author:'author',ver:'ver',status:'status'};
 function applySort(){if(!_sortKey||!files.length)return;const key=_sortKeys[_sortKey]||_sortKey;if(key==='basename'){files.sort((a,b)=>(a.basename||'').localeCompare(b.basename||''));if(!_sortAsc)files.reverse();return}const s0=files[0].fields[key];const cmp=typeof s0==='string'?((a,b)=>(a.fields[key]||'').localeCompare(b.fields[key]||'')):((a,b)=>parseInt(a.fields[key]||0)-parseInt(b.fields[key]||0));files.sort((a,b)=>_sortAsc?cmp(a,b):cmp(b,a))}
@@ -81,6 +82,7 @@ async function init(){
   window._fieldKeysAll=_allFields.filter(f=>f.key!=='tk').map(f=>f.key);
   window._fieldLabels={};_allFields.forEach(f=>{window._fieldLabels[f.key]=f.label});
   dm.textContent = cfg.dev ? ('🔧 '+APP_VERSION) : '📋';
+  const vl = document.getElementById('versionLabel'); if(vl) vl.textContent = 'v' + APP_VERSION;
   dm.onclick = () => {
     window.pywebview.api.debug_log('').then(r => {
       const text = (r.log||[]).join('\n');
@@ -170,7 +172,6 @@ let _reservedDesc=new Set();
 function onMethodChange(oldMethod, newMethod, ri){
   const m = newMethod;
   const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
-  descLocked = cfg.mode === 'locked';
   const rows = sel.size > 0 ? [...sel] : (ri !== undefined ? [ri] : []);
   const changedRows = rows.filter(r => files[r] && files[r].fields.method === oldMethod && oldMethod !== m);
   call('debug_log',`onMethodChange: rows=${rows.length} sel=${sel.size} changed=${changedRows.length} old='${oldMethod||'(空)'}' new='${m||'(空)'}'`);
@@ -241,11 +242,13 @@ function renderList(force){
       tr.className = ''; tr.dataset.index = i; tr.dataset.path = f.path;
       if(sel.has(i)) tr.classList.add('sel');
       const ff = {...f.fields, tk: _computeTK(i)};
-      const ready = ff.ep && ff.sc && ff.gr && ff.desc && ff.author && ff.method && ff.ver && ff.status;
+      const fieldKeys = window._fieldKeysAll || ['ep','sc','gr','desc','method','author','ver','status'];
+      const ready = fieldKeys.every(k => ff[k]);
       tr.classList.add(ready?'rdy':'mis');
       if(f.archived) tr.classList.add('archived');
-      const fillCount = [ff.ep, ff.sc, ff.gr, ff.desc, ff.method, ff.author, ff.ver, ff.status].filter(Boolean).length;
-      tr.classList.add(fillCount === 8 ? 'row-full' : fillCount >= 5 ? 'row-most' : 'row-empty');
+      const nFields = fieldKeys.length;
+      const fillCount = fieldKeys.filter(k => ff[k]).length;
+      tr.classList.add(fillCount === nFields ? 'row-full' : fillCount >= Math.ceil(nFields/2) ? 'row-most' : 'row-empty');
       const tags = f.tags||[];
       if(tags.length) tr.classList.add('warn');
       if(tags.includes('zero')) tr.classList.add('warn-zero');
@@ -260,13 +263,15 @@ function _buildRow(f,i){
   const tr = document.createElement('tr');
   tr.dataset.index = i; tr.dataset.path = f.path;
   const ff = {...f.fields, tk: _computeTK(i)};
-  const ready = ff.ep && ff.sc && ff.gr && ff.desc && ff.author && ff.method && ff.ver && ff.status;
+  const fieldKeys = window._fieldKeysAll || ['ep','sc','gr','desc','method','author','ver','status'];
+  const nFields = fieldKeys.length;
+  const ready = fieldKeys.every(k => ff[k]);
   if(sel.has(i)) tr.classList.add('sel');
   tr.classList.add(ready?'rdy':'mis');
   if(f.archived) tr.classList.add('archived');
   // 行完成度色条
-  const fillCount = [ff.ep, ff.sc, ff.gr, ff.desc, ff.method, ff.author, ff.ver, ff.status].filter(Boolean).length;
-  tr.classList.add(fillCount === 8 ? 'row-full' : fillCount >= 5 ? 'row-most' : 'row-empty');
+  const fillCount = fieldKeys.filter(k => ff[k]).length;
+  tr.classList.add(fillCount === nFields ? 'row-full' : fillCount >= Math.ceil(nFields/2) ? 'row-most' : 'row-empty');
   const tags = f.tags||[];
   if(tags.length) tr.classList.add('warn');
   if(tags.includes('zero')) tr.classList.add('warn-zero');
@@ -601,7 +606,8 @@ function activateEdit(td, key, i){
   }
 }
 function updCount(){
-  let ok2=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)ok2++});document.getElementById('fileCount').innerHTML=`文件列表 · <span style="color:var(--green)">${ok2}</span>/${files.length} 就绪  ·  选中 ${sel.size}`;
+  const keys=window._fieldKeysAll||['ep','sc','gr','desc','method','author','ver','status'];
+  let ok2=0;files.forEach(f=>{const ff=f.fields;if(keys.every(k=>ff[k]))ok2++});document.getElementById('fileCount').innerHTML=`文件列表 · <span style="color:var(--green)">${ok2}</span>/${files.length} 就绪  ·  选中 ${sel.size}`;
 }
 
 function updButtons(){
@@ -617,7 +623,7 @@ function updButtons(){
   // 全就绪
   if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，可以重命名  ·  Ctrl+Enter 重命名');return}
   // 全部就绪但未选中 → 绿色
-  let allOk=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)allOk++});
+  let allOk=0;const fks=window._fieldKeysAll||['ep','sc','gr','desc','method','author','ver','status'];files.forEach(f=>{const ff=f.fields;if(fks.every(k=>ff[k]))allOk++});
   if(allOk===files.length&&files.length>0){dot.style.background='var(--green)';setStatus('全部就绪 · 选中文件后重命名  ·  Ctrl+Enter');return}
   // 混合态标注（与缺失区分）
   const missing=[];
@@ -628,7 +634,7 @@ function updButtons(){
   for(const t of files){if(t.tags&&t.tags.length)warn.push(...t.tags)}
   if(warn.length){const wl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};dot.style.background='var(--red)';setStatus('⚠ '+[...new Set(warn)].map(w=>wl[w]||w).join(' · '));return}
   dot.style.background='var(--yellow)';
-  let t_ok=0;files.forEach(f=>{const ff=f.fields;if(ff.ep&&ff.sc&&ff.gr&&ff.desc&&ff.author&&ff.method&&ff.ver&&ff.status)t_ok++});
+  let t_ok=0;files.forEach(f=>{const ff=f.fields;if(fks.every(k=>ff[k]))t_ok++});
   let msg=missing.length?('双击单元格编辑 · 缺失: '+missing.join(' · ')):'';
   if(!msg)msg='就绪  ·  Ctrl+Z 撤销';
   setStatus(msg+'  ·  '+t_ok+'/'+files.length+' 就绪');
@@ -732,18 +738,33 @@ async function doArchive(){
   let m=`归档完成 ${r.ok} 个`;if(r.dup>0)m+=` · ${r.dup} 个重复已跳过`;if(r.fail&&r.fail.length>0)m+=` · ${r.fail.length} 失败`;toast(m);result(m);
   renderList();updButtons();
 }
+// ═══ Excel 导出 ═══
+async function exportExcel(){
+  if(files.length===0){toast('无文件可导出');return}
+  toast('生成中…');call('debug_log','exportExcel: '+files.length+' files');
+  const fieldKeys=window._fieldKeysAll||['ep','sc','gr','desc','method','author','ver','status'];
+  const rows=files.map((f,i)=>{
+    const ff=f.fields;
+    const row={ext:f.ext||'',thumb:_thumbs[f.path]||''};
+    for(const k of fieldKeys) row[k]=ff[k]||'';
+    row.tk=buildTK(i);  // tk 由 buildTK 计算，不从 ff 读
+    return row;
+  });
+  try{
+    const r=await call('export_table',rows);
+    if(!r||!r.data){toast('生成失败');return}
+    const dn=EXPORT_FILENAME_PREFIX+new Date().toISOString().slice(0,10)+'.xlsx';
+    const sv=await call('save_file',r.data,dn);
+    if(sv&&sv.ok){toast('已保存: '+sv.path.split('/').pop());call('debug_log','exportExcel: saved to '+sv.path)}
+    else{toast('取消导出')}
+  }catch(e){toast('导出失败: '+e.message)}
+}
 // ═══ Thumbnails ═══
 async function loadThumbs(){
   const paths=files.map(f=>f.path);
   call('debug_log','loadThumbs: '+paths.length+' files');
   const r=await call('generate_thumbnails',paths);
   call('debug_log','loadThumbs done: '+(r?r.total:0)+' thumbs');
-}
-
-async function loadThumbsEx(paths){
-  call('debug_log','loadThumbsEx: '+paths.length+' files');
-  const r=await call('generate_thumbnails',paths);
-  call('debug_log','loadThumbsEx done: '+(r?r.total:0)+' thumbs');
 }
 
 function setThumb(path,thumb){
@@ -845,6 +866,7 @@ document.getElementById('btnAddBig').addEventListener('click',addFiles);
 document.getElementById('btnRename').addEventListener('click',doRename);
 document.getElementById('btnArchive').addEventListener('click',doArchive);
 document.getElementById('btnUndo').addEventListener('click',doUndo);
+document.getElementById('btnExport').addEventListener('click',exportExcel);
 
 // 缩放滑块
 const zs=document.getElementById('zoomSlider'),zl=document.getElementById('zoomLabel');
@@ -914,7 +936,6 @@ function _runSelfTest(){
   t('methodDescMap',()=>{if(Object.keys(methodDescMap).length<3)throw new Error('methodDescMap empty')});
   t('_nameFmt',()=>{if(!Array.isArray(_nameFmt))throw new Error('_nameFmt not array')});
   t('_reservedDesc',()=>{if(_reservedDesc.size<3)throw new Error('_reservedDesc empty')});
-  t('descLocked boolean',()=>{if(typeof descLocked!=='boolean')throw new Error('descLocked not bool')});
   t('DIGIT_RULES',()=>{if(!DIGIT_RULES.ep)throw new Error('DIGIT_RULES missing')});
   t('_computeTK',()=>{
     files=[{fields:{ep:'01',sc:'01',gr:'01',desc:'A',method:'X',ver:'01'}}];

@@ -123,6 +123,14 @@ body{
 .hero-undo:disabled{color:#4a4a4a;cursor:not-allowed}
 .hero-undo:disabled:hover{color:#4a4a4a;border-color:var(--border)}
 
+.hero-export{
+  flex-shrink:0;padding:6px 8px;background:transparent;color:var(--text-dim);
+  border:1px solid var(--border);border-radius:var(--radius);
+  font-family:var(--font-ui);font-size:var(--fs-sm);cursor:pointer;
+  white-space:nowrap;transition:all .15s;
+}
+.hero-export:hover{color:var(--text);border-color:var(--green)}
+
 /* ── File Section ── */
 .file-section{
   flex:1;display:flex;flex-direction:column;border-bottom:1px solid var(--border);

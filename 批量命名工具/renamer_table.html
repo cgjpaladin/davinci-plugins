@@ -27,6 +27,7 @@
   <button class="hero-btn" id="btnRename" disabled>批量重命名</button>
   <button class="hero-archive" id="btnArchive" disabled>批量归档</button>
   <button class="hero-undo" id="btnUndo" disabled>↩ 撤销</button>
+  <button class="hero-export" id="btnExport" title="导出 Excel (含缩略图)">导出为表格</button>
 </div>
 
 <!-- File List -->
@@ -62,7 +63,7 @@
 <!-- Status Bar -->
 <div class="statusbar">
   <span class="sb-left"><span class="sb-dot"></span> <span id="statusText">就绪  ·  Ctrl+Z 撤销  ·  Del 移除</span><span id="resultMsg"></span></span>
-  <span>裁缝老师的达芬奇插件工坊 · v3.3</span>
+  <span>裁缝老师的达芬奇插件工坊 · <span id="versionLabel">v3.4</span></span>
 </div>
 
 <!-- Overlays -->

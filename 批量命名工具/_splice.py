@@ -4,7 +4,7 @@
     python3 _splice.py           # 卡片版 (默认)
     python3 _splice.py table     # 表格版
 """
-import subprocess, os, sys
+import subprocess, os, sys, re
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(BASE)
@@ -32,7 +32,7 @@ try:
 except:
     h = 'dev'; b = '?'
 ts = datetime.now().strftime('%m-%d %H:%M')
-js = js.replace("const APP_VERSION='3.3'", f"const APP_VERSION='{h}'")
+js = re.sub(r"const APP_VERSION='[^']*'", f"const APP_VERSION='{h}'", js)
 js = js.replace("const APP_BRANCH=''", f"const APP_BRANCH='{b}'")
 js = js.replace("const APP_BUILD_TIME=''", f"const APP_BUILD_TIME='{ts}'")
 
