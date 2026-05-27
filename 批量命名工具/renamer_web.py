@@ -425,14 +425,14 @@ class RenamerAPI:
         # ── 列定义（单一事实来源，不再并行维护 HEADERS/KEYS/WIDTHS/NUM_KEYS）──
         COLUMNS = [
             {"header":"缩略图",  "key":"thumb",    "width":12, "zfill":False},
-            {"header":"Ep",     "key":"ep",       "width":5,  "zfill":True},
-            {"header":"Sc",     "key":"sc",       "width":5,  "zfill":True},
-            {"header":"Gr",     "key":"gr",       "width":5,  "zfill":True},
-            {"header":"Tk",     "key":"tk",       "width":5,  "zfill":True},
+            {"header":"集数",    "key":"ep",       "width":5,  "zfill":True},
+            {"header":"场次",    "key":"sc",       "width":5,  "zfill":True},
+            {"header":"小场次",  "key":"gr",       "width":5,  "zfill":True},
+            {"header":"次数",    "key":"tk",       "width":5,  "zfill":True},
             {"header":"描述",    "key":"desc",     "width":15, "zfill":False},
             {"header":"制作方式", "key":"method",   "width":10, "zfill":False},
             {"header":"制作者",   "key":"author",   "width":10, "zfill":False},
-            {"header":"v",      "key":"ver",      "width":5,  "zfill":True},
+            {"header":"版本",    "key":"ver",      "width":5,  "zfill":True},
             {"header":"通过情况", "key":"status",   "width":6,  "zfill":False},
             {"header":"文件名",   "key":"_newname", "width":45, "zfill":False},
         ]
