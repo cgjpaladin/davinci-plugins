@@ -17,7 +17,7 @@ try:
 except:
     h = 'dev'; b = '?'
 ts = datetime.now().strftime('%m-%d %H:%M')
-js = re.sub(r"const APP_VERSION='[^']*'", f"const APP_VERSION='{h}'", js)
+js = re.sub(r"const APP_GIT_HASH=''", f"const APP_GIT_HASH='{h}'", js)
 js = js.replace("const APP_BRANCH=''", f"const APP_BRANCH='{b}'")
 js = js.replace("const APP_BUILD_TIME=''", f"const APP_BUILD_TIME='{ts}'")
 js = js.replace("const IS_PRODUCTION=false", "const IS_PRODUCTION=true")

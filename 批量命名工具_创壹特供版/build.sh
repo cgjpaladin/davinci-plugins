@@ -30,6 +30,7 @@ python3 _splice.py
 # 打包（使用系统 Python，避开沙箱限制）
 $SYSPY -m PyInstaller \
   --onedir --windowed \
+  --clean --strip --noupx \
   --name "批量命名工具-创壹特供版" \
   --icon app_icon.icns \
   --add-data "$HTML_BUNDLE:." \
@@ -37,6 +38,7 @@ $SYSPY -m PyInstaller \
   --add-binary "$(which ffmpeg || echo /opt/homebrew/bin/ffmpeg):." \
   --add-binary "$(which ffprobe || echo /opt/homebrew/bin/ffprobe):." \
   --collect-data webview \
+  --collect-all openpyxl \
   --hidden-import webview \
   --hidden-import bottle \
   --hidden-import PIL \
@@ -67,3 +69,19 @@ assert 'DIGIT_RULES' in h, 'JS missing'
 else
   echo "❌ 打包异常：CSS/JS 未嵌入！"; exit 1
 fi
+
+# ══════════════════════════════════════════════════
+# Windows 构建参考（在 PC 上执行）
+# ══════════════════════════════════════════════════
+# py -3.11 -m PyInstaller \
+#   --onefile --noconsole --clean --strip --noupx \
+#   --name "批量命名工具-创壹特供版" \
+#   --icon app_icon.ico --version-file version_info.txt \
+#   --add-data "_build/renamer_web.html;." --add-data "../shared;shared" \
+#   --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." \
+#   --hidden-import webview --hidden-import webview.platforms.edgechromium \
+#   --hidden-import clr --hidden-import bottle \
+#   --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageOps \
+#   --hidden-import openpyxl --hidden-import openpyxl.utils --hidden-import openpyxl.drawing.image \
+#   --collect-all webview --collect-all clr --collect-all bottle --collect-all openpyxl \
+#   --noconfirm renamer_web.py

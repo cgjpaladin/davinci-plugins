@@ -44,6 +44,7 @@ python3 _splice.py "$VARIANT"
 # 打包（使用系统 Python，避开沙箱限制）
 $SYSPY -m PyInstaller \
   --onedir --windowed \
+  --clean --strip --noupx \
   --name "批量命名工具" \
   --icon app_icon.icns \
   --add-data "$HTML_BUNDLE:." \
@@ -57,6 +58,7 @@ $SYSPY -m PyInstaller \
   --hidden-import openpyxl \
   --hidden-import openpyxl.drawing.image \
   --hidden-import openpyxl.utils.units \
+  --collect-all openpyxl \
   --noconfirm \
   renamer_web.py
 
@@ -76,3 +78,18 @@ assert 'DIGIT_RULES' in h or 'activateEdit' in h, 'JS missing'
 else
   echo \"❌ 打包异常：CSS/JS 未嵌入！\"; exit 1
 fi
+
+# ══════════════════════════════════════════════════
+# Windows 构建参考（在 PC 上执行）
+# ══════════════════════════════════════════════════
+# py -3.11 -m PyInstaller \
+#   --onefile --noconsole --clean --strip --noupx \
+#   --name "批量命名工具" \
+#   --icon app_icon.ico --version-file version_info.txt \
+#   --add-data "_build/renamer_table.html;." --add-data "../shared;shared" \
+#   --hidden-import webview --hidden-import webview.platforms.edgechromium \
+#   --hidden-import bottle \
+#   --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageOps \
+#   --hidden-import openpyxl --hidden-import openpyxl.utils --hidden-import openpyxl.drawing.image \
+#   --collect-all webview --collect-all bottle --collect-all openpyxl \
+#   --noconfirm renamer_web.py

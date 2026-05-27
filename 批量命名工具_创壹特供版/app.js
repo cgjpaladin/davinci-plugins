@@ -1,4 +1,5 @@
-const APP_VERSION='DEV';
+const APP_VERSION='1.1';
+const APP_GIT_HASH='';
 const APP_BRANCH='';
 const APP_BUILD_TIME='';
 const IS_PRODUCTION=false;

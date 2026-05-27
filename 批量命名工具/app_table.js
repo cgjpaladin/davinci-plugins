@@ -1,4 +1,5 @@
 const APP_VERSION='3.4';
+const APP_GIT_HASH='';
 const APP_BRANCH='';
 const APP_BUILD_TIME='';
 const EXPORT_FILENAME_PREFIX='批量命名导出_';
