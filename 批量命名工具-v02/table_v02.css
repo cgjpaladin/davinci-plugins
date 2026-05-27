@@ -1,48 +1,57 @@
-/* 批量命名工具 v4.0 — Handsontable 版 */
+/* 批量命名工具 v4.0 — 飞书暗黑风格 */
 :root {
-  --bg: #0d0d12;
-  --titlebar-bg: #1a1a24;
-  --accent: #6366f1;
-  --accent-dim: #4f46e5;
-  --text: #e0e0e0;
-  --text-dim: #666;
-  --border: #1e2028;
-  --green: #22c55e;
-  --red: #8b3030;
-  --yellow: #a07020;
-  --radius: 6px;
+  --bg: #1b1c1e;
+  --bg-alt: #202124;
+  --titlebar-bg: #161719;
+  --accent: #3370ff;
+  --accent-dim: #2856cc;
+  --text: #d0d0d6;
+  --text-dim: #6b6d75;
+  --text-secondary: #94959b;
+  --border: #2c2d30;
+  --border-light: #252628;
+  --green: #34a853;
+  --red: #c95a5a;
+  --yellow: #a08030;
+  --radius: 4px;
   --fs-sm: 11px;
+  --cell-hover: #252628;
+  --sel-bg: rgba(51,112,255,.08);
+  --sel-border: #3370ff;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);overflow:hidden;-webkit-font-smoothing:antialiased}
 .app{display:flex;flex-direction:column;height:100vh}
 
-/* Titlebar */
+/* Titlebar — 飞书风格深色 */
 .titlebar{
-  background:var(--titlebar-bg);padding:6px 12px;
-  display:flex;align-items:center;gap:8px;font-size:11px;
-  -webkit-app-region:drag;user-select:none;flex-shrink:0;
+  background:var(--titlebar-bg);padding:8px 14px;
+  display:flex;align-items:center;gap:10px;font-size:12px;font-weight:500;
+  color:var(--text-secondary);-webkit-app-region:drag;user-select:none;flex-shrink:0;
+  border-bottom:1px solid var(--border-light);
 }
-.tb-dots{display:flex;gap:4px;margin-right:4px}
-.tb-dot{width:6px;height:6px;border-radius:50%}
-.tb-dot.a{background:#6366f1}
-.tb-dot.b{background:#2d2d3a}
-.debug{color:#444;font-size:9px;cursor:pointer;-webkit-app-region:no-drag;margin-left:auto}
+.tb-dot{width:7px;height:7px;border-radius:50%}
+.tb-dot.a{background:var(--accent)}
+.tb-dot.b{background:#3a3b3f}
+.debug{color:#4a4b50;font-size:9px;cursor:pointer;-webkit-app-region:no-drag;margin-left:auto}
+.debug:hover{color:var(--text-dim)}
 
-/* Toolbar */
+/* Toolbar — 极简 */
 .toolbar{
-  display:flex;align-items:center;gap:6px;
-  padding:4px 12px;border-bottom:1px solid var(--border);
-  flex-shrink:0;flex-wrap:wrap;
+  display:flex;align-items:center;gap:4px;
+  padding:6px 14px;flex-shrink:0;border-bottom:1px solid var(--border-light);
+  background:var(--bg-alt);
 }
 .toolbar button{
-  background:var(--titlebar-bg);color:var(--text-dim);
-  border:1px solid var(--border);border-radius:var(--radius);
+  background:transparent;color:var(--text-secondary);
+  border:1px solid transparent;border-radius:var(--radius);
   padding:4px 10px;font-size:var(--fs-sm);cursor:pointer;white-space:nowrap;
+  transition:all .15s;
 }
-.toolbar button:hover{color:var(--text);border-color:var(--accent-dim)}
-.toolbar button:disabled{opacity:.3;cursor:default}
-.toolbar-sep{width:1px;height:16px;background:var(--border);margin:0 4px}
+.toolbar button:hover{background:rgba(255,255,255,.06);color:var(--text);border-color:var(--border)}
+.toolbar button:active{background:rgba(255,255,255,.1)}
+.toolbar button:disabled{opacity:.25;cursor:default}
+.toolbar-sep{width:1px;height:14px;background:var(--border);margin:0 6px;opacity:.5}
 
 /* Table area */
 .table-area{flex:1;overflow:hidden;position:relative}
@@ -50,23 +59,77 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .empty-msg{
   position:absolute;inset:0;display:none;
   align-items:center;justify-content:center;
-  color:var(--text-dim);font-size:13px;
+  color:var(--text-dim);font-size:14px;letter-spacing:.04em;
 }
 .empty-msg.show{display:flex}
 
-/* Statusbar */
+/* Statusbar — 飞书风格底部栏 */
 .statusbar{
   display:flex;align-items:center;justify-content:space-between;
-  padding:3px 12px;border-top:1px solid var(--border);
+  padding:5px 14px;border-top:1px solid var(--border-light);
   font-size:10px;color:var(--text-dim);flex-shrink:0;
+  background:var(--titlebar-bg);
 }
 .sb-left{display:flex;align-items:center;gap:8px}
 
-/* Handsontable overrides */
-.ht_master .wtHolder{background:var(--bg)!important}
-.handsontable th{background:var(--titlebar-bg)!important;color:var(--text-dim)!important;font-size:10px!important;font-weight:500!important}
-.handsontable td{background:var(--bg)!important;color:var(--text)!important;font-size:13px!important;border-color:var(--border)!important}
-.handsontable tr th{border-color:var(--border)!important}
-.handsontable .htDimmed{color:#3a3a3a!important}
-.handsontable .current{background:#1a1a2e!important}
-.handsontable .area{background:rgba(99,102,241,.08)!important}
+/* ═══ Handsontable 飞书暗黑重写 ═══ */
+.handsontable{
+  --ht-font-size:13px;
+  --ht-line-height:1.4;
+  --ht-font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  --ht-font-weight:400;
+  --ht-letter-spacing:0;
+  color:var(--text);
+}
+
+/* 表头 */
+.handsontable th{
+  background:var(--bg-alt)!important;
+  color:var(--text-dim)!important;
+  font-size:10.5px!important;font-weight:500!important;
+  padding:6px 10px!important;
+  border-color:var(--border-light)!important;
+  border-bottom:1px solid var(--border)!important;
+  text-align:left!important;
+}
+.handsontable th:hover{color:var(--text-secondary)!important}
+
+/* 单元格 */
+.handsontable td{
+  background:var(--bg)!important;
+  color:var(--text)!important;
+  font-size:13px!important;
+  padding:5px 10px!important;
+  border-color:var(--border-light)!important;
+  border-style:solid!important;
+  border-width:0 1px 1px 0!important;
+  vertical-align:middle!important;
+}
+
+/* 偶数行微差分 */
+.handsontable tr:nth-child(even) td{background:#1e1f21!important}
+
+/* 选中格 */
+.handsontable .current{
+  outline:2px solid var(--sel-border)!important;
+  outline-offset:-1px!important;
+  background:var(--sel-bg)!important;
+}
+
+/* 选中区域 */
+.handsontable .area{background:var(--sel-bg)!important;border:none!important}
+
+/* 悬停行 */
+.handsontable tbody tr:hover td{background:var(--cell-hover)!important}
+
+/* 只读/禁用 */
+.handsontable .htDimmed{color:#4a4b50!important}
+
+/* 下拉箭头 */
+.handsontable .changeType{background:transparent!important;border:none!important}
+
+/* 卷轴 */
+.ht_master .wtHolder::-webkit-scrollbar{width:6px;height:6px}
+.ht_master .wtHolder::-webkit-scrollbar-track{background:transparent}
+.ht_master .wtHolder::-webkit-scrollbar-thumb{background:#3a3b3f;border-radius:3px}
+.ht_master .wtHolder::-webkit-scrollbar-thumb:hover{background:#5a5b5f}

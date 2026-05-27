@@ -699,7 +699,7 @@ async function exportExcel(){
   toast('生成中…');call('debug_log','exportExcel: '+files.length+' files');
   const rows=files.map((f,i)=>{
     const ff=f.fields;const tk=buildTK(i);
-    return {no:i+1,basename:f.basename,ep:ff.ep||'',sc:ff.sc||'',shot:ff.shot||'',tk:tk,desc:ff.desc||'',type:ff.type||'',author:ff.author||'',ver:ff.ver||'',status:ff.status||'',thumb:_thumbs[f.path]||''};
+    return {no:i+1,basename:f.basename,ep:ff.ep||'',sc:ff.sc||'',shot:ff.shot||'',tk:tk,desc:ff.desc||'',type:ff.type||'',author:ff.author||'',ver:ff.ver||'',status:ff.status||'',ext:f.ext||'',thumb:_thumbs[f.path]||''};
   });
   try{
     const r=await call('export_table',rows);
