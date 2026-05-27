@@ -42,7 +42,7 @@ function call(m,...a){
 }
 function mock(m,...a){
   return new Promise(r=>{
-    const cfg_fields=[{key:'ep',label:'集数',def:'',hint:'01'},{key:'sc',label:'场次',def:'',hint:'01'},{key:'shot',label:'镜号',def:'',hint:'01'},{key:'desc',label:'镜头描述',def:'',hint:'仅图片'},{key:'type',label:'类型',def:''},{key:'author',label:'制作者',def:'',hint:'英文姓名'},{key:'ver',label:'版本号',def:'01',hint:'01'},{key:'status',label:'状态',def:'',dv:['请选择','OK','KP','NG']}];
+    const cfg_fields=[{key:'ep',label:'集数',def:'',hint:'01'},{key:'sc',label:'场次',def:'',hint:'01'},{key:'shot',label:'镜号',def:'',hint:'01'},{key:'desc',label:'镜头描述',def:'',desc_only:true,hint:'仅图片'},{key:'type',label:'类型',def:''},{key:'author',label:'制作者',def:'',hint:'英文姓名'},{key:'ver',label:'版本号',def:'01',hint:'01'},{key:'status',label:'状态',def:'',dv:['请选择','OK','KP','NG']}];
     const fmt=[{pfx:'EP',key:'ep'},{pfx:'SC',key:'sc'},{pfx:'SH',key:'shot'},{pfx:'TK',key:'tk'},{pfx:'',key:'desc'},{pfx:'',key:'type'},{pfx:'',key:'author'},{pfx:'V',key:'ver'},{pfx:'',key:'status'}];
     switch(m){
       case'get_config':r({fields:cfg_fields,defaults:{},name_format:fmt,dev:true});break;
@@ -362,7 +362,7 @@ async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.f
 function _toastResult(r){let m=`已追加 ${r.total} 个文件`;if(r.skipped)m+=` · ${r.skipped} 个格式不支持`;if(r.duplicates)m+=` · ${r.duplicates} 个重复跳过`;if(r.subdirs_skipped)m+=` · ${r.subdirs_skipped} 个子文件夹跳过`;if(r.truncated)m+=` (上限${r.max}个)`;toast(m)}
 
 async function doRename(){
-  if(sel.size===0)return;
+  if(sel.size===0){toast('未选中文件');return;}
   const srt=[...sel].sort((a,b)=>a-b);
   const sfs=srt.map((i,p)=>{const f={...files[i]};f.fields={...f.fields,tk:buildTK(i)};return f});
   const nm=buildName(sfs[0].fields)+sfs[0].ext;
@@ -555,12 +555,12 @@ function buildReviewFields(ff,isVideo){
   const fields=[
     [{key:'ep',label:'EP',w:1,attr:'inputmode=numeric maxlength=3'},{key:'sc',label:'SC',w:1,attr:'inputmode=numeric maxlength=2'},{key:'shot',label:'SH',w:1,attr:'placeholder=\"点击编辑多镜号\" readonly onclick=\"reviewShotEdit(this)\"'},{key:'ver',label:'V',w:1,attr:'inputmode=numeric maxlength=2'}],
     [{key:'author',label:'作者',w:2,attr:'placeholder=\"英文姓名\"'}],
-    [{key:'desc',label:'描述',w:2,attr:'placeholder=\"镜头描述\"'+(isVideo?' readonly':'')}],
+    [{key:'desc',label:'描述',w:2,attr:isVideo?'readonly':'placeholder=\"镜头描述\"'}],
   ];
   fields.forEach(row=>{row.forEach(fd=>{
     const wrap=document.createElement('div');wrap.className=fd.w>1?'rf-full':'';
     const lb=document.createElement('label');lb.textContent=fd.label;wrap.appendChild(lb);
-    const ip=document.createElement('input');ip.value=ff[fd.key]||'';
+    const ip=document.createElement('input');ip.value=(fd.key==='desc'&&isVideo)?'视频无需描述':(ff[fd.key]||'');
     if(fd.attr){const attrs=fd.attr.split(' ');attrs.forEach(a=>{const[ak,av]=a.split('=');if(av)ip.setAttribute(ak,av.replace(/"/g,''));else ip.setAttribute(ak,'')})}
     wrap.appendChild(ip);container.appendChild(wrap);
     // 事件
