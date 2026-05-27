@@ -669,13 +669,12 @@ async function doRename(){
   renderList();updButtons();
 }
 function buildTK(i){
-  const fs=files[i].fields;
-  const k=fs.ep+'|'+fs.sc+'|'+fs.gr+'|'+(fs.desc||'')+'|'+(fs.method||'')+'|'+fs.ver;
+  const f=files[i];
+  const k=f.fields.ep+'|'+f.fields.sc+'|'+f.fields.gr+'|'+(f.fields.desc||'')+'|'+(f.fields.method||'')+'|'+f.fields.ver;
   let n=0;
-  for(let j=0;j<=i;j++){
-    const g=files[j].fields;
-    const jk=g.ep+'|'+g.sc+'|'+g.gr+'|'+(g.desc||'')+'|'+(g.method||'')+'|'+g.ver;
-    if(jk===k)n++;
+  for(const g of files){
+    const jk=g.fields.ep+'|'+g.fields.sc+'|'+g.fields.gr+'|'+(g.fields.desc||'')+'|'+(g.fields.method||'')+'|'+g.fields.ver;
+    if(jk===k&&(g._idx||0)<=(f._idx||0))n++;
   }
   return String(n).padStart(2,'0');
 }
