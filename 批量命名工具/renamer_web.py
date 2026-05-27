@@ -527,8 +527,92 @@ class RenamerAPI:
             _log.warning(f"save_file failed: {e}")
             return {"ok": False, "path": result}
 
+    def get_media_info(self, path):
+        """返回视频元数据（审查面板用），ffprobe 失败时降级为 ffmpeg"""
+        import json, subprocess, shutil, sys as _sys
+        try:
+            ffprobe = shutil.which("ffprobe")
+            if not ffprobe:
+                for pfx in (_sys._MEIPASS if getattr(_sys,'_MEIPASS',False) else '', '/opt/homebrew/bin', '/usr/local/bin'):
+                    exe = 'ffprobe.exe' if _sys.platform == 'win32' else 'ffprobe'
+                    test = os.path.join(pfx, exe) if pfx else 'ffprobe'
+                    if os.path.exists(test): ffprobe = test; break
+            if not ffprobe: ffprobe = 'ffprobe'
+            r = subprocess.run([ffprobe, '-v', 'quiet', '-print_format', 'json',
+                '-show_format', '-show_streams', path],
+                capture_output=True, text=True, timeout=5)
+            data = json.loads(r.stdout)
+            streams = data.get('streams', [])
+            fmt = data.get('format', {})
+            vs = next((s for s in streams if s.get('codec_type') == 'video'), {})
+            _as = next((s for s in streams if s.get('codec_type') == 'audio'), {})
+            fps_str = vs.get('r_frame_rate', '0/1')
+            try:
+                n, d = fps_str.split('/')
+                fps = float(n) / float(d) if float(d) != 0 else 0
+            except (ValueError, ZeroDivisionError):
+                fps = 0
+            size_bytes = int(fmt.get('size', 0))
+            return {
+                'width': vs.get('width', 0), 'height': vs.get('height', 0),
+                'duration': float(fmt.get('duration', 0)),
+                'fps': round(fps, 2),
+                'codec': vs.get('codec_name', ''),
+                'size': size_bytes, 'size_mb': round(size_bytes / 1048576, 1),
+                'bitrate_kbps': int(fmt.get('bit_rate', 0)) // 1000,
+                'audio_codec': _as.get('codec_name', ''),
+                'sample_rate': _as.get('sample_rate', ''),
+            }
+        except Exception:
+            try:
+                codec = self.get_codec(path)
+                size_bytes = os.path.getsize(path) if os.path.exists(path) else 0
+                return {
+                    'width': 0, 'height': 0, 'duration': 0, 'fps': 0,
+                    'codec': codec or '', 'size': size_bytes,
+                    'size_mb': round(size_bytes / 1048576, 1),
+                    'bitrate_kbps': 0, 'audio_codec': '', 'sample_rate': '',
+                }
+            except Exception:
+                return None
 
-# 自动检测打包后的 HTML 文件（支持卡片版/表格版）
+    def get_codec(self, path):
+        """用 ffmpeg 快速检测视频编码（跨平台备援）"""
+        import subprocess, shutil, sys as _sys, re as _re
+        try:
+            ffmpeg = shutil.which("ffmpeg")
+            if not ffmpeg:
+                for pfx in (_sys._MEIPASS if getattr(_sys,'_MEIPASS',False) else '', '/opt/homebrew/bin', '/usr/local/bin'):
+                    exe = 'ffmpeg.exe' if _sys.platform == 'win32' else 'ffmpeg'
+                    test = os.path.join(pfx, exe) if pfx else 'ffmpeg'
+                    if os.path.exists(test): ffmpeg = test; break
+            meipass = getattr(_sys, '_MEIPASS', '')
+            if meipass:
+                bundled = os.path.join(meipass, 'ffmpeg')
+                if os.path.exists(bundled): ffmpeg = bundled
+            if not ffmpeg: ffmpeg = 'ffmpeg'
+            r = subprocess.run([ffmpeg, '-i', path], capture_output=True, text=True, timeout=5)
+            m = _re.search(r'Video:\s*(\S+)', r.stderr)
+            return m.group(1) if m else None
+        except Exception:
+            return None
+
+    def get_media_data(self, path):
+        """返回媒体文件 base64 + MIME（审查面板 Blob URL）"""
+        import base64
+        ext = os.path.splitext(path)[1].lower()
+        mime_map = {'.mp4':'video/mp4','.mov':'video/quicktime','.avi':'video/x-msvideo','.mkv':'video/x-matroska','.webm':'video/webm','.mxf':'application/mxf','.m4v':'video/mp4','.flv':'video/x-flv','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.bmp':'image/bmp','.tiff':'image/tiff','.tif':'image/tiff'}
+        try:
+            size = os.path.getsize(path)
+            if size > 300 * 1024 * 1024:
+                _log.warning(f"get_media_data: file too large ({size} bytes)")
+                return None
+            with open(path, 'rb') as f:
+                data = f.read()
+            return {'data': base64.b64encode(data).decode('ascii'), 'mime': mime_map.get(ext, 'application/octet-stream'), 'size': size}
+        except Exception as e:
+            _log.warning(f"get_media_data failed: {e}")
+            return None
 _HTML_CANDIDATES = ["renamer_web.html", "renamer_table.html"]
 HTML_FILE_NAME = "renamer_web.html"  # 默认
 for _c in _HTML_CANDIDATES:

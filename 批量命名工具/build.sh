@@ -49,6 +49,8 @@ $SYSPY -m PyInstaller \
   --icon app_icon.icns \
   --add-data "$HTML_BUNDLE:." \
   --add-data "../shared:shared" \
+  --add-binary "$(which ffmpeg || echo /opt/homebrew/bin/ffmpeg):." \
+  --add-binary "$(which ffprobe || echo /opt/homebrew/bin/ffprobe):." \
   --collect-data webview \
   --hidden-import webview \
   --hidden-import bottle \
