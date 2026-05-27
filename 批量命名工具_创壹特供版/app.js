@@ -413,6 +413,26 @@ document.addEventListener('keydown',e=>{
     if(e.key==='ArrowRight'&&!e.ctrlKey){const v=document.getElementById('reviewVideo');if(v.src&&v.duration){v.currentTime=Math.min(v.duration,v.currentTime+5);return}}
     if(e.key===','){const v=document.getElementById('reviewVideo');if(v.src){v.pause();v.currentTime=Math.max(0,v.currentTime-1/25);document.getElementById('rcPlay').textContent='▶';return}}
     if(e.key==='.'){const v=document.getElementById('reviewVideo');if(v.src){v.pause();v.currentTime=Math.min(v.duration||999,v.currentTime+1/25);document.getElementById('rcPlay').textContent='▶';return}}
+    // JKL 穿梭
+    if(e.key==='j'||e.key==='J'){
+      const v=document.getElementById('reviewVideo');if(!v.src)return;
+      const rates=[1,0.5,0.25,0.1];let ri=rates.indexOf(v.playbackRate);ri=ri<0?0:(ri+1)%rates.length;
+      v.playbackRate=rates[ri];document.getElementById('rcSpeed').textContent=rates[ri]+'×';
+      if(v.paused){v.play();document.getElementById('rcPlay').textContent='⏸'}
+      return;
+    }
+    if(e.key==='k'||e.key==='K'){
+      const v=document.getElementById('reviewVideo');if(!v.src)return;
+      v.pause();v.playbackRate=1;document.getElementById('rcPlay').textContent='▶';document.getElementById('rcSpeed').textContent='1×';
+      return;
+    }
+    if(e.key==='l'||e.key==='L'){
+      const v=document.getElementById('reviewVideo');if(!v.src)return;
+      const rates=[1,2,4,8];let ri=v.paused?0:rates.indexOf(v.playbackRate);ri=ri<0?0:(ri+1)%rates.length;
+      v.playbackRate=rates[ri];document.getElementById('rcSpeed').textContent=rates[ri]+'×';
+      if(v.paused){v.play();document.getElementById('rcPlay').textContent='⏸'}
+      return;
+    }
   }
   if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}
   if((e.key==='Delete'||e.key==='Backspace')&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){e.preventDefault();removeSelected()}
