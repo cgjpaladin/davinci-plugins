@@ -403,14 +403,11 @@ document.addEventListener('keydown',e=>{
   // 审查模式快捷键（输入框中不触发）
   if(_reviewIdx>=0&&e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA'){
     if(e.key==='Escape'){e.preventDefault();closeReview();return}
-    if(e.key==='o'||e.key==='O'){setReviewStatus('OK');return}
-    if(e.key==='p'||e.key==='P'){setReviewStatus('KP');return}
-    if(e.key==='n'||e.key==='N'){setReviewStatus('NG');return}
     if(e.ctrlKey&&e.key==='ArrowLeft'){e.preventDefault();navReview(-1);return}
     if(e.ctrlKey&&e.key==='ArrowRight'){e.preventDefault();navReview(1);return}
     if(e.key===' '){e.preventDefault();const v=document.getElementById('reviewVideo');if(v.src){if(v.paused){v.play();document.getElementById('rcPlay').textContent='⏸'}else{v.pause();document.getElementById('rcPlay').textContent='▶'}};return}
-    if(e.key==='ArrowLeft'&&!e.ctrlKey){const v=document.getElementById('reviewVideo');if(v.src&&v.duration){v.currentTime=Math.max(0,v.currentTime-5);return}}
-    if(e.key==='ArrowRight'&&!e.ctrlKey){const v=document.getElementById('reviewVideo');if(v.src&&v.duration){v.currentTime=Math.min(v.duration,v.currentTime+5);return}}
+    if(e.key==='ArrowLeft'&&!e.ctrlKey){const v=document.getElementById('reviewVideo');if(v.src&&v.duration){v.currentTime=Math.max(0,v.currentTime-2);return}}
+    if(e.key==='ArrowRight'&&!e.ctrlKey){const v=document.getElementById('reviewVideo');if(v.src&&v.duration){v.currentTime=Math.min(v.duration,v.currentTime+2);return}}
     if(e.key===','){const v=document.getElementById('reviewVideo');if(v.src){v.pause();v.currentTime=Math.max(0,v.currentTime-1/25);document.getElementById('rcPlay').textContent='▶';return}}
     if(e.key==='.'){const v=document.getElementById('reviewVideo');if(v.src){v.pause();v.currentTime=Math.min(v.duration||999,v.currentTime+1/25);document.getElementById('rcPlay').textContent='▶';return}}
     // JKL 穿梭

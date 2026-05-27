@@ -128,6 +128,8 @@ body{
   cursor:pointer;transition:filter .1s;
 }
 .fl-empty-btn:hover{filter:brightness(1.15)}
+.fl-empty-guide{margin-top:20px;font-size:11px;color:var(--tbl-head);line-height:2;opacity:.5}
+.fl-empty-guide div{text-align:left;padding-left:8px}
 
 /* ═══════════════ TABLE ═══════════════ */
 
@@ -352,6 +354,7 @@ td.editing select{
 .review-nav button{flex:1;padding:7px 0;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:transparent;color:var(--text);font-size:11px}
 .review-nav button:hover{background:#333}
 .review-nav button:disabled{opacity:.3;cursor:not-allowed}
+.review-hints{font-size:9px;color:#444;text-align:center;padding:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ═══ 自定义控制栏 ═══ */
 .review-controls{display:flex;align-items:center;gap:6px;padding:6px 12px;border-top:1px solid var(--border);background:#141414;flex-shrink:0}
