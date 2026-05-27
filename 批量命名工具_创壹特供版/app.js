@@ -328,13 +328,15 @@ function updButtons(){
   const dot=document.querySelector('.sb-dot');
   if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  拖入文件开始  ·  Ctrl+Z 撤销  ·  Del 移除');return}
   if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，点击重命名  ·  Ctrl+Enter 重命名');return}
+  // 全部就绪但未选中 → 绿色
+  let ok=0;files.forEach(f=>{const ff=f.fields;const req=ff.type==='AIPIC'?_REQUIRED_PIC:_REQUIRED_KEYS;if(req.every(k=>ff[k]&&ff[k]!=='请选择'))ok++});
+  if(ok===files.length&&files.length>0){dot.style.background='var(--green)';setStatus('全部就绪 · 选中文件后重命名  ·  Ctrl+Enter');return}
   const missing=[];const _lbs=window._fieldLabels||{};
   const fdType=fd.type||''; const chkKeys=fdType==='AIPIC'?_REQUIRED_PIC:_REQUIRED_KEYS;
   for(const k of chkKeys){if(!fd[k]||fd[k]==='请选择')missing.push(_lbs[k]||k)}
   let warn=[];for(const t of files){if(t.tags&&t.tags.length)warn.push(...t.tags)}
   if(warn.length){const wl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};dot.style.background='var(--red)';setStatus('⚠ '+[...new Set(warn)].map(w=>wl[w]||w).join(' · '));return}
   dot.style.background='var(--yellow)';
-  let ok=0;files.forEach(f=>{const ff=f.fields;const req=ff.type==='AIPIC'?_REQUIRED_PIC:_REQUIRED_KEYS;if(req.every(k=>ff[k]&&ff[k]!=='请选择'))ok++});
   setStatus((missing.length?('双击单元格编辑 · 缺失: '+missing.join(' · ')):'双击单元格编辑字段')+'  ·  '+ok+'/'+files.length+' 就绪');
 }
 
