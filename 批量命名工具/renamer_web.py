@@ -248,6 +248,7 @@ class RenamerAPI:
                 except Exception: pass
 
         _log.info(f"_process_paths: {len(files)} files, {parsed_count} parsed, {no_parse_count} raw, {duplicates} dup, {skipped} skipped, {subdirs} subdirs, truncated={truncated}")
+        files.sort(key=lambda f: f["basename"])
         # 自动检查
         anomalies = set()
         try:

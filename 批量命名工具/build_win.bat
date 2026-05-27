@@ -42,9 +42,10 @@ if errorlevel 1 ( echo 拼接失败 & exit /b 1 )
 
 REM 打包 (--add-data 在 Windows 用分号分隔)
 pyinstaller ^
-  --onedir --windowed --clean ^
+  --onedir --windowed --clean --strip --noupx ^
   --name "%APP_NAME%" ^
   --icon app_icon.ico ^
+  --version-file version_info.txt ^
   --add-data "%HTML_BUNDLE%;." ^
   --add-data "..\shared;shared" ^
   --add-binary "ffmpeg.exe;." ^

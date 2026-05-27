@@ -147,7 +147,7 @@ def build_filename(fields):
         elif nm == "v":    parts.append(f"v{v}")
         elif k == "status": parts.append(v)
         else:              parts.append(v.replace("/","_").replace(" ",""))
-    return "_".join(parts) if parts else "unnamed"
+    return "_".join(p for p in parts if p) if parts else "unnamed"
 
 
 # 文件名解析正则 (从 FIELD_CONFIG 自动生成，与 build_filename 永远一致)

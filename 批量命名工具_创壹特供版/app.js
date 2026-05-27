@@ -65,6 +65,37 @@ async function init(){
   const headerLabels={ep:'EP 集数',sc:'SC 场次',shot:'SH 镜号',tk:'TK 次数',desc:'镜头描述',type:'类型',author:'制作者',ver:'V 版本',status:'状态'};
   headerKeys.forEach(k=>{const th=document.createElement('th');th.className='col-'+k;th.textContent=headerLabels[k]||k;theadTr.insertBefore(th,baseTh)});
   window._headerKeys=headerKeys;
+
+  // ── 表头点击排序 ──
+  let _sortKey=null,_sortAsc=true;
+  const _sortKeys={base:'basename',ep:'ep',sc:'sc',shot:'shot',tk:'tk',desc:'desc',type:'type',author:'author',ver:'ver',status:'status'};
+  theadTr.querySelectorAll('th').forEach(th=>{
+    const cls=th.className.replace('col-','');
+    if(cls==='num'||cls==='thumb')return;
+    th.style.cursor='pointer';th.title='点击排序';
+    th.addEventListener('click',()=>{
+      if(_sortKey===cls){if(_sortAsc){_sortAsc=false}else{_sortKey=null;_sortAsc=true;files.sort((a,b)=>a._idx-b._idx);renderList(true);updSortIndicators();return}}
+      else{_sortKey=cls;_sortAsc=true}
+      applySort();renderList(true);updSortIndicators();
+    });
+  });
+  function updSortIndicators(){
+    theadTr.querySelectorAll('th').forEach(th=>{
+      const t=th.textContent.replace(/ [▲▼]$/,'');th.textContent=t;
+      const cls=th.className.replace('col-','');
+      if(cls===_sortKey)th.textContent=t+(_sortAsc?' ▲':' ▼');
+    });
+  }
+  function applySort(){
+    if(!_sortKey||!files.length)return;
+    const key=_sortKeys[_sortKey]||_sortKey;
+    const s0=files[0].fields[key];
+    const cmp=typeof s0==='string'?((a,b)=>(a.fields[key]||'').localeCompare(b.fields[key]||'')):((a,b)=>parseInt(a.fields[key]||0)-parseInt(b.fields[key]||0));
+    files.sort((a,b)=>_sortAsc?cmp(a,b):cmp(b,a));
+  }
+  function reindex(){files.forEach((f,i)=>{f._idx=i})}
+  // 原始插入顺序
+  files.forEach((f,i)=>{f._idx=i});
   _initColResize();
 
   setTimeout(()=>{
@@ -313,8 +344,8 @@ function updButtons(){
 function showDialog(title,msg){return new Promise(r=>{document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogMsg').textContent=msg;document.getElementById('dialogOverlay').classList.add('show');document.getElementById('dialogOk').onclick=()=>{document.getElementById('dialogOverlay').classList.remove('show');r(true)};document.getElementById('dialogCancel').onclick=()=>{document.getElementById('dialogOverlay').classList.remove('show');r(false)}})}
 
 // ═══ Actions ═══
-async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
-async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFolder)`);renderList();_toastResult(r);loadThumbs()}}
+async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);applySort();reindex();r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
+async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);applySort();reindex();r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFolder)`);renderList();_toastResult(r);loadThumbs()}}
 function _toastResult(r){let m=`已追加 ${r.total} 个文件`;if(r.duplicates)m+=` · ${r.duplicates} 个重复跳过`;if(r.subdirs_skipped)m+=` · ${r.subdirs_skipped} 个子文件夹跳过`;if(r.truncated)m+=` (上限${r.max}个)`;toast(m)}
 
 async function doRename(){
@@ -366,7 +397,7 @@ function onDropResult(result){
   if(fresh.length===0&&dup===0&&sk>0){toast(`${sk} 个格式不支持`);return}
   if(fresh.length===0){toast(`全部重复 · ${dup} 个已跳过`);return}
   fresh.forEach(f=>{if(!f._shots){f._shots=(f.fields.shot||'').split('-').filter(v=>v);if(!f._shots.length)f._shots=['']}});
-  files=files.concat(fresh);
+  files=files.concat(fresh);applySort();reindex();
   let msg=`已追加 ${fresh.length} 个文件`;if(dup)msg+=` · ${dup} 个重复跳过`;if(sk)msg+=` · ${sk} 个格式不支持`;if(result.subdirs_skipped)msg+=` · ${result.subdirs_skipped} 个子文件夹跳过`;if(result.truncated)msg+=` (上限${result.max}个)`;
   renderList();toast(msg);loadThumbs();
 }
