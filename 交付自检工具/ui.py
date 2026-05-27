@@ -1465,7 +1465,11 @@ def _start_check():
             if check.get("run_fn") and itm[check["chk_id"]].Checked:
                 if not g or gates_ok:
                     needed.update(check.get("tracks", []))
-        preload_timeline_items(timeline, track_types=list(needed) if needed else None)
+        try:
+            preload_timeline_items(timeline, track_types=list(needed) if needed else None)
+        except Exception:
+            _action_log("⚠ 预加载失败（可能是旧版 API），回退逐条查询")
+            # 不影响后续检查，_get_items() 自带逐条 IPC
 
         # 清空结果
         tree.Clear()
@@ -1499,7 +1503,11 @@ def _start_check():
             except Exception:
                 import traceback
                 _action_log(f"❌ {check['section']}检查崩溃: {traceback.format_exc()}")
-                all_results = []  # 防止用上一次循环的脏数据
+                # 返回 warn 而非空列表，让用户看到此项不可用
+                all_results = [_make_result_passthrough("warn",
+                    detail=f"{check['section']}: 检查不可用",
+                    reason="可能是达芬奇版本不支持此 API，请升级或关闭此检查",
+                    is_summary=True)]
             section_rows = []
             section_pass = 0
             summary_text = ""

@@ -432,8 +432,10 @@ async function openReview(i){
   // 媒体
   const video=document.getElementById('reviewVideo');video.removeAttribute('src');
   const img=document.getElementById('reviewImage');img.removeAttribute('src');
-  if(isVideo){video.src='file://'+encodeURI(f.path);video.style.display='';img.style.display='none';_speedI=1;document.getElementById('rcSpeed').textContent='1×';video.playbackRate=1;video.play().catch(()=>{});initReviewControls(video)}
-  else{img.src='file://'+encodeURI(f.path);img.style.display='';video.style.display='none';video.pause();document.getElementById('reviewControls').style.display='none'}
+  const urlPath=f.path.replace(/\\/g,'/'); // Windows 反斜杠转正斜杠
+  const fileUrl=urlPath.match(/^[A-Z]:\//i)?'file:///'+encodeURI(urlPath):'file://'+encodeURI(urlPath);
+  if(isVideo){video.src=fileUrl;video.style.display='';img.style.display='none';_speedI=1;document.getElementById('rcSpeed').textContent='1×';video.playbackRate=1;video.play().catch(()=>{});initReviewControls(video)}
+  else{img.src=fileUrl;img.style.display='';video.style.display='none';video.pause();document.getElementById('reviewControls').style.display='none'}
   // 字段
   buildReviewFields(ff,isVideo);
   // 状态高亮
@@ -500,6 +502,8 @@ document.getElementById('reviewPrev').addEventListener('click',()=>navReview(-1)
 document.getElementById('reviewNext').addEventListener('click',()=>navReview(1));
 document.getElementById('reviewClose').addEventListener('click',closeReview);
 document.getElementById('reviewOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeReview()});
+document.getElementById('reviewOverlay').addEventListener('dragover',e=>{e.preventDefault()});
+document.getElementById('reviewOverlay').addEventListener('drop',e=>{e.preventDefault()});
 
 async function loadMediaMeta(path,isVideo,video,img){
   const meta=document.getElementById('reviewMeta');
