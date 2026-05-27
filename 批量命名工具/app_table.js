@@ -1,4 +1,4 @@
-const APP_VERSION='3.2';
+const APP_VERSION='3.3';
 const APP_BRANCH='';
 const APP_BUILD_TIME='';
 // ═══ 立即执行 — 确认脚本加载 ═══
@@ -15,6 +15,18 @@ window.addEventListener('unhandledrejection',e=>{const msg='Promise错误: '+e.r
 const _origErr=console.error;console.error=function(...a){_origErr.apply(console,a);call('debug_log','CONSOLE: '+a.join(' '))};
 
 let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, descLocked=false, undoAvail=false, _thumbs={};
+let _sortKey=null,_sortAsc=true;
+const _sortKeys={base:'basename',ep:'ep',sc:'sc',gr:'gr',tk:'tk',desc:'desc',method:'method',author:'author',ver:'ver',status:'status'};
+function applySort(){if(!_sortKey||!files.length)return;const key=_sortKeys[_sortKey]||_sortKey;const s0=files[0].fields[key];const cmp=typeof s0==='string'?((a,b)=>(a.fields[key]||'').localeCompare(b.fields[key]||'')):((a,b)=>parseInt(a.fields[key]||0)-parseInt(b.fields[key]||0));files.sort((a,b)=>_sortAsc?cmp(a,b):cmp(b,a))}
+function reindex(){files.forEach((f,i)=>{f._idx=i})}
+function updSortIndicators(){
+  const tr=document.querySelector('#fileList thead tr');if(!tr)return;
+  tr.querySelectorAll('th').forEach(th=>{
+    const t=th.textContent.replace(/ [▲▼]$/,'');th.textContent=t;
+    const cls=th.className.replace('col-','');
+    if(cls===_sortKey)th.textContent=t+(_sortAsc?' ▲':' ▼');
+  });
+}
 const DIGIT_RULES={ep:/^\d{0,3}$/,sc:/^\d{0,2}$/,gr:/^\d{0,2}$/,ver:/^\d{0,2}(\.\d)?$/};
 const DIGIT_STRICT={ep:/^(0[1-9]|[1-9]\d{1,2})$/,sc:/^(0[1-9]|[1-9]\d)$/,gr:/^(0[1-9]|[1-9]\d)$/,ver:/^(0[1-9]|[1-9]\d)(\.\d)?$/};
 const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a','#302a1a'];
@@ -90,6 +102,19 @@ async function init(){
     theadTr.insertBefore(th, baseTh);
   });
   window._headerKeys = headerKeys;
+
+  // ── 表头点击排序 ──
+  theadTr.querySelectorAll('th').forEach(th=>{
+    const cls=th.className.replace('col-','');
+    if(cls==='num'||cls==='thumb')return;
+    th.style.cursor='pointer';th.title='点击排序';
+    th.addEventListener('click',()=>{
+      if(_sortKey===cls){if(_sortAsc){_sortAsc=false}else{_sortKey=null;_sortAsc=true;files.sort((a,b)=>a._idx-b._idx);renderList(true);updSortIndicators();return}}
+      else{_sortKey=cls;_sortAsc=true}
+      applySort();renderList(true);updSortIndicators();
+    });
+  });
+  files.forEach((f,i)=>{f._idx=i});
 
   // 列宽拖拽
   _initColResize();
@@ -616,8 +641,8 @@ function showDialog(title,msg){return new Promise(r=>{
 })}
 
 // ═══ Actions ═══
-async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
-async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
+async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);applySort();reindex();r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
+async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);applySort();reindex();r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
 function _toastResult(r){let m=`已追加 ${r.total} 个文件`;if(r.duplicates)m+=` · ${r.duplicates} 个重复跳过`;if(r.subdirs_skipped)m+=` · ${r.subdirs_skipped} 个子文件夹跳过`;if(r.truncated)m+=` (上限${r.max}个)`;toast(m)}
 
 async function doRename(){
@@ -757,7 +782,7 @@ function onDropResult(result){
   const sk = result.skipped || 0;
   if(fresh.length===0 && dup===0 && sk>0){toast(`${sk} 个格式不支持`);return}
   if(fresh.length===0){toast(`全部重复 · ${dup} 个已跳过`);return}
-  files=files.concat(fresh);
+  files=files.concat(fresh);applySort();reindex();
   call("debug_log",`FILES list: ${files.length} total (added ${fresh.length})`);
   let msg=`已追加 ${fresh.length} 个文件`;
   if(dup) msg+=` · ${dup} 个重复跳过`;

@@ -1,5 +1,5 @@
 @echo off
-REM 批量命名工具 - Windows 打包脚本 (v3.0)
+REM 批量命名工具 - Windows 打包脚本 (v3.3)
 REM 用法: build_win.bat table  表格版（推荐）
 REM       build_win.bat        卡片版（备用）
 REM 前提: Python 3.11-3.12（webview 不支持 ≥3.13）+ ffmpeg.exe 在项目目录
@@ -22,12 +22,12 @@ if "%VARIANT%"=="table" (
     set JS_FILE=app_table.js
     set HTML_FILE=renamer_table.html
     set HTML_BUNDLE=_build\renamer_table.html
-    set APP_NAME=批量命名工具-v3.0
+    set APP_NAME=批量命名工具-表格版-v3.3
 ) else (
     set JS_FILE=card\app.js
     set HTML_FILE=card\renamer_web.html
     set HTML_BUNDLE=_build\renamer_web.html
-    set APP_NAME=批量命名工具-卡片版-v3.0
+    set APP_NAME=批量命名工具-卡片版-v3.3
 )
 
 REM 清理

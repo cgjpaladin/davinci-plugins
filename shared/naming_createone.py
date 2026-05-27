@@ -131,16 +131,6 @@ def build_filename(fields):
 
 def _build_filename_re():
     segments = []
-    desc_seen = False
-    desc_trail = 0
-    for fd in FIELD_CONFIG:
-        if not desc_seen and fd["key"] == "desc":
-            desc_seen = True; continue
-        if desc_seen and fd["name"] == "V":
-            break
-        if desc_seen:
-            desc_trail += 1
-
     for fd in FIELD_CONFIG:
         nm = fd["name"]; k = fd["key"]
         if nm == "EP":
@@ -156,9 +146,11 @@ def _build_filename_re():
         elif k == "status":
             segments.append(f"(?P<{k}>\\w*)")
         elif k == "desc":
-            trailing = "_".join(["[^_]*"] * desc_trail) if desc_trail else ""
-            lookahead = f"(?=_{trailing}_V\\d)" if trailing else "(?=_V\\d)"
-            segments.append(f"(?P<{k}>.*?){lookahead}")
+            # desc/type/author 用宽松匹配 2~3 段，parse_filename 中手动分割
+            segments.append(f"(?P<{k}_tail>[^_]+(?:_[^_]+){{1,2}})")
+        elif k in ("type", "author"):
+            # type/author 已合入 desc_tail，正则不再单独捕
+            pass
         else:
             segments.append(f"(?P<{k}>[^_]*)")
     return re.compile(r"^" + "_".join(segments) + r"(?P<ext>\.[^.]+)$")
@@ -184,6 +176,24 @@ def parse_filename(path):
         k = fd["key"]
         if k in d:
             result[k] = d[k]
+    # 手动分割 desc/type/author（FILENAME_RE 将它们合并到 desc_tail）
+    tail = d.get("desc_tail", "")
+    if tail:
+        parts = tail.split("_")
+        # parts 可能是 [desc, type, author] 或 [type, author]（desc 为空）
+        # type 始终为 AIPIC/AIVID，以此为锚确定分段
+        type_idx = next((i for i, p in enumerate(parts) if p in ("AIPIC", "AIVID")), -1)
+        if type_idx >= 0:
+            if type_idx == 0:
+                # desc 为空，只有 type + author
+                result["desc"] = ""
+                result["type"] = parts[0]
+                result["author"] = parts[1] if len(parts) > 1 else ""
+            elif type_idx == 1:
+                # desc + type + author
+                result["desc"] = parts[0]
+                result["type"] = parts[1]
+                result["author"] = parts[2] if len(parts) > 2 else ""
     # type 从文件名读取
     if result.get("type"):
         result["type"] = result["type"]
