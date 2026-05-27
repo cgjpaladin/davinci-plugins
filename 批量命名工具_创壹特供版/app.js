@@ -159,7 +159,7 @@ function _buildRow(f,i){
   tr.classList.add(ready?'rdy':'mis');
   if(f.archived)tr.classList.add('archived');
   const fillCount=[ff.ep,ff.sc,ff.shot,ff.desc,ff.type,ff.author,ff.ver,ff.status].filter(Boolean).length;
-  const fillMax=ff.type==='AIPIC'?9:8;
+  const fillMax=ff.type==='AIPIC'?8:7;
   tr.classList.add(fillCount>=fillMax?'row-full':fillCount>=5?'row-most':'row-empty');
   const tags=f.tags||[];if(tags.length)tr.classList.add('warn');
   if(tags.includes('zero'))tr.classList.add('warn-zero');
