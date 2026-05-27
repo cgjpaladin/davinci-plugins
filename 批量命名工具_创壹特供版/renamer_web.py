@@ -317,9 +317,15 @@ class RenamerAPI:
 
     def get_media_info(self, path):
         """返回视频/图片元数据（审查面板用）"""
-        import json, subprocess
+        import json, subprocess, shutil, sys as _sys
         try:
-            ffprobe = "ffprobe"
+            ffprobe = shutil.which("ffprobe")
+            if not ffprobe:
+                for pfx in (_sys._MEIPASS if getattr(_sys, '_MEIPASS', False) else '', '/opt/homebrew/bin', '/usr/local/bin'):
+                    exe = 'ffprobe.exe' if _sys.platform == 'win32' else 'ffprobe'
+                    test = os.path.join(pfx, exe) if pfx else 'ffprobe'
+                    if os.path.exists(test): ffprobe = test; break
+            if not ffprobe: ffprobe = 'ffprobe'
             r = subprocess.run([ffprobe, '-v', 'quiet', '-print_format', 'json',
                 '-show_format', '-show_streams', path],
                 capture_output=True, text=True, timeout=5)

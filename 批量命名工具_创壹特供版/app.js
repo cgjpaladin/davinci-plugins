@@ -450,6 +450,7 @@ async function openReview(i){
 function closeReview(){
   const v=document.getElementById('reviewVideo');v.pause();v.removeAttribute('src');v.load();
   document.getElementById('reviewImage').removeAttribute('src');
+  if(_rcInterval){clearInterval(_rcInterval);_rcInterval=null}
   _reviewIdx=-1;document.getElementById('reviewOverlay').classList.remove('show');
   document.getElementById('reviewControls').style.display='';
   renderList();
@@ -530,14 +531,19 @@ async function loadMediaMeta(path,isVideo,video,img){
 let _rcInterval=null;
 function initReviewControls(video){
   const ctrls=document.getElementById('reviewControls');ctrls.style.display='';
+  // 清理旧监听器
+  if(ctrls._init){video.removeEventListener('timeupdate',ctrls._ontu);video.removeEventListener('ended',ctrls._onend)}
   const playBtn=document.getElementById('rcPlay'),seek=document.getElementById('rcSeek'),
     time=document.getElementById('rcTime'),frame=document.getElementById('rcFrame'),
     vol=document.getElementById('rcVolume'),speedBtn=document.getElementById('rcSpeed');
   video.removeAttribute('controls');vol.value=video.volume*100;
   const upd=()=>{if(!video.duration)return;seek.value=(video.currentTime/video.duration)*100;time.textContent=formatTime(video.currentTime)+' / '+formatTime(video.duration);frame.textContent='帧 '+Math.floor(video.currentTime*25)}
+  if(_rcInterval)clearInterval(_rcInterval);
   _rcInterval=setInterval(upd,200);
-  video.addEventListener('timeupdate',()=>{if(!video.seeking)upd()});
-  video.addEventListener('ended',()=>{playBtn.textContent='▶';clearInterval(_rcInterval)});
+  const ontu=()=>{if(!video.seeking)upd()};
+  const onend=()=>{playBtn.textContent='▶';clearInterval(_rcInterval)};
+  video.addEventListener('timeupdate',ontu);video.addEventListener('ended',onend);
+  ctrls._ontu=ontu;ctrls._onend=onend;ctrls._init=true;
   playBtn.textContent=video.paused?'▶':'⏸';
   playBtn.onclick=()=>{if(video.paused){video.play();playBtn.textContent='⏸'}else{video.pause();playBtn.textContent='▶'}};
   seek.oninput=()=>{video.currentTime=(seek.value/100)*video.duration;upd()};
