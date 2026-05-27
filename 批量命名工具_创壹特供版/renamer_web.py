@@ -54,11 +54,17 @@ class RenamerAPI:
     def generate_thumbnails(self, paths):
         import subprocess, base64, tempfile, shutil, sys as _sys, json as _json
         ffmpeg = shutil.which("ffmpeg")
+        # PyInstaller 打包优先用 bundle 内的 ffmpeg
         if not ffmpeg:
             for pfx in (_sys._MEIPASS if getattr(_sys,'_MEIPASS',False) else '', '/opt/homebrew/bin', '/usr/local/bin'):
                 exe_name = 'ffmpeg.exe' if _sys.platform == 'win32' else 'ffmpeg'
                 test = os.path.join(pfx, exe_name) if pfx else 'ffmpeg'
                 if os.path.exists(test): ffmpeg = test; break
+        # bundle 内 ffmpeg 优先
+        meipass = getattr(_sys, '_MEIPASS', '')
+        if meipass:
+            bundled = os.path.join(meipass, 'ffmpeg')
+            if os.path.exists(bundled): ffmpeg = bundled
         if not ffmpeg: ffmpeg = 'ffmpeg'
         _log.info(f"generate_thumbnails: {len(paths)} files, ffmpeg={ffmpeg} PIL={'ok' if _has_pil() else 'MISSING'}")
         total = 0
