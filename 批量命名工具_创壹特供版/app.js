@@ -194,7 +194,7 @@ function _initTBodyClick(){
     call('debug_log',`click: td=${td.className} i=${i} key=${key||'-'} detail=${e.detail}`);
     const isField=key&&key!=='tk'&&!td.classList.contains('readonly');
     // 缩略图双击 → 审查模式
-    if(td.classList.contains('col-thumb')&&e.detail>=2){clearTimeout(window._shrinkTimer);openReview(i);return}
+    if(td.classList.contains('col-thumb')&&e.detail>=2){clearTimeout(window._shrinkTimer);if(files[i])openReview(i);return}
     if(isField){if(e.detail>=2){clearTimeout(window._shrinkTimer);activateEdit(td,key,i)}else{rowClick(e,i)}return}
     rowClick(e,i);
   });
@@ -400,8 +400,8 @@ function onDropResult(result){
 
 // ═══ Keyboard ═══
 document.addEventListener('keydown',e=>{
-  // 审查模式快捷键
-  if(_reviewIdx>=0){
+  // 审查模式快捷键（输入框中不触发）
+  if(_reviewIdx>=0&&e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA'){
     if(e.key==='Escape'){e.preventDefault();closeReview();return}
     if(e.key==='o'||e.key==='O'){setReviewStatus('OK');return}
     if(e.key==='k'||e.key==='K'){setReviewStatus('KP');return}
