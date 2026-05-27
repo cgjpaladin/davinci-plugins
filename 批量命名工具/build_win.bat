@@ -42,7 +42,7 @@ if errorlevel 1 ( echo 拼接失败 & exit /b 1 )
 
 REM 打包 (--add-data 在 Windows 用分号分隔)
 pyinstaller ^
-  --onedir --windowed ^
+  --onedir --windowed --clean ^
   --name "%APP_NAME%" ^
   --icon app_icon.ico ^
   --add-data "%HTML_BUNDLE%;." ^

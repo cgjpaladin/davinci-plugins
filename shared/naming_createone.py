@@ -117,12 +117,12 @@ def build_filename(fields):
         nm = fd["name"]; k = fd["key"]
         if nm == "EP":   parts.append(f"EP{v}")
         elif nm == "SC": parts.append(f"SC{v}")
-        elif nm == "SH": parts.append(f"SH{v.replace('/','-')}")
+        elif nm == "SH": parts.append(f"SH{v.replace('/','-')}" if v else v)
         elif nm == "TK": parts.append(f"TK{v}")
         elif nm == "V":  parts.append(f"V{v}")
         elif k == "status": parts.append(v)
         else:            parts.append(v.replace("/","_").replace(" ",""))
-    return "_".join(parts) if parts else "unnamed"
+    return "_".join(p for p in parts if p) if parts else "unnamed"
 
 
 # ============================================================

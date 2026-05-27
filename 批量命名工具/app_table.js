@@ -636,7 +636,7 @@ async function doRename(){
   const r=await call('do_rename',sfs);
   call('debug_log','rename: ok='+r.ok+' fail='+(r.fail||[]).length+' depth='+(r.stack_depth||0));
   if(r.ok>0){undoAvail=true;
-    r.renamed.forEach(rn=>{const f=files.find(x=>x.path===rn.old_path);if(f)f.path=rn.new_path});
+    r.renamed.forEach(rn=>{const f=files.find(x=>x.path===rn.old_path);if(f){f.path=rn.new_path;f.basename=rn.new_path.replace(/^.*[/\\]/,'')}});
     // 缩略图 key 同步更新
     r.renamed.forEach(rn=>{if(_thumbs[rn.old_path]){_thumbs[rn.new_path]=_thumbs[rn.old_path];delete _thumbs[rn.old_path]}});
     toast(`完成 ${r.ok}/${r.total}`); result(`✅ 重命名完成 ${r.ok}/${r.total}`)}
