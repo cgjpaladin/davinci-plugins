@@ -267,11 +267,12 @@ function activateShotEdit(td,i,oldVal){
   function _updShotBtns(c){const rows=c.querySelectorAll('.shot-edit-row');rows.forEach((r,j)=>{const btn=r.querySelector('button');if(j===rows.length-1){btn.textContent='+';btn.className='shot-act shot-add-btn';btn.onclick=()=>{c.appendChild(_mkRow(''));_updShotBtns(c);c.querySelectorAll('input')[c.querySelectorAll('input').length-1].focus()}}else{btn.textContent='−';btn.className='shot-act shot-del-btn';btn.onclick=()=>{if(c.querySelectorAll('.shot-edit-row').length<=1)return;r.remove();_updShotBtns(c)}}})}
 
   const commit=(cancel)=>{
-    if(cancel){td.textContent='';td.classList.remove('editing');td.appendChild(Object.assign(document.createElement('span'),{textContent:oldVal||'—'}));if(!oldVal)td.classList.add('empty');return}
+    if(cancel){td.textContent='';td.classList.remove('editing');call('debug_log',`commit: CANCEL shot restore='${oldVal||'(空)'}'`);td.appendChild(Object.assign(document.createElement('span'),{textContent:oldVal||'—'}));if(!oldVal)td.classList.add('empty');return}
     const vals=[...ct.querySelectorAll('input')].map(ip=>{let v=ip.value.replace(/[^\d]/g,'');if(v.length>2)v=v.slice(0,2);const n=parseInt(v,10);return (n>0&&n<100)?String(n).padStart(2,'0'):''}).filter(v=>v);
     const nv=vals.join('-');
     const isMulti=sel.size>1;const rows=isMulti?[...sel]:[i];
     rows.forEach(r=>{files[r].fields.shot=nv||'';files[r]._shots=vals.length?vals:['']});
+    call('debug_log',`edit shot: ${oldVal||'(空)'} → ${nv||'(空)'} on ${rows.length} row(s)`);
     td.textContent='';td.classList.remove('editing');renderList(true);
   };
 
@@ -280,7 +281,7 @@ function activateShotEdit(td,i,oldVal){
   ct.addEventListener('keydown',e=>{if(e.key==='Escape'){if(_clickOut){document.removeEventListener('click',_clickOut);_clickOut=null}window._activeCancel=null;commit(true)}});
   // click outside → commit
   setTimeout(()=>{
-    _clickOut=function _out(e){if(!td.contains(e.target)){document.removeEventListener('click',_out);_clickOut=null;if(window._activeCancel){window._activeCancel=null;commit(false)}}};
+    _clickOut=function _out(e){if(!td.contains(e.target)){document.removeEventListener('click',_out);_clickOut=null;if(window._activeCancel){window._activeCancel=null;const hasVal=[...ct.querySelectorAll('input')].some(ip=>ip.value.trim());commit(!hasVal)}}};
     document.addEventListener('click',_clickOut);
   },0);
 }

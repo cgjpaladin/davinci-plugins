@@ -30,6 +30,7 @@ from config import (
 )
 from log_writer import get_logger
 _log = get_logger(PRODUCT_NAME)
+_log_ops = get_logger(PRODUCT_NAME)  # 结构化操作日志（JSONL）
 from subtitle_state import init as state_init, is_locked as state_is_locked, acquire_lock, release_lock, get_original_path
 import ledger
 from core import (
@@ -576,6 +577,7 @@ def confirm_project(*_):
         return
     _log_action("确认项目路径")
     _state["project_root"] = path
+    _log_ops.ops({"event": "project_root", "path": path})  # 诊断用：记录项目 SMB 路径
     state_init(path)
     ledger.init(path)
     itm[COLOR_CB].Enabled = True
@@ -601,6 +603,7 @@ def pick_project(*_):
         path = pick_folder(prompt, default_dir)
         if path:
             _state["project_root"] = path
+            _log_ops.ops({"event": "project_root", "path": path})
             _set_proj(path)
             state_init(path)
             ledger.init(path)
