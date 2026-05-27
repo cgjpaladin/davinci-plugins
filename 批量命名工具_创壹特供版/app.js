@@ -110,7 +110,7 @@ window._tryIv=setInterval(_tryStart,300);
 function getFields(){if(sel.size===0)return{};const ix=[...sel].sort((a,b)=>a-b)[0];return files[ix]?{...files[ix].fields}:{}}
 
 // ═══ TK ═══
-function buildTK(i){const f=files[i];const k=f.fields.ep+'|'+f.fields.sc+'|'+(f.fields.shot||'')+'|'+f.fields.ver;let n=0;for(const g of files){const jk=g.fields.ep+'|'+g.fields.sc+'|'+(g.fields.shot||'')+'|'+g.fields.ver;if(jk===k&&(g._idx||0)<=(f._idx||0))n++}return String(n).padStart(2,'0')}
+function buildTK(i){const fs=files[i].fields;const k=fs.ep+'|'+fs.sc+'|'+(fs.shot||'')+'|'+fs.ver;let n=0;for(let j=0;j<=i;j++){const g=files[j].fields;const jk=g.ep+'|'+g.sc+'|'+(g.shot||'')+'|'+g.ver;if(jk===k)n++}return String(n).padStart(2,'0')}
 function _computeTK(i){return buildTK(i)}
 let _nameFmt=[];
 function buildName(f){const raw=_nameFmt.map(s=>s.pfx+(f[s.key]||'')).join('_');return raw.replace(/_+/g,'_').replace(/_$/,'')}
