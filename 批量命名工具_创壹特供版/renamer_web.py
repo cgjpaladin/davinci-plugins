@@ -371,6 +371,39 @@ class RenamerAPI:
                 'sample_rate': _as.get('sample_rate', ''),
             }
         except Exception:
+            # ffprobe 失败时降级为 ffmpeg 基本信息
+            try:
+                codec = self.get_codec(path)
+                size_bytes = os.path.getsize(path) if os.path.exists(path) else 0
+                return {
+                    'width': 0, 'height': 0, 'duration': 0, 'fps': 0,
+                    'codec': codec or '',
+                    'size': size_bytes,
+                    'size_mb': round(size_bytes / 1048576, 1),
+                    'bitrate_kbps': 0, 'audio_codec': '', 'sample_rate': '',
+                }
+            except Exception:
+                return None
+
+    def get_codec(self, path):
+        """用 ffmpeg 快速检测视频编码（跨平台，不依赖 ffprobe）"""
+        import subprocess, shutil, sys as _sys, re as _re
+        try:
+            ffmpeg = shutil.which("ffmpeg")
+            if not ffmpeg:
+                for pfx in (_sys._MEIPASS if getattr(_sys,'_MEIPASS',False) else '', '/opt/homebrew/bin', '/usr/local/bin'):
+                    exe = 'ffmpeg.exe' if _sys.platform == 'win32' else 'ffmpeg'
+                    test = os.path.join(pfx, exe) if pfx else 'ffmpeg'
+                    if os.path.exists(test): ffmpeg = test; break
+            meipass = getattr(_sys, '_MEIPASS', '')
+            if meipass:
+                bundled = os.path.join(meipass, 'ffmpeg')
+                if os.path.exists(bundled): ffmpeg = bundled
+            if not ffmpeg: ffmpeg = 'ffmpeg'
+            r = subprocess.run([ffmpeg, '-i', path], capture_output=True, text=True, timeout=5)
+            m = _re.search(r'Video:\s*(\S+)', r.stderr)
+            return m.group(1) if m else None
+        except Exception:
             return None
 
     def get_media_data(self, path):
