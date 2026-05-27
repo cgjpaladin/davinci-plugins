@@ -532,7 +532,7 @@ function buildReviewFields(ff,isVideo){
   const container=document.getElementById('reviewFields');container.innerHTML='';
   const fields=[
     [{key:'ep',label:'EP',w:1,attr:'inputmode=numeric maxlength=3'},{key:'sc',label:'SC',w:1,attr:'inputmode=numeric maxlength=2'}],
-    [{key:'shot',label:'SH',w:1,attr:''},{key:'ver',label:'V',w:1,attr:'inputmode=numeric maxlength=2'}],
+    [{key:'shot',label:'SH',w:1,attr:'placeholder=\"01-02-03\"'},{key:'ver',label:'V',w:1,attr:'inputmode=numeric maxlength=2'}],
     [{key:'author',label:'作者',w:2,attr:'placeholder=\"英文姓名\"'}],
     [{key:'desc',label:'描述',w:2,attr:'placeholder=\"镜头描述\"'+(isVideo?' readonly':'')}],
   ];
