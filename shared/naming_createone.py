@@ -194,7 +194,4 @@ def parse_filename(path):
                 result["desc"] = parts[0]
                 result["type"] = parts[1]
                 result["author"] = parts[2] if len(parts) > 2 else ""
-    # type 从文件名读取
-    if result.get("type"):
-        result["type"] = result["type"]
     return result

@@ -1,4 +1,4 @@
-"""build.sh 用：拼接 CSS + HTML + JS，注入 git hash。创壹特供版 — 仅卡片版"""
+"""build.sh 用：拼接 CSS + HTML + JS，注入 git hash。创壹特供版 — 表格版"""
 import subprocess, os, sys, re
 
 BASE = os.path.dirname(os.path.abspath(__file__))

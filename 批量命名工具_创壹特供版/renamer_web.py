@@ -1,5 +1,5 @@
 """
-批量命名工具 · 创壹特供版 v1.0
+批量命名工具 · 创壹特供版 v1.1
 Python 后端 + HTML/CSS 前端（表格版）
 """
 import os, sys, json, statistics, io as _sys_io
@@ -12,6 +12,9 @@ from shared.naming_createone import (
     MEDIA_EXT, VIDEO_EXT, IMAGE_EXT, ext_to_type,
 )
 from shared.naming_checks import check_zero_byte, check_double_ext
+
+# 文件对话框过滤器（从 MEDIA_EXT 自动生成）
+_DIALOG_FILTER = "媒体文件 (" + ";".join(sorted(e.replace(".","*.") for e in MEDIA_EXT)) + ")"
 
 import webview
 import logging, tempfile
@@ -147,7 +150,7 @@ class RenamerAPI:
     def add_files_via_dialog(self):
         result = _window.create_file_dialog(
             webview.OPEN_DIALOG, allow_multiple=True,
-            file_types=("媒体文件 (*.mp4;*.mov;*.mxf;*.avi;*.mkv;*.png;*.jpg;*.jpeg;*.tiff;*.tif;*.bmp)",),
+            file_types=(_DIALOG_FILTER,),
         )
         if not result:
             return {"files": [], "total": 0}
@@ -189,7 +192,7 @@ class RenamerAPI:
         MAX_FILES = 100
         files = []; duplicates = 0; subdirs = 0; skipped = 0; truncated = False
         seen_fp = set()
-        _EMPTY_KEYS = {'ep','sc','shot','tk','ver'}
+        _EMPTY_KEYS = {fd["key"] for fd in FIELD_CONFIG if fd.get("name")}
         parsed_count = 0; no_parse_count = 0
         for p_ in paths_[:MAX_FILES]:
             if len(files) >= MAX_FILES: truncated = True; break
@@ -498,8 +501,6 @@ class RenamerAPI:
             return {"ok": False, "path": result}
 
 
-def _xml_escape(s):
-    return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
 
 
 # ============================================================

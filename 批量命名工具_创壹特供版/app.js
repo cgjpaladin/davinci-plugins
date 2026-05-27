@@ -3,7 +3,7 @@ const APP_BRANCH='';
 const APP_BUILD_TIME='';
 const IS_PRODUCTION=false;
 const EXPORT_FILENAME_PREFIX='批量命名导出_';
-// 创壹特供版 v1.0 — 表格版前端
+// 创壹特供版 v1.1 — 表格版前端
 // ═══ 立即执行 ═══
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('debugMode').textContent='JS ✓';
@@ -68,6 +68,7 @@ async function init(){
   const cfg=await call('get_config');
   _nameFmt=cfg.name_format||[];
   const _allFields=cfg.fields||[];
+  window._fieldConfig=_allFields;
   window._fieldLabels={};_allFields.forEach(f=>{window._fieldLabels[f.key]=f.label});
   dm.textContent=IS_PRODUCTION?'📋':(cfg.dev?('🔧 '+APP_VERSION):'📋');
   const vl=document.getElementById('versionLabel');if(vl)vl.textContent='v'+APP_VERSION;
@@ -75,8 +76,8 @@ async function init(){
 
   const theadTr=document.querySelector('#fileList thead tr');
   const baseTh=theadTr.querySelector('.col-base');
-  const headerKeys=['ep','sc','shot','tk','desc','type','author','ver','status'];
-  const headerLabels={ep:'EP 集数',sc:'SC 场次',shot:'SH 镜号',tk:'TK 次数',desc:'镜头描述',type:'类型',author:'制作者',ver:'V 版本',status:'状态'};
+  const headerKeys=_allFields.map(f=>f.key);
+  const headerLabels=Object.fromEntries(_allFields.map(f=>[f.key,f.label]));
   headerKeys.forEach(k=>{const th=document.createElement('th');th.className='col-'+k;th.textContent=headerLabels[k]||k;theadTr.insertBefore(th,baseTh)});
   window._headerKeys=headerKeys;
 
@@ -113,7 +114,6 @@ function getFields(){if(sel.size===0)return{};const ix=[...sel].sort((a,b)=>a-b)
 
 // ═══ TK ═══
 function buildTK(i){const fs=files[i].fields;const k=fs.ep+'|'+fs.sc+'|'+(fs.shot||'')+'|'+fs.ver;let n=0;for(let j=0;j<=i;j++){const g=files[j].fields;const jk=g.ep+'|'+g.sc+'|'+(g.shot||'')+'|'+g.ver;if(jk===k)n++}return String(n).padStart(2,'0')}
-function _computeTK(i){return buildTK(i)}
 let _nameFmt=[];
 function buildName(f){const raw=_nameFmt.map(s=>s.pfx+(f[s.key]||'')).join('_');return raw.replace(/_+/g,'_').replace(/_$/,'')}
 
@@ -135,7 +135,7 @@ function renderList(force){
     files.forEach((f,i)=>{
       const tr=rows[i];tr.className='';tr.dataset.index=i;tr.dataset.path=f.path;
       if(sel.has(i))tr.classList.add('sel');
-      const ff={...f.fields,tk:_computeTK(i)};
+      const ff={...f.fields,tk:buildTK(i)};
       const req=ff.type==='AIPIC'?_REQUIRED_PIC:_REQUIRED_KEYS;
       const ready=req.every(k=>ff[k]&&ff[k]!=='请选择');
       tr.classList.add(ready?'rdy':'mis');
@@ -154,7 +154,7 @@ function renderList(force){
 
 function _buildRow(f,i){
   const tr=document.createElement('tr');tr.dataset.index=i;tr.dataset.path=f.path;
-  const ff={...f.fields,tk:_computeTK(i)};
+  const ff={...f.fields,tk:buildTK(i)};
   const req=ff.type==='AIPIC'?_REQUIRED_PIC:_REQUIRED_KEYS;
   const ready=req.every(k=>ff[k]&&ff[k]!=='请选择');
   if(sel.has(i))tr.classList.add('sel');
@@ -215,7 +215,8 @@ function buildCellTD(key,ff,i){
   const v=ff[key]||'';td.dataset.value=v;
   if(key==='tk'){td.appendChild(Object.assign(document.createElement('span'),{textContent:v}));td.classList.add('readonly');return td}
   if(key==='type'){td.appendChild(Object.assign(document.createElement('span'),{textContent:v||'—'}));td.classList.add('readonly');if(!v)td.classList.add('empty');return td}
-  if(key==='desc'&&ff.type==='AIVID'){td.appendChild(Object.assign(document.createElement('span'),{textContent:'视频无需描述'}));td.classList.add('readonly');return td}
+  const descCfg=(window._fieldConfig||[]).find(f=>f.key==='desc');
+  if(key==='desc'&&descCfg&&descCfg.desc_only&&ff.type==='AIVID'){td.appendChild(Object.assign(document.createElement('span'),{textContent:'视频无需描述'}));td.classList.add('readonly');return td}
   const s=document.createElement('span');s.textContent=v||'—';
   if(v===''||v==='请选择'){s.textContent='—';td.classList.add('empty')}
   td.appendChild(s);
@@ -234,7 +235,9 @@ function activateEdit(td,key,i){
   let el;
   if(key==='status'){
     el=document.createElement('select');
-    ['请选择','OK','KP','NG'].forEach(s=>{const o=document.createElement('option');o.value=s==='请选择'?'':s;o.textContent=s;if(s===oldVal)o.selected=true;el.appendChild(o)});
+    const statusCfg=(window._fieldConfig||[]).find(f=>f.key==='status');
+    const statusOpts=statusCfg&&statusCfg.dv||['请选择','OK','KP','NG'];
+    statusOpts.forEach(s=>{const o=document.createElement('option');o.value=s==='请选择'?'':s;o.textContent=s;if(s===oldVal)o.selected=true;el.appendChild(o)});
   }else{
     el=document.createElement('input');el.type='text';el.value=oldVal;
     if(['ep','sc','ver'].includes(key))el.setAttribute('inputmode','numeric');
@@ -737,7 +740,7 @@ function _runSelfTest(){
   t('sel is Set',()=>{if(!(sel instanceof Set))throw new Error('sel not Set')});
   t('_nameFmt',()=>{if(!Array.isArray(_nameFmt))throw new Error('_nameFmt not array')});
   t('DIGIT_RULES',()=>{if(!DIGIT_RULES.ep)throw new Error('DIGIT_RULES missing')});
-  t('_computeTK',()=>{files=[{fields:{ep:'01',sc:'01',shot:'01',type:'AIVID',ver:'01'}}];sel.add(0);const tk=_computeTK(0);files=[];sel.clear();if(tk!=='01')throw new Error('_computeTK '+tk)});
+  t('buildTK',()=>{files=[{fields:{ep:'01',sc:'01',shot:'01',type:'AIVID',ver:'01'}}];sel.add(0);const tk=buildTK(0);files=[];sel.clear();if(tk!=='01')throw new Error('buildTK '+tk)});
   t('buildTK group',()=>{files=[{fields:{ep:'01',sc:'01',shot:'01',type:'AIVID',ver:'01'}},{fields:{ep:'01',sc:'01',shot:'01',type:'AIVID',ver:'01'}}];const t2=buildTK(1);files=[];if(t2!=='02')throw new Error('buildTK '+t2)});
   t('buildName',()=>{const nm=buildName({ep:'01',sc:'01',shot:'01',tk:'01',desc:'测试',type:'AIPIC',author:'张三',ver:'01',status:'OK'});if(!nm.includes('EP01'))throw new Error(nm);if(!nm.includes('张三'))throw new Error(nm)});
   t('buildName multi-shot',()=>{const nm=buildName({ep:'01',sc:'01',shot:'01-02',tk:'01',desc:'',type:'AIVID',author:'John',ver:'01',status:'OK'});if(!nm.includes('SH01-02'))throw new Error(nm)});
