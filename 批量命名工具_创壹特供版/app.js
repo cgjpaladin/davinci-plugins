@@ -480,11 +480,11 @@ function buildReviewFields(ff,isVideo){
     // 事件
     if(fd.attr.includes('readonly')){ip.readOnly=true;return}
     const key=fd.key;
-    if(key==='author'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^a-zA-Z]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim()})}
+    if(key==='author'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^a-zA-Z]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
     else if(key==='desc'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim()})}
-    else{ip.addEventListener('input',()=>{files[_reviewIdx].fields[key]=ip.value.trim()})}
+    else{ip.addEventListener('input',()=>{files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
     const sr=DIGIT_STRICT[key];
-    if(sr){ip.addEventListener('blur',()=>{let v=ip.value.replace(/[^\d]/g,'');if(v&&sr.test(v.padStart(2,'0'))){v=v.padStart(2,'0');ip.value=v;files[_reviewIdx].fields[key]=v}else if(!v){files[_reviewIdx].fields[key]=''}else{ip.value=ff[key]||'';files[_reviewIdx].fields[key]=ff[key]||''}})}
+    if(sr){ip.addEventListener('blur',()=>{let v=ip.value.replace(/[^\d]/g,'');if(v&&sr.test(v.padStart(2,'0'))){v=v.padStart(2,'0');ip.value=v;files[_reviewIdx].fields[key]=v}else if(!v){files[_reviewIdx].fields[key]=''}else{ip.value=ff[key]||'';files[_reviewIdx].fields[key]=ff[key]||''};updateReviewTitle()})}
   })});
 }
 
@@ -494,7 +494,12 @@ function highlightStatusBtn(st){
   else if(st==='KP')document.getElementById('rsKP').classList.add('active');
   else if(st==='NG')document.getElementById('rsNG').classList.add('active');
 }
-function setReviewStatus(st){files[_reviewIdx].fields.status=st;highlightStatusBtn(st);renderList()}
+function updateReviewTitle(){
+  if(_reviewIdx<0)return;
+  const ff=files[_reviewIdx].fields;const tk=buildTK(_reviewIdx);
+  document.getElementById('reviewFilename').textContent=`EP${ff.ep||'__'}_SC${ff.sc||'__'}_SH${ff.shot||'__'}_TK${tk}${ff.type?'_'+ff.type:''}_${ff.author||'__'}_V${ff.ver||'__'}_${ff.status||'__'}`;
+}
+function setReviewStatus(st){files[_reviewIdx].fields.status=st;highlightStatusBtn(st);updateReviewTitle();renderList()}
 document.getElementById('rsOK').addEventListener('click',()=>setReviewStatus('OK'));
 document.getElementById('rsKP').addEventListener('click',()=>setReviewStatus('KP'));  
 document.getElementById('rsNG').addEventListener('click',()=>setReviewStatus('NG'));
