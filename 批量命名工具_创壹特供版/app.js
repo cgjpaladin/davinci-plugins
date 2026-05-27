@@ -551,9 +551,9 @@ async function navReview(dir){
 
 function buildReviewFields(ff,isVideo){
   const container=document.getElementById('reviewFields');container.innerHTML='';
+  container.style.gridTemplateColumns='repeat(4,1fr)';
   const fields=[
-    [{key:'ep',label:'EP',w:1,attr:'inputmode=numeric maxlength=3'},{key:'sc',label:'SC',w:1,attr:'inputmode=numeric maxlength=2'}],
-    [{key:'shot',label:'SH',w:1,attr:'placeholder=\"点击编辑多镜号\" readonly onclick=\"reviewShotEdit(this)\"'},{key:'ver',label:'V',w:1,attr:'inputmode=numeric maxlength=2'}],
+    [{key:'ep',label:'EP',w:1,attr:'inputmode=numeric maxlength=3'},{key:'sc',label:'SC',w:1,attr:'inputmode=numeric maxlength=2'},{key:'shot',label:'SH',w:1,attr:'placeholder=\"点击编辑多镜号\" readonly onclick=\"reviewShotEdit(this)\"'},{key:'ver',label:'V',w:1,attr:'inputmode=numeric maxlength=2'}],
     [{key:'author',label:'作者',w:2,attr:'placeholder=\"英文姓名\"'}],
     [{key:'desc',label:'描述',w:2,attr:'placeholder=\"镜头描述\"'+(isVideo?' readonly':'')}],
   ];
