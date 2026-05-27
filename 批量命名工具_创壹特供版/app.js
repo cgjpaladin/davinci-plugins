@@ -327,16 +327,16 @@ function updButtons(){
   document.getElementById('btnUndo').disabled=!undoAvail;
   const dot=document.querySelector('.sb-dot');
   if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  拖入文件开始  ·  Ctrl+Z 撤销  ·  Del 移除');return}
-  if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，点击重命名  ·  Ctrl+Enter 重命名');return}
+  if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，点击重命名  ·  Ctrl+Enter 重命名');call('debug_log',`updButtons: GREEN hs=${hs} af=${af}`);return}
   // 全部就绪但未选中 → 绿色
   let ok=0;files.forEach(f=>{const ff=f.fields;const req=ff.type==='AIPIC'?_REQUIRED_PIC:_REQUIRED_KEYS;if(req.every(k=>ff[k]&&ff[k]!=='请选择'))ok++});
-  if(ok===files.length&&files.length>0){dot.style.background='var(--green)';setStatus('全部就绪 · 选中文件后重命名  ·  Ctrl+Enter');return}
+  if(ok===files.length&&files.length>0){dot.style.background='var(--green)';setStatus('全部就绪 · 选中文件后重命名  ·  Ctrl+Enter');call('debug_log',`updButtons: ALL-GREEN ok=${ok}/${files.length}`);return}
   const missing=[];const _lbs=window._fieldLabels||{};
   const fdType=fd.type||''; const chkKeys=fdType==='AIPIC'?_REQUIRED_PIC:_REQUIRED_KEYS;
   for(const k of chkKeys){if(!fd[k]||fd[k]==='请选择')missing.push(_lbs[k]||k)}
   let warn=[];for(const t of files){if(t.tags&&t.tags.length)warn.push(...t.tags)}
   if(warn.length){const wl={zero:'零字节',size:'大小异常',dbl_ext:'双扩展名'};dot.style.background='var(--red)';setStatus('⚠ '+[...new Set(warn)].map(w=>wl[w]||w).join(' · '));return}
-  dot.style.background='var(--yellow)';
+  dot.style.background='var(--yellow)';call('debug_log',`updButtons: YELLOW ok=${ok}/${files.length} hs=${hs} missing=${missing.join(',')}`);
   setStatus((missing.length?('双击单元格编辑 · 缺失: '+missing.join(' · ')):'双击单元格编辑字段')+'  ·  '+ok+'/'+files.length+' 就绪');
 }
 
@@ -395,7 +395,7 @@ function onDropResult(result){
   const dup=result.duplicates||0;
   const sk=result.skipped||0;
   if(fresh.length===0&&dup===0&&sk>0){toast(`${sk} 个格式不支持`);return}
-  if(fresh.length===0){toast(`全部重复 · ${dup} 个已跳过`);return}
+  if(fresh.length===0){const skipped=result.files.length;toast(`全部重复 · ${skipped} 个已跳过`);return}
   fresh.forEach(f=>{if(!f._shots){f._shots=(f.fields.shot||'').split('-').filter(v=>v);if(!f._shots.length)f._shots=['']}});
   files=files.concat(fresh);applySort();reindex();
   let msg=`已追加 ${fresh.length} 个文件`;if(dup)msg+=` · ${dup} 个重复跳过`;if(sk)msg+=` · ${sk} 个格式不支持`;if(result.subdirs_skipped)msg+=` · ${result.subdirs_skipped} 个子文件夹跳过`;if(result.truncated)msg+=` (上限${result.max}个)`;
