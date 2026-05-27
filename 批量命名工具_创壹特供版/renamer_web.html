@@ -72,6 +72,48 @@
   </div>
 </div>
 
+<!-- 审查模式覆盖层 -->
+<div class="review-overlay" id="reviewOverlay">
+  <div class="review-panel">
+    <div class="review-titlebar">
+      <span class="review-filename" id="reviewFilename"></span>
+      <div class="review-close" id="reviewClose" title="关闭 (ESC)">×</div>
+    </div>
+    <div class="review-body">
+      <div class="review-media" id="reviewMedia">
+        <video id="reviewVideo" preload="auto"></video>
+        <img id="reviewImage" src="" alt="" draggable="false">
+      </div>
+      <div class="review-sidebar">
+        <div class="review-fields" id="reviewFields"></div>
+        <div class="review-status">
+          <button class="rs-ok" id="rsOK">OK</button>
+          <button class="rs-kp" id="rsKP">KP</button>
+          <button class="rs-ng" id="rsNG">NG</button>
+        </div>
+        <div class="review-meta" id="reviewMeta"></div>
+        <div class="review-nav">
+          <button class="review-prev" id="reviewPrev">← 上一个</button>
+          <button class="review-next" id="reviewNext">下一个 →</button>
+        </div>
+      </div>
+    </div>
+    <!-- 自定义控制栏 -->
+    <div class="review-controls" id="reviewControls">
+      <button class="rc-btn" id="rcPlay" title="播放/暂停 (Space)">▶</button>
+      <span class="rc-time" id="rcTime">0:00 / 0:00</span>
+      <span class="rc-frame" id="rcFrame">帧 0</span>
+      <input type="range" class="rc-seek" id="rcSeek" min="0" max="100" value="0" step="0.1">
+      <button class="rc-btn" id="rcSpeed" title="播放速度">1×</button>
+      <button class="rc-btn" id="rcStepBack" title="后退1帧 (←)">◀◀</button>
+      <button class="rc-btn" id="rcStepFwd" title="前进1帧 (→)">▶▶</button>
+      <button class="rc-btn" id="rcSnap" title="截图保存">📷</button>
+      <input type="range" class="rc-volume" id="rcVolume" min="0" max="100" value="100">
+      <button class="rc-btn" id="rcFS" title="全屏 (F)">⛶</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // JS_PLACEHOLDER
 </script>

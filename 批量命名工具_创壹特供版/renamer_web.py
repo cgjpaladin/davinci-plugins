@@ -315,6 +315,41 @@ class RenamerAPI:
         _log.info(f"do_undo: {ud}/{len(pairs)} reversed, remaining: {len(_undo_stack)}")
         return {"ok": ud, "msg": f"已撤销 {ud} 个", "remaining": len(_undo_stack), "renamed": renamed}
 
+    def get_media_info(self, path):
+        """返回视频/图片元数据（审查面板用）"""
+        import json, subprocess
+        try:
+            ffprobe = "ffprobe"
+            r = subprocess.run([ffprobe, '-v', 'quiet', '-print_format', 'json',
+                '-show_format', '-show_streams', path],
+                capture_output=True, text=True, timeout=5)
+            data = json.loads(r.stdout)
+            streams = data.get('streams', [])
+            fmt = data.get('format', {})
+            vs = next((s for s in streams if s.get('codec_type') == 'video'), {})
+            _as = next((s for s in streams if s.get('codec_type') == 'audio'), {})
+            fps_str = vs.get('r_frame_rate', '0/1')
+            try:
+                n, d = fps_str.split('/')
+                fps = float(n) / float(d) if float(d) != 0 else 0
+            except (ValueError, ZeroDivisionError):
+                fps = 0
+            size_bytes = int(fmt.get('size', 0))
+            return {
+                'width': vs.get('width', 0),
+                'height': vs.get('height', 0),
+                'duration': float(fmt.get('duration', 0)),
+                'fps': round(fps, 2),
+                'codec': vs.get('codec_name', ''),
+                'size': size_bytes,
+                'size_mb': round(size_bytes / 1048576, 1),
+                'bitrate_kbps': int(fmt.get('bit_rate', 0)) // 1000,
+                'audio_codec': _as.get('codec_name', ''),
+                'sample_rate': _as.get('sample_rate', ''),
+            }
+        except Exception:
+            return None
+
 
 # ============================================================
 # 主入口
