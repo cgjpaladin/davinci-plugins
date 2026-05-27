@@ -316,8 +316,8 @@ td.editing select{
 /* titlebar */
 .review-titlebar{display:flex;justify-content:space-between;align-items:center;padding:6px 14px;border-bottom:1px solid var(--border);background:#161616;flex-shrink:0}
 .review-filename{font-family:var(--font-mono);font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.review-close{width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px;font-size:18px;color:var(--text-dim);flex-shrink:0}
-.review-close:hover{background:#333;color:#fff}
+.review-close{position:absolute;top:12px;right:12px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%;font-size:18px;color:var(--text-dim);flex-shrink:0;z-index:10;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1)}
+.review-close:hover{background:rgba(255,255,255,.15);color:#fff}
 
 /* body — 左右分栏 */
 .review-body{display:flex;flex:1;overflow:hidden;min-height:0}

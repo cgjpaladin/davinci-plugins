@@ -467,9 +467,36 @@ function closeReview(){
   renderList();
 }
 
-function navReview(dir){
+async function navReview(dir){
   const next=_reviewIdx+dir;if(next<0||next>=files.length)return;
-  closeReview();openReview(next);
+  _reviewIdx=next;
+  const f=files[next];const ff=f.fields;const isVideo=ff.type==='AIVID';
+  // 标题
+  const tk=buildTK(next);
+  document.getElementById('reviewFilename').textContent=`EP${ff.ep||'__'}_SC${ff.sc||'__'}_SH${ff.shot||'__'}_TK${tk}${ff.type?'_'+ff.type:''}_${ff.author||'__'}_V${ff.ver||'__'}_${ff.status||'__'}`;
+  // 媒体
+  const video=document.getElementById('reviewVideo');video.pause();video.removeAttribute('src');
+  const img=document.getElementById('reviewImage');img.removeAttribute('src');
+  if(_mediaBlobUrl){URL.revokeObjectURL(_mediaBlobUrl);_mediaBlobUrl=null}
+  if(_rcInterval){clearInterval(_rcInterval);_rcInterval=null}
+  try{const r=await call('get_media_data',f.path);if(r&&r.data){
+    const bytes=Uint8Array.from(atob(r.data),c=>c.charCodeAt(0));
+    const blob=new Blob([bytes],{type:r.mime});
+    _mediaBlobUrl=URL.createObjectURL(blob);
+    if(isVideo){video.src=_mediaBlobUrl;video.style.display='';img.style.display='none';_speedI=1;document.getElementById('rcSpeed').textContent='1×';video.playbackRate=1;video.play().catch(()=>{});initReviewControls(video);document.getElementById('reviewControls').style.display=''}
+    else{img.src=_mediaBlobUrl;img.style.display='';video.style.display='none';document.getElementById('reviewControls').style.display='none'}
+  }}catch(e){}
+  // 字段 — 重建
+  buildReviewFields(ff,isVideo);
+  // 状态高亮
+  highlightStatusBtn(ff.status||'');
+  // 元数据
+  loadMediaMeta(f.path,isVideo,video,img);
+  // 导航按钮
+  document.getElementById('reviewPrev').disabled=next===0;
+  document.getElementById('reviewNext').disabled=next>=files.length-1;
+  // 已编辑数据同步到表格
+  renderList();
 }
 
 function buildReviewFields(ff,isVideo){
