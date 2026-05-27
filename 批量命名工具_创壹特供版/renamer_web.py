@@ -373,6 +373,179 @@ class RenamerAPI:
             _log.warning(f"get_media_data failed: {e}")
             return None
 
+    def export_table(self, rows):
+        """生成 xlsx 文件（纯 stdlib zipfile+XML，含嵌入缩略图），返回 base64"""
+        import base64 as _b64, zipfile, io, re as _re, datetime
+        # 收集缩略图二进制
+        images = []  # [(ext, bytes)]
+        THUMB_COL = 1  # B 列
+        for row in rows:
+            thumb = row.get("thumb", "")
+            if thumb and thumb.startswith("data:image/"):
+                m = _re.match(r"data:image/(\w+);base64,(.+)", thumb)
+                if m:
+                    ext = m.group(1)
+                    if ext == "jpeg": ext = "jpg"
+                    data = _b64.b64decode(m.group(2))
+                    images.append((ext, data))
+                else:
+                    images.append(None)
+            else:
+                images.append(None)
+
+        buf = io.BytesIO()
+        zf = zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED)
+
+        # ── [Content_Types].xml ──
+        cts = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+               '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+               '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
+               '<Default Extension="xml" ContentType="application/xml"/>']
+        if images:
+            cts.append('<Default Extension="jpg" ContentType="image/jpeg"/>')
+            cts.append('<Default Extension="png" ContentType="image/png"/>')
+        cts.append('<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>')
+        cts.append('<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>')
+        cts.append('<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>')
+        cts.append('<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>')
+        if images:
+            cts.append('<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>')
+        cts.append('</Types>')
+        zf.writestr('[Content_Types].xml', '\n'.join(cts))
+
+        # ── _rels/.rels ──
+        zf.writestr('_rels/.rels',
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            '</Relationships>')
+
+        # ── xl/workbook.xml ──
+        zf.writestr('xl/workbook.xml',
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            '<sheets><sheet name="文件列表" sheetId="1" r:id="rId1"/></sheets>'
+            '</workbook>')
+
+        # ── xl/_rels/workbook.xml.rels ──
+        wbr = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+               '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+               '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>',
+               '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>',
+               '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>']
+        if images:
+            wbr.append('<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="drawings/drawing1.xml"/>')
+        wbr.append('</Relationships>')
+        zf.writestr('xl/_rels/workbook.xml.rels', '\n'.join(wbr))
+
+        # ── xl/worksheets/sheet1.xml ──
+        HEADERS = ['序号','原文件名','缩略图','EP','SC','SH','TK','描述','类型','作者','V','状态']
+        KEYS = ['no','basename','thumb','ep','sc','shot','tk','desc','type','author','ver','status']
+        # 列宽
+        cols_xml = '<cols>'
+        widths = [5, 30, 8, 5, 5, 8, 5, 15, 8, 10, 5, 6]
+        for i, w in enumerate(widths):
+            cols_xml += f'<col min="{i+1}" max="{i+1}" width="{w}" customWidth="1"/>'
+        cols_xml += '</cols>'
+
+        rows_xml = [cols_xml]
+        for rn, row in enumerate(rows):
+            cells = []
+            for ci, k in enumerate(KEYS):
+                ref = f'{chr(65+ci)}{rn+2}'
+                val = str(row.get(k, '')) if k != 'thumb' else ''
+                if k in ('no','ep','sc','tk','ver'):
+                    cells.append(f'<c r="{ref}" s="1"><v>{val}</v></c>')
+                elif k == 'thumb' and images and rn < len(images) and images[rn]:
+                    # 图片用 drawing 引用，不在单元格里写值
+                    pass
+                else:
+                    cells.append(f'<c r="{ref}" t="inlineStr" s="0"><is><t>{_xml_escape(val)}</t></is></c>')
+            rows_xml.append(f'<row r="{rn+2}" ht="{28 if images else 15}">{"".join(cells)}</row>')
+
+        sheet_xml = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+                     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+                     ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+                     + f'<sheetViews><sheetView tabSelected="1" workbookViewId="0"><pane yOffset="1" xSplit="0" ySplit="1" state="frozen" activePane="bottomLeft"/></sheetView></sheetViews>'
+                     + ''.join(rows_xml)
+                     # 表头行
+                     + '<row r="1" ht="20">' + ''.join(f'<c r="{chr(65+i)}1" t="inlineStr" s="2"><is><t>{h}</t></is></c>' for i, h in enumerate(HEADERS))
+                     + '</row></worksheet>')
+        zf.writestr('xl/worksheets/sheet1.xml', sheet_xml)
+
+        # ── xl/styles.xml ──
+        zf.writestr('xl/styles.xml',
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            '<fonts count="2">'
+            '<font><sz val="10"/><name val="Arial"/></font>'
+            '<font><b/><sz val="10"/><name val="Arial"/></font>'
+            '</fonts>'
+            '<fills count="2">'
+            '<fill><patternFill patternType="none"/></fill>'
+            '<fill><patternFill patternType="gray125"/></fill>'
+            '</fills>'
+            '<borders count="1"><border/></borders>'
+            '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+            '<cellXfs count="3">'
+            '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="0"/>'
+            '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0"/>'
+            '</cellXfs>'
+            '</styleSheet>')
+
+        # ── xl/sharedStrings.xml ──
+        zf.writestr('xl/sharedStrings.xml',
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            f'<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="0" uniqueCount="0"/>')
+
+        # ── 缩略图 + drawings ──
+        if images:
+            valid_imgs = [(i, ext, data) for i, (ext, data) in enumerate(images) if data]
+            for idx, ext, data in valid_imgs:
+                zf.writestr(f'xl/media/image{idx+1}.{ext}', data)
+
+            # drawing1.xml
+            drw = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+                   '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"'
+                   ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
+                   ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">']
+            for idx, ext, data in valid_imgs:
+                row = idx + 1  # 0-based → 1-based row, col C=2
+                drw.append(
+                    f'<xdr:twoCellAnchor>'
+                    f'<xdr:from><xdr:col>2</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>{row}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>'
+                    f'<xdr:to><xdr:col>3</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>{row+1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>'
+                    f'<xdr:pic>'
+                    f'<xdr:nvPicPr><xdr:cNvPr id="{idx+1}" name="thumb{idx+1}"/><xdr:cNvPicPr/></xdr:nvPicPr>'
+                    f'<xdr:blipFill><a:blip r:embed="rId{idx+1}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
+                    f'<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="560000" cy="560000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>'
+                    f'</xdr:pic><xdr:clientData/></xdr:twoCellAnchor>')
+            drw.append('</xdr:wsDr>')
+            zf.writestr('xl/drawings/drawing1.xml', '\n'.join(drw))
+
+            # drawing1.xml.rels
+            drels = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+                     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">']
+            for idx, ext, data in valid_imgs:
+                drels.append(f'<Relationship Id="rId{idx+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image{idx+1}.{ext}"/>')
+            drels.append('</Relationships>')
+            zf.writestr('xl/drawings/_rels/drawing1.xml.rels', '\n'.join(drels))
+
+            # sheet1.xml.rels → drawing
+            zf.writestr('xl/worksheets/_rels/sheet1.xml.rels',
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>'
+                '</Relationships>')
+
+        zf.close()
+        return {'data': _b64.b64encode(buf.getvalue()).decode('ascii'), 'type': 'xlsx'}
+
+
+def _xml_escape(s):
+    return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+
 
 # ============================================================
 # 主入口

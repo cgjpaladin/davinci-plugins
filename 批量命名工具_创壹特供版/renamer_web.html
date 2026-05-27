@@ -29,6 +29,7 @@
   <div class="fl-bar">
     <span id="fileCount">文件列表 · 0 个</span>
     <div class="fl-bar-right">
+      <button class="fl-btn-export" id="btnExport" title="导出 Excel (含缩略图)">📊</button>
       <span class="zoom-label" id="zoomLabel">100%</span>
       <input type="range" class="zoom-slider" id="zoomSlider" min="50" max="200" value="100" step="1">
     </div>
@@ -82,8 +83,8 @@
 <div class="review-overlay" id="reviewOverlay">
   <div class="review-panel">
     <div class="review-titlebar">
-      <span class="review-filename" id="reviewFilename"></span>
       <div class="review-close" id="reviewClose" title="关闭 (ESC)">×</div>
+      <span class="review-filename" id="reviewFilename"></span>
     </div>
     <div class="review-body">
       <div class="review-media" id="reviewMedia">

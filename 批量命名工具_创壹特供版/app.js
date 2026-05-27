@@ -193,8 +193,8 @@ function _initTBodyClick(){
     const key=td.dataset.key;
     call('debug_log',`click: td=${td.className} i=${i} key=${key||'-'} detail=${e.detail}`);
     const isField=key&&key!=='tk'&&!td.classList.contains('readonly');
-    // 缩略图双击 → 审查模式
-    if(td.classList.contains('col-thumb')&&e.detail>=2){call('debug_log',`review: thumb dblclick i=${i}`);clearTimeout(window._shrinkTimer);if(files[i])openReview(i);return}
+    // 缩略图单击 → 选中行 + 审查模式
+    if(td.classList.contains('col-thumb')){call('debug_log',`review: thumb click i=${i}`);rowClick(e,i);if(files[i])openReview(i);return}
     if(isField){if(e.detail>=2){clearTimeout(window._shrinkTimer);activateEdit(td,key,i)}else{rowClick(e,i)}return}
     rowClick(e,i);
   });
@@ -404,6 +404,13 @@ function onDropResult(result){
 
 // ═══ Keyboard ═══
 document.addEventListener('keydown',e=>{
+  // 非审查模式：空格键 → 打开审阅（优先选中文件，其次第一个文件）
+  if(_reviewIdx<0&&e.key===' '&&e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA'&&files.length>0){
+    e.preventDefault();
+    const idx=sel.size>0?Math.min(...sel):0;
+    if(files[idx])openReview(idx);
+    return;
+  }
   // 审查模式快捷键（输入框中不触发）
   if(_reviewIdx>=0&&e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA'){
     if(e.key==='Escape'){e.preventDefault();closeReview();return}
@@ -684,6 +691,26 @@ function initReviewControls(video){
 // ═══ Buttons + Zoom ═══
 document.getElementById('btnAddBig').addEventListener('click',addFiles);
 document.getElementById('btnRename').addEventListener('click',doRename);
+document.getElementById('btnExport').addEventListener('click',exportExcel);
+
+async function exportExcel(){
+  if(files.length===0){toast('无文件可导出');return}
+  toast('导出中…');call('debug_log','exportExcel: '+files.length+' files');
+  const rows=files.map((f,i)=>{
+    const ff=f.fields;const tk=buildTK(i);
+    return {no:i+1,basename:f.basename,ep:ff.ep||'',sc:ff.sc||'',shot:ff.shot||'',tk:tk,desc:ff.desc||'',type:ff.type||'',author:ff.author||'',ver:ff.ver||'',status:ff.status||'',thumb:_thumbs[f.path]||''};
+  });
+  try{
+    const r=await call('export_table',rows);
+    if(r&&r.data){
+      const bytes=Uint8Array.from(atob(r.data),c=>c.charCodeAt(0));
+      const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      const a=document.createElement('a');a.download='批量命名导出_'+new Date().toISOString().slice(0,10)+'.xlsx';
+      a.href=URL.createObjectURL(blob);a.click();
+      toast('导出完成');call('debug_log','exportExcel: DONE');
+    }else{toast('导出失败')}
+  }catch(e){toast('导出失败: '+e.message)}
+}
 document.getElementById('btnUndo').addEventListener('click',doUndo);
 
 const zs=document.getElementById('zoomSlider'),zl=document.getElementById('zoomLabel');
