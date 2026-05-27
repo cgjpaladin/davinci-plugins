@@ -365,11 +365,23 @@ HTML_FILE = os.path.join(_BASE_DIR, HTML_FILE_NAME)
 
 if __name__ == "__main__":
     import threading, socket, io as _io
-    from bottle import route, run, static_file
+    from bottle import route, run, static_file, request, HTTPError
 
     @route('/')
     def index():
         return static_file(HTML_FILE_NAME, root=_BASE_DIR)
+
+    # 审查模式用：服务本地媒体文件（避免 file:// URL 在 WKWebView 中被拦截）
+    @route('/media')
+    def serve_media():
+        import urllib.parse
+        p = urllib.parse.unquote(request.query.get('p', ''))
+        if not p or not os.path.isfile(p):
+            return HTTPError(404, "File not found")
+        ext = os.path.splitext(p)[1].lower()
+        if ext not in MEDIA_EXT:
+            return HTTPError(403, "Not a media file")
+        return static_file(os.path.basename(p), root=os.path.dirname(p))
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(('127.0.0.1', 0))

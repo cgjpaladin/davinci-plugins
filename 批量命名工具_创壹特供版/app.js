@@ -421,6 +421,7 @@ document.addEventListener('keydown',e=>{
 
 // ═══ 审查模式 ═══
 let _reviewIdx=-1;
+let _metaGen=0;
 const _speeds=[0.5,1,2];let _speedI=1;
 function formatTime(s){if(!isFinite(s)||s<0)return'0:00';const m=Math.floor(s/60),sec=Math.floor(s%60);return m+':'+String(sec).padStart(2,'0')}
 
@@ -429,13 +430,12 @@ async function openReview(i){
   // 标题
   const tk=buildTK(i);
   document.getElementById('reviewFilename').textContent=`EP${ff.ep||'__'}_SC${ff.sc||'__'}_SH${ff.shot||'__'}_TK${tk}${ff.type?'_'+ff.type:''}_${ff.author||'__'}_V${ff.ver||'__'}_${ff.status||'__'}`;
-  // 媒体
+  // 媒体 — 通过本地 HTTP 服务器访问（避免 file:// 跨域问题）
   const video=document.getElementById('reviewVideo');video.removeAttribute('src');
   const img=document.getElementById('reviewImage');img.removeAttribute('src');
-  const urlPath=f.path.replace(/\\/g,'/'); // Windows 反斜杠转正斜杠
-  const fileUrl=urlPath.match(/^[A-Z]:\//i)?'file:///'+encodeURI(urlPath):'file://'+encodeURI(urlPath);
-  if(isVideo){video.src=fileUrl;video.style.display='';img.style.display='none';_speedI=1;document.getElementById('rcSpeed').textContent='1×';video.playbackRate=1;video.play().catch(()=>{});initReviewControls(video)}
-  else{img.src=fileUrl;img.style.display='';video.style.display='none';video.pause();document.getElementById('reviewControls').style.display='none'}
+  const mediaUrl=`${location.origin}/media?p=`+encodeURIComponent(f.path);
+  if(isVideo){video.src=mediaUrl;video.style.display='';img.style.display='none';_speedI=1;document.getElementById('rcSpeed').textContent='1×';video.playbackRate=1;video.play().catch(()=>{});initReviewControls(video)}
+  else{img.src=mediaUrl;img.style.display='';video.style.display='none';video.pause();document.getElementById('reviewControls').style.display='none'}
   // 字段
   buildReviewFields(ff,isVideo);
   // 状态高亮
@@ -506,27 +506,28 @@ document.getElementById('reviewOverlay').addEventListener('dragover',e=>{e.preve
 document.getElementById('reviewOverlay').addEventListener('drop',e=>{e.preventDefault()});
 
 async function loadMediaMeta(path,isVideo,video,img){
-  const meta=document.getElementById('reviewMeta');
+  const meta=document.getElementById('reviewMeta');meta.innerHTML='';
   const parts=[];
-  // 文件大小
   const f=files[_reviewIdx];
   if(f.size)parts.push(`📦 ${(f.size/1048576).toFixed(1)} MB`);
   parts.push(f.ext||'');
+  const _generation=++_metaGen;
   if(isVideo){
-    // HTML5 数据
     const onMeta=()=>{
+      if(_generation!==_metaGen)return;
       if(video.videoWidth)parts.unshift(`📹 ${video.videoWidth}×${video.videoHeight}`);
       if(video.duration)parts.push(`⏱ ${formatTime(video.duration)}`);
       meta.innerHTML=parts.map(p=>`<span>${p}</span>`).join('');
     };
     if(video.readyState>=1)onMeta();else video.addEventListener('loadedmetadata',onMeta,{once:true});
-    // ffprobe (可选)
-    try{const r=await call('get_media_info',path);if(r){
-      if(r.fps)document.getElementById('reviewMeta').innerHTML+='<span> · '+Number(r.fps).toFixed(0)+'fps</span>';
-      if(r.codec)document.getElementById('reviewMeta').innerHTML+='<span> · '+r.codec.toUpperCase()+'</span>';
+    try{const r=await call('get_media_info',path);if(r&&_generation===_metaGen){
+      const extra=[];
+      if(r.fps)extra.push(Number(r.fps).toFixed(0)+'fps');
+      if(r.codec)extra.push(r.codec.toUpperCase());
+      if(extra.length)meta.innerHTML+='<span> · '+extra.join(' · ')+'</span>';
     }}catch(e){}
   }else{
-    const onLoad=()=>{parts.unshift(`🖼 ${img.naturalWidth}×${img.naturalHeight}`);meta.innerHTML=parts.map(p=>`<span>${p}</span>`).join('')};
+    const onLoad=()=>{if(_generation!==_metaGen)return;parts.unshift(`🖼 ${img.naturalWidth}×${img.naturalHeight}`);meta.innerHTML=parts.map(p=>`<span>${p}</span>`).join('')};
     if(img.complete)onLoad();else img.addEventListener('load',onLoad,{once:true});
   }
 }

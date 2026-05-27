@@ -251,7 +251,8 @@ def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expec
         with open(preset_path, "rb") as f:
             actual_hash = hashlib.md5(f.read()).hexdigest()
         if actual_hash != _PRESET_HASH:
-            results.append(_make_result("fail",
+            status = "warn" if _IS_PERSONAL else "fail"
+            results.append(_make_result(status,
                 detail="Fairlight 预设: 版本过旧",
                 reason="交付总线设置.dat 与参考版本不一致，请更新预设文件"))
         else:
@@ -1439,7 +1440,9 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
 
 from deploy_config import get_smb_mount
 
-_SMB_PREFIX = get_smb_mount(default="/Volumes/MYJC")
+_SMB_PREFIX = (get_smb_mount(default="/Volumes/MYJC")
+               if not os.environ.get("WORKBUDDY_PERSONAL") else "")
+_IS_PERSONAL = bool(os.environ.get("WORKBUDDY_PERSONAL"))
 
 # ── 片段文件信息缓存（脱机+路径检测共享，避免重复 IPC）──
 _clip_files_cache = None  # {(track, name): {"start": int, "mp": item|None, "path": str|None}}
@@ -1486,6 +1489,9 @@ def _clear_clip_files_cache():
 def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list:
     """检查当前时间线素材路径是否在服务器上（使用共享缓存）。"""
     issues = []
+    # 个人版跳过路径检测
+    if not _SMB_PREFIX:
+        return [_make_result("pass", detail="路径检测: 非服务器环境，已跳过", is_summary=True)]
     seen = set()
     for (track, name), info in _collect_clip_files(timeline, io_range).items():
         path = info["path"]
