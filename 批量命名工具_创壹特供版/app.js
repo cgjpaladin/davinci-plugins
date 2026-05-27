@@ -346,7 +346,7 @@ function showDialog(title,msg){return new Promise(r=>{document.getElementById('d
 // ═══ Actions ═══
 async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);applySort();reindex();r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
 async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);applySort();reindex();r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFolder)`);renderList();_toastResult(r);loadThumbs()}}
-function _toastResult(r){let m=`已追加 ${r.total} 个文件`;if(r.duplicates)m+=` · ${r.duplicates} 个重复跳过`;if(r.subdirs_skipped)m+=` · ${r.subdirs_skipped} 个子文件夹跳过`;if(r.truncated)m+=` (上限${r.max}个)`;toast(m)}
+function _toastResult(r){let m=`已追加 ${r.total} 个文件`;if(r.skipped)m+=` · ${r.skipped} 个格式不支持`;if(r.duplicates)m+=` · ${r.duplicates} 个重复跳过`;if(r.subdirs_skipped)m+=` · ${r.subdirs_skipped} 个子文件夹跳过`;if(r.truncated)m+=` (上限${r.max}个)`;toast(m)}
 
 async function doRename(){
   if(sel.size===0)return;
@@ -707,7 +707,8 @@ async function exportExcel(){
       const bytes=Uint8Array.from(atob(r.data),c=>c.charCodeAt(0));
       const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
       const a=document.createElement('a');a.download='批量命名导出_'+new Date().toISOString().slice(0,10)+'.xlsx';
-      a.href=URL.createObjectURL(blob);a.click();
+      const url=URL.createObjectURL(blob);a.href=url;a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
       toast('导出完成');call('debug_log','exportExcel: DONE');
     }else{toast('导出失败')}
   }catch(e){toast('导出失败: '+e.message)}
