@@ -114,10 +114,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Micr
   outline:2px solid var(--sel-border)!important;
   outline-offset:-1px!important;
   background:var(--sel-bg)!important;
+  transition:none!important;
 }
+.handsontable td.current{background:var(--sel-bg)!important}
 
 /* 选中区域 */
-.handsontable .area{background:var(--sel-bg)!important;border:none!important}
+.handsontable .area{background:var(--sel-bg)!important;border:none!important;transition:none!important}
+
+/* 消除内置 selection 白色闪 */
+.handsontable td.htDimmed.current,
+.handsontable th.current{background:var(--bg) none!important}
 
 /* 悬停行 */
 .handsontable tbody tr:hover td{background:var(--cell-hover)!important}
