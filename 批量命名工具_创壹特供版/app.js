@@ -81,7 +81,7 @@ async function init(){
   // ── 表头点击排序 ──
   theadTr.querySelectorAll('th').forEach(th=>{
     const cls=th.className.replace('col-','');
-    if(cls==='num'||cls==='thumb')return;
+    if(cls==='num'||cls==='thumb'||cls==='tk')return;
     th.style.cursor='pointer';th.title='点击排序';
     th.addEventListener('click',()=>{
       if(_sortKey===cls){if(_sortAsc){_sortAsc=false}else{_sortKey=null;_sortAsc=true;files.sort((a,b)=>a._idx-b._idx);renderList(true);updSortIndicators();return}}
