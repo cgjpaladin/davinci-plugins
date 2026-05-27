@@ -600,8 +600,16 @@ function reviewShotEdit(ip){
   shots.forEach(v=>ct.appendChild(_mkRow(v)));
   function _updBtns(c){const rows=c.querySelectorAll('.shot-edit-row');rows.forEach((r,j)=>{const btn=r.querySelector('button');if(j===rows.length-1){btn.textContent='+';btn.className='shot-act shot-add-btn';btn.onclick=()=>{c.appendChild(_mkRow(''));_updBtns(c);c.querySelectorAll('input')[c.querySelectorAll('input').length-1].focus()}}else{btn.textContent='−';btn.className='shot-act shot-del-btn';btn.onclick=()=>{if(c.querySelectorAll('.shot-edit-row').length<=1)return;r.remove();_updBtns(c)}}})}
   _updBtns(ct);
-  const commit=()=>{const vals=[...ct.querySelectorAll('input')].map(inp=>{let v=inp.value.replace(/[^\d]/g,'').slice(0,2);const n=parseInt(v,10);return(n>0&&n<100)?String(n).padStart(2,'0'):''}).filter(v=>v);const nv=vals.join('-');ip.value=nv;files[_reviewIdx].fields.shot=nv||'';files[_reviewIdx]._shots=vals.length?vals:[''];ct.remove();ip.style.display='';updateReviewTitle()};
-  ct.addEventListener('keydown',e=>{if(e.key==='Escape'){ip.value=oldVal;commit()}if(e.key==='Enter'&&e.target.tagName==='INPUT'){e.preventDefault();commit()}});
+  const commit=(restoreOld)=>{
+    const vals=restoreOld?[]:
+      [...ct.querySelectorAll('input')].map(inp=>{let v=inp.value.replace(/[^\d]/g,'').slice(0,2);const n=parseInt(v,10);return(n>0&&n<100)?String(n).padStart(2,'0'):''}).filter(v=>v);
+    const nv=restoreOld?oldVal:vals.join('-');
+    ip.value=nv;files[_reviewIdx].fields.shot=nv||'';files[_reviewIdx]._shots=vals.length?vals:[''];
+    ct.remove();ip.style.display='';updateReviewTitle();
+  };
+  ct.addEventListener('keydown',e=>{if(e.key==='Escape'){commit(true)}if(e.key==='Enter'&&e.target.tagName==='INPUT'){e.preventDefault();commit()}});
+  // 点击外部 → 提交
+  setTimeout(()=>{const _out=function(e){if(!ct.contains(e.target)){document.removeEventListener('click',_out);commit()}};document.addEventListener('click',_out)},0);
   wrap.appendChild(ct);ct.querySelector('input').focus();
 }
 document.getElementById('rsOK').addEventListener('click',()=>setReviewStatus('OK'));
