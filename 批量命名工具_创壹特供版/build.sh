@@ -48,6 +48,9 @@ DESK="$HOME/Desktop/$APP_NAME.app"
 if [ -d "$DESK" ]; then rm -rf "$DESK" 2>/dev/null || true; fi
 ditto "dist/批量命名工具-创壹特供版.app" "$DESK"
 
+# Ad-hoc 签名（移除 Gatekeeper 隔离标记，方便分发）
+codesign --force --deep --sign - "$DESK" 2>/dev/null || true
+
 # 验证打包完整性
 BUNDLE="$DESK/Contents/Resources/$HTML_FILE"
 if python3 -c "
