@@ -362,10 +362,15 @@ class RenamerAPI:
         ext = os.path.splitext(path)[1].lower()
         mime_map = {'.mp4':'video/mp4','.mov':'video/quicktime','.avi':'video/x-msvideo','.mkv':'video/x-matroska','.webm':'video/webm','.mxf':'application/mxf','.m4v':'video/mp4','.flv':'video/x-flv','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.bmp':'image/bmp','.tiff':'image/tiff','.gif':'image/gif','.webp':'image/webp','.tif':'image/tiff'}
         try:
+            size = os.path.getsize(path)
+            if size > 300 * 1024 * 1024:
+                _log.warning(f"get_media_data: file too large ({size} bytes)")
+                return None
             with open(path, 'rb') as f:
                 data = base64.b64encode(f.read()).decode('ascii')
-            return {'data': data, 'mime': mime_map.get(ext, 'application/octet-stream'), 'size': os.path.getsize(path)}
-        except Exception:
+            return {'data': data, 'mime': mime_map.get(ext, 'application/octet-stream'), 'size': size}
+        except Exception as e:
+            _log.warning(f"get_media_data failed: {e}")
             return None
 
 
