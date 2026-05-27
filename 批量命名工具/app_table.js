@@ -94,13 +94,11 @@ async function init(){
   // 动态生成表头（单一事实来源，防止 HTML/JS 列序漂移）
   const theadTr = document.querySelector('#fileList thead tr');
   const baseTh = theadTr.querySelector('.col-base');
-  // 字段顺序与 build_filename 一致：desc → method → author → ver → status
-  const headerKeys = ['ep','sc','gr','tk','desc','method','author','ver','status'];
-  const headerLabels = {ep:'Ep 集数',sc:'Sc 场次',gr:'Gr 小场次',tk:'Tk 次数',desc:'镜头描述',method:'制作方式',author:'制作者',ver:'v 版本',status:'通过'};
+  const headerKeys=_allFields.map(f=>f.key);
   headerKeys.forEach(k => {
     const th = document.createElement('th');
     th.className = 'col-'+k;
-    th.textContent = headerLabels[k] || k;
+    th.textContent = window._fieldLabels[k] || k;
     theadTr.insertBefore(th, baseTh);
   });
   window._headerKeys = headerKeys;
@@ -241,7 +239,7 @@ function renderList(force){
       const tr = rows[i];
       tr.className = ''; tr.dataset.index = i; tr.dataset.path = f.path;
       if(sel.has(i)) tr.classList.add('sel');
-      const ff = {...f.fields, tk: _computeTK(i)};
+      const ff = {...f.fields, tk: buildTK(i)};
       const fieldKeys = window._fieldKeysAll || ['ep','sc','gr','desc','method','author','ver','status'];
       const ready = fieldKeys.every(k => ff[k]);
       tr.classList.add(ready?'rdy':'mis');
@@ -262,7 +260,7 @@ function renderList(force){
 function _buildRow(f,i){
   const tr = document.createElement('tr');
   tr.dataset.index = i; tr.dataset.path = f.path;
-  const ff = {...f.fields, tk: _computeTK(i)};
+  const ff = {...f.fields, tk: buildTK(i)};
   const fieldKeys = window._fieldKeysAll || ['ep','sc','gr','desc','method','author','ver','status'];
   const nFields = fieldKeys.length;
   const ready = fieldKeys.every(k => ff[k]);
@@ -688,7 +686,6 @@ function buildTK(i){
   }
   return String(n).padStart(2,'0');
 }
-function _computeTK(i){return buildTK(i)}
 let _nameFmt=[];
 function buildName(f){
   const raw=_nameFmt.map(s=>s.pfx+(f[s.key]||'')).join('_');
@@ -938,12 +935,12 @@ function _runSelfTest(){
   t('_nameFmt',()=>{if(!Array.isArray(_nameFmt))throw new Error('_nameFmt not array')});
   t('_reservedDesc',()=>{if(_reservedDesc.size<3)throw new Error('_reservedDesc empty')});
   t('DIGIT_RULES',()=>{if(!DIGIT_RULES.ep)throw new Error('DIGIT_RULES missing')});
-  t('_computeTK',()=>{
+  t('buildTK',()=>{
     files=[{fields:{ep:'01',sc:'01',gr:'01',desc:'A',method:'X',ver:'01'}}];
     sel.add(0);
-    const tk=_computeTK(0);
+    const tk=buildTK(0);
     files=[];sel.clear();
-    if(tk!=='01')throw new Error('_computeTK returned '+tk);
+    if(tk!=='01')throw new Error('buildTK returned '+tk);
   });
   t('onMethodChange locked',()=>{
     files=[{fields:{ep:'01',sc:'01',gr:'01',desc:'',author:'',method:'',ver:'01',status:''}}];

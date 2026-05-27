@@ -31,6 +31,10 @@ _SHARED_DIR = os.path.join(_BASE_DIR, 'shared')
 if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
     sys.path.insert(0, os.path.dirname(_SHARED_DIR))
 
+# 视频扩展名集合 + 文件对话框过滤器
+VIDEO_EXT = {'.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw'}
+_DIALOG_FILTER = "媒体文件 (" + ";".join(sorted(e.replace(".","*.") for e in VIDEO_EXT)) + ")"
+
 CFG_FILE = os.path.join(os.path.expanduser("~"), ".renamer_saved.json")
 PATH_RE = re.compile(r"^(\d{8})_(.+)$")
 
@@ -124,7 +128,7 @@ class RenamerAPI:
     def add_files_via_dialog(self):
         result = _window.create_file_dialog(
             webview.OPEN_DIALOG, allow_multiple=True,
-            file_types=("媒体文件 (*.mp4;*.mov;*.mxf;*.avi;*.mkv;*.r3d;*.braw)",),
+            file_types=(_DIALOG_FILTER,),
         )
         if not result:
             return {"files": [], "total": 0}
@@ -166,8 +170,7 @@ class RenamerAPI:
         MAX_FILES = 100
         files = []; duplicates = 0; skipped = 0; subdirs = 0; truncated = False
         seen_fp = set()  # 本批指纹，不跨批
-        _EMPTY_KEYS = {'ep','sc','gr','tk','ver'}  # TK 由扫描自动计算，不继承解析值
-        VIDEO_EXT = {'.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw'}
+        _EMPTY_KEYS = {fd["key"] for fd in FIELD_CONFIG if fd.get("name")}  # 有前缀的字段不继承解析值
         parsed_count = 0; no_parse_count = 0
         for p_ in paths_[:MAX_FILES]:
             if len(files) >= MAX_FILES: truncated = True; break
