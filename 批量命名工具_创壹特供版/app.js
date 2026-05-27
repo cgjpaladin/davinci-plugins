@@ -694,8 +694,6 @@ function initReviewControls(video){
   speedBtn.onclick=()=>{_speedI=(_speedI+1)%3;const s=_speeds[_speedI];video.playbackRate=s;speedBtn.textContent=s+'×'};
   document.getElementById('rcStepBack').onclick=()=>{video.pause();video.currentTime=Math.max(0,video.currentTime-1/25);playBtn.textContent='▶';upd()};
   document.getElementById('rcStepFwd').onclick=()=>{video.pause();video.currentTime=Math.min(video.duration||999,video.currentTime+1/25);playBtn.textContent='▶';upd()};
-  document.getElementById('rcFS').onclick=()=>{if(video.requestFullscreen)video.requestFullscreen();else if(video.webkitRequestFullscreen)video.webkitRequestFullscreen()};
-  document.getElementById('rcSnap').onclick=()=>{const c=document.createElement('canvas');c.width=video.videoWidth;c.height=video.videoHeight;c.getContext('2d').drawImage(video,0,0);const a=document.createElement('a');a.download='frame_'+formatTime(video.currentTime).replace(':','_')+'.png';a.href=c.toDataURL('image/png');a.click();toast('截图已保存')};
 }
 
 // ═══ Buttons + Zoom ═══

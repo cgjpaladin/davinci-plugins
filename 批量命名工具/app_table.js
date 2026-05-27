@@ -908,17 +908,37 @@ function buildReviewFields(ff,isVideo){
   const fields=[
     [{key:'ep',label:'Ep',w:1,attr:'inputmode=numeric maxlength=3'},{key:'sc',label:'Sc',w:1,attr:'inputmode=numeric maxlength=2'}],
     [{key:'gr',label:'Gr',w:1,attr:'inputmode=numeric maxlength=2'},{key:'ver',label:'v',w:1,attr:'inputmode=numeric maxlength=2'}],
-    [{key:'method',label:'制作方式',w:2,attr:'readonly'}],
     [{key:'author',label:'制作者',w:2,attr:'placeholder=\"请输入姓名\"'}],
     [{key:'desc',label:'镜头描述',w:2,attr:'placeholder=\"镜头描述\"'}],
   ];
+  // method 下拉（联动 desc）
+  const mWrap=document.createElement('div');mWrap.className='rf-full';
+  const mLb=document.createElement('label');mLb.textContent='制作方式';mWrap.appendChild(mLb);
+  const mSel=document.createElement('select');mSel.style.cssText='width:100%;background:#2a2a2a;border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:12px;font-family:var(--font-mono);box-sizing:border-box';
+  ['请选择','智能分镜版','双轨版','角色专属版'].forEach(m=>{const o=document.createElement('option');o.value=m==='请选择'?'':m;o.textContent=m;if(m===ff.method)o.selected=true;mSel.appendChild(o)});
+  mWrap.appendChild(mSel);container.appendChild(mWrap);
+  mSel.addEventListener('change',()=>{
+    const nm=mSel.value;files[_reviewIdx].fields.method=nm;
+    const cfg=methodDescMap[nm]||{mode:'text',hint:'输入镜头描述'};
+    const descIp=container.querySelector('input[data-rkey=\"desc\"]');
+    if(!descIp)return;
+    if(cfg.mode==='locked'){files[_reviewIdx].fields.desc=cfg.value||'';descIp.value=cfg.value||'';descIp.readOnly=true;descIp.classList.remove('rf-filled');if(descIp.value.trim())descIp.classList.add('rf-filled')}
+    else{descIp.readOnly=false;descIp.placeholder=cfg.mode==='dropdown'?'请选择镜头描述':(cfg.hint||'输入镜头描述');
+      if(!cfg.value){descIp.value=descIp.value.trim();files[_reviewIdx].fields.desc=descIp.value}
+      else{descIp.value='';files[_reviewIdx].fields.desc=''}}
+    updateReviewTitle();updateReviewMeta();
+  });
+  const initCfg=methodDescMap[ff.method||'']||{mode:'text',hint:'输入镜头描述'};
   fields.forEach(row=>{row.forEach(fd=>{
     const wrap=document.createElement('div');wrap.className=fd.w>1?'rf-full':'';
     const lb=document.createElement('label');lb.textContent=fd.label;wrap.appendChild(lb);
-    const ip=document.createElement('input');ip.value=ff[fd.key]||'';
-    if(fd.attr){const attrs=fd.attr.split(' ');attrs.forEach(a=>{const[ak,av]=a.split('=');if(av)ip.setAttribute(ak,av.replace(/"/g,''));else ip.setAttribute(ak,'')})}
+    const ip=document.createElement('input');ip.value=ff[fd.key]||'';ip.setAttribute('data-rkey',fd.key);
+    const initLocked=fd.key==='desc'&&initCfg.mode==='locked';
+    if(initLocked){ip.value=initCfg.value||'';ip.readOnly=true;ip.classList.add('rf-filled')}
+    if(fd.attr){const attrs=fd.attr.split(' ');attrs.forEach(a=>{const[ak,av]=a.split('=');if(av)ip.setAttribute(ak,av.replace(/\"/g,''));else ip.setAttribute(ak,'')})}
     wrap.appendChild(ip);container.appendChild(wrap);
-    if(fd.attr.includes('readonly')){ip.readOnly=true;return}
+    if((fd.attr||'').includes('readonly')&&!initLocked){ip.readOnly=true;return}
+    if(initLocked)return;
     const key=fd.key;
     if(key==='author'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
     else if(key==='desc'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/_/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim()})}
@@ -984,8 +1004,6 @@ function initReviewControls(video){
   speedBtn.onclick=()=>{_speedI=(_speedI+1)%_speeds.length;video.playbackRate=_speeds[_speedI];speedBtn.textContent=_speeds[_speedI]+'×'};
   document.getElementById('rcStepBack').onclick=()=>{video.pause();video.currentTime=Math.max(0,video.currentTime-1/25);playBtn.textContent='▶'};
   document.getElementById('rcStepFwd').onclick=()=>{video.pause();video.currentTime=Math.min(video.duration||999,video.currentTime+1/25);playBtn.textContent='▶'};
-  document.getElementById('rcSnap').onclick=()=>{const c=document.createElement('canvas');c.width=video.videoWidth||640;c.height=video.videoHeight||360;c.getContext('2d').drawImage(video,0,0);const a=document.createElement('a');a.download='snap_'+Date.now()+'.png';a.href=c.toDataURL();a.click()};
-  document.getElementById('rcFS').onclick=()=>{if(document.fullscreenElement){document.exitFullscreen()}else{video.requestFullscreen().catch(()=>{})}};
   video.onplay=()=>{playBtn.textContent='⏸'};
   video.onpause=()=>{playBtn.textContent='▶'};
   video.ontimeupdate=()=>{if(!video.duration)return;seek.value=video.currentTime/video.duration*100;timeEl.textContent=formatTime(video.currentTime)+' / '+formatTime(video.duration);frameEl.textContent='帧 '+Math.floor(video.currentTime*25)};
