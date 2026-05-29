@@ -26,6 +26,7 @@ import os
 import re
 import json
 import shutil
+import hashlib
 import zipfile
 import hashlib
 import tempfile
@@ -39,6 +40,19 @@ CACHE_DIR = os.path.expanduser("~/Library/Application Support/交付自检/scrip
 _FEISHU_AUTH = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
 _FEISHU_FILES = "https://open.feishu.cn/open-apis/drive/v1/files"
 _FEISHU_EXPORT = "https://open.feishu.cn/open-apis/drive/v1/export"
+
+# ── 工具 ──
+
+def _file_sha256(path: str) -> str:
+    """计算文件 SHA256 前 16 位，用于哈希校验。"""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(65536)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()[:16]
 
 # ── 日志回调（由调用方如 ui.py 设置）──
 _log_callback = None
@@ -236,8 +250,63 @@ def _feishu_api(path: str, method: str = "GET", data: bytes | None = None,
         return None
 
 
+def _feishu_doc_meta(token: str) -> str | None:
+    """获取飞书原生文档的 revision_id（轻量调用，不下载）。
+    返回 revision_id，不可访问返回 None。"""
+    resp = _feishu_api(f"https://open.feishu.cn/open-apis/docx/v1/documents/{token}")
+    if not resp:
+        return None
+    try:
+        data = json.loads(resp)
+        if data.get("code") == 0:
+            rev = data.get("data", {}).get("document", {}).get("revision_id")
+            return str(rev) if rev else None
+    except Exception:
+        pass
+    return None
+
+def _feishu_file_meta(token: str) -> str | None:
+    """获取飞书文件的 modified_time（轻量调用，不下载）。
+    返回 modified_time 字符串，不可访问返回 None。"""
+    resp = _feishu_api(f"{_FEISHU_FILES}/{token}")
+    if not resp:
+        return None
+    try:
+        data = json.loads(resp)
+        if data.get("code") == 0:
+            return data.get("data", {}).get("modified_time", "")
+    except Exception:
+        pass
+    return None
+
+
 def _download_feishu_file(token: str) -> str:
-    """下载飞书文件，直调 API（bot token，无需 lark-cli）。"""
+    """下载飞书文件，返回本地路径。
+    缓存复用：查 modified_time，未变则直接返回。"""
+    _ensure_cache()
+    cache_path = os.path.join(CACHE_DIR, f"file_{{token}}.docx")
+    meta_path = cache_path + ".meta"
+
+    if os.path.exists(cache_path):
+        meta = _feishu_file_meta(token)
+        if meta:
+            current_mtime = meta.get("modified_time", "")
+            if os.path.exists(meta_path):
+                with open(meta_path, encoding="utf-8") as f:
+                    if f.read().strip() == current_mtime:
+                        _log(f"📋 飞书缓存: {{os.path.basename(cache_path)}}")
+                        return cache_path
+            if current_mtime:
+                with open(meta_path, "w", encoding="utf-8") as f:
+                    f.write(current_mtime)
+            if os.path.getsize(cache_path) > 0:
+                _log(f"📋 飞书缓存(首次): {{os.path.basename(cache_path)}}")
+                return cache_path
+        else:
+            _log("⚠ 飞书元数据查询失败，使用旧缓存")
+            return cache_path
+
+    resp = _feishu_api(f"{_FEISHU_FILES}/{token}/download")
     _ensure_cache()
     cache_path = os.path.join(CACHE_DIR, f"file_{token}.docx")
     if os.path.exists(cache_path):
@@ -252,11 +321,30 @@ def _download_feishu_file(token: str) -> str:
 
     raise RuntimeError(f"飞书文件下载失败: {token}")
 def _export_feishu_docx(token: str) -> str:
-    """导出飞书原生文档为 .docx，返回本地路径。直调 API，无需 lark-cli。"""
+    """导出飞书原生文档为 .docx，返回本地路径。
+    缓存复用：检查文档 revision_id，未变则直接返回缓存。"""
     _ensure_cache()
     cache_path = os.path.join(CACHE_DIR, f"docx_{token}.docx")
+    meta_path = cache_path + ".rev"
+
     if os.path.exists(cache_path):
-        return cache_path
+        rev = _feishu_doc_meta(token)
+        if rev:
+            if os.path.exists(meta_path):
+                with open(meta_path, encoding="utf-8") as f:
+                    if f.read().strip() == rev:
+                        _log(f"📋 飞书缓存: {os.path.basename(cache_path)}")
+                        return cache_path
+                    # revision 变了 → 重新下载
+            else:
+                # 首次命中 → 写 revision，信任缓存
+                with open(meta_path, "w", encoding="utf-8") as f:
+                    f.write(rev)
+                _log(f"📋 飞书缓存(首次): {os.path.basename(cache_path)}")
+                return cache_path
+        else:
+            _log("⚠ 飞书文档元数据查询失败，使用旧缓存")
+            return cache_path
 
     resp = _feishu_api(f"{_FEISHU_EXPORT}/{token}?file_extension=docx")
     if not resp:
@@ -504,30 +592,52 @@ def _parse_docx_file(path: str) -> dict:
 
 
 def _parse_docx_file_with_fallback(path: str) -> dict:
-    """.docx / .doc / .pdf → parse。"""
+    """.docx / .doc / .pdf → parse。本地文件按 path+hash 缓存。"""
     if os.path.isdir(path):
         raise RuntimeError("请选择具体文件，不要选择文件夹")
+
+    _ensure_cache()
+    fhash = _file_sha256(path)
+    cache_path = os.path.join(CACHE_DIR, f"local_{fhash}.json")
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, encoding="utf-8") as f:
+                cached = json.load(f)
+            if cached.get("_cache_path") == path:
+                _log(f"📋 本地缓存: {os.path.basename(path)} ({len(cached.get('episodes',{}))}集)")
+                return cached
+        except Exception:
+            pass
+
     lo = path.lower()
     if lo.endswith(".pdf"):
         lines = _extract_text_from_pdf(path)
-        return {"characters": _extract_characters(lines),
-                "episodes": _split_episodes(lines)}
-    if lo.endswith(".doc"):
+        result = {"characters": _extract_characters(lines),
+                  "episodes": _split_episodes(lines)}
+    elif lo.endswith(".doc"):
         lines = _extract_text_from_doc(path)
-        return {"characters": _extract_characters(lines),
-                "episodes": _split_episodes(lines)}
-    try:
-        return _parse_docx_file(path)
-    except (zipfile.BadZipFile, KeyError):
-        # 无扩展名或损坏 → 试 PDF
+        result = {"characters": _extract_characters(lines),
+                  "episodes": _split_episodes(lines)}
+    else:
         try:
-            lines = _extract_text_from_pdf(path)
-            return {"characters": _extract_characters(lines),
-                    "episodes": _split_episodes(lines)}
-        except Exception:
-            lines = _extract_text_from_doc(path)
-        return {"characters": _extract_characters(lines),
-                "episodes": _split_episodes(lines)}
+            result = _parse_docx_file(path)
+        except (zipfile.BadZipFile, KeyError):
+            try:
+                lines = _extract_text_from_pdf(path)
+                result = {"characters": _extract_characters(lines),
+                          "episodes": _split_episodes(lines)}
+            except Exception:
+                lines = _extract_text_from_doc(path)
+                result = {"characters": _extract_characters(lines),
+                          "episodes": _split_episodes(lines)}
+
+    result["_cache_path"] = path
+    try:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False)
+    except Exception:
+        pass
+    return result
 
 
 def match_timeline(parsed: dict, tl_name: str, ep_override: str | None = None) -> dict:

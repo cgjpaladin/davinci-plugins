@@ -10,7 +10,12 @@ from fractions import Fraction
 from functools import singledispatchmethod
 from math import ceil, floor
 import re
-from typing import Literal, TypeAlias, Union
+import sys as _sys
+if _sys.version_info >= (3, 10):
+    from typing import Literal, TypeAlias, Union
+else:
+    from typing import Literal, Union
+    TypeAlias = type
 
 from dftt_timecode.error import (
     DFTTTimecodeInitializationError,

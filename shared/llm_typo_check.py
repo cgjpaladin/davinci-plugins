@@ -168,7 +168,7 @@ def _hash_lines(lines):
 def check_typos_cached(asr_lines, characters, context_lines=None):
     cache_dir = os.path.expanduser("~/Library/Application Support/交付自检")
     cache_file = os.path.join(cache_dir, "typo_cache.json")
-    h = _hash_lines(asr_lines)
+    h = _hash_lines(asr_lines + (context_lines or []))
     cache = {}
     try:
         os.makedirs(cache_dir, exist_ok=True)
