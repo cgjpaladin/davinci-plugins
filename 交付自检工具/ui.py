@@ -297,8 +297,8 @@ def _run_censor_system(timeline, fps, **_kw):
                 reader = csv.reader(f)
                 next(reader, None)
                 for row in reader:
-                    if len(row) >= 2 and row[1].strip():
-                        whitelist.append(row[1].strip())
+                    if len(row) >= 1 and row[0].strip():
+                        whitelist.append(row[0].strip())
             if whitelist:
                 for w in whitelist:
                     white_tmp.write(w + "\n")
@@ -361,13 +361,13 @@ def _run_censor_personal(timeline, fps, **_kw):
                 next(reader, None)  # skip header
                 for row in reader:
                     if len(row) >= 1:
-                        b = row[0].strip()
-                        if b:
-                            blacklist.append(b)
-                    if len(row) >= 2:
-                        w = row[1].strip()
+                        w = row[0].strip()
                         if w:
                             whitelist.append(w)
+                    if len(row) >= 3:
+                        b = row[2].strip()
+                        if b:
+                            blacklist.append(b)
         for w in blacklist:
             black_tmp.write(w + "\n")
         black_tmp.close()
