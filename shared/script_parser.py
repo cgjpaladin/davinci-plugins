@@ -124,7 +124,7 @@ def _extract_text_from_pdf(path: str) -> list[str]:
         try:
             result = subprocess.run(
                 [pdft, "-layout", path, "-"],
-                capture_output=True, text=True, timeout=30)
+                capture_output=True, text=True, encoding="utf-8", timeout=30)
             if result.returncode == 0 and result.stdout.strip():
                 return _clean_pdf_text(
                     [l.strip() for l in result.stdout.splitlines() if l.strip()])
@@ -179,7 +179,7 @@ def _read_env_key(key: str) -> str:
     ]
     for p in paths:
         try:
-            with open(p) as f:
+            with open(p, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line.startswith(f"{key}="):
@@ -216,7 +216,7 @@ def _feishu_api(path: str, method: str = "GET", data: bytes | None = None,
     if not token:
         config_path = os.path.expanduser("~/.lark-cli/config.json")
         try:
-            with open(config_path) as f:
+            with open(config_path, encoding="utf-8") as f:
                 cfg = json.load(f)
         except Exception:
             cfg = {}
@@ -427,14 +427,14 @@ def _normalize_feishu_url(source: str) -> str:
         return source
 
     # 提取 token: /docx/TOKEN, /file/TOKEN, /folder/TOKEN, /docs/TOKEN
-    m = re.search(r'feishu\.cn/(docx|file|folder|docs)/([A-Za-z0-9]+)', source)
+    m = re.search(r'feishu\.cn/(docx|file|folder|docs|wiki)/([A-Za-z0-9]+)', source)
     if not m:
         return source
 
     kind = m.group(1)
     token = m.group(2)
 
-    if kind in ("docx", "docs"):
+    if kind in ("docx", "docs", "wiki"):
         return f"feishu_docx:{token}"
     elif kind == "file":
         return f"feishu_file:{token}"

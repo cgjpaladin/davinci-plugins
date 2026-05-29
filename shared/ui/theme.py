@@ -7,7 +7,7 @@ import os
 
 _THEME_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "theme.json")
 
-with open(_THEME_FILE, "r") as f:
+with open(_THEME_FILE, "r", encoding="utf-8") as f:
     _t = json.load(f)
 
 C = _t["colors"]

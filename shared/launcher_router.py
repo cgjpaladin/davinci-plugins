@@ -42,7 +42,7 @@ def route(product_name: str, ui_module: str = "ui"):
     else:
         _gray_file = os.path.join(_SMB_BASE, "gray.json")
         try:
-            with open(_gray_file) as f:
+            with open(_gray_file, encoding="utf-8") as f:
                 gray = json.load(f)
             if _host in gray.get("gray", []):
                 _code_dir = os.path.join(_SMB_BASE, "gray")

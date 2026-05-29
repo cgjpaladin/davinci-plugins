@@ -217,6 +217,10 @@ def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expec
     """
     import hashlib
 
+    # 个人版跳过（轨数/轨名/Fairlight 均为公司预设）
+    if _IS_PERSONAL:
+        return [_make_result("pass", detail="轨道结构: 个人版已跳过（轨数/轨名/Fairlight 不可用）", is_summary=True)]
+
     if audio_preset is None:
         audio_preset = AUDIO_TRACK_PRESET
     if video_preset is None:
@@ -954,7 +958,9 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     # ── ③ 命名规范 ──
     import re
     tl_name = timeline.GetName()
-    if re.match(r'^\d{2,3}$', tl_name):
+    if _IS_PERSONAL:
+        results.append(_make_result("pass", detail=f"命名: {tl_name} (个人版用自定义命名)", is_summary=True))
+    elif re.match(r'^\d{2,3}$', tl_name):
         results.append(_make_result("pass", detail=f"命名: {tl_name} (通过)"))
     else:
         results.append(_make_result("fail",

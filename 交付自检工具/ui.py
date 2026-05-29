@@ -660,9 +660,14 @@ window_layout = [
                           "Weight": 0, "Alignment": {"AlignHCenter": True}}),
                 ui.Label({"ID": "lbl_ai_hint", "Text": "飞书文档链接 / 本地路径:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
-                ui.LineEdit({"ID": EDIT_SCRIPT_SRC, "Text": "",
-                            "Weight": 0,
-                            "PlaceholderText": "请粘贴链接或路径至此处"}),
+                ui.HGroup({"Spacing": 4, "Weight": 0}, [
+                    ui.LineEdit({"ID": EDIT_SCRIPT_SRC, "Text": "",
+                                "Weight": 1,
+                                "PlaceholderText": "粘贴链接/路径，或拖拽文件"}),
+                    ui.Button({"ID": "btn_browse_script", "Text": "📂",
+                               "StyleSheet": BTN_STYLE_SM, "Weight": 0,
+                               "MinimumSize": [28, 28]}),
+                ]),
                 ui.Label({"ID": "lbl_ai_ep", "Text": "手动输入精准集号（可选）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
@@ -694,6 +699,12 @@ window_layout = [
             ui.Label({"ID": "lbl_gate_warn", "Text": "",
                       "StyleSheet": "color:rgb(220,180,80);font-size:13px;padding:4px 10px",
                       "Weight": 0, "WordWrap": True, "MinimumSize": [0, 22]}),
+            ui.HGroup({"Spacing": 0, "Weight": 0}, [
+                ui.HGap({"Weight": 1}),
+                ui.Button({"ID": "btn_export_logs", "Text": "📋 导出日志",
+                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
+                           "MinimumSize": [84, 20]}),
+            ]),
             ui.HGroup({"Spacing": 8}, [
                 ui.Label({"ID": HINT_LB, "Text": "请点击「开始检查」",
                           "StyleSheet": "color:rgb(130,130,130);font-size:10px", "Weight": 1,
@@ -1334,7 +1345,7 @@ def _run_ai_typo():
         _action_log(f"🔍 发现 {len(corrections)} 处错别字 ({provider}/{model})")
 
     except Exception as e:
-        _action_log(f"💥 AI校对崩溃: {e}")
+        _action_log(f"💥 AI校对崩溃: {e}\n{traceback.format_exc()}")
         itm[HINT_LB].Text = f"❌ 校对异常: {e}"
 
     finally:
@@ -1757,6 +1768,56 @@ dlg.On[BTN_START].Clicked = lambda ev: _start_check()
 dlg.On[BTN_CONFIG].Clicked = lambda ev: _show_config_dialog()
 dlg.On[BTN_AI_TYPO].Clicked = lambda ev: _run_ai_typo()
 
+def _export_logs(ev):
+    """导出日志，弹窗选择保存位置"""
+    import tempfile, zipfile, subprocess
+    logs_dir = os.path.expanduser("~/.workbuddy/logs/交付自检工具")
+    if not os.path.isdir(logs_dir):
+        _action_log("⚠ 日志目录不存在")
+        return
+    # 弹窗选保存位置
+    try:
+        result = subprocess.run([
+            "osascript", "-e",
+            f'POSIX path of (choose file name with prompt "保存日志到：" default name "交付自检日志_{time.strftime("%m%d_%H%M%S")}.zip")'
+        ], capture_output=True, text=True, encoding="utf-8", timeout=30)
+        save_path = result.stdout.strip()
+    except Exception:
+        save_path = ""
+    if not save_path:
+        _action_log("📋 取消导出")
+        return
+    if not save_path.endswith(".zip"):
+        save_path += ".zip"
+    with zipfile.ZipFile(save_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        today = time.strftime("%Y-%m-%d")
+        for f in sorted(os.listdir(logs_dir)):
+            if today not in f:
+                continue
+            fp = os.path.join(logs_dir, f)
+            if os.path.isfile(fp):
+                zf.write(fp, f)
+    _action_log(f"📦 日志已导出: {save_path}")
+    subprocess.Popen(["open", "-R", save_path])
+dlg.On["btn_export_logs"].Clicked = _export_logs
+
+def _browse_script(ev):
+    """弹出文件选择器，将路径填入剧本链接输入框"""
+    import subprocess
+    try:
+        result = subprocess.run([
+            "osascript", "-e",
+            'POSIX path of (choose file of type {"public.text","public.data","com.adobe.pdf"} '
+            'with prompt "选择剧本文件（txt/pdf/docx）")'
+        ], capture_output=True, text=True, encoding="utf-8", timeout=30)
+        path = result.stdout.strip()
+        if path:
+            itm[EDIT_SCRIPT_SRC].Text = path
+            _action_log(f"📂 选择剧本: {path}")
+    except Exception as e:
+        _action_log(f"⚠ 文件选择失败: {e}")
+dlg.On["btn_browse_script"].Clicked = _browse_script
+
 # 剧本链接格式校验 + 按钮状态
 def _on_script_src_changed(ev):
     src = itm[EDIT_SCRIPT_SRC].Text.strip()
@@ -1818,13 +1879,13 @@ def main():
     _lock_file = os.path.join(os.path.dirname(__file__), ".ui_instance.lock")
     if os.path.exists(_lock_file):
         try:
-            with open(_lock_file) as f:
+            with open(_lock_file, encoding="utf-8") as f:
                 _old_pid = int(f.read().strip())
             os.kill(_old_pid, 0)  # 进程存在 → 已有一个窗口
             sys.exit(0)
         except (ProcessLookupError, PermissionError, ValueError):
             pass  # 锁文件残留，清理后继续
-    with open(_lock_file, "w") as f:
+    with open(_lock_file, "w", encoding="utf-8") as f:
         f.write(str(os.getpid()))
     dlg.Show()
     dlg.RecalcLayout()

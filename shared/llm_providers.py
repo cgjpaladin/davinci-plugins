@@ -51,7 +51,7 @@ def _get_key(env_name: str) -> str:
     ]
     for p in paths:
         try:
-            with open(p) as f:
+            with open(p, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line.startswith(f"{env_name}="):

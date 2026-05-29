@@ -29,7 +29,7 @@ cat <<EOF
 ✅ Python: $($PYTHON --version 2>&1)
 EOF
 
-INSTALL_DIR="$HOME/Documents/交付自检工具"
+INSTALL_DIR="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/交付自检工具"
 FUSION_SCRIPTS="$HOME/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 

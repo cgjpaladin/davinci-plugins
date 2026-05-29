@@ -170,7 +170,7 @@ def acquire_lock(clip_name: str) -> bool:
             # 同机锁：自己的残留锁立即回收
             info_file = os.path.join(lock_path, ".info")
             if os.path.isfile(info_file):
-                with open(info_file) as f:
+                with open(info_file, encoding="utf-8") as f:
                     owner_ip = json.load(f).get("ip", "")
                 if owner_ip == _HOST_IP:
                     can_reclaim = True
@@ -221,7 +221,7 @@ def is_locked(clip_name: str) -> Optional[str]:
     try:
         info_file = os.path.join(lock_path, ".info")
         if os.path.isfile(info_file):
-            with open(info_file, "r") as f:
+            with open(info_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
             ip = data.get("ip", "")
             return f"{ip}的同事" if ip else "未知同事"

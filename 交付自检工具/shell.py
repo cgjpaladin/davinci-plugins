@@ -30,7 +30,7 @@ _cfg = {}
 try:
     _cfg_path = os.path.expanduser("~/达芬奇插件工坊/deploy.json")
     if os.path.exists(_cfg_path):
-        with open(_cfg_path) as f:
+        with open(_cfg_path, encoding="utf-8") as f:
             _cfg = json.load(f)
 except Exception:
     pass

@@ -61,7 +61,7 @@ def confirm(question: str, timeout: int = 30) -> bool:
         r = subprocess.run(
             ["osascript", "-e",
              f'display dialog "{question}" buttons {{"取消", "确认"}} default button "确认"'],
-            capture_output=True, text=True, timeout=timeout
+            capture_output=True, text=True, encoding="utf-8", timeout=timeout
         )
         return "确认" in r.stdout
     except Exception:

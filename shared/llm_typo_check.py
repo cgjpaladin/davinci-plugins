@@ -173,7 +173,7 @@ def check_typos_cached(asr_lines, characters, context_lines=None):
     try:
         os.makedirs(cache_dir, exist_ok=True)
         if os.path.exists(cache_file):
-            with open(cache_file) as f:
+            with open(cache_file, encoding="utf-8") as f:
                 cache = json.load(f) or {}
     except Exception:
         pass
@@ -188,7 +188,7 @@ def check_typos_cached(asr_lines, characters, context_lines=None):
                 for k in oldest:
                     del cache[k]
             result["_ts"] = time.time()
-            with open(cache_file, "w") as f:
+            with open(cache_file, "w", encoding="utf-8") as f:
                 json.dump(cache, f, ensure_ascii=False)
         except Exception:
             pass

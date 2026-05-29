@@ -11,7 +11,7 @@ def load() -> dict:
     """读取 deploy.json，不存在返回空 dict。"""
     cfg_path = _os.path.expanduser("~/达芬奇插件工坊/deploy.json")
     try:
-        with open(cfg_path) as f:
+        with open(cfg_path, encoding="utf-8") as f:
             return _json.load(f)
     except Exception:
         return {}
