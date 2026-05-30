@@ -5,11 +5,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WS="$(cd "$SCRIPT_DIR/.." && pwd)"
 PKG="$SCRIPT_DIR/_build/交付自检工具_个人版"
 ZIP="$HOME/Desktop/交付自检工具_个人版.zip"
-# 增量更新包用 ASCII 根目录名避免 zip 乱码
-if [ "$1" = "--update" ]; then
-    PKG="$SCRIPT_DIR/_build/davinci_plugin_update"
-    ZIP="$HOME/Desktop/交付自检工具_更新包.zip"
-fi
 PY_PKG="$HOME/Desktop/交付自检工具_个人版/Python安装包.pkg"
 
 echo "═══ 构建个人版安装包 ═══"
@@ -36,25 +31,20 @@ cp "$WS/shared/dftt_timecode/core"/{dftt_timecode,dftt_timerange}.py "$PKG/交�
 # 5. 字典文件
 cp "$WS/交付自检工具/dicts"/*.{txt,csv} "$PKG/交付自检工具/dicts/" 2>/dev/null || true
 
-# 6. 安装脚本 → ASCII 名（避免 zip 中文乱码）
+# 6. 安装脚本 → 中文名
 chmod +x "$PKG/交付自检工具/install.command"
-cp "$PKG/交付自检工具/install.command" "$PKG/安装.command"  # 中文名保留给桌面双击
-mv "$PKG/交付自检工具/install.command" "$PKG/install_update.command"  # 更新模式用英文名
+mv "$PKG/交付自检工具/install.command" "$PKG/安装.command"
 
 # 7. 清理缓存
 find "$PKG" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 
 echo "✅ $(find "$PKG" -type f | wc -l) 源文件"
 
-# 8. 加入 Python 安装包（--update 模式跳过）
-if [ "$1" != "--update" ]; then
-    PY_NAME="Python安装包.pkg"
-    if [ -f "$SCRIPT_DIR/$PY_NAME" ]; then
-        cp "$SCRIPT_DIR/$PY_NAME" "$PKG/$PY_NAME"
-        echo "  含 Python 安装包"
-    fi
-else
-    echo "  增量更新包（不含 Python）"
+# 8. 加入 Python 安装包（如果项目目录有）
+PY_NAME="Python安装包.pkg"
+if [ -f "$SCRIPT_DIR/$PY_NAME" ]; then
+    cp "$SCRIPT_DIR/$PY_NAME" "$PKG/$PY_NAME"
+    echo "  含 Python 安装包"
 fi
 
 # 9. 打包 zip

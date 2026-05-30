@@ -11,28 +11,35 @@
 
 import json
 import os
+import ssl
 import time
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
+
+_SSL_CTX = ssl._create_unverified_context()
 
 # ══════════════════════════════════════
 # 供应商配置（新增供应商只加这里）
 # ══════════════════════════════════════
 
 _providers = [
-    # DeepSeek V4 Flash（优先，纠错强 + 指令跟随好）
-    {"name": "deepseek-v4-flash", "priority": 1, "vendor": "deepseek",
+    # DeepSeek V4 Pro（主力，纠错能力强）
+    {"name": "deepseek-v4-pro", "priority": 1, "vendor": "deepseek",
      "url": "https://api.deepseek.com/v1/chat/completions",
-     "key_env": "DEEPSEEK_API_KEY", "format": "openai",
-     "extra_body": {"thinking": {"type": "disabled"}}},
+     "key_env": "DEEPSEEK_API_KEY", "format": "openai"},
 
-    # 千问 Plus（备用）
-    {"name": "qwen-plus",      "priority": 2, "vendor": "qwen",
+    # DeepSeek V4 Flash（备用，快+便宜）
+    {"name": "deepseek-v4-flash", "priority": 2, "vendor": "deepseek",
+     "url": "https://api.deepseek.com/v1/chat/completions",
+     "key_env": "DEEPSEEK_API_KEY", "format": "openai"},
+
+    # 千问 Plus（第三备用）
+    {"name": "qwen-plus",      "priority": 3, "vendor": "qwen",
      "url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
      "key_env": "DASHSCOPE_API_KEY", "format": "dashscope"},
 
-    # 智谱 GLM-4-Flash（第三备用，免费额度）
-    {"name": "glm-4-flash",    "priority": 3, "vendor": "zhipu",
+    # 智谱 GLM-4-Flash（第四备用）
+    {"name": "glm-4-flash",    "priority": 4, "vendor": "zhipu",
      "url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
      "key_env": "ZHIPU_API_KEY", "format": "openai"},
 ]
@@ -44,21 +51,25 @@ _FATAL_CODES = {"InvalidApiKey", "DataInspectionFailed", "invalid_api_key"}
 
 
 def _get_key(env_name: str) -> str:
-    """读 SMB .env → 本地 .env → 环境变量。"""
+    """读环境变量 → SMB .env → 本地 .env。"""
+    # 环境变量优先（兼容个人版）
+    v = os.environ.get(env_name, "")
+    if v and v != "sk-xxxxxxxx":
+        return v
     paths = [
         "/Volumes/MYJC/06_Software/达芬奇脚本/shared/.env",
-        os.path.expanduser("~/.workbuddy/.env"),
     ]
     for p in paths:
         try:
             with open(p, encoding="utf-8") as f:
                 for line in f:
-                    line = line.strip()
                     if line.startswith(f"{env_name}="):
-                        return line.split("=", 1)[1].strip().strip('"')
-        except FileNotFoundError:
+                        v = line.split("=", 1)[1].strip().strip('"')
+                        if v and v != "sk-xxxxxxxx":
+                            return v
+        except OSError:
             continue
-    return os.environ.get(env_name, "")
+    return ""
 
 
 def _call_dashscope(cfg: dict, messages: list[dict],
@@ -83,7 +94,7 @@ def _call_dashscope(cfg: dict, messages: list[dict],
     req.add_header("Content-Type", "application/json")
 
     try:
-        with urlopen(req, timeout=30) as resp:
+        with urlopen(req, timeout=60, context=_SSL_CTX) as resp:
             data = json.loads(resp.read())
     except HTTPError as e:
         try:
@@ -91,7 +102,10 @@ def _call_dashscope(cfg: dict, messages: list[dict],
         except json.JSONDecodeError:
             return {"error": f"http_{e.code}"}
     except URLError as e:
-        return {"error": "network", "message": str(e)[:200]}
+        reason = str(e)
+        if "timeout" in reason.lower() or "timed out" in reason.lower():
+            return {"error": "network_timeout", "message": "AI 接口响应超时（>60秒），请检查网络或稍后重试"}
+        return {"error": "network", "message": reason[:200]}
 
     code = data.get("code", "")
     if code:
@@ -126,7 +140,7 @@ def _call_openai_compat(cfg: dict, messages: list[dict],
     req.add_header("Content-Type", "application/json")
 
     try:
-        with urlopen(req, timeout=30) as resp:
+        with urlopen(req, timeout=60, context=_SSL_CTX) as resp:
             data = json.loads(resp.read())
     except HTTPError as e:
         try:
@@ -134,7 +148,10 @@ def _call_openai_compat(cfg: dict, messages: list[dict],
         except json.JSONDecodeError:
             return {"error": f"http_{e.code}"}
     except URLError as e:
-        return {"error": "network", "message": str(e)[:200]}
+        reason = str(e)
+        if "timeout" in reason.lower() or "timed out" in reason.lower():
+            return {"error": "network_timeout", "message": "AI 接口响应超时（>60秒），请检查网络或稍后重试"}
+        return {"error": "network", "message": reason[:200]}
 
     # OpenAI 兼容格式：choices[0].message.content
     try:

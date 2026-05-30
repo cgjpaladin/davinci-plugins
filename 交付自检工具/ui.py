@@ -40,6 +40,7 @@ from config import (
     DEFAULT_VIDEO_TRACKS,
     DEFAULT_AUDIO_TRACKS,
     AUDIO_TRACK_PRESET,
+    IS_PERSONAL,
 )
 from check_core import (check_track_structure, check_subtitle_clamping, check_disabled_items,
                           check_black_frames, check_audio_mono, check_timeline_settings,
@@ -77,6 +78,7 @@ LBL_SCRIPT_STATUS = "lbl_script_status"
 BTN_TOGGLE_GROUP = "btn_toggle_group_"  # + group_name → "btn_toggle_group_工程"
 TREE_RESULT = "tree_result"
 GROUP_TREE = "group_tree"
+BTN_UPDATE = "btn_update"
 HINT_LB = "hint_lb"
 
 # ── 结果列定义：加/删/挪/开关列只改这里 ──
@@ -650,6 +652,8 @@ window_layout = [
                           "Weight": 0, "MinimumSize": [0, 22]}),
                 ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
                           "Weight": 0, "MinimumSize": [0, 22]}),
+                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
+                          "Weight": 0, "MinimumSize": [0, 22]}),
             ]),
             ui.HGap({"Weight": 0, "MinimumSize": [8, 0]}),
 
@@ -701,6 +705,10 @@ window_layout = [
                       "Weight": 0, "WordWrap": True, "MinimumSize": [0, 22]}),
             ui.HGroup({"Spacing": 0, "Weight": 0}, [
                 ui.HGap({"Weight": 1}),
+                ui.Button({"ID": BTN_UPDATE, "Text": "✓ 最新",
+                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
+                           "MinimumSize": [60, 20]}),
+                ui.Label({"Text": " ", "Weight": 0, "MinimumSize": [20, 0]}),
                 ui.Button({"ID": "btn_export_logs", "Text": "📋 导出日志",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [84, 20]}),
@@ -1245,7 +1253,7 @@ def _run_ai_typo():
         _action_log(msg)
 
     try:
-        from llm_typo_check import check_typos
+        from llm_typo_check import check_typos_cached
         from script_parser import parse_script, match_timeline, set_log_callback
         set_log_callback(_action_log)
 
@@ -1287,11 +1295,16 @@ def _run_ai_typo():
         # ═══ LLM 校对（含剧集一致性 + 集号匹配） ═══
         itm[HINT_LB].Text = "AI 校对中..."
         _action_log(f"🤖 LLM 校对开始 ({len(entries)}字幕 vs {len(all_lines)}行剧本)")
-        result = check_typos(entries, parsed.get("characters", []), all_lines)
+        result = check_typos_cached(entries, parsed.get("characters", []), all_lines)
         if result.get("error"):
-            tail = result.get("raw_tail", "")
-            _action_log(f"❌ 校对失败: {result['error']} (尾部: {tail})")
-            return _stop(f"❌ 校对失败: {result.get('error')}")
+            attempts = result.get("attempts", [])
+            if attempts:
+                providers = ", ".join(f"{a['model']}({a['result']})" for a in attempts)
+                msg = f"❌ 所有 AI 供应商均失败: {providers}\n请检查 API Key 或网络连接"
+            else:
+                msg = f"❌ 校对失败: {result['error']}"
+            _action_log(msg)
+            return _stop(msg)
 
         # ═══ 存档：完整保存本次校对的输入+输出（复盘用）═══
         _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
@@ -1441,8 +1454,8 @@ def _start_check():
                     aud_names_ok = False; break
 
         gates = {}
-        if itm[CHK_TRACK].Checked:
-            # 用户勾了轨道结构 → 三门严格检查
+        if itm[CHK_TRACK].Checked and not IS_PERSONAL:
+            # 用户勾了轨道结构 → 三门严格检查（个人版跳过）
             gates["subtitle"] = engineering_ok and sub_count == DEFAULT_SUBTITLE_TRACKS and _all_enabled("subtitle", sub_count)
             gates["video"]    = engineering_ok and vid_count == DEFAULT_VIDEO_TRACKS and _all_enabled("video", vid_count)
             gates["audio"]    = engineering_ok and aud_count == DEFAULT_AUDIO_TRACKS and _all_enabled("audio", aud_count) and aud_names_ok
@@ -1454,7 +1467,7 @@ def _start_check():
         # 四扇并行门：任一不通 → 全部门控检查跳过
         gates_ok = engineering_ok and all(gates.values())
 
-        if itm[CHK_TRACK].Checked:
+        if itm[CHK_TRACK].Checked and not IS_PERSONAL:
             failed_gates = []
             for gate, label in [("video","视频轨道"), ("audio","音频轨道"), ("subtitle","字幕轨道")]:
                 if not gates[gate]:
@@ -1804,19 +1817,100 @@ dlg.On["btn_export_logs"].Clicked = _export_logs
 def _browse_script(ev):
     """弹出文件选择器，将路径填入剧本链接输入框"""
     import subprocess
+    itm[HINT_LB].Text = "正在打开文件选择器..."
     try:
         result = subprocess.run([
             "osascript", "-e",
             'POSIX path of (choose file of type {"public.text","public.data","com.adobe.pdf"} '
             'with prompt "选择剧本文件（txt/pdf/docx）")'
-        ], capture_output=True, text=True, encoding="utf-8", timeout=30)
+        ], capture_output=True, text=True, encoding="utf-8", timeout=120)
         path = result.stdout.strip()
         if path:
             itm[EDIT_SCRIPT_SRC].Text = path
             _action_log(f"📂 选择剧本: {path}")
+            itm[HINT_LB].Text = f"已选择: {os.path.basename(path)}"
+        else:
+            itm[HINT_LB].Text = "请点击「开始检查」"
+    except subprocess.TimeoutExpired:
+        _action_log("⚠ 文件选择超时")
+        itm[HINT_LB].Text = "文件选择超时，请重试"
     except Exception as e:
         _action_log(f"⚠ 文件选择失败: {e}")
+        itm[HINT_LB].Text = "文件选择失败"
 dlg.On["btn_browse_script"].Clicked = _browse_script
+
+# 一键更新
+_UPDATING = False
+
+def _do_update(ev):
+    global _UPDATING
+    if _UPDATING:
+        return
+    _UPDATING = True
+    itm[BTN_UPDATE].Text = "⏳"
+    itm[BTN_UPDATE]["Enabled"] = False
+    """下载 zip → 解压 → 覆盖安装目录 → 提示重启达芬奇。"""
+    from urllib.request import Request, urlopen
+    import subprocess, shutil, tempfile, zipfile, shlex, ssl
+    _ctx = ssl._create_unverified_context()
+    url = _UPDATE_INFO.get("url", "")
+    if not url:
+        itm[HINT_LB].Text = "更新地址无效"
+        return
+    # URL 含中文时编码处理
+    from urllib.parse import quote, urlparse, urlunparse
+    parsed = urlparse(url)
+    safe_url = urlunparse(parsed._replace(path=quote(parsed.path, safe='/')))
+    itm[HINT_LB].Text = "⏳ 正在下载更新…"
+    _action_log(f"⬇ 下载更新: {url}")
+    try:
+        req = Request(safe_url)
+        req.add_header("User-Agent", "DaVinciPlugin/delivery_checker")
+        with urlopen(req, timeout=120, context=_ctx) as resp:
+            data = resp.read()
+        if not data or len(data) < 1000:
+            raise RuntimeError("下载文件无效")
+        # GitHub API 返回 {content: base64}，需要解码
+        try:
+            api_data = json.loads(data.decode("utf-8"))
+            if isinstance(api_data, dict) and api_data.get("encoding") == "base64":
+                import base64
+                data = base64.b64decode(api_data["content"])
+                _action_log(f"   解码 API: {len(data)//1024}KB")
+        except (json.JSONDecodeError, UnicodeDecodeError, KeyError):
+            pass  # 不是 API 响应，直接用原始数据
+        _action_log(f"   下载完成: {len(data)//1024}KB")
+        tmp_dir = tempfile.mkdtemp()
+        zip_path = os.path.join(tmp_dir, "update.zip")
+        with open(zip_path, "wb") as f:
+            f.write(data)
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(tmp_dir)
+        # 优先找 ASCII 名（zip 不解码），兜底模糊匹配
+        cmd = None
+        for root, _, files in os.walk(tmp_dir):
+            for fn in files:
+                if fn == "install_update.command" or fn.endswith(".command"):
+                    cmd = os.path.join(root, fn)
+                    break
+            if cmd:
+                break
+        if not cmd:
+            raise RuntimeError("安装包中未找到 install.command")
+        os.chmod(cmd, 0o755)
+        _action_log("   → 开始安装更新…")
+        # 不用 cd 传路径（中文目录可能乱码），让 install.command 自己定位
+        script = f'do shell script "{shlex.quote(cmd)} --update" with administrator privileges'
+        subprocess.run(["osascript", "-e", script], timeout=180)
+        itm[HINT_LB].Text = "✅ 更新完成！请重启达芬奇生效"
+        _action_log("✅ 更新完成，等待重启达芬奇")
+    except Exception as e:
+        _action_log(f"❌ 更新失败: {e}")
+        itm[HINT_LB].Text = f"❌ 更新失败: {e}"
+        _UPDATING = False
+        itm[BTN_UPDATE].Text = "⬆ 更新"
+        itm[BTN_UPDATE]["Enabled"] = True
+dlg.On[BTN_UPDATE].Clicked = _do_update
 
 # 剧本链接格式校验 + 按钮状态
 def _on_script_src_changed(ev):
@@ -1874,9 +1968,28 @@ dlg.On[WIN_ID].Close = _on_close
 # ═══════════════════════════════════════════
 
 def main():
+    # 个人版：从安装目录加载 .env API Key
+    _here = os.path.dirname(os.path.abspath(__file__))
+    _dotenv = os.path.join(_here, ".env")
+    if os.path.exists(_dotenv):
+        try:
+            with open(_dotenv, encoding="utf-8") as _f:
+                for _line in _f:
+                    _line = _line.strip()
+                    if _line and not _line.startswith("#") and "=" in _line:
+                        _k, _v = _line.split("=", 1)
+                        _k = _k.strip()
+                        _v = _v.strip().strip("'\"")
+                        if _v:
+                            os.environ[_k] = _v
+        except Exception:
+            pass
+    if os.environ.get("DEEPSEEK_KEY", "").startswith("sk-"):
+        pass  # key loaded, will be used by _get_key
+
     _action_log("═══ 交付自检 启动 v" + version_string() + " ═══")
     # 防重复窗口（PID 锁文件，跨进程可用）
-    _lock_file = os.path.join(os.path.dirname(__file__), ".ui_instance.lock")
+    _lock_file = os.path.join(_here, ".ui_instance.lock")
     if os.path.exists(_lock_file):
         try:
             with open(_lock_file, encoding="utf-8") as f:
@@ -1890,6 +2003,40 @@ def main():
     dlg.Show()
     dlg.RecalcLayout()
     _init_connection()
+
+    # 预热 osascript（新 Mac 首次调用需初始化 AppleScript 引擎，耗时数秒）
+    import threading
+    def _warm_osascript():
+        try:
+            subprocess.run(["osascript", "-e", ""], timeout=10, capture_output=True)
+        except Exception:
+            pass
+    threading.Thread(target=_warm_osascript, daemon=True).start()
+
+    # 同步检查更新（短超时，失败不影响使用）
+    try:
+        from updater import check
+        _ver = version_string()
+        _result = check("delivery_checker", _ver, timeout=5.0)
+        global _UPDATE_INFO
+        _UPDATE_INFO = _result
+        if _result.get("update_available"):
+            _action_log(f"⬆ 发现新版本 v{_result['latest']} (当前 {_ver})")
+            itm[HINT_LB].Text = f"⬆ 新版本 v{_result['latest']} — 点击右侧按钮更新"
+            itm[BTN_UPDATE].Text = "⬆ 更新"
+            itm[BTN_UPDATE]["StyleSheet"] = "background-color:rgb(220,180,60);color:#1a1a1a;font-size:11px;font-weight:bold;border-radius:3px;padding:2px 8px"
+            itm[BTN_UPDATE].Enabled = True
+            if _result.get("force"):
+                itm[BTN_START].Enabled = False
+                itm[BTN_AI_TYPO].Enabled = False
+                itm[HINT_LB].Text += "（必须更新）"
+        else:
+            itm[BTN_UPDATE].Text = "✓ 最新"
+            itm[BTN_UPDATE].Enabled = False
+    except Exception:
+        itm[BTN_UPDATE].Text = "✓ 最新"
+        itm[BTN_UPDATE].Enabled = False
+
     disp.RunLoop()
     dlg.Hide()
     # os._exit 跳过 C++ 全局析构，避免 fusionscript.so 的

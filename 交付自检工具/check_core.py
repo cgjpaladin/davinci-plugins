@@ -71,10 +71,20 @@ def preload_timeline_items(timeline, track_types=None):
                     except Exception:
                         mp = None
                     try:
-                        props = it.GetProperty()
+                        props = it.GetProperty() or {}
                     except Exception:
                         props = {}
-                    cached = {"enabled": enabled, "mp": mp, "props": props or {}}
+                    # GetProperty 在某些版本返回 None → 用 GetClipProperty 逐字段兜底
+                    if not props or not props.get("ZoomX"):
+                        for key in ("ZoomX", "ZoomY", "Pan", "Tilt", "RotationAngle",
+                                    "RetimeProcess", "Opacity"):
+                            try:
+                                v = it.GetClipProperty(key)
+                                if v is not None:
+                                    props[key] = v
+                            except Exception:
+                                pass
+                    cached = {"enabled": enabled, "mp": mp, "props": props}
                     # 缓存片段名 + 媒体池名 + 分辨率 + fps + 时间线位置 + 源帧范围
                     try:
                         cached["name"] = it.GetName()
@@ -1144,13 +1154,19 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_l
             if not _in_io_range(it, io_range): continue
             if _get_cached(it, "enabled", True) is False: continue
             if _get_cached(it, "mp") is None: continue
-            # 被所有上层轨道的片段联合覆盖 ≥80% → 跳过
+            # 被上层启用且不透明度 100% 的片段覆盖 ≥80% → 跳过
             clip_dur = e - s
             if clip_dur > 0:
                 upper_cover = 0
                 for uvi in range(vi + 1, video_count + 1):
                     if uvi not in all_ranges: continue
-                    for _, us, ue in all_ranges[uvi]:
+                    for uit, us, ue in all_ranges[uvi]:
+                        # 上层片段未启用或不透明度不足 → 不视为有效覆盖
+                        if _get_cached(uit, "enabled", True) is False:
+                            continue
+                        u_props = _get_cached(uit, "props", {})
+                        if float(u_props.get("Opacity", 100) or 100) < 100:
+                            continue
                         ov = min(e, ue) - max(s, us)
                         if ov > 0:
                             upper_cover += ov
@@ -1235,6 +1251,16 @@ def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> li
             s_dur = abs(_get_cached(it, "source_end", 0) - _get_cached(it, "source_start", 0)) + 1
             if s_dur <= 0: continue
             src_fps = float(_get_cached(it, "mp_fps", project_fps) or project_fps)
+            # mp_fps 为空时尝试 GetClipProperty 兜底
+            if not _get_cached(it, "mp_fps", ""):
+                try:
+                    fallback = it.GetClipProperty("FPS")
+                    if fallback:
+                        src_fps = float(fallback)
+                except Exception:
+                    pass
+            if not src_fps or src_fps <= 0:
+                continue  # 无法确定帧率，跳过
             retime = int(_get_cached(it, "props", {}).get("RetimeProcess", 0))
             tl_sec = t_dur / project_fps
             src_sec = s_dur / src_fps
@@ -1445,10 +1471,10 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
 
 
 from deploy_config import get_smb_mount
+from config import IS_PERSONAL as _IS_PERSONAL
 
 _SMB_PREFIX = (get_smb_mount(default="/Volumes/MYJC")
                if not os.environ.get("WORKBUDDY_PERSONAL") else "")
-_IS_PERSONAL = bool(os.environ.get("WORKBUDDY_PERSONAL"))
 
 # ── 片段文件信息缓存（脱机+路径检测共享，避免重复 IPC）──
 _clip_files_cache = None  # {(track, name): {"start": int, "mp": item|None, "path": str|None}}

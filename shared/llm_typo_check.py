@@ -71,9 +71,13 @@ def _single(asr_lines, characters, context_lines, offset=0):
             "### 输出字段说明\n"
             "- correction: 只写应改成的正确字词（如「林野」「拯救」「地」），不写整句，不写说明\n"
             "- reason: 错误类型——选：角色名称错误/错别字/的得地/性别错配/英文缩写/真实地名/漏字/多字\n\n"
+            "### same_show 判断标准\n"
+            "看完「剧本全文」和「字幕行」后判断是否属于同一部剧：\n"
+            "- same_show=false：字幕里的人名在剧本里一个都找不到，或情节完全没有关联。\n"
+            "- same_show=true：人名大量重叠，情节有关联。\n"
+            "- 不确定时优先 false（宁可误报让用户复查，不能漏过传错剧本）。\n\n"
             "### 输出\n"
             "JSON：{\"same_show\": true/false, \"corrections\": [{index, original, correction, reason}]}\n"
-            "same_show: 人名+情节是否明显不属于同一部剧。false=明显不是。\n"
             "只输出 JSON，不要其他任何文字。"
         )},
         {"role": "user", "content": (
@@ -168,7 +172,10 @@ def _hash_lines(lines):
 def check_typos_cached(asr_lines, characters, context_lines=None):
     cache_dir = os.path.expanduser("~/Library/Application Support/交付自检")
     cache_file = os.path.join(cache_dir, "typo_cache.json")
-    h = _hash_lines(asr_lines + (context_lines or []))
+    # 缓存键含模型名：换模型自动失效
+    from llm_providers import _providers as _prov
+    model = _prov[0]["name"] if _prov else "unknown"
+    h = _hash_lines(asr_lines + (context_lines or []) + [model])
     cache = {}
     try:
         os.makedirs(cache_dir, exist_ok=True)

@@ -25,6 +25,7 @@
 import os
 import re
 import json
+import ssl
 import shutil
 import hashlib
 import zipfile
@@ -34,6 +35,8 @@ import subprocess
 import xml.etree.ElementTree as ET
 from urllib.request import Request, urlopen
 from urllib.error import URLError
+
+_SSL_CTX = ssl._create_unverified_context()
 
 CACHE_DIR = os.path.expanduser("~/Library/Application Support/交付自检/script_cache")
 # Feishu API endpoints (tenant token based)
@@ -186,10 +189,12 @@ def _clean_pdf_text(lines: list[str]) -> list[str]:
 # ── 飞书集成 ──
 
 def _read_env_key(key: str) -> str:
-    """读 SMB .env → 本地 .env（与 llm_providers 相同）。"""
+    """读环境变量 → SMB .env → 本地 .env。"""
+    v = os.environ.get(key, "")
+    if v:
+        return v
     paths = [
         "/Volumes/MYJC/06_Software/达芬奇脚本/shared/.env",
-        os.path.expanduser("~/.workbuddy/.env"),
     ]
     for p in paths:
         try:
@@ -197,10 +202,12 @@ def _read_env_key(key: str) -> str:
                 for line in f:
                     line = line.strip()
                     if line.startswith(f"{key}="):
-                        return line.split("=", 1)[1].strip().strip('"')
-        except FileNotFoundError:
+                        v = line.split("=", 1)[1].strip().strip('"')
+                        if v:
+                            return v
+        except OSError:
             continue
-    return os.environ.get(key, "")
+    return ""
 
 
 def _get_tenant_token() -> str:
@@ -213,7 +220,7 @@ def _get_tenant_token() -> str:
     req = Request(_FEISHU_AUTH, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
     try:
-        with urlopen(req, timeout=10) as resp:
+        with urlopen(req, timeout=10, context=_SSL_CTX) as resp:
             data = json.loads(resp.read())
         return data.get("tenant_access_token", "")
     except Exception:
@@ -244,7 +251,7 @@ def _feishu_api(path: str, method: str = "GET", data: bytes | None = None,
     req.add_header("Authorization", f"Bearer {token}")
     req.add_header("Content-Type", "application/json")
     try:
-        with urlopen(req, timeout=30) as resp:
+        with urlopen(req, timeout=30, context=_SSL_CTX) as resp:
             return resp.read()
     except URLError:
         return None

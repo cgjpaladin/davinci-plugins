@@ -3,17 +3,21 @@
 时间线检查 — 配置
 """
 
-__version__ = "2.1.1"
+__version__ = "2.2.0"
 __channel__ = "dev"
 
 def version_string():
     return f"{__version__}{'-' + __channel__ if __channel__ else ''}"
 
 # ── SMB 常量 ──
-import os as _os
+import os as _os, os
 SMB_MOUNT = "/Volumes/MYJC"
 SMB_SCRIPTS = _os.path.join(SMB_MOUNT, "06_Software", "达芬奇脚本")
 SMB_PLUGIN = _os.path.join(SMB_SCRIPTS, "交付自检工具")
+
+# ── 模式标记（个人版 vs 公司版）──
+IS_PERSONAL = bool(os.environ.get("WORKBUDDY_PERSONAL"))
+"""个人版模式：轨数/轨名/Fairlight/命名 全部跳过，门强制宽松。"""
 
 # ── 默认阈值 ──
 DEFAULT_CLAMP_THRESHOLD = 5
