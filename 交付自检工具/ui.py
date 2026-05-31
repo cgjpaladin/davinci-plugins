@@ -580,6 +580,7 @@ def _ts():
     return time.strftime("%m-%d %H:%M:%S")
 
 def _action_log(msg: str):
+    global _UI_ERROR_COUNT
     _stderr_msg = msg  # try 外捕获，确保文件写入失败时 stderr 仍能输出
     try:
         _log.ui(f"[{_ts()}] {msg}")
@@ -587,6 +588,8 @@ def _action_log(msg: str):
         pass
     if any(k in _stderr_msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
         print(_stderr_msg, file=sys.stderr)
+    if "❌" in msg:
+        _UI_ERROR_COUNT += 1
 
 
 # ═══════════════════════════════════════════
@@ -2127,6 +2130,22 @@ def main():
     except Exception:
         itm[BTN_UPDATE].Text = "✓ 最新"
         itm[BTN_UPDATE].Enabled = False
+
+    # ══ License ══
+    try:
+        from shared.license import init_trial, verify_local, load_credential
+        cred = load_credential()
+        if cred:
+            ok, msg = verify_local()
+            itm[HINT_LB].Text = msg if not ok else (
+                f"试用第 {max(0, (cred['payload'].get('expire_time',0)-int(__import__('time').time()))//86400)}/30 天"
+                if cred['payload'].get('is_trial', True) else "已激活 ✓"
+            )
+        else:
+            ok, msg = init_trial()
+            itm[HINT_LB].Text = msg if ok else ""
+    except Exception:
+        pass
 
     disp.RunLoop()
     dlg.Hide()
