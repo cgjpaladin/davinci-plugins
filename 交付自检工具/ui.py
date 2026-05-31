@@ -19,13 +19,13 @@ os.environ["RESOLVE_SCRIPT_LIB"] = "/Applications/DaVinci Resolve/DaVinci Resolv
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
-_smb_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _smb_root not in sys.path:
-    sys.path.insert(0, _smb_root)
-# 个人版 fallback：shared/ 在同级目录
+# 个人版 fallback：shared/ 在同级目录（必须在 _smb_root 之前）
 _personal_shared = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shared')
 if not os.path.isdir(sys.path[1]) and os.path.isdir(_personal_shared):
     sys.path.insert(0, _personal_shared)
+_smb_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _smb_root not in sys.path:
+    sys.path.insert(0, _smb_root)
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 from fusionscript_loader import bmd
@@ -594,7 +594,7 @@ def _action_log(msg: str):
         pass
     if any(k in _stderr_msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
         print(_stderr_msg, file=sys.stderr)
-    if "❌" in msg:
+    if any(k in msg for k in ("异常", "崩溃", "Traceback", "ModuleNotFound", "ImportError")):
         _UI_ERROR_COUNT += 1
         try: _update_err_counter()
         except: pass
@@ -1846,72 +1846,77 @@ dlg.On[BTN_CONFIG].Clicked = lambda ev: _show_config_dialog()
 dlg.On[BTN_AI_TYPO].Clicked = lambda ev: _run_ai_typo()
 
 _UI_ERROR_COUNT = 0
+_UI_UPLOADING = False
 
 def _on_err_report(ev):
     """📋 上传日志（无报错时）/ 一键发送错误报告（有报错时）"""
-    global _UI_ERROR_COUNT
-    import tempfile, zipfile, subprocess
-    logs_dir = os.path.expanduser("~/.workbuddy/logs/交付自检工具")
+    global _UI_ERROR_COUNT, _UI_UPLOADING
+    _action_log(f"📤 上传按钮被点击 (error_count={_UI_ERROR_COUNT}, uploading={_UI_UPLOADING})")
+    if _UI_UPLOADING:
+        return
+    _UI_UPLOADING = True
+    itm[BTN_ERR_SEND].Text = "⏳ 上传中..."
+    _do_upload(os.path.expanduser("~/.workbuddy/logs/交付自检工具"))
 
-    if _UI_ERROR_COUNT > 0 and os.path.isdir(logs_dir):
-        # 有报错 → 打包发送
-        tmp = tempfile.mkdtemp()
-        zip_path = os.path.join(tmp, "error_report.zip")
+def _do_upload(logs_dir):
+    """打包 + 上传到阿里云"""
+    global _UI_ERROR_COUNT, _UI_UPLOADING
+    import tempfile, zipfile, subprocess, json, os, time, base64
+    tmp = tempfile.mkdtemp()
+    try:
+        zip_path = os.path.join(tmp, "logs.zip")
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             today = time.strftime("%Y-%m-%d")
             for f in sorted(os.listdir(logs_dir)):
                 if today in f and f.endswith(".log"):
                     zf.write(os.path.join(logs_dir, f), f)
-        try:
-            with open(zip_path, "rb") as f:
-                data = f.read()
-            from shared.license import _post_to_backend, get_machine_fingerprint
-            ok, resp = _post_to_backend("/license", {
-                "action": "report_error",
-                "machine_fingerprint": get_machine_fingerprint(),
-                "error_count": _UI_ERROR_COUNT,
-                "data_b64": __import__("base64").b64encode(data).decode(),
-            })
-            if ok:
-                _action_log(f"✅ 已发送 {_UI_ERROR_COUNT} 个报错报告")
-                _UI_ERROR_COUNT = 0
-                itm[BTN_ERR_SEND].Text = "📋 上传日志"
+        with open(zip_path, "rb") as f:
+            data = f.read()
+        import socket as _sk, getpass as _gp
+        from shared.license import get_machine_fingerprint, BACKEND_URL as _bu
+        _payload = json.dumps({
+            "action": "report_error",
+            "machine_fingerprint": get_machine_fingerprint(),
+            "hostname": _sk.gethostname(), "username": _gp.getuser(),
+            "error_count": _UI_ERROR_COUNT,
+            "data_b64": base64.b64encode(data).decode(),
+        })
+        _url = (_bu or "https://license-yqvhkhvhgf.cn-hangzhou.fcapp.run") + "/license"
+        _proc = subprocess.run(
+            ["curl", "-s", "--connect-timeout", "10", "--max-time", "30",
+             "-X", "POST", "-d", _payload, _url],
+            capture_output=True, text=True, encoding="utf-8", timeout=35)
+        ok = False
+        if _proc.returncode == 0 and _proc.stdout:
+            try:
+                resp = json.loads(_proc.stdout)
+                ok = resp.get("status") == "ok"
+            except: pass
+        if ok:
+            _action_log(f"✅ 已上传日志 ({_UI_ERROR_COUNT} 个报错)" if _UI_ERROR_COUNT else "✅ 已上传日志")
+            itm[BTN_ERR_SEND].Text = "✅ 已上传"
+            if _UI_ERROR_COUNT:
+                itm[HINT_LB].Text = "✅ 异常信息已上报，感谢反馈"
             else:
-                _action_log(f"❌ 发送失败: {resp}")
-        except Exception as e:
-            _action_log(f"❌ 发送异常: {e}")
-        finally:
-            __import__("shutil").rmtree(tmp, ignore_errors=True)
-        return
-
-    # 无报错 → 正常导出
-    if not os.path.isdir(logs_dir):
-        _action_log("⚠ 日志目录不存在")
-        return
-    try:
-        result = subprocess.run([
-            "osascript", "-e",
-            f'POSIX path of (choose file name with prompt "保存日志到：" default name "交付自检日志_{time.strftime("%m%d_%H%M%S")}.zip")'
-        ], capture_output=True, text=True, timeout=30)
-        save_path = result.stdout.strip()
-    except Exception:
-        save_path = ""
-    if not save_path:
-        return
-    if not save_path.endswith(".zip"):
-        save_path += ".zip"
-    with zipfile.ZipFile(save_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        today = time.strftime("%Y-%m-%d")
-        for f in sorted(os.listdir(logs_dir)):
-            if today in f and f.endswith(".log"):
-                zf.write(os.path.join(logs_dir, f), f)
-    _action_log(f"📦 日志已导出: {save_path}")
-
+                itm[HINT_LB].Text = "✅ 日志已上传"
+            _UI_ERROR_COUNT = 0
+        else:
+            _action_log(f"❌ 上传失败: {_proc.stderr or _proc.stdout}")
+            itm[BTN_ERR_SEND].Text = "📋 上传日志"
+            itm[HINT_LB].Text = "请点击「开始检查」"
+            _UI_UPLOADING = False
+    except Exception as e:
+        _action_log(f"❌ 上传异常: {e}")
+        itm[BTN_ERR_SEND].Text = "📋 上传日志"
+        _UI_UPLOADING = False
+    finally:
+        import shutil; shutil.rmtree(tmp, ignore_errors=True)
 
 def _update_err_counter():
-    """报错时更新按钮文字"""
+    """报错时更新按钮文字和提示"""
     if _UI_ERROR_COUNT > 0:
         itm[BTN_ERR_SEND].Text = f"⚠️ {_UI_ERROR_COUNT} 个报错"
+        itm[HINT_LB].Text = f"检测到 {_UI_ERROR_COUNT} 个软件异常，请点击右侧按钮上报"
     else:
         itm[BTN_ERR_SEND].Text = "📋 上传日志"
 dlg.On[BTN_ERR_SEND].Clicked = _on_err_report

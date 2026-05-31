@@ -33,6 +33,7 @@ if not BACKEND_URL:
     # 尝试从 shared/.env 读取（达芬奇 Launcher 不会自动传环境变量）
     _env_paths = [
         os.path.join(os.path.dirname(__file__), ".env"),
+        os.path.join(os.path.expanduser("~"), ".config", "davinci", ".env"),  # 用户级 fallback
         "/Volumes/MYJC/06_Software/达芬奇脚本/shared/.env",
     ]
     for _ep in _env_paths:
