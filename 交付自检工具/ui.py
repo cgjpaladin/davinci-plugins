@@ -157,6 +157,56 @@ def _set_row_texts(row, *texts):
 # ═══════════════════════════════════════════
 # 样式
 # ═══════════════════════════════════════════
+
+# ── 设计参数（改皮肤只改这里） ──
+FONT_H1 = "font-size:13px"       # 标题
+FONT_H2 = "font-size:15px"       # 加粗标题
+FONT_BODY = "font-size:12px"     # 正文
+FONT_SM = "font-size:11px"       # 小字（按钮/提示）
+FONT_XS = "font-size:10px"       # 超小字（脚注）
+FONT_DIV = "font-size:18px"      # 分割线
+FONT_BOLD = "font-weight:bold"   # 加粗
+
+SPACE_NONE = 0
+SPACE_TIGHT = 2
+SPACE_COMPACT = 3
+SPACE_SM = 4
+SPACE_NORMAL = 6
+SPACE_RELAXED = 8
+SPACE_WIDE = 10
+
+SIZE_BTN_H = 20                  # 小按钮高
+SIZE_BTN_SM_W = 28               # 小按钮宽
+SIZE_BTN_MD_W = 60               # 中按钮宽
+SIZE_BTN_LG_W = 84               # 大按钮宽
+SIZE_BTN_XL_W = 100              # 超宽按钮
+SIZE_BTN_XL_H = 95               # 超宽按钮高
+SIZE_TOGGLE = [44, 22]           # 分组切换
+SIZE_LINE_H = 22                 # 行高
+SIZE_CHECK_W = 28                # 复选框宽
+SIZE_GAP_TINY = [8, 0]           # 微小间隙
+SIZE_GAP_SM = [20, 0]            # 小间隙
+
+PAD_BTN = "padding:2px 8px"
+PAD_PANEL = "padding:4px 10px"
+PAD_PANEL_WIDE = "padding:4px 12px"
+
+RAD_BTN = "3px"                  # 按钮圆角
+RAD_PANEL = "4px"                # 面板圆角
+# ── 分割线 ──
+DIVIDER_BARS = 7                 # 竖线字符数
+
+# ── 复合样式 ──
+STYLE_HEADING = f"{FONT_H1};{FONT_BOLD};color:#ccc"
+STYLE_ACCENT = f"{FONT_H2};{FONT_BOLD};color:#ccc"  
+STYLE_DIM = f"color:rgb(130,130,130);font-size:{FONT_XS}"
+STYLE_HINT = f"color:rgb(130,130,130);{FONT_XS}"
+STYLE_FOOTER = f"color:rgb(100,100,100);{FONT_XS}"
+STYLE_DIVIDER = f"{FONT_DIV};color:#666"
+STYLE_CHECK_ROW = f"{FONT_H1};color:rgb(220,220,220)"
+STYLE_WARN = f"color:red;{FONT_BODY}"
+
+# ── UI 控件样式 ──
 BTN_STYLE = (
     "QPushButton{max-height:28px;background-color:rgb(58,58,58);color:rgb(220,220,220);"
     "border:1px solid rgb(80,80,80);border-radius:4px;padding:4px 12px}"
@@ -542,7 +592,7 @@ def _action_log(msg: str):
 # ═══════════════════════════════════════════
 # UI 布局
 # ═══════════════════════════════════════════
-_CHECK_ROW_STYLE = "font-size:13px;color:rgb(220,220,220)"
+_CHECK_ROW_STYLE = STYLE_CHECK_ROW
 _DISABLED_CB = {"Checked": False, "Enabled": False, "StyleSheet": _CHECK_ROW_STYLE, "Weight": 0}
 
 def _cb(id_, text, extra=None):
@@ -566,7 +616,7 @@ def _section_checkboxes(*check_ids):
         if check is None:
             _action_log(f"_section_checkboxes: 未知 check_id '{cid}'")
             widgets.append(ui.Label({"Text": f"?{cid}",
-                "StyleSheet": "color:red;font-size:12px", "Weight": 0}))
+                "StyleSheet": STYLE_WARN, "Weight": 0}))
             continue
         if check.get("hidden"):
             continue
@@ -591,7 +641,7 @@ def _build_group_rows(group_name, extras=None):
         *_section_checkboxes(*[c["id"] for c in group_checks]),
         *extras,
     ]
-    return [ui.HGroup({"Spacing": 6, "Weight": 0}, widgets)]
+    return [ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, widgets)]
 
 # ── 特殊控件常量（已迁移到「配置」弹窗）──
 
@@ -599,24 +649,24 @@ window_layout = [
     ui.VGroup({"Spacing": 8}, [
 
         # ── 上半区：检查选项 + 开始按钮（左 2/3）| AI校对（右 1/3）──
-        ui.HGroup({"Spacing": 8, "Weight": 0}, [
+        ui.HGroup({"Spacing": SPACE_RELAXED, "Weight": 0}, [
 
             # ====== 左区：原始检查面板 ======
-            ui.VGroup({"Spacing": 4, "Weight": 0}, [
+            ui.VGroup({"Spacing": SPACE_SM, "Weight": 0}, [
             ui.Label({"ID": "lbl_check_title", "Text": "常规检查",
-                      "StyleSheet": "font-size:13px;font-weight:bold;color:#ccc",
+                      "StyleSheet": STYLE_HEADING,
                       "Weight": 0, "Alignment": {"AlignHCenter": True}}),
-            ui.HGroup({"Spacing": 10, "Weight": 0}, [
+            ui.HGroup({"Spacing": SPACE_WIDE, "Weight": 0}, [
                 # 最左：5 个分组开关
-                ui.VGroup({"Spacing": 2, "Weight": 0}, list(
+                ui.VGroup({"Spacing": SPACE_TIGHT, "Weight": 0}, list(
                     ui.Button({"ID": f"{BTN_TOGGLE_GROUP}{gn}", "Text": gn,
                                "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                               "MinimumSize": [44, 22]})
+                               "MinimumSize": SIZE_TOGGLE})
                     for gn in GROUP_ORDER
                 )),
 
                 # 左侧：检查选项
-                ui.VGroup({"Spacing": 2, "Weight": 0}, [
+                ui.VGroup({"Spacing": SPACE_TIGHT, "Weight": 0}, [
                 *_build_group_rows("工程"),
                 *_build_group_rows("视频"),
                 *_build_group_rows("音频"),
@@ -627,50 +677,50 @@ window_layout = [
                 ui.HGap({"Weight": 1}),
 
                 # 开始检查 + 配置
-                ui.VGroup({"Spacing": 4, "Weight": 0}, [
+                ui.VGroup({"Spacing": SPACE_SM, "Weight": 0}, [
                     ui.Button({"ID": BTN_START, "Text": "开始检查",
                                "StyleSheet": BTN_PRIMARY, "Weight": 0,
-                               "MinimumSize": [100, 95]}),
+                               "MinimumSize": [SIZE_BTN_XL_W, SIZE_BTN_XL_H]}),
                     ui.Button({"ID": BTN_CONFIG, "Text": "配置",
                                "StyleSheet": BTN_STYLE, "Weight": 0,
-                               "MinimumSize": [100, 20]}),
+                               "MinimumSize": [SIZE_BTN_XL_W, SIZE_BTN_H]}),
                 ]),
             ]),
             ]),  # 结束左区 VGroup
 
-            ui.HGap({"Weight": 0, "MinimumSize": [8, 0]}),
-            ui.VGroup({"Weight": 0, "Spacing": 0}, [
-                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
-                          "Weight": 0, "MinimumSize": [0, 22]}),
-                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
-                          "Weight": 0, "MinimumSize": [0, 22]}),
-                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
-                          "Weight": 0, "MinimumSize": [0, 22]}),
-                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
-                          "Weight": 0, "MinimumSize": [0, 22]}),
-                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
-                          "Weight": 0, "MinimumSize": [0, 22]}),
-                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
-                          "Weight": 0, "MinimumSize": [0, 22]}),
-                ui.Label({"Text": "┃", "StyleSheet": "font-size:18px;color:#666",
-                          "Weight": 0, "MinimumSize": [0, 22]}),
+            ui.HGap({"Weight": 0, "MinimumSize": SIZE_GAP_TINY}),
+            ui.VGroup({"Weight": 0, "Spacing": SPACE_NONE}, [
+                ui.Label({"Text": "┃", "StyleSheet": STYLE_DIVIDER,
+                          "Weight": 0, "MinimumSize": [0, SIZE_LINE_H]}),
+                ui.Label({"Text": "┃", "StyleSheet": STYLE_DIVIDER,
+                          "Weight": 0, "MinimumSize": [0, SIZE_LINE_H]}),
+                ui.Label({"Text": "┃", "StyleSheet": STYLE_DIVIDER,
+                          "Weight": 0, "MinimumSize": [0, SIZE_LINE_H]}),
+                ui.Label({"Text": "┃", "StyleSheet": STYLE_DIVIDER,
+                          "Weight": 0, "MinimumSize": [0, SIZE_LINE_H]}),
+                ui.Label({"Text": "┃", "StyleSheet": STYLE_DIVIDER,
+                          "Weight": 0, "MinimumSize": [0, SIZE_LINE_H]}),
+                ui.Label({"Text": "┃", "StyleSheet": STYLE_DIVIDER,
+                          "Weight": 0, "MinimumSize": [0, SIZE_LINE_H]}),
+                ui.Label({"Text": "┃", "StyleSheet": STYLE_DIVIDER,
+                          "Weight": 0, "MinimumSize": [0, SIZE_LINE_H]}),
             ]),
-            ui.HGap({"Weight": 0, "MinimumSize": [8, 0]}),
+            ui.HGap({"Weight": 0, "MinimumSize": SIZE_GAP_TINY}),
 
             # ====== 右区：AI校对面板 ======
-            ui.VGroup({"Spacing": 4, "Weight": 0, "MinimumSize": [220, 0]}, [
+            ui.VGroup({"Spacing": SPACE_SM, "Weight": 0, "MinimumSize": [220, 0]}, [
                 ui.Label({"ID": "lbl_ai_title", "Text": "AI 字幕校对",
-                          "StyleSheet": "font-size:13px;font-weight:bold;color:#ccc",
+                          "StyleSheet": STYLE_HEADING,
                           "Weight": 0, "Alignment": {"AlignHCenter": True}}),
                 ui.Label({"ID": "lbl_ai_hint", "Text": "飞书文档链接 / 本地路径:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
-                ui.HGroup({"Spacing": 4, "Weight": 0}, [
+                ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
                     ui.LineEdit({"ID": EDIT_SCRIPT_SRC, "Text": "",
                                 "Weight": 1,
                                 "PlaceholderText": "粘贴链接/路径，或拖拽文件"}),
                     ui.Button({"ID": "btn_browse_script", "Text": "📂",
                                "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                               "MinimumSize": [28, 28]}),
+                               "MinimumSize": [SIZE_BTN_SM_W, SIZE_BTN_SM_W]}),
                 ]),
                 ui.Label({"ID": "lbl_ai_ep", "Text": "手动输入精准集号（可选）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
@@ -699,27 +749,27 @@ window_layout = [
         ]),
 
         # ── 底栏 ──
-        ui.VGroup({"Spacing": 2, "Weight": 0}, [
+        ui.VGroup({"Spacing": SPACE_TIGHT, "Weight": 0}, [
             ui.Label({"ID": "lbl_gate_warn", "Text": "",
                       "StyleSheet": "color:rgb(220,180,80);font-size:13px;padding:4px 10px",
-                      "Weight": 0, "WordWrap": True, "MinimumSize": [0, 22]}),
-            ui.HGroup({"Spacing": 0, "Weight": 0}, [
+                      "Weight": 0, "WordWrap": True, "MinimumSize": [0, SIZE_LINE_H]}),
+            ui.HGroup({"Spacing": SPACE_NONE, "Weight": 0}, [
                 ui.HGap({"Weight": 1}),
                 ui.Button({"ID": BTN_UPDATE, "Text": "✓ 最新",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                           "MinimumSize": [60, 20]}),
-                ui.Label({"Text": " ", "Weight": 0, "MinimumSize": [20, 0]}),
+                           "MinimumSize": [SIZE_BTN_MD_W, SIZE_BTN_H]}),
+                ui.Label({"Text": " ", "Weight": 0, "MinimumSize": SIZE_GAP_SM}),
                 ui.Button({"ID": "btn_export_logs", "Text": "📋 导出日志",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                           "MinimumSize": [84, 20]}),
+                           "MinimumSize": [SIZE_BTN_LG_W, SIZE_BTN_H]}),
             ]),
             ui.HGroup({"Spacing": 8}, [
                 ui.Label({"ID": HINT_LB, "Text": "请点击「开始检查」",
-                          "StyleSheet": "color:rgb(130,130,130);font-size:10px", "Weight": 1,
-                          "WordWrap": True, "MinimumSize": [0, 22]}),
+                          "StyleSheet": STYLE_HINT, "Weight": 1,
+                          "WordWrap": True, "MinimumSize": [0, SIZE_LINE_H]}),
                 ui.Label({"Text": " ", "Weight": 0}),
                 ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | v{version_string()}",
-                          "StyleSheet": "color:rgb(100,100,100);font-size:10px", "Weight": 0}),
+                          "StyleSheet": STYLE_FOOTER, "Weight": 0}),
             ]),
         ]),
     ]),
@@ -825,17 +875,17 @@ CONFIG_SECTIONS = [
 # ── 各 type 的 UI 构建函数 → [widget, ...] ──
 def _build_track_preset():
     return [
-        ui.HGroup({"Spacing": 8, "Weight": 0}, [
+        ui.HGroup({"Spacing": SPACE_RELAXED, "Weight": 0}, [
             ui.Label({"Text": "字幕", "StyleSheet": "color:rgb(150,150,150);font-size:13px",
-                      "Weight": 0, "MinimumSize": [28, 22]}),
+                      "Weight": 0, "MinimumSize": [SIZE_BTN_SM_W, SIZE_LINE_H]}),
             ui.LineEdit({"ID": "cfg_sub", "Text": str(_track_values[0]),
                          "MaximumSize": [35, 22], "Weight": 0}),
             ui.Label({"Text": "视频", "StyleSheet": "color:rgb(150,150,150);font-size:13px",
-                      "Weight": 0, "MinimumSize": [28, 22]}),
+                      "Weight": 0, "MinimumSize": [SIZE_BTN_SM_W, SIZE_LINE_H]}),
             ui.LineEdit({"ID": "cfg_vid", "Text": str(_track_values[1]),
                          "MaximumSize": [35, 22], "Weight": 0}),
             ui.Label({"Text": "音频", "StyleSheet": "color:rgb(150,150,150);font-size:13px",
-                      "Weight": 0, "MinimumSize": [28, 22]}),
+                      "Weight": 0, "MinimumSize": [SIZE_BTN_SM_W, SIZE_LINE_H]}),
             ui.LineEdit({"ID": "cfg_aud", "Text": str(_track_values[2]),
                          "MaximumSize": [35, 22], "Weight": 0}),
         ]),
@@ -843,7 +893,7 @@ def _build_track_preset():
 
 def _build_clamp_threshold():
     return [
-        ui.HGroup({"Spacing": 6, "Weight": 0}, [
+        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
             ui.LineEdit({"ID": "cfg_clamp", "Text": str(_clamp_value),
                          "MaximumSize": [45, 22], "Weight": 0}),
             ui.Label({"Text": "帧（≤此值判定为过短/夹帧）",
@@ -853,7 +903,7 @@ def _build_clamp_threshold():
 
 def _build_video_clamp_threshold():
     return [
-        ui.HGroup({"Spacing": 6, "Weight": 0}, [
+        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
             ui.LineEdit({"ID": "cfg_vid_clamp", "Text": str(_video_clamp_threshold),
                          "MaximumSize": [45, 22], "Weight": 0}),
             ui.Label({"Text": "帧（≤此值判定为视频夹帧）",
@@ -863,7 +913,7 @@ def _build_video_clamp_threshold():
 
 def _build_black_frame_sec():
     return [
-        ui.HGroup({"Spacing": 6, "Weight": 0}, [
+        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
             ui.LineEdit({"ID": "cfg_black_sec", "Text": str(int(_black_frame_sec)),
                          "MaximumSize": [35, 22], "Weight": 0}),
             ui.Label({"Text": "秒（≥此值判定为大段黑场）",
@@ -873,8 +923,8 @@ def _build_black_frame_sec():
 
 def _build_censor_system_subs():
     return [
-        ui.VGroup({"Spacing": 3, "Weight": 0}, [
-            ui.HGroup({"Spacing": 10, "Weight": 0}, [
+        ui.VGroup({"Spacing": SPACE_COMPACT, "Weight": 0}, [
+            ui.HGroup({"Spacing": SPACE_WIDE, "Weight": 0}, [
                 ui.CheckBox({"ID": "cfg_csub_cn", "Text": "中文词库 (4.0k词)",
                              "StyleSheet": "color:rgb(200,200,200);font-size:12px",
                              "Weight": 0, "Checked": True}),
@@ -882,7 +932,7 @@ def _build_censor_system_subs():
                              "StyleSheet": "color:rgb(200,200,200);font-size:12px",
                              "Weight": 0, "Checked": True}),
             ]),
-            ui.HGroup({"Spacing": 10, "Weight": 0}, [
+            ui.HGroup({"Spacing": SPACE_WIDE, "Weight": 0}, [
                 ui.CheckBox({"ID": "cfg_csub_bw", "Text": "通用违禁词 (1.6k词)",
                              "StyleSheet": "color:rgb(200,200,200);font-size:12px",
                              "Weight": 0, "Checked": True}),
@@ -895,7 +945,7 @@ def _build_censor_system_subs():
 
 def _build_censor_personal():
     return [
-        ui.HGroup({"Spacing": 6, "Weight": 0}, [
+        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
             ui.Button({"ID": "cfg_edit_censor", "Text": "在 Finder 中打开",
                        "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
             ui.Label({"Text": "右键 CSV → 打开方式 → WPS Office 编辑",
@@ -938,18 +988,18 @@ def _show_config_dialog():
         else:
             sec_widgets.append(ui.Label({
                 "Text": f"(未知类型: {section['type']})",
-                "StyleSheet": "color:red;font-size:12px", "Weight": 0,
+                "StyleSheet": STYLE_WARN, "Weight": 0,
             }))
         # 每节包成独立 VGroup，节内紧凑
-        body_widgets.append(ui.VGroup({"Spacing": 2, "Weight": 0}, sec_widgets))
+        body_widgets.append(ui.VGroup({"Spacing": SPACE_TIGHT, "Weight": 0}, sec_widgets))
 
     config_layout = [
-        ui.VGroup({"Spacing": 0}, [
+        ui.VGroup({"Spacing": SPACE_NONE}, [
             ui.VGroup({"Spacing": _SECTION_GAP, "Weight": 0}, body_widgets),
             ui.VGap({"Weight": 1}),
 
             # ── 按钮（底部居中）──
-            ui.HGroup({"Spacing": 10, "Weight": 0}, [
+            ui.HGroup({"Spacing": SPACE_WIDE, "Weight": 0}, [
                 ui.HGap({"Weight": 1}),
                 ui.Button({"ID": "cfg_reset", "Text": "恢复默认",
                            "StyleSheet": BTN_STYLE, "Weight": 0}),
@@ -1389,7 +1439,7 @@ def _start_check():
 
         _action_log(f"▶ 开始检查 (轨道模板={_track_values}, 夹帧阈值={_clamp_value})")
         itm[HINT_LB].Text = "检查中..."
-        itm[HINT_LB]["StyleSheet"] = "color:rgb(130,130,130);font-size:10px;"  # 重置样式
+        itm[HINT_LB]["StyleSheet"] = f"{STYLE_HINT};"  # 重置样式
 
         resolve = bmd.scriptapp("Resolve")
         if not resolve:
@@ -1843,65 +1893,105 @@ dlg.On["btn_browse_script"].Clicked = _browse_script
 _UPDATING = False
 
 def _do_update(ev):
+    """下载 zip → 解压 → 覆盖安装目录 → 提示重启达芬奇。多链路回退 + SHA256 校验。"""
     global _UPDATING
     if _UPDATING:
         return
     _UPDATING = True
     itm[BTN_UPDATE].Text = "⏳"
     itm[BTN_UPDATE]["Enabled"] = False
-    """下载 zip → 解压 → 覆盖安装目录 → 提示重启达芬奇。"""
     from urllib.request import Request, urlopen
-    import subprocess, shutil, tempfile, zipfile, shlex, ssl
+    from urllib.parse import quote, urlparse, urlunparse
+    import json, subprocess, tempfile, zipfile, shlex, ssl, base64, hashlib
+    from shared.update_config import (
+        TIMEOUT_DOWNLOAD_SINGLE, TIMEOUT_INSTALL, MIN_DOWNLOAD_SIZE, DOWNLOAD_URLS, UPDATE_FILE
+    )
     _ctx = ssl._create_unverified_context()
+
     url = _UPDATE_INFO.get("url", "")
-    if not url:
+    urls = url if isinstance(url, list) else ([url] if url else [])
+    if not urls:
         itm[HINT_LB].Text = "更新地址无效"
         return
-    # URL 含中文时编码处理
-    from urllib.parse import quote, urlparse, urlunparse
-    parsed = urlparse(url)
-    safe_url = urlunparse(parsed._replace(path=quote(parsed.path, safe='/')))
+    expected_sha256 = _UPDATE_INFO.get("sha256")
+
     itm[HINT_LB].Text = "⏳ 正在下载更新…"
-    _action_log(f"⬇ 下载更新: {url}")
     try:
-        req = Request(safe_url)
-        req.add_header("User-Agent", "DaVinciPlugin/delivery_checker")
-        with urlopen(req, timeout=120, context=_ctx) as resp:
-            data = resp.read()
-        if not data or len(data) < 1000:
-            raise RuntimeError("下载文件无效")
-        # GitHub API 返回 {content: base64}，需要解码
+        data = None
+        last_err = ""
+        for idx, dl_url in enumerate(urls):
+            _action_log(f"⬇ 下载 [{idx+1}/{len(urls)}]: {dl_url}")
+            try:
+                p = urlparse(dl_url)
+                safe = urlunparse(p._replace(path=quote(p.path, safe='/')))
+                req = Request(safe)
+            except Exception as e:
+                last_err = str(e); continue
+            try:
+                req.add_header("User-Agent", "DaVinciPlugin/delivery_checker")
+                with urlopen(req, timeout=TIMEOUT_DOWNLOAD_SINGLE, context=_ctx) as resp:
+                    data = resp.read()
+                if data and len(data) >= MIN_DOWNLOAD_SIZE:
+                    break
+                last_err = "下载文件无效"
+            except Exception as e:
+                last_err = str(e); continue
+        if not data:
+            raise RuntimeError(f"所有下载链路失败: {last_err}")
+
+        # GitHub API base64 解码
         try:
             api_data = json.loads(data.decode("utf-8"))
             if isinstance(api_data, dict) and api_data.get("encoding") == "base64":
-                import base64
                 data = base64.b64decode(api_data["content"])
                 _action_log(f"   解码 API: {len(data)//1024}KB")
         except (json.JSONDecodeError, UnicodeDecodeError, KeyError):
-            pass  # 不是 API 响应，直接用原始数据
+            pass
+
+        # SHA256 校验
+        if expected_sha256:
+            got = hashlib.sha256(data).hexdigest()
+            if got != expected_sha256:
+                raise RuntimeError(f"SHA256 校验失败: {got[:16]}... ≠ {expected_sha256[:16]}...")
+            _action_log("   SHA256 ✓")
         _action_log(f"   下载完成: {len(data)//1024}KB")
+
         tmp_dir = tempfile.mkdtemp()
         zip_path = os.path.join(tmp_dir, "update.zip")
         with open(zip_path, "wb") as f:
             f.write(data)
         with zipfile.ZipFile(zip_path) as zf:
             zf.extractall(tmp_dir)
-        # 优先找 ASCII 名（zip 不解码），兜底模糊匹配
+
+        # 找安装脚本：优先 ASCII 名，兜底后缀 + 全局搜索
         cmd = None
         for root, _, files in os.walk(tmp_dir):
             for fn in files:
-                if fn == "install_update.command" or fn.endswith(".command"):
-                    cmd = os.path.join(root, fn)
-                    break
-            if cmd:
-                break
+                if fn == "install_update.command":
+                    cmd = os.path.join(root, fn); break
+            if cmd: break
+        if not cmd:
+            for root, _, files in os.walk(tmp_dir):
+                for fn in files:
+                    if fn.endswith(".command"):
+                        cmd = os.path.join(root, fn); break
+                if cmd: break
         if not cmd:
             raise RuntimeError("安装包中未找到 install.command")
+
         os.chmod(cmd, 0o755)
         _action_log("   → 开始安装更新…")
-        # 不用 cd 传路径（中文目录可能乱码），让 install.command 自己定位
-        script = f'do shell script "{shlex.quote(cmd)} --update" with administrator privileges'
-        subprocess.run(["osascript", "-e", script], timeout=180)
+        script = f'do shell script "/bin/bash {shlex.quote(cmd)} --update" with administrator privileges'
+        result = subprocess.run(["osascript", "-e", script], timeout=TIMEOUT_INSTALL, capture_output=True)
+        if result.returncode != 0:
+            err = "安装脚本失败"
+            try:
+                stderr_text = result.stderr.decode('utf-8', errors='replace').strip()
+                if stderr_text:
+                    err = f"安装脚本失败: {stderr_text[:80]}"
+            except Exception:
+                pass
+            raise RuntimeError(err)
         itm[HINT_LB].Text = "✅ 更新完成！请重启达芬奇生效"
         _action_log("✅ 更新完成，等待重启达芬奇")
     except Exception as e:
@@ -2016,8 +2106,9 @@ def main():
     # 同步检查更新（短超时，失败不影响使用）
     try:
         from updater import check
+        from shared.update_config import TIMEOUT_VERSION_CHECK
         _ver = version_string()
-        _result = check("delivery_checker", _ver, timeout=5.0)
+        _result = check("delivery_checker", _ver, timeout=TIMEOUT_VERSION_CHECK)
         global _UPDATE_INFO
         _UPDATE_INFO = _result
         if _result.get("update_available"):

@@ -224,7 +224,18 @@ echo "$FEISHU_APP" > /tmp/_deli_fsapp 2>/dev/null
 echo "$FEISHU_SECRET" > /tmp/_deli_fssec 2>/dev/null
 
 INSTALL_LOG="/tmp/_deli_install.log"
-if osascript <<EOF 2>"$INSTALL_LOG"
+if [ $IS_UPDATE -eq 1 ]; then
+    # --update 模式：已在外层 root 下，直接安装
+    echo "   以 root 身份直接安装..."
+    echo "  → mkdir" && mkdir -p "$FUSION_SCRIPTS" &&
+    echo "  → backup .env" && [ ! -f "$INSTALL_DIR/.env" ] || cp "$INSTALL_DIR/.env" /tmp/_deli_env_bak &&
+    echo "  → rm old + cp new" && rm -rf "$INSTALL_DIR" && cp -r /tmp/_deli_src "$INSTALL_DIR" &&
+    echo "  → deploy shell" && cp "$INSTALL_DIR/shell_personal.py" "$FUSION_SCRIPTS/交付自检工具.py" && chmod 755 "$FUSION_SCRIPTS/交付自检工具.py" &&
+    echo "  → chown" && chown -R $USER "$INSTALL_DIR" &&
+    echo "  → restore/init .env" && if [ -f /tmp/_deli_env_bak ]; then cp /tmp/_deli_env_bak "$INSTALL_DIR/.env"; rm -f /tmp/_deli_env_bak; else cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"; fi &&
+    echo "  → write credentials" && python3 "$INSTALL_DIR/shared/_write_env.py" && echo "  ✅ 安装完成"
+    _UPDATE_OK=1
+elif osascript <<EOF 2>"$INSTALL_LOG"
 do shell script "
     echo '  → mkdir' >> '$INSTALL_LOG' &&
     mkdir -p '$FUSION_SCRIPTS' &&
@@ -286,6 +297,10 @@ else
     tail -5 "$INSTALL_LOG" 2>/dev/null
     osascript -e "display dialog \"安装失败。\n\n请检查：密码是否正确、磁盘是否已满。\n\n详情见: $INSTALL_LOG\" buttons {\"好的\"} default button 1 with icon stop"
     exit 1
+fi
+if [ "${_UPDATE_OK:-0}" -eq 1 ]; then
+    rm -rf /tmp/_deli_src 2>/dev/null
+    echo "   ✅ 静默安装完成"
 fi
 echo ""
 

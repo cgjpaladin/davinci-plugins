@@ -5,6 +5,13 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WS="$(cd "$SCRIPT_DIR/.." && pwd)"
 PKG="$SCRIPT_DIR/_build/交付自检工具_个人版"
 ZIP="$HOME/Desktop/交付自检工具_个人版.zip"
+# --all 模式：一次输出全量 + 增量两个包
+if [ "$1" = "--all" ]; then
+    bash "$0" && bash "$0" --update
+    echo "═══ 全量 + 增量 完成 ═══"
+    ls -lh "$HOME/Desktop/交付自检工具_个人版.zip" "$HOME/Desktop/交付自检工具_更新包.zip"
+    exit 0
+fi
 # 增量更新包用 ASCII 根目录名避免 zip 乱码
 if [ "$1" = "--update" ]; then
     PKG="$SCRIPT_DIR/_build/davinci_plugin_update"
@@ -23,7 +30,7 @@ cp "$WS/交付自检工具"/ui.py "$WS/交付自检工具"/check_core.py "$WS/�
 cp "$WS/交付自检工具"/launcher_personal.py "$WS/交付自检工具"/shell_personal.py "$WS/交付自检工具"/install.command "$WS/交付自检工具"/.env.example "$PKG/交付自检工具/"
 
 # 3. shared 模块（全套）
-cp "$WS/shared"/{deploy_config,fusionscript_loader,log_writer,camera_detect,script_parser,llm_typo_check,llm_providers,timecode,mappings,launcher_router,subtitle_state,macos_utils,updater}.py "$PKG/交付自检工具/shared/"
+cp "$WS/shared"/{deploy_config,fusionscript_loader,log_writer,camera_detect,script_parser,llm_typo_check,llm_providers,timecode,mappings,launcher_router,subtitle_state,macos_utils,updater,update_config}.py "$PKG/交付自检工具/shared/"
 cp "$WS/shared/ui/theme.py" "$PKG/交付自检工具/shared/ui/"
 
 # 4. pypdf（纯 Python PDF 提取）
@@ -36,10 +43,13 @@ cp "$WS/shared/dftt_timecode/core"/{dftt_timecode,dftt_timerange}.py "$PKG/交�
 # 5. 字典文件
 cp "$WS/交付自检工具/dicts"/*.{txt,csv} "$PKG/交付自检工具/dicts/" 2>/dev/null || true
 
-# 6. 安装脚本 → ASCII 名（避免 zip 中文乱码）
+# 6. 安装脚本（--update 模式只用 ASCII 名避免乱码）
 chmod +x "$PKG/交付自检工具/install.command"
-cp "$PKG/交付自检工具/install.command" "$PKG/安装.command"  # 中文名保留给桌面双击
-mv "$PKG/交付自检工具/install.command" "$PKG/install_update.command"  # 更新模式用英文名
+if [ "$1" = "--update" ]; then
+    mv "$PKG/交付自检工具/install.command" "$PKG/install_update.command"
+else
+    mv "$PKG/交付自检工具/install.command" "$PKG/安装.command"
+fi
 
 # 7. 清理缓存
 find "$PKG" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
