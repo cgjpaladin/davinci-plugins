@@ -200,7 +200,6 @@ else
     echo "   ⏭ 跳过飞书凭证"
 fi
 echo ""
-fi  # IS_UPDATE 判断结束
 else
     # --update 模式：快速检测 Framework Python
     echo "→ 检测 Python..."

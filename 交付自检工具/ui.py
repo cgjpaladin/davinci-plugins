@@ -2040,7 +2040,7 @@ def _do_update_sync():
             _action_log("   SHA256 ✓")
         _action_log(f"   下载完成: {len(data)//1024}KB")
 
-        _tmp_dir = tempfile.mkdtemp()
+        _tmp_dir = tempfile.mkdtemp(dir="/tmp")  # root 可访问，不用用户沙箱
         zip_path = os.path.join(_tmp_dir, "update.zip")
         with open(zip_path, "wb") as f:
             f.write(data)
@@ -2067,13 +2067,14 @@ def _do_update_sync():
         _action_log("   → 开始安装更新…")
         script = f'do shell script "/bin/bash {shlex.quote(cmd)} --update" with administrator privileges'
         result = subprocess.run(["osascript", "-e", script], timeout=TIMEOUT_INSTALL,
-                                capture_output=True, start_new_session=True)
+                                capture_output=True, start_new_session=True,
+                                env={**os.environ, "TERM": "dumb"})
         if result.returncode != 0:
             err = "安装脚本失败"
             try:
                 stderr_text = result.stderr.decode('utf-8', errors='replace').strip()
                 if stderr_text:
-                    err = f"安装脚本失败: {stderr_text[:80]}"
+                    err = f"安装脚本失败: {stderr_text[:200]}"
             except Exception:
                 pass
             raise RuntimeError(err)
