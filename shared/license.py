@@ -177,3 +177,171 @@ def cross_validate_and_repair() -> bool:
             pass
 
     return True
+
+
+# ═══════════════════════════════════════════
+# T3: HTTP 请求封装
+# ═══════════════════════════════════════════
+
+_SSL_CTX = ssl._create_unverified_context()
+
+
+def _post_to_backend(endpoint: str, data: dict, timeout: int = 10) -> Tuple[bool, dict]:
+    """向云函数发送 HTTPS POST，带重试。
+
+    Returns:
+        (success, response_dict) — response_dict 含 status/msg/token 等
+    """
+    url = BACKEND_URL + endpoint if BACKEND_URL else ""
+    if not url:
+        return False, {"msg": "未配置后端地址"}
+
+    req_data = json.dumps(data).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "DaVinciPlugin/2.2.1",
+        "X-Platform": platform.system(),
+        "X-Request-Nonce": os.urandom(16).hex(),
+    }
+
+    last_err = ""
+    for attempt in range(2):
+        try:
+            req = urllib.request.Request(url=url, data=req_data, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=timeout, context=_SSL_CTX) as resp:
+                return True, json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            last_err = f"HTTP {e.code}"
+        except urllib.error.URLError as e:
+            last_err = str(e.reason)
+        except Exception as e:
+            last_err = str(e)
+        time.sleep(1)  # 重试前等 1 秒
+
+    return False, {"msg": f"请求失败({last_err})"}
+
+
+# ═══════════════════════════════════════════
+# T5: 高级 API
+# ═══════════════════════════════════════════
+
+def init_trial() -> Tuple[bool, str]:
+    """首次试用初始化。
+
+    采集指纹 → 发云函数 → 收凭证 → 本地存三份。
+
+    Returns:
+        (success, message)
+    """
+    if not BACKEND_URL:
+        return False, "未配置授权后端（离线模式）"
+
+    fp = get_machine_fingerprint()
+    ok, resp = _post_to_backend("/license", {
+        "action": "init_trial",
+        "machine_fingerprint": fp,
+    })
+    if not ok:
+        return False, resp.get("msg", "连接后端失败")
+
+    if resp.get("status") != "ok":
+        return False, resp.get("msg", "试用初始化失败")
+
+    token = resp.get("license_token")
+    if token:
+        # token 是 JSON 字符串，解析后存
+        if isinstance(token, str):
+            token = json.loads(token)
+        save_credential(token)
+
+    return True, resp.get("msg", f"试用开始，剩余 {resp.get('trial_days', 30)} 天")
+
+
+def activate(activate_key: str) -> Tuple[bool, str]:
+    """激活正式授权。
+
+    Returns:
+        (success, message)
+    """
+    if not BACKEND_URL:
+        return False, "未配置授权后端"
+
+    fp = get_machine_fingerprint()
+    ok, resp = _post_to_backend("/license", {
+        "action": "activate",
+        "activate_key": activate_key.strip().upper(),
+        "machine_fingerprint": fp,
+    })
+    if not ok:
+        return False, resp.get("msg", "连接后端失败")
+
+    if resp.get("status") != "ok":
+        return False, resp.get("msg", "激活失败")
+
+    token = resp.get("license_token")
+    if token:
+        if isinstance(token, str):
+            token = json.loads(token)
+        save_credential(token)
+
+    return True, resp.get("msg", "激活成功")
+
+
+def verify_local() -> Tuple[bool, str]:
+    """本地离线校验：仅检查宽限期时间戳。
+
+    不验签、不连网。签名校验由下次心跳在服务端完成。
+
+    Returns:
+        (is_valid, message)
+    """
+    cred = load_credential()
+    if cred is None:
+        return False, "无授权凭证"
+
+    payload = cred.get("payload", {})
+    now = int(time.time())
+
+    # 检查离线宽限期
+    grant_end = payload.get("offline_grant_end", 0)
+    if grant_end and now > grant_end:
+        return False, f"离线宽限期已过（{time.strftime('%Y-%m-%d', time.localtime(grant_end))}），需联网同步"
+
+    # 基础时间合理性检查
+    issue = payload.get("issue_time", 0)
+    expire = payload.get("expire_time", 0)
+    if issue and now < issue - 86400:
+        return False, "系统时间异常"
+
+    return True, "凭证有效"
+
+
+def heartbeat() -> Tuple[bool, str]:
+    """月度心跳同步。
+
+    上传本地凭证 + 最新指纹 → 服务端重签 → 更新本地三份。
+
+    Returns:
+        (success, message)
+    """
+    if not BACKEND_URL:
+        return True, "离线模式，跳过心跳"
+
+    cred = load_credential()
+    fp = get_machine_fingerprint()
+
+    ok, resp = _post_to_backend("/license", {
+        "action": "heartbeat",
+        "license_token": json.dumps(cred) if cred else "",
+        "machine_fingerprint": fp,
+    })
+    if not ok:
+        return False, resp.get("msg", "心跳失败")
+
+    token = resp.get("license_token")
+    if token:
+        if isinstance(token, str):
+            token = json.loads(token)
+        save_credential(token)
+
+    return True, resp.get("msg", "心跳成功")
