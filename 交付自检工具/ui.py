@@ -2218,7 +2218,7 @@ def main():
             is_trial = p.get("is_trial", True)
             if is_trial:
                 d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                text = f"剩余 {d}/30 天"
+                text = f"试用剩余 {d} 天"
             else:
                 text = "已激活 ✓"
             itm[TRIAL_LB].Text = msg if not ok else text
@@ -2231,7 +2231,7 @@ def main():
                 if cred:
                     p = cred.get("payload", {})
                     d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                    text = f"剩余 {d}/30 天"
+                    text = f"试用剩余 {d} 天"
                 else:
                     text = msg
             else:
