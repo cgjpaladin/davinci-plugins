@@ -11,7 +11,7 @@ import base64
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-from .update_config import (
+from update_config import (
     VERSION_CHECK_URLS, TIMEOUT_VERSION_CHECK,
 )
 
