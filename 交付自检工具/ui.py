@@ -2064,6 +2064,14 @@ def _do_update_sync():
             raise RuntimeError("安装包中未找到 install.command")
 
         os.chmod(cmd, 0o755)
+        # 找插件根目录（含 shell_personal.py 的那个），拷贝到安装期望位置
+        import shutil as _sh2
+        _src = os.path.dirname(cmd)  # davinci_plugin_update/
+        for _root, _dirs, _files in os.walk(_src):
+            if "shell_personal.py" in _files:
+                _src = _root; break
+        _sh2.rmtree("/tmp/_deli_src", ignore_errors=True)
+        _sh2.copytree(_src, "/tmp/_deli_src")
         _action_log("   → 开始安装更新…")
         script = f'do shell script "/bin/bash {shlex.quote(cmd)} --update" with administrator privileges'
         result = subprocess.run(["osascript", "-e", script], timeout=TIMEOUT_INSTALL,
