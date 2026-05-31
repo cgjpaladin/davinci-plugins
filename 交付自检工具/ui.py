@@ -1966,19 +1966,19 @@ dlg.On["btn_browse_script"].Clicked = _browse_script
 _UPDATING = False
 
 def _do_update(ev):
-    """下载 zip → 解压 → 覆盖安装目录 → 提示重启达芬奇。多链路回退 + SHA256 校验。"""
+    """下载 zip → 解压 → 覆盖安装目录 → 提示重启达芬奇。同步执行，UI 短暂冻结。"""
     global _UPDATING
     if _BUSY or _UPDATING or not _UPDATE_INFO.get("update_available"):
+        _action_log(f"⚠ 更新被阻止: BUSY={_BUSY} UPDATING={_UPDATING} avail={_UPDATE_INFO.get('update_available')}")
         return
     _UPDATING = True
     _lock_ui("更新中")
     itm[BTN_UPDATE].Text = "⏳ 下载中..."
     itm[HINT_LB].Text = "正在下载更新，请稍候..."
-    import threading as _td
-    _td.Thread(target=_do_update_bg, daemon=True).start()
+    _do_update_sync()
 
-def _do_update_bg():
-    """后台线程：下载 + 安装"""
+def _do_update_sync():
+    """同步下载 + 安装"""
     from urllib.request import Request, urlopen
     from urllib.parse import quote, urlparse, urlunparse
     import json, subprocess, tempfile, zipfile, shlex, ssl, base64, hashlib
