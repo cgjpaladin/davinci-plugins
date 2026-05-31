@@ -2014,6 +2014,8 @@ def _do_update_sync():
                 with urlopen(req, timeout=TIMEOUT_DOWNLOAD_SINGLE, context=_ctx) as resp:
                     data = resp.read()
                 if data and len(data) >= MIN_DOWNLOAD_SIZE:
+                    if data[:4] != b'PK\x03\x04':  # 不是 zip 文件（CDN 返回 HTML 等）
+                        last_err = "响应不是 zip 文件"; continue
                     break
                 last_err = "下载文件无效"
             except Exception as e:

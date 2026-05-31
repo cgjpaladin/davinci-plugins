@@ -29,15 +29,19 @@ echo "  日志: $NOTES"
 
 # 1. 上传 zip 到 GitHub（必须先于 version.json，避免竞态）
 echo "  → 上传更新包..."
-gh api --method PUT "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" \
-    -f message="release v$VERSION" \
-    -f content="$(base64 -i "$UPDATE_ZIP")" \
-    -f sha="$(gh api "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" --jq .sha || echo '')" \
-    -f branch=main || \
-gh api --method PUT "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" \
-    -f message="release v$VERSION" \
-    -f content="$(base64 -i "$UPDATE_ZIP")" \
-    -f branch=main --silent
+CURRENT_SHA=$(gh api "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" --jq .sha 2>/dev/null || true)
+if [ -n "$CURRENT_SHA" ]; then
+    gh api --method PUT "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" \
+        -f message="release v$VERSION" \
+        -f content="$(base64 -i "$UPDATE_ZIP")" \
+        -f sha="$CURRENT_SHA" \
+        -f branch=main || { echo "❌ zip 上传失败"; exit 1; }
+else
+    gh api --method PUT "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" \
+        -f message="release v$VERSION" \
+        -f content="$(base64 -i "$UPDATE_ZIP")" \
+        -f branch=main || { echo "❌ zip 上传失败"; exit 1; }
+fi
 echo "  ✅ update_latest.zip"
 
 # 2. 更新 version.json（zip 上传成功后才更新）
@@ -58,9 +62,18 @@ echo "  ✅ version.json"
 
 # 3. 刷新 CDN 缓存
 echo "  → 刷新 jsDelivr 缓存..."
-curl -s "${PURGE_BASE}/version.json" >/dev/null
-curl -s "${PURGE_BASE}/update_latest.zip" >/dev/null
-echo "  ✅ CDN"
+PURGE_V=$(curl -s -o /dev/null -w "%{http_code}" "${PURGE_BASE}/version.json")
+PURGE_Z=$(curl -s -o /dev/null -w "%{http_code}" "${PURGE_BASE}/update_latest.zip")
+if [ "$PURGE_V" = "200" ] || [ "$PURGE_V" = "202" ]; then
+    echo "  ✅ CDN version.json (HTTP $PURGE_V)"
+else
+    echo "  ⚠ CDN version.json 返回 $PURGE_V（缓存可能延迟）"
+fi
+if [ "$PURGE_Z" = "200" ] || [ "$PURGE_Z" = "202" ]; then
+    echo "  ✅ CDN update_latest.zip (HTTP $PURGE_Z)"
+else
+    echo "  ⚠ CDN update_latest.zip 返回 $PURGE_Z（缓存可能延迟）"
+fi
 
 echo "═══ v$VERSION 发布完成 ═══"
 echo "用户下次启动自动检测更新。"

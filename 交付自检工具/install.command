@@ -61,6 +61,8 @@ FILE_COUNT=$(find "$SOURCE" -type f | wc -l | tr -d ' ')
 echo "   ✅ 找到 $FILE_COUNT 个文件"
 echo ""
 
+PYTHON=""
+
 if [ $IS_UPDATE -eq 0 ]; then
 
 # ═══════════════════════════════════════
@@ -199,6 +201,19 @@ else
 fi
 echo ""
 fi  # IS_UPDATE 判断结束
+else
+    # --update 模式：快速检测 Framework Python
+    echo "→ 检测 Python..."
+    for p in /Library/Frameworks/Python.framework/Versions/3.*/bin/python3 /opt/homebrew/bin/python3; do
+        if [ -x "$p" ]; then
+            PYTHON="$p"; echo "   ✅ $($PYTHON --version 2>&1)"; break
+        fi
+    done
+    if [ -z "$PYTHON" ]; then
+        echo "   ❌ 未找到 Framework Python，更新无法继续"
+        exit 1
+    fi
+fi
 
 # ═══════════════════════════════════════
 # 5. 中转文件
@@ -235,7 +250,7 @@ if [ $IS_UPDATE -eq 1 ]; then
     echo "  → deploy shell" && cp "$INSTALL_DIR/shell_personal.py" "$FUSION_SCRIPTS/交付自检工具.py" && chmod 755 "$FUSION_SCRIPTS/交付自检工具.py" &&
     echo "  → chown" && chown -R $USER "$INSTALL_DIR" &&
     echo "  → restore/init .env" && if [ -f /tmp/_deli_env_bak ]; then cp /tmp/_deli_env_bak "$INSTALL_DIR/.env"; rm -f /tmp/_deli_env_bak; else cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"; fi &&
-    echo "  → write credentials" && python3 "$INSTALL_DIR/shared/_write_env.py" && echo "  ✅ 安装完成"
+    echo "  → write credentials" && "$PYTHON" "$INSTALL_DIR/shared/_write_env.py" && echo "  ✅ 安装完成"
     _UPDATE_OK=1
 elif osascript <<EOF 2>"$INSTALL_LOG"
 do shell script "
