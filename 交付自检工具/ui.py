@@ -2213,14 +2213,6 @@ def main():
     except Exception as e:
         _action_log(f"License异常: {type(e).__name__}: {e}")
 
-    # TODO: 测试完成后删除 ↓↓↓↓↓
-    if os.path.exists("/Volumes/MYJC"):
-        _action_log("❌ 测试错误: 视频轨道 3 没有画面片段")
-        _action_log("❌ 测试错误: 音频采样率 44100 ≠ 项目设置 48000")
-        _action_log("⚠ 测试警告: 字幕文件未找到同步参考")
-    _action_log("   ✅ 测试通过: 帧率匹配 25fps")
-    # TODO: 测试完成后删除 ↑↑↑↑↑
-
     disp.RunLoop()
     dlg.Hide()
     # os._exit 跳过 C++ 全局析构，避免 fusionscript.so 的
