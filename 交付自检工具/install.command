@@ -228,8 +228,10 @@ if [ $IS_UPDATE -eq 1 ]; then
     # --update 模式：已在外层 root 下，直接安装
     echo "   以 root 身份直接安装..."
     echo "  → mkdir" && mkdir -p "$FUSION_SCRIPTS" &&
-    echo "  → backup .env" && [ ! -f "$INSTALL_DIR/.env" ] || cp "$INSTALL_DIR/.env" /tmp/_deli_env_bak &&
-    echo "  → rm old + cp new" && rm -rf "$INSTALL_DIR" && cp -r /tmp/_deli_src "$INSTALL_DIR" &&
+    echo "  → backup .env" && [ ! -f "$INSTALL_DIR/.env" ] || (cp "$INSTALL_DIR/.env" /tmp/_deli_env_bak || { echo "  ❌ 备份 .env 失败，中止更新"; exit 1; }) &&
+    echo "  → cp new to staging" && rm -rf "$INSTALL_DIR.new" && cp -r /tmp/_deli_src "$INSTALL_DIR.new" &&
+    echo "  → rm old" && rm -rf "$INSTALL_DIR" &&
+    echo "  → mv staging" && mv "$INSTALL_DIR.new" "$INSTALL_DIR" &&
     echo "  → deploy shell" && cp "$INSTALL_DIR/shell_personal.py" "$FUSION_SCRIPTS/交付自检工具.py" && chmod 755 "$FUSION_SCRIPTS/交付自检工具.py" &&
     echo "  → chown" && chown -R $USER "$INSTALL_DIR" &&
     echo "  → restore/init .env" && if [ -f /tmp/_deli_env_bak ]; then cp /tmp/_deli_env_bak "$INSTALL_DIR/.env"; rm -f /tmp/_deli_env_bak; else cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"; fi &&

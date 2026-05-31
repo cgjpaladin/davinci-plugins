@@ -27,9 +27,22 @@ echo "═══ 发布 v$VERSION ═══"
 echo "  SHA256: $SHA256"
 echo "  日志: $NOTES"
 
-# 1. 更新 version.json
+# 1. 上传 zip 到 GitHub（必须先于 version.json，避免竞态）
+echo "  → 上传更新包..."
+gh api --method PUT "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" \
+    -f message="release v$VERSION" \
+    -f content="$(base64 -i "$UPDATE_ZIP")" \
+    -f sha="$(gh api "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" --jq .sha || echo '')" \
+    -f branch=main || \
+gh api --method PUT "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" \
+    -f message="release v$VERSION" \
+    -f content="$(base64 -i "$UPDATE_ZIP")" \
+    -f branch=main --silent
+echo "  ✅ update_latest.zip"
+
+# 2. 更新 version.json（zip 上传成功后才更新）
 cat > /tmp/_publish_v.json << EOF
-{"delivery_checker":{"version":"$VERSION","url":"${CDN_BASE}/update_latest.zip","urls":["${API_BASE}/contents/update_latest.zip","${CDN_BASE}/update_latest.zip"],"sha256":"$SHA256","notes":"$NOTES"}}
+{"delivery_checker":{"version":"$VERSION","url":"https://ghproxy.net/https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/v$VERSION/update_v$VERSION.zip","urls":["https://ghproxy.net/https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/v$VERSION/update_v$VERSION.zip","https://cdn.jsdelivr.net/gh/${REPO_OWNER}/${REPO_NAME}@v$VERSION/update_latest.zip","https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/v$VERSION/update_v$VERSION.zip"],"sha256":"$SHA256","notes":"$NOTES"}}
 EOF
 
 # 写入 repo 根目录（参与 git 版本管理）
@@ -42,19 +55,6 @@ gh api --method PUT "repos/${REPO_OWNER}/${REPO_NAME}/contents/version.json" \
     -f sha="$(gh api "repos/${REPO_OWNER}/${REPO_NAME}/contents/version.json" --jq .sha)" \
     -f branch=main --silent
 echo "  ✅ version.json"
-
-# 2. 上传 zip
-echo "  → 上传更新包..."
-gh api --method PUT "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" \
-    -f message="release v$VERSION" \
-    -f content="$(base64 -i "$UPDATE_ZIP")" \
-    -f sha="$(gh api "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" --jq .sha || echo '')" \
-    -f branch=main || \
-gh api --method PUT "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" \
-    -f message="release v$VERSION" \
-    -f content="$(base64 -i "$UPDATE_ZIP")" \
-    -f branch=main --silent
-echo "  ✅ update_latest.zip"
 
 # 3. 刷新 CDN 缓存
 echo "  → 刷新 jsDelivr 缓存..."

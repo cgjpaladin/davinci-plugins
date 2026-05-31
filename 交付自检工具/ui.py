@@ -1438,9 +1438,8 @@ def _run_ai_typo():
         itm[HINT_LB].Text = f"❌ 校对异常: {e}"
 
     finally:
+        _unlock_ui()
         _checking = False
-        itm[BTN_AI_TYPO].Enabled = True
-        itm[BTN_START].Enabled = True
 
 
 # ═══════════════════════════════════════════
@@ -1453,7 +1452,7 @@ def _start_check():
         return
     _checking = True
     _start_time = time.time()
-    itm[BTN_START].Enabled = False
+    _lock_ui("检查中")
 
     try:
         any_checked = any(
@@ -1749,9 +1748,8 @@ def _start_check():
         _action_log(tb)
         itm[HINT_LB].Text = f"❌ 检查崩溃: {e}"
     finally:
+        _unlock_ui()
         _checking = False
-        itm[BTN_START].Enabled = True
-        itm[BTN_AI_TYPO].Enabled = True
 
 
 # ═══════════════════════════════════════════
@@ -1909,6 +1907,7 @@ def _do_upload(logs_dir):
             _action_log(f"✅ 已上传日志 ({_UI_ERROR_COUNT} 个报错)" if _UI_ERROR_COUNT else "✅ 已上传日志")
             itm[BTN_ERR_SEND].Text = "✅ 已上传"
             _unlock_ui()
+            _UI_UPLOADING = False
             if _UI_ERROR_COUNT:
                 itm[HINT_LB].Text = "✅ 异常信息已上报，感谢反馈"
             else:
@@ -1964,6 +1963,7 @@ dlg.On["btn_browse_script"].Clicked = _browse_script
 
 # 一键更新
 _UPDATING = False
+_UPDATE_INFO = {}  # 版本检查结果，防止 NameError
 
 def _do_update(ev):
     """下载 zip → 解压 → 覆盖安装目录 → 提示重启达芬奇。同步执行，UI 短暂冻结。"""
@@ -2000,6 +2000,7 @@ def _do_update_sync():
     try:
         data = None
         last_err = ""
+        _tmp_dir = None  # 用于 finally 清理
         for idx, dl_url in enumerate(urls):
             _action_log(f"⬇ 下载 [{idx+1}/{len(urls)}]: {dl_url}")
             try:
@@ -2037,22 +2038,22 @@ def _do_update_sync():
             _action_log("   SHA256 ✓")
         _action_log(f"   下载完成: {len(data)//1024}KB")
 
-        tmp_dir = tempfile.mkdtemp()
-        zip_path = os.path.join(tmp_dir, "update.zip")
+        _tmp_dir = tempfile.mkdtemp()
+        zip_path = os.path.join(_tmp_dir, "update.zip")
         with open(zip_path, "wb") as f:
             f.write(data)
         with zipfile.ZipFile(zip_path) as zf:
-            zf.extractall(tmp_dir)
+            zf.extractall(_tmp_dir)
 
         # 找安装脚本：优先 ASCII 名，兜底后缀 + 全局搜索
         cmd = None
-        for root, _, files in os.walk(tmp_dir):
+        for root, _, files in os.walk(_tmp_dir):
             for fn in files:
                 if fn == "install_update.command":
                     cmd = os.path.join(root, fn); break
             if cmd: break
         if not cmd:
-            for root, _, files in os.walk(tmp_dir):
+            for root, _, files in os.walk(_tmp_dir):
                 for fn in files:
                     if fn.endswith(".command"):
                         cmd = os.path.join(root, fn); break
@@ -2076,13 +2077,21 @@ def _do_update_sync():
         itm[HINT_LB].Text = "✅ 更新完成！请重启达芬奇生效"
         itm[BTN_UPDATE].Text = "✅"
         _unlock_ui()
+        _UPDATING = False
         _action_log("✅ 更新完成，等待重启达芬奇")
     except Exception as e:
         _action_log(f"❌ 更新失败: {e}")
-        itm[HINT_LB].Text = f"❌ 更新失败: {e}"
+        # 更新失败 → 自动走报错通道，引导用户上传日志
+        global _UI_ERROR_COUNT
+        _UI_ERROR_COUNT += 1
+        _update_err_counter()
+        itm[HINT_LB].Text = "❌ 更新下载失败，请点击右侧按钮上报日志"
         itm[BTN_UPDATE].Text = "⬆ 更新"
         _unlock_ui()
         _UPDATING = False
+    finally:
+        if _tmp_dir:
+            import shutil; shutil.rmtree(_tmp_dir, ignore_errors=True)
 dlg.On[BTN_UPDATE].Clicked = _do_update
 
 # 剧本链接格式校验 + 按钮状态
