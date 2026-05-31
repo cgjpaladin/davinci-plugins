@@ -98,3 +98,82 @@ def get_machine_fingerprint() -> str:
         (primary + "DV_LICENSE_SALT_v1").encode("utf-8")
     ).hexdigest()
     return final
+
+
+# ═══════════════════════════════════════════
+# T2: 凭证读写 + 三备份
+# ═══════════════════════════════════════════
+
+def _protect_file(path: Path):
+    """设置文件为系统隐藏 + 仅当前用户可读写"""
+    path.chmod(stat.S_IRUSR | stat.S_IWUSR)
+    # macOS: chflags hidden
+    os.chflags(path, stat.UF_HIDDEN)
+
+
+def save_credential(data: dict) -> None:
+    """将凭证写入三个冗余路径"""
+    payload = json.dumps(data)
+    for path in _get_credential_paths():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(payload)
+        _protect_file(path)
+
+
+def load_credential() -> Optional[dict]:
+    """从三份备份中读取一份合法凭证。
+
+    优先级：第一个存在的 → 交叉校验（多数投票）。
+    """
+    paths = _get_credential_paths()
+    valid = []
+
+    for path in paths:
+        if not path.exists():
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                cred = json.load(f)
+            # 基本格式校验
+            if "payload" in cred and "signature" in cred:
+                valid.append(cred)
+        except Exception:
+            continue
+
+    if not valid:
+        return None
+
+    # 多数投票：取出现次数最多的那份
+    best = max(valid, key=lambda c: sum(
+        1 for v in valid if json.dumps(v, sort_keys=True) == json.dumps(c, sort_keys=True)
+    ))
+    return best
+
+
+def cross_validate_and_repair() -> bool:
+    """交叉校验三份备份，自动修复不一致的文件。
+
+    返回 True 表示至少有一份合法凭证可用。
+    """
+    best = load_credential()
+    if best is None:
+        return False
+
+    # 用最佳凭证修复所有路径
+    for path in _get_credential_paths():
+        try:
+            if path.exists():
+                with open(path, "r") as f:
+                    existing = json.load(f)
+                if json.dumps(existing, sort_keys=True) == json.dumps(best, sort_keys=True):
+                    continue  # 一致，跳过
+            # 不一致或不存在 → 写入
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "w") as f:
+                json.dump(best, f)
+            _protect_file(path)
+        except Exception:
+            pass
+
+    return True
