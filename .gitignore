@@ -9,3 +9,5 @@ AI去字幕/tests/*
 .workbuddy/
 tools/_wsl.py
 .env
+.env
+shared/.env
