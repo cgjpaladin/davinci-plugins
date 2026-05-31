@@ -1321,8 +1321,8 @@ def _run_ai_typo():
     if _BUSY or _checking:
         return
     _checking = True
-    itm[BTN_AI_TYPO].Enabled = False
-    itm[BTN_START].Enabled = False
+    _lock_ui("检查中")
+
 
     def _stop(msg):
         itm[HINT_LB].Text = msg
@@ -1867,6 +1867,7 @@ def _on_err_report(ev):
     if _BUSY or _UI_UPLOADING:
         return
     _UI_UPLOADING = True
+    _lock_ui("上传日志")
     itm[BTN_ERR_SEND].Text = "⏳ 上传中..."
     _do_upload(os.path.expanduser("~/.workbuddy/logs/交付自检工具"))
 
@@ -1967,6 +1968,7 @@ def _do_update(ev):
     if _BUSY or _UPDATING or not _UPDATE_INFO.get("update_available"):
         return
     _UPDATING = True
+    _lock_ui("更新中")
     itm[BTN_UPDATE].Text = "⏳ 下载中..."
     itm[HINT_LB].Text = "正在下载更新，请稍候..."
     import threading as _td
