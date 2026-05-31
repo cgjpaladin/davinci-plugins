@@ -538,6 +538,18 @@ _video_clamp_threshold = 2  # 视频夹帧阈值（帧）
 _black_frame_sec = DEFAULT_BLACK_FRAME_SEC
 _censor_subs = {"base": True, "en": True, "bw": True, "bw_sms": True}
 _checking = False
+_BUSY = False
+
+def _lock_ui(label: str):
+    global _BUSY; _BUSY = True
+    itm[BTN_START].Enabled = False; itm[BTN_UPDATE].Enabled = False
+    itm[BTN_ERR_SEND].Enabled = False; itm[BTN_AI_TYPO].Enabled = False
+
+def _unlock_ui():
+    global _BUSY; _BUSY = False
+    itm[BTN_START].Enabled = True; itm[BTN_START].Text = "开始检查"
+    itm[BTN_UPDATE].Enabled = True; itm[BTN_ERR_SEND].Enabled = True
+    itm[BTN_AI_TYPO].Enabled = True
 
 # ── 配置持久化（本地 JSON，每人独立）──
 def _save_config_to_file():
@@ -1306,7 +1318,7 @@ def _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
 def _run_ai_typo():
     """一步到位：下载剧本 → 解析 → 集号匹配 → LLM 校对（含剧集一致性检测）。"""
     global _checking
-    if _checking:
+    if _BUSY or _checking:
         return
     _checking = True
     itm[BTN_AI_TYPO].Enabled = False
@@ -1437,7 +1449,7 @@ def _run_ai_typo():
 
 def _start_check():
     global _checking, _start_time
-    if _checking:
+    if _BUSY or _checking:
         return
     _checking = True
     _start_time = time.time()
@@ -1852,7 +1864,7 @@ def _on_err_report(ev):
     """📋 上传日志（无报错时）/ 一键发送错误报告（有报错时）"""
     global _UI_ERROR_COUNT, _UI_UPLOADING
     _action_log(f"📤 上传按钮被点击 (error_count={_UI_ERROR_COUNT}, uploading={_UI_UPLOADING})")
-    if _UI_UPLOADING:
+    if _BUSY or _UI_UPLOADING:
         return
     _UI_UPLOADING = True
     itm[BTN_ERR_SEND].Text = "⏳ 上传中..."
@@ -1952,7 +1964,7 @@ _UPDATING = False
 def _do_update(ev):
     """下载 zip → 解压 → 覆盖安装目录 → 提示重启达芬奇。多链路回退 + SHA256 校验。"""
     global _UPDATING
-    if _UPDATING or not _UPDATE_INFO.get("update_available"):
+    if _BUSY or _UPDATING or not _UPDATE_INFO.get("update_available"):
         return
     _UPDATING = True
     itm[BTN_UPDATE].Text = "⏳ 下载中..."
