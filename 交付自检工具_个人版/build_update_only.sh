@@ -29,7 +29,9 @@ cp "$WS/shared/dftt_timecode"/{__init__,error,pattern}.py "$PKG/交付自检工�
 cp "$WS/shared/dftt_timecode/core"/{dftt_timecode,dftt_timerange}.py "$PKG/交付自检工具/shared/dftt_timecode/core/"
 
 # 5. 字典文件
-cp "$WS/交付自检工具/dicts"/*.{txt,csv} "$PKG/交付自检工具/dicts/" 2>/dev/null || true
+if ls "$WS/交付自检工具/dicts"/*.{txt,csv} 1>/dev/null 2>&1; then
+    cp "$WS/交付自检工具/dicts"/*.{txt,csv} "$PKG/交付自检工具/dicts/" || { echo "❌ 字典拷贝失败"; exit 1; }
+fi
 
 # 6. 安装脚本 → 中文名
 chmod +x "$PKG/交付自检工具/install.command"

@@ -702,7 +702,7 @@ def check_subtitle_glyph(timeline, fps=25.0, io_range=None) -> list:
     if range_path not in _censor_cache:
         try:
             ranges = []
-            with open(range_path, encoding="utf-8") as f:
+            with open(range_path, encoding="utf-8-sig") as f:
                 for line in f:
                     line = line.strip()
                     if not line or line.startswith("#"):
@@ -838,7 +838,7 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn
         category_map = {}   # word → "cat1 > cat2"
         suggestion_map = {} # word → "sug1 / sug2 / ..."
         if os.path.isfile(dict_path):
-            with open(dict_path, "r", encoding="utf-8") as f:
+            with open(dict_path, "r", encoding="utf-8-sig") as f:
                 for line in f:
                     w = line.strip()
                     if not w or w.startswith("#"):
@@ -881,7 +881,7 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn
         if wl_key not in _censor_cache:
             wl_words = []
             try:
-                with open(whitelist_path, encoding="utf-8") as f:
+                with open(whitelist_path, encoding="utf-8-sig") as f:
                     for line in f:
                         w = line.strip()
                         if w and not w.startswith("#"):

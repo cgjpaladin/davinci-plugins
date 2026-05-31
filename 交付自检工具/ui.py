@@ -2066,7 +2066,8 @@ def _do_update_sync():
         os.chmod(cmd, 0o755)
         _action_log("   → 开始安装更新…")
         script = f'do shell script "/bin/bash {shlex.quote(cmd)} --update" with administrator privileges'
-        result = subprocess.run(["osascript", "-e", script], timeout=TIMEOUT_INSTALL, capture_output=True)
+        result = subprocess.run(["osascript", "-e", script], timeout=TIMEOUT_INSTALL,
+                                capture_output=True, start_new_session=True)
         if result.returncode != 0:
             err = "安装脚本失败"
             try:

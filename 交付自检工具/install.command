@@ -244,7 +244,7 @@ if [ $IS_UPDATE -eq 1 ]; then
     echo "   以 root 身份直接安装..."
     echo "  → mkdir" && mkdir -p "$FUSION_SCRIPTS" &&
     echo "  → backup .env" && [ ! -f "$INSTALL_DIR/.env" ] || (cp "$INSTALL_DIR/.env" /tmp/_deli_env_bak || { echo "  ❌ 备份 .env 失败，中止更新"; exit 1; }) &&
-    echo "  → backup dicts" && (rm -rf /tmp/_deli_dicts_bak; if [ -d "$INSTALL_DIR/dicts" ]; then cp -r "$INSTALL_DIR/dicts" /tmp/_deli_dicts_bak; fi) &&
+    echo "  → backup dicts" && (rm -rf /tmp/_deli_dicts_bak; if [ -d "$INSTALL_DIR/dicts" ]; then cp -r "$INSTALL_DIR/dicts/" /tmp/_deli_dicts_bak/; fi) &&
     echo "  → cp new to staging" && rm -rf "$INSTALL_DIR.new" && cp -r /tmp/_deli_src "$INSTALL_DIR.new" &&
     echo "  → rm old" && rm -rf "$INSTALL_DIR" &&
     echo "  → mv staging" && mv "$INSTALL_DIR.new" "$INSTALL_DIR" &&
