@@ -83,6 +83,7 @@ TREE_RESULT = "tree_result"
 GROUP_TREE = "group_tree"
 BTN_UPDATE = "btn_update"
 HINT_LB = "hint_lb"
+TRIAL_LB = "trial_lb"
 
 # ── 结果列定义：加/删/挪/开关列只改这里 ──
 #   enabled=False → 列暂时隐藏，不删定义
@@ -714,7 +715,7 @@ window_layout = [
             ui.HGap({"Weight": 0, "MinimumSize": SIZE_GAP_TINY}),
 
             # ====== 右区：AI校对面板 ======
-            ui.VGroup({"Spacing": SPACE_SM, "Weight": 0, "MinimumSize": [220, 0]}, [
+            ui.VGroup({"Spacing": SPACE_TIGHT, "Weight": 0, "MinimumSize": [220, 0]}, [
                 ui.Label({"ID": "lbl_ai_title", "Text": "AI 字幕校对",
                           "StyleSheet": STYLE_HEADING,
                           "Weight": 0, "Alignment": {"AlignHCenter": True}}),
@@ -759,21 +760,24 @@ window_layout = [
             ui.Label({"ID": "lbl_gate_warn", "Text": "",
                       "StyleSheet": "color:rgb(220,180,80);font-size:13px;padding:4px 10px",
                       "Weight": 0, "WordWrap": True, "MinimumSize": [0, SIZE_LINE_H]}),
-            ui.HGroup({"Spacing": SPACE_NONE, "Weight": 0}, [
+            # 操作按钮行
+            ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
+                ui.Label({"ID": TRIAL_LB, "Text": "",
+                          "StyleSheet": "color:rgb(220,180,60);font-size:10px",
+                          "Weight": 0, "MinimumSize": [150, SIZE_LINE_H]}),
                 ui.HGap({"Weight": 1}),
                 ui.Button({"ID": BTN_UPDATE, "Text": "✓ 最新",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [SIZE_BTN_MD_W, SIZE_BTN_H]}),
-                ui.Label({"Text": " ", "Weight": 0, "MinimumSize": SIZE_GAP_SM}),
                 ui.Button({"ID": "btn_export_logs", "Text": "📋 导出日志",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [SIZE_BTN_LG_W, SIZE_BTN_H]}),
             ]),
-            ui.HGroup({"Spacing": 8}, [
+            # 状态栏
+            ui.HGroup({"Spacing": SPACE_COMPACT, "Weight": 0}, [
                 ui.Label({"ID": HINT_LB, "Text": "请点击「开始检查」",
                           "StyleSheet": STYLE_HINT, "Weight": 1,
                           "WordWrap": True, "MinimumSize": [0, SIZE_LINE_H]}),
-                ui.Label({"Text": " ", "Weight": 0}),
                 ui.Label({"Text": f"裁缝老师的达芬奇插件工坊 ✂️ | v{version_string()}",
                           "StyleSheet": STYLE_FOOTER, "Weight": 0}),
             ]),
@@ -2147,12 +2151,22 @@ def main():
                 text = f"试用第 {30-d}/30 天"
             else:
                 text = "已激活 ✓"
-            itm[HINT_LB].Text = msg if not ok else text
+            itm[TRIAL_LB].Text = msg if not ok else text
             _action_log(f"License: {text}  ({'✅' if ok else '❌ '+msg})")
         else:
             ok, msg = init_trial()
-            text = msg if ok else ""
-            itm[HINT_LB].Text = text
+            if ok:
+                # 重新加载凭证，用统一格式显示
+                cred = load_credential()
+                if cred:
+                    p = cred.get("payload", {})
+                    d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
+                    text = f"试用第 {30-d}/30 天"
+                else:
+                    text = msg
+            else:
+                text = ""
+            itm[TRIAL_LB].Text = text
             _action_log(f"License试用: {'✅' if ok else '❌'} → 显示: \"{text}\"")
     except Exception as e:
         _action_log(f"License异常: {type(e).__name__}: {e}")

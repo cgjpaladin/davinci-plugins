@@ -1,0 +1,14 @@
+⚠️ 重要：激活 UI 是达芬奇 UIManager 原生控件。
+由于该模块与达芬奇 API 强耦合（需要在达芬奇进程中运行），
+激活弹窗的实现代码已直接集成到 ui.py 主文件中，
+在 update check 之后、RunLoop 之前执行。
+
+核心逻辑：
+1. 启动 → 采集机器指纹 → load_credential()
+2. 凭证存在 + verify_local() → 试用/正式，显示状态
+3. 凭证不存在 + BACKEND_URL → init_trial() 初始化试用
+4. 试用到期 → 弹窗「请输入激活码」
+5. 输入正确 → activate() → 重启
+6. 报错计数 → 右下角 ⚠️ N
+
+详见 ui.py 中 「# ══ License 激活 ══」块。
