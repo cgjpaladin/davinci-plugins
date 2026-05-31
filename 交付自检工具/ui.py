@@ -84,6 +84,8 @@ GROUP_TREE = "group_tree"
 BTN_UPDATE = "btn_update"
 HINT_LB = "hint_lb"
 TRIAL_LB = "trial_lb"
+ERR_LB = "err_lb"
+BTN_ERR_SEND = "btn_err_send"
 
 # ── 结果列定义：加/删/挪/开关列只改这里 ──
 #   enabled=False → 列暂时隐藏，不删定义
@@ -594,6 +596,8 @@ def _action_log(msg: str):
         print(_stderr_msg, file=sys.stderr)
     if "❌" in msg:
         _UI_ERROR_COUNT += 1
+        try: _update_err_counter()
+        except: pass
 
 
 # ═══════════════════════════════════════════
@@ -769,7 +773,7 @@ window_layout = [
                 ui.Button({"ID": BTN_UPDATE, "Text": "✓ 最新",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [SIZE_BTN_MD_W, SIZE_BTN_H]}),
-                ui.Button({"ID": "btn_export_logs", "Text": "📋 导出日志",
+                ui.Button({"ID": BTN_ERR_SEND, "Text": "📋 上传日志",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [SIZE_BTN_LG_W, SIZE_BTN_H]}),
             ]),
@@ -1841,38 +1845,78 @@ dlg.On[BTN_START].Clicked = lambda ev: _start_check()
 dlg.On[BTN_CONFIG].Clicked = lambda ev: _show_config_dialog()
 dlg.On[BTN_AI_TYPO].Clicked = lambda ev: _run_ai_typo()
 
-def _export_logs(ev):
-    """导出日志，弹窗选择保存位置"""
+_UI_ERROR_COUNT = 0
+
+def _on_err_report(ev):
+    """📋 上传日志（无报错时）/ 一键发送错误报告（有报错时）"""
+    global _UI_ERROR_COUNT
     import tempfile, zipfile, subprocess
     logs_dir = os.path.expanduser("~/.workbuddy/logs/交付自检工具")
+
+    if _UI_ERROR_COUNT > 0 and os.path.isdir(logs_dir):
+        # 有报错 → 打包发送
+        tmp = tempfile.mkdtemp()
+        zip_path = os.path.join(tmp, "error_report.zip")
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            today = time.strftime("%Y-%m-%d")
+            for f in sorted(os.listdir(logs_dir)):
+                if today in f and f.endswith(".log"):
+                    zf.write(os.path.join(logs_dir, f), f)
+        try:
+            with open(zip_path, "rb") as f:
+                data = f.read()
+            # 发到云函数 → 转发飞书
+            from shared.license import _post_to_backend
+            ok, resp = _post_to_backend("/report", {
+                "action": "report_error",
+                "machine_fingerprint": get_machine_fingerprint() if "get_machine_fingerprint" in dir() else "unknown",
+                "error_count": _UI_ERROR_COUNT,
+                "data_b64": __import__("base64").b64encode(data).decode(),
+            })
+            if ok:
+                _action_log(f"✅ 已发送 {_UI_ERROR_COUNT} 个报错报告")
+                _UI_ERROR_COUNT = 0
+                itm[BTN_ERR_SEND].Text = "📋 上传日志"
+            else:
+                _action_log(f"❌ 发送失败: {resp.get('msg', '')}")
+        except Exception as e:
+            _action_log(f"❌ 发送失败: {e}")
+        finally:
+            __import__("shutil").rmtree(tmp, ignore_errors=True)
+        return
+
+    # 无报错 → 正常导出
     if not os.path.isdir(logs_dir):
         _action_log("⚠ 日志目录不存在")
         return
-    # 弹窗选保存位置
     try:
         result = subprocess.run([
             "osascript", "-e",
             f'POSIX path of (choose file name with prompt "保存日志到：" default name "交付自检日志_{time.strftime("%m%d_%H%M%S")}.zip")'
-        ], capture_output=True, text=True, encoding="utf-8", timeout=30)
+        ], capture_output=True, text=True, timeout=30)
         save_path = result.stdout.strip()
     except Exception:
         save_path = ""
     if not save_path:
-        _action_log("📋 取消导出")
         return
     if not save_path.endswith(".zip"):
         save_path += ".zip"
     with zipfile.ZipFile(save_path, "w", zipfile.ZIP_DEFLATED) as zf:
         today = time.strftime("%Y-%m-%d")
         for f in sorted(os.listdir(logs_dir)):
-            if today not in f:
-                continue
-            fp = os.path.join(logs_dir, f)
-            if os.path.isfile(fp):
-                zf.write(fp, f)
+            if today in f and f.endswith(".log"):
+                zf.write(os.path.join(logs_dir, f), f)
     _action_log(f"📦 日志已导出: {save_path}")
+
+
+def _update_err_counter():
+    """报错时更新按钮文字"""
+    if _UI_ERROR_COUNT > 0:
+        itm[BTN_ERR_SEND].Text = f"⚠️ {_UI_ERROR_COUNT} 个报错"
+    else:
+        itm[BTN_ERR_SEND].Text = "📋 上传日志"
     subprocess.Popen(["open", "-R", save_path])
-dlg.On["btn_export_logs"].Clicked = _export_logs
+dlg.On[BTN_ERR_SEND].Clicked = _on_err_report
 
 def _browse_script(ev):
     """弹出文件选择器，将路径填入剧本链接输入框"""
@@ -2148,7 +2192,7 @@ def main():
             is_trial = p.get("is_trial", True)
             if is_trial:
                 d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                text = f"试用第 {30-d}/30 天"
+                text = f"剩余 {d}/30 天"
             else:
                 text = "已激活 ✓"
             itm[TRIAL_LB].Text = msg if not ok else text
@@ -2161,7 +2205,7 @@ def main():
                 if cred:
                     p = cred.get("payload", {})
                     d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                    text = f"试用第 {30-d}/30 天"
+                    text = f"剩余 {d}/30 天"
                 else:
                     text = msg
             else:
