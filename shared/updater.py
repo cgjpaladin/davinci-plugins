@@ -77,17 +77,14 @@ def check(product: str, current_version: str,
 
     latest_version = latest_info.get("version", "")
     if _version_compare(latest_version, current_version) > 0:
-        # 下载链接: 支持单 URL 字符串或多 URL 列表
-        dl_raw = latest_info.get("url", "")
+        # 下载链接: urls（复数）优先，url（单数）兜底 — 不合并避免重复
+        dl_raw = latest_info.get("urls") or latest_info.get("url", "")
         dl_urls = dl_raw if isinstance(dl_raw, list) else ([dl_raw] if dl_raw else [])
-        # 如果 version.json 提供了备用下载地址，一并加上
-        if isinstance(latest_info.get("urls"), list):
-            dl_urls.extend(latest_info["urls"])
 
         result = {
             "update_available": True,
             "latest": latest_version,
-            "url": dl_urls,
+            "urls": dl_urls,
             "notes": latest_info.get("notes", ""),
             "sha256": latest_info.get("sha256"),
             "force": latest_info.get("force", False),

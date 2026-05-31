@@ -1908,6 +1908,7 @@ def _do_upload(logs_dir):
         if ok:
             _action_log(f"✅ 已上传日志 ({_UI_ERROR_COUNT} 个报错)" if _UI_ERROR_COUNT else "✅ 已上传日志")
             itm[BTN_ERR_SEND].Text = "✅ 已上传"
+            _unlock_ui()
             if _UI_ERROR_COUNT:
                 itm[HINT_LB].Text = "✅ 异常信息已上报，感谢反馈"
             else:
@@ -1918,10 +1919,12 @@ def _do_upload(logs_dir):
             itm[BTN_ERR_SEND].Text = "📋 上传日志"
             itm[HINT_LB].Text = "请点击「开始检查」"
             _UI_UPLOADING = False
+            _unlock_ui()
     except Exception as e:
         _action_log(f"❌ 上传异常: {e}")
         itm[BTN_ERR_SEND].Text = "📋 上传日志"
         _UI_UPLOADING = False
+        _unlock_ui()
     finally:
         import shutil; shutil.rmtree(tmp, ignore_errors=True)
 
@@ -1980,14 +1983,16 @@ def _do_update_bg():
     from urllib.parse import quote, urlparse, urlunparse
     import json, subprocess, tempfile, zipfile, shlex, ssl, base64, hashlib
     from shared.update_config import (
-        TIMEOUT_DOWNLOAD_SINGLE, TIMEOUT_INSTALL, MIN_DOWNLOAD_SIZE, DOWNLOAD_URLS, UPDATE_FILE
+        TIMEOUT_DOWNLOAD_SINGLE, TIMEOUT_INSTALL, MIN_DOWNLOAD_SIZE, UPDATE_FILE
     )
     _ctx = ssl._create_unverified_context()
 
-    url = _UPDATE_INFO.get("url", "")
+    url = _UPDATE_INFO.get("urls", "")
     urls = url if isinstance(url, list) else ([url] if url else [])
     if not urls:
         itm[HINT_LB].Text = "更新地址无效"
+        _unlock_ui()
+        _UPDATING = False
         return
     expected_sha256 = _UPDATE_INFO.get("sha256")
 
@@ -2070,11 +2075,13 @@ def _do_update_bg():
             raise RuntimeError(err)
         itm[HINT_LB].Text = "✅ 更新完成！请重启达芬奇生效"
         itm[BTN_UPDATE].Text = "✅"
+        _unlock_ui()
         _action_log("✅ 更新完成，等待重启达芬奇")
     except Exception as e:
         _action_log(f"❌ 更新失败: {e}")
         itm[HINT_LB].Text = f"❌ 更新失败: {e}"
         itm[BTN_UPDATE].Text = "⬆ 更新"
+        _unlock_ui()
         _UPDATING = False
 dlg.On[BTN_UPDATE].Clicked = _do_update
 
