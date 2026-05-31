@@ -2,6 +2,18 @@ __pycache__/
 *.pyc
 .DS_Store
 tests/
+# 构建产物
+_build/
+*.pkg
+*.zip
+# 大文件目录（PyInstaller 打包）
+批量命名工具/
+批量命名工具_创壹特供版/
+# 凭据
+.env
+shared/.env
+# 全量包
+桌面/
 # 纯函数单元测试（不依赖达芬奇，应追踪）
 !AI去字幕/tests/
 AI去字幕/tests/*

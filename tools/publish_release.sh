@@ -44,7 +44,7 @@ gh api --method PUT "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip
     -f message="release v$VERSION" \
     -f content="$(base64 -i "$UPDATE_ZIP")" \
     -f sha="$(gh api "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" --jq .sha || echo '')" \
-    -f branch=main --silent 2>/dev/null || \
+    -f branch=main || \
 gh api --method PUT "repos/${REPO_OWNER}/${REPO_NAME}/contents/update_latest.zip" \
     -f message="release v$VERSION" \
     -f content="$(base64 -i "$UPDATE_ZIP")" \

@@ -216,7 +216,7 @@ def _post_to_backend(endpoint: str, data: dict, timeout: int = 10) -> Tuple[bool
     req_data = json.dumps(data).encode("utf-8")
     headers = {
         "Content-Type": "application/json",
-        "User-Agent": "DaVinciPlugin/2.2.1",
+        "User-Agent": "DaVinciPlugin/2.2",
         "X-Platform": "Darwin",
         "X-Request-Nonce": os.urandom(16).hex(),
     }
