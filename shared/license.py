@@ -10,7 +10,7 @@ import hmac
 import json
 import os
 import plistlib
-import platform
+import os
 import ssl
 import stat
 import subprocess
@@ -37,7 +37,7 @@ if not BACKEND_URL:
     ]
     for _ep in _env_paths:
         try:
-            with open(_ep) as f:
+            with open(_ep, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line.startswith("WB_LICENSE_URL="):
@@ -105,7 +105,7 @@ def get_machine_fingerprint() -> str:
         raw_parts.append("vol_fallback")
 
     # 4. CPU 架构
-    raw_parts.append(platform.machine())
+    raw_parts.append(os.uname().machine)
 
     # 拼接 → 两次 SHA256
     raw_str = "|".join(raw_parts)
@@ -180,13 +180,13 @@ def cross_validate_and_repair() -> bool:
     for path in _get_credential_paths():
         try:
             if path.exists():
-                with open(path, "r") as f:
+                with open(path, "r", encoding="utf-8") as f:
                     existing = json.load(f)
                 if json.dumps(existing, sort_keys=True) == json.dumps(best, sort_keys=True):
                     continue  # 一致，跳过
             # 不一致或不存在 → 写入
             path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, "w") as f:
+            with open(path, "w", encoding="utf-8") as f:
                 json.dump(best, f)
             _protect_file(path)
         except Exception:
@@ -216,7 +216,7 @@ def _post_to_backend(endpoint: str, data: dict, timeout: int = 10) -> Tuple[bool
     headers = {
         "Content-Type": "application/json",
         "User-Agent": "DaVinciPlugin/2.2.1",
-        "X-Platform": platform.system(),
+        "X-Platform": "Darwin",
         "X-Request-Nonce": os.urandom(16).hex(),
     }
 

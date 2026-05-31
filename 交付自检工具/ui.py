@@ -19,6 +19,9 @@ os.environ["RESOLVE_SCRIPT_LIB"] = "/Applications/DaVinci Resolve/DaVinci Resolv
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
+_smb_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _smb_root not in sys.path:
+    sys.path.insert(0, _smb_root)
 # 个人版 fallback：shared/ 在同级目录
 _personal_shared = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shared')
 if not os.path.isdir(sys.path[1]) and os.path.isdir(_personal_shared):
@@ -2137,15 +2140,22 @@ def main():
         cred = load_credential()
         if cred:
             ok, msg = verify_local()
-            itm[HINT_LB].Text = msg if not ok else (
-                f"试用第 {max(0, (cred['payload'].get('expire_time',0)-int(__import__('time').time()))//86400)}/30 天"
-                if cred['payload'].get('is_trial', True) else "已激活 ✓"
-            )
+            p = cred.get("payload", {})
+            is_trial = p.get("is_trial", True)
+            if is_trial:
+                d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
+                text = f"试用第 {30-d}/30 天"
+            else:
+                text = "已激活 ✓"
+            itm[HINT_LB].Text = msg if not ok else text
+            _action_log(f"License: {text}  ({'✅' if ok else '❌ '+msg})")
         else:
             ok, msg = init_trial()
-            itm[HINT_LB].Text = msg if ok else ""
-    except Exception:
-        pass
+            text = msg if ok else ""
+            itm[HINT_LB].Text = text
+            _action_log(f"License试用: {'✅' if ok else '❌'} → 显示: \"{text}\"")
+    except Exception as e:
+        _action_log(f"License异常: {type(e).__name__}: {e}")
 
     disp.RunLoop()
     dlg.Hide()
