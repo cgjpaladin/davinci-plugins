@@ -1,27 +1,22 @@
-__pycache__/
-*.pyc
-.DS_Store
-tests/
-# 构建产物
-_build/
-*.pkg
-*.zip
-# 大文件目录（PyInstaller 打包）
-批量命名工具/
-批量命名工具_创壹特供版/
-# 凭据
-.env
-shared/.env
-# 全量包
-桌面/
-# 纯函数单元测试（不依赖达芬奇，应追踪）
 !AI去字幕/tests/
-AI去字幕/tests/*
 !AI去字幕/tests/test_core.py
+# 全量包
+# 凭据
+# 大文件目录（PyInstaller 打包）
+# 构建产物
+# 纯函数单元测试（不依赖达芬奇，应追踪）
+*.pkg
+*.pyc
+*.zip
+.DS_Store
+.env
 .workbuddy/
-tools/_wsl.py
-.env
-.env
+AI去字幕/tests/*
+__pycache__/
+_build/
 shared/.env
+tests/
+tools/_wsl.py
 批量命名工具/
 批量命名工具_创壹特供版/
+桌面/

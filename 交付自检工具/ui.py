@@ -784,7 +784,7 @@ window_layout = [
                 ui.HGap({"Weight": 1}),
                 ui.Button({"ID": BTN_UPDATE, "Text": "✓ 最新",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                           "MinimumSize": [SIZE_BTN_MD_W, SIZE_BTN_H]}),
+                           "MinimumSize": [94, SIZE_BTN_H]}),
                 ui.Button({"ID": BTN_ERR_SEND, "Text": "📋 上传日志",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [SIZE_BTN_LG_W, SIZE_BTN_H]}),
