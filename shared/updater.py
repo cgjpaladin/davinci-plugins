@@ -48,7 +48,7 @@ def _fetch_json_across_links(urls: list, timeout: float = 5.0) -> dict:
 
 
 def check(product: str, current_version: str,
-          on_update_found=None, timeout: float = 5.0) -> dict:
+          on_update_found=None, timeout: float = None) -> dict:
     """检查更新。
 
     Args:
@@ -60,6 +60,9 @@ def check(product: str, current_version: str,
     Returns:
         {"update_available": bool, "latest": str, "url": [str, ...], "notes": str, "sha256": str|null}
     """
+    from update_config import VERSION_CHECK_URLS, TIMEOUT_VERSION_CHECK, DOWNLOAD_URLS
+    if timeout is None:
+        timeout = TIMEOUT_VERSION_CHECK
     try:
         data = _fetch_json_across_links(VERSION_CHECK_URLS, timeout=timeout)
     except RuntimeError as e:

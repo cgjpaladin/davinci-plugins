@@ -10,7 +10,7 @@ REPO_FULL = f"{REPO_OWNER}/{REPO_NAME}"
 VERSION_CHECK_URLS = [
     f"https://api.github.com/repos/{REPO_FULL}/contents/version.json",
     f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/version.json",
-    f"https://gh-proxy.net/https://raw.githubusercontent.com/{REPO_FULL}/main/version.json",
+    f"https://ghproxy.net/https://raw.githubusercontent.com/{REPO_FULL}/main/version.json",
 ]
 
 # ── 下载多链路 ──

@@ -30,7 +30,7 @@ cp "$WS/交付自检工具"/ui.py "$WS/交付自检工具"/check_core.py "$WS/�
 cp "$WS/交付自检工具"/launcher_personal.py "$WS/交付自检工具"/shell_personal.py "$WS/交付自检工具"/install.command "$WS/交付自检工具"/.env.example "$PKG/交付自检工具/"
 
 # 3. shared 模块（全套）
-cp "$WS/shared"/{deploy_config,fusionscript_loader,log_writer,camera_detect,script_parser,llm_typo_check,llm_providers,timecode,mappings,launcher_router,subtitle_state,macos_utils,updater,update_config,license}.py "$PKG/交付自检工具/shared/"
+cp "$WS/shared"/{deploy_config,fusionscript_loader,log_writer,camera_detect,script_parser,llm_typo_check,llm_providers,timecode,mappings,launcher_router,subtitle_state,macos_utils,updater,update_config,license,_write_env}.py "$PKG/交付自检工具/shared/"
 cp "$WS/shared/ui/theme.py" "$PKG/交付自检工具/shared/ui/"
 
 # 4. pypdf（纯 Python PDF 提取）
