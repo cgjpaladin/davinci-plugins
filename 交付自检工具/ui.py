@@ -1865,11 +1865,10 @@ def _on_err_report(ev):
         try:
             with open(zip_path, "rb") as f:
                 data = f.read()
-            # 发到云函数 → 转发飞书
-            from shared.license import _post_to_backend
-            ok, resp = _post_to_backend("/report", {
+            from shared.license import _post_to_backend, get_machine_fingerprint
+            ok, resp = _post_to_backend("/license", {
                 "action": "report_error",
-                "machine_fingerprint": get_machine_fingerprint() if "get_machine_fingerprint" in dir() else "unknown",
+                "machine_fingerprint": get_machine_fingerprint(),
                 "error_count": _UI_ERROR_COUNT,
                 "data_b64": __import__("base64").b64encode(data).decode(),
             })
@@ -1878,9 +1877,9 @@ def _on_err_report(ev):
                 _UI_ERROR_COUNT = 0
                 itm[BTN_ERR_SEND].Text = "📋 上传日志"
             else:
-                _action_log(f"❌ 发送失败: {resp.get('msg', '')}")
+                _action_log(f"❌ 发送失败: {resp}")
         except Exception as e:
-            _action_log(f"❌ 发送失败: {e}")
+            _action_log(f"❌ 发送异常: {e}")
         finally:
             __import__("shutil").rmtree(tmp, ignore_errors=True)
         return
@@ -1915,7 +1914,6 @@ def _update_err_counter():
         itm[BTN_ERR_SEND].Text = f"⚠️ {_UI_ERROR_COUNT} 个报错"
     else:
         itm[BTN_ERR_SEND].Text = "📋 上传日志"
-    subprocess.Popen(["open", "-R", save_path])
 dlg.On[BTN_ERR_SEND].Clicked = _on_err_report
 
 def _browse_script(ev):
@@ -2214,6 +2212,14 @@ def main():
             _action_log(f"License试用: {'✅' if ok else '❌'} → 显示: \"{text}\"")
     except Exception as e:
         _action_log(f"License异常: {type(e).__name__}: {e}")
+
+    # TODO: 测试完成后删除 ↓↓↓↓↓
+    if os.path.exists("/Volumes/MYJC"):
+        _action_log("❌ 测试错误: 视频轨道 3 没有画面片段")
+        _action_log("❌ 测试错误: 音频采样率 44100 ≠ 项目设置 48000")
+        _action_log("⚠ 测试警告: 字幕文件未找到同步参考")
+    _action_log("   ✅ 测试通过: 帧率匹配 25fps")
+    # TODO: 测试完成后删除 ↑↑↑↑↑
 
     disp.RunLoop()
     dlg.Hide()
