@@ -1952,11 +1952,16 @@ _UPDATING = False
 def _do_update(ev):
     """下载 zip → 解压 → 覆盖安装目录 → 提示重启达芬奇。多链路回退 + SHA256 校验。"""
     global _UPDATING
-    if _UPDATING:
+    if _UPDATING or not _UPDATE_INFO.get("update_available"):
         return
     _UPDATING = True
-    itm[BTN_UPDATE].Text = "⏳"
-    itm[BTN_UPDATE]["Enabled"] = False
+    itm[BTN_UPDATE].Text = "⏳ 下载中..."
+    itm[HINT_LB].Text = "正在下载更新，请稍候..."
+    import threading as _td
+    _td.Thread(target=_do_update_bg, daemon=True).start()
+
+def _do_update_bg():
+    """后台线程：下载 + 安装"""
     from urllib.request import Request, urlopen
     from urllib.parse import quote, urlparse, urlunparse
     import json, subprocess, tempfile, zipfile, shlex, ssl, base64, hashlib
@@ -2050,13 +2055,13 @@ def _do_update(ev):
                 pass
             raise RuntimeError(err)
         itm[HINT_LB].Text = "✅ 更新完成！请重启达芬奇生效"
+        itm[BTN_UPDATE].Text = "✅"
         _action_log("✅ 更新完成，等待重启达芬奇")
     except Exception as e:
         _action_log(f"❌ 更新失败: {e}")
         itm[HINT_LB].Text = f"❌ 更新失败: {e}"
-        _UPDATING = False
         itm[BTN_UPDATE].Text = "⬆ 更新"
-        itm[BTN_UPDATE]["Enabled"] = True
+        _UPDATING = False
 dlg.On[BTN_UPDATE].Clicked = _do_update
 
 # 剧本链接格式校验 + 按钮状态
@@ -2173,17 +2178,14 @@ def main():
             itm[HINT_LB].Text = f"⬆ 新版本 v{_result['latest']} — 点击右侧按钮更新"
             itm[BTN_UPDATE].Text = "⬆ 更新"
             itm[BTN_UPDATE]["StyleSheet"] = "background-color:rgb(220,180,60);color:#1a1a1a;font-size:11px;font-weight:bold;border-radius:3px;padding:2px 8px"
-            itm[BTN_UPDATE].Enabled = True
             if _result.get("force"):
                 itm[BTN_START].Enabled = False
                 itm[BTN_AI_TYPO].Enabled = False
                 itm[HINT_LB].Text += "（必须更新）"
         else:
             itm[BTN_UPDATE].Text = "✓ 最新"
-            itm[BTN_UPDATE].Enabled = False
     except Exception:
         itm[BTN_UPDATE].Text = "✓ 最新"
-        itm[BTN_UPDATE].Enabled = False
 
     # ══ License ══
     try:

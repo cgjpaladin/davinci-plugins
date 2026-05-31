@@ -13,6 +13,8 @@ PURGE_BASE="https://purge.jsdelivr.net/gh/${REPO_OWNER}/${REPO_NAME}@main"
 VERSION="${1:?用法: bash tools/publish_release.sh <版本号> <更新日志>}"
 NOTES="${2:-修复与优化}"
 
+WS="$(cd "$(dirname "$0")/.." && pwd)"
+
 UPDATE_ZIP="$HOME/Desktop/交付自检工具_更新包.zip"
 
 if [ ! -f "$UPDATE_ZIP" ]; then
@@ -29,6 +31,9 @@ echo "  日志: $NOTES"
 cat > /tmp/_publish_v.json << EOF
 {"delivery_checker":{"version":"$VERSION","url":"${CDN_BASE}/update_latest.zip","urls":["${API_BASE}/contents/update_latest.zip","${CDN_BASE}/update_latest.zip"],"sha256":"$SHA256","notes":"$NOTES"}}
 EOF
+
+# 写入 repo 根目录（参与 git 版本管理）
+cp /tmp/_publish_v.json "$WS/version.json"
 
 echo "  → 上传 version.json..."
 gh api --method PUT "repos/${REPO_OWNER}/${REPO_NAME}/contents/version.json" \

@@ -16,12 +16,12 @@ VERSION_CHECK_URLS = [
 # ── 下载多链路 ──
 UPDATE_FILE = "update_latest.zip"
 DOWNLOAD_URLS = [
-    f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/{UPDATE_FILE}",
-    f"https://api.github.com/repos/{REPO_FULL}/contents/{UPDATE_FILE}",
+    f"https://github.com/{REPO_FULL}/releases/latest/download/update_latest.zip",
+    f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/update_latest.zip",
 ]
 
 # ── 超时（秒） ──
-TIMEOUT_VERSION_CHECK = 5      # 每条版本检查链路
+TIMEOUT_VERSION_CHECK = 10      # 每条版本检查链路（国内 GitHub API 需更长）
 TIMEOUT_DOWNLOAD_SINGLE = 60   # 每条下载链路
 TIMEOUT_INSTALL = 180          # osascript 安装（含用户输入密码时间）
 
