@@ -250,6 +250,7 @@ if [ $IS_UPDATE -eq 1 ]; then
     echo "  → restore dicts" && if [ -d /tmp/_deli_dicts_bak ]; then cp /tmp/_deli_dicts_bak/* "$INSTALL_DIR/dicts/" 2>/dev/null; rm -rf /tmp/_deli_dicts_bak; fi &&
     echo "  → deploy shell" && cp "$INSTALL_DIR/shell_personal.py" "$FUSION_SCRIPTS/交付自检工具.py" && chmod 755 "$FUSION_SCRIPTS/交付自检工具.py" &&
     echo "  → chown" && chown -R $USER "$INSTALL_DIR" &&
+    echo "  → clean pyc" && find "$INSTALL_DIR" -name '__pycache__' -exec rm -rf {} + 2>/dev/null; true &&
     echo "  → restore/init .env" && if [ -f /tmp/_deli_env_bak ]; then cp /tmp/_deli_env_bak "$INSTALL_DIR/.env"; rm -f /tmp/_deli_env_bak; else cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"; fi &&
     echo "  → write credentials" && "$PYTHON" "$INSTALL_DIR/shared/_write_env.py" && echo "  ✅ 安装完成"
     _UPDATE_OK=1

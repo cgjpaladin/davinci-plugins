@@ -286,3 +286,6 @@ bash /tmp/_deli_src/install_update.command --update  # 模拟安装
 
 - build_personal.sh `--update` 模式跳过 pypdf（首次安装已含）
 - 512KB → 179KB
+- 出厂检验：zip 内版本号与源码不一致 → 硬拦截
+- 版本 bump：用 `python3 tools/bump_version.py` 精确替换，不用 `sed`
+- 发布后预热 ghproxy：`WARM_CDN=1 bash build_personal.sh --update`

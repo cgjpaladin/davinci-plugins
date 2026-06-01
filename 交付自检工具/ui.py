@@ -792,7 +792,7 @@ window_layout = [
             ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
                 ui.Label({"ID": TRIAL_LB, "Text": "",
                           "StyleSheet": "color:rgb(220,180,60);font-size:10px",
-                          "Weight": 0, "MinimumSize": [150, SIZE_LINE_H]}),
+                          "Weight": 0, "MinimumSize": [320, SIZE_LINE_H]}),
                 ui.HGap({"Weight": 1}),
                 ui.Button({"ID": BTN_UPDATE, "Text": "✓ 最新",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
@@ -891,7 +891,9 @@ def _build_activation_code():
     inp = ui.LineEdit({"ID": "cfg_activation", "Text": "", "PlaceholderText": "XXXX-XXXX-XXXX"})
     if not os.environ.get("WORKBUDDY_PERSONAL"):
         inp["Visible"] = False
-    return [inp]
+    return [inp,
+            ui.Label({"Text": "💬 联系购买: 微信 paladinpp",
+                      "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0})]
 
 def _build_api_key_input(sid, label):
     placeholder = {"deepseek_key": "sk-...", "feishu_app_id": "cli_...", "feishu_secret": "密钥"}.get(sid, "")
@@ -962,6 +964,8 @@ def _show_config_dialog():
         ui.VGroup({"Spacing": SPACE_NONE}, [
             ui.VGroup({"Spacing": _SECTION_GAP, "Weight": 0}, body_widgets),
             ui.VGap({"Weight": 1}),
+            ui.Label({"ID": "cfg_hint", "Text": "",
+                      "StyleSheet": "color:rgb(220,80,60);font-size:12px", "Weight": 0}),
 
             # ── 按钮（底部居中）──
             ui.HGroup({"Spacing": SPACE_WIDE, "Weight": 0}, [
@@ -1104,6 +1108,9 @@ def _show_config_dialog():
                 pass
         if err:
             _action_log(f"⚠ {err}")
+            try: cfg["cfg_hint"].Text = f"⚠ {err}"
+            except: pass
+            return  # 不关闭对话框，留在配置页让用户重试
         config_dlg.Hide(); config_disp.ExitLoop()
 
     # ── 编辑违禁词 ──
@@ -2239,8 +2246,8 @@ def main():
             is_trial = p.get("is_trial", True)
             if is_trial:
                 d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                text = f"试用剩余 {d} 天"
-                _ai_allowed = d > 0  # 0天=到期
+                text = f"试用剩余 {d} 天  |  联系购买: 微信 paladinpp"
+                _ai_allowed = d > 0
             else:
                 text = "已激活 ✓"
             itm[TRIAL_LB].Text = msg if not ok else text

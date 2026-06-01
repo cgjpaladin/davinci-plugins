@@ -74,6 +74,36 @@ def check(product: str, current_version: str,
     except Exception as e:
         return {"update_available": False, "reason": str(e)[:100]}
 
+    # 兼容 Releases API 格式: {tag_name, body, assets, ...}
+    if isinstance(data, dict) and "tag_name" in data and "assets" in data:
+        tag = data["tag_name"].lstrip("v")
+        notes = data.get("body", "")
+        # 从 assets 找下载链接
+        dl_urls = []
+        for a in data.get("assets", []):
+            url = a.get("browser_download_url", "")
+            if not url: continue
+            # ghproxy 优先
+            if "github.com" in url:
+                dl_urls.append("https://ghproxy.net/" + url)
+            dl_urls.append(url)  # 直连兜底
+        if not dl_urls:
+            dl_urls = DOWNLOAD_URLS
+        # 提取 SHA256（如果有）
+        sha256 = None
+        for a in data.get("assets", []):
+            if a.get("name", "").endswith(".sha256"):
+                # 有 .sha256 文件可尝试下载
+                pass
+        data = {
+            product: {
+                "version": tag,
+                "notes": notes,
+                "urls": dl_urls,
+                "sha256": sha256,
+            }
+        }
+
     latest_info = data.get(product)
     if not latest_info:
         return {"update_available": False, "reason": f"产品 {product} 未找到"}
