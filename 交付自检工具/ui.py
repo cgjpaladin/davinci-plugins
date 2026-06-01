@@ -557,7 +557,7 @@ def _api_keys_path():
 
 def _load_api_keys():
     try:
-        with open(_api_keys_path()) as f: return json.load(f)
+        with open(_api_keys_path(), encoding="utf-8") as f: return json.load(f)
     except: return {}
 
 def _save_api_keys(keys):
@@ -995,7 +995,7 @@ def _show_config_dialog():
         ]:
             if not os.path.exists(_env_candidate): continue
             try:
-                with open(_env_candidate) as f:
+                with open(_env_candidate, encoding="utf-8") as f:
                     for line in f:
                         line = line.strip()
                         if line.startswith("DEEPSEEK_API_KEY=") and not _keys.get("deepseek_key"):
