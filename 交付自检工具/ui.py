@@ -112,6 +112,16 @@ FIELD_TO_COLUMN = {
     "reason":   "reason",    # 建议（直接透传）
 }
 
+# ── 个人词典 CSV 查找（ASCII 名优先，兼容 macOS unzip 中文乱码）──
+def _find_censor_csv():
+    import glob
+    base = os.path.join(_SCRIPT_DIR, "dicts")
+    ascii_path = os.path.join(base, "censor_personal.csv")
+    if os.path.exists(ascii_path): return ascii_path
+    csvs = glob.glob(os.path.join(base, "*.csv"))
+    if csvs: return csvs[0]
+    return ascii_path  # fallback
+
 # 启动时校验：FIELD_TO_COLUMN 与 COLUMNS 一致
 def _validate_field_map():
     col_keys = {c["key"] for c in COLUMNS if c.get("enabled", True)}
@@ -346,7 +356,7 @@ def _run_censor_system(timeline, fps, **_kw):
     ]
     # 加载个人词典白名单
     whitelist_path = None
-    personal_csv = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
+    personal_csv = _find_censor_csv()
     white_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
     try:
         if os.path.isfile(personal_csv):
@@ -390,7 +400,7 @@ def _run_censor_system(timeline, fps, **_kw):
     # 过滤个人词典已覆盖的词
     personal_words = set()
     if _kw.get("personal_enabled"):
-        personal_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
+        personal_path = _find_censor_csv()
         if os.path.isfile(personal_path):
             with open(personal_path, "r", encoding="utf-8") as f:
                 for line in f:
@@ -407,7 +417,7 @@ def _run_censor_system(timeline, fps, **_kw):
 def _run_censor_personal(timeline, fps, **_kw):
     """个人词典（黑名单+白名单）"""
     import tempfile, csv
-    csv_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
+    csv_path = _find_censor_csv()
     black_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
     white_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
     try:
@@ -1127,7 +1137,7 @@ def _show_config_dialog():
         _action_log("🔄 配置已恢复默认")
 
     # ── 编辑违禁词 ──
-    censor_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
+    censor_path = _find_censor_csv()
     def _edit_censor(ev):
         import subprocess
         from check_core import clear_censor_cache

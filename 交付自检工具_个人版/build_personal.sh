@@ -45,6 +45,8 @@ cp "$WS/shared/dftt_timecode/core"/{dftt_timecode,dftt_timerange}.py "$PKG/交�
 # 5. 字典文件
 if ls "$WS/交付自检工具/dicts"/*.{txt,csv} 1>/dev/null 2>&1; then
     cp "$WS/交付自检工具/dicts"/*.{txt,csv} "$PKG/交付自检工具/dicts/" || { echo "❌ 字典拷贝失败"; exit 1; }
+    # 中文 CSV 文件名在 macOS unzip 时会乱码 → 加 ASCII 副本
+    cp "$WS/交付自检工具/dicts/短剧违禁词表.csv" "$PKG/交付自检工具/dicts/censor_personal.csv" 2>/dev/null || true
 fi
 
 # 6. 安装脚本（--update 模式只用 ASCII 名避免乱码）
