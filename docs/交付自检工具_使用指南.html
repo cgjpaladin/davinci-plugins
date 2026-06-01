@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交付自检工具 — 使用指南</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box }
+body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background:#1a1a2e; color:#e0e0e0; line-height:1.8; padding:40px 20px }
+.container { max-width:720px; margin:0 auto }
+h1 { font-size:28px; color:#f0c040; margin-bottom:8px }
+h2 { font-size:20px; color:#f0c040; margin:32px 0 12px; border-bottom:1px solid #333; padding-bottom:4px }
+p { margin:8px 0 }
+a { color:#60a0ff; text-decoration:none }
+a:hover { text-decoration:underline }
+.step { background:#222240; border-radius:8px; padding:16px 20px; margin:12px 0 }
+.step .num { display:inline-block; width:24px; height:24px; background:#f0c040; color:#1a1a2e; border-radius:50%; text-align:center; line-height:24px; font-weight:bold; font-size:14px; margin-right:8px }
+code { background:#333; padding:1px 6px; border-radius:3px; font-size:13px }
+.highlight { background:#2a2a40; border-left:3px solid #f0c040; padding:10px 14px; margin:10px 0; border-radius:0 6px 6px 0 }
+.download-btn { display:inline-block; background:#f0c040; color:#1a1a2e; padding:12px 32px; border-radius:6px; font-size:16px; font-weight:bold; margin:16px 0; text-decoration:none }
+.download-btn:hover { background:#ffd860; text-decoration:none }
+.feature-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px }
+.feature-card { background:#222240; border-radius:8px; padding:14px 16px }
+.feature-card h3 { font-size:15px; color:#f0c040; margin-bottom:4px }
+.feature-card p { font-size:13px; color:#aaa; line-height:1.6 }
+.price-box { background:#1a1a2e; border:2px solid #f0c040; border-radius:8px; padding:20px; text-align:center; margin:16px 0 }
+.price-box .amount { font-size:36px; color:#f0c040; font-weight:bold }
+.price-box .unit { font-size:14px; color:#888 }
+.cost-table { width:100%; border-collapse:collapse; margin:12px 0; font-size:13px }
+.cost-table th, .cost-table td { padding:8px 12px; text-align:left; border-bottom:1px solid #333 }
+.cost-table th { color:#888 }
+.footer { margin-top:48px; color:#666; font-size:12px; text-align:center; border-top:1px solid #333; padding-top:16px }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🎬 交付自检工具</h1>
+<p>DaVinci Resolve 插件 · 影视剪辑交付前最后一道防线</p>
+
+<a class="download-btn" href="[网盘链接]">⬇ 下载安装包（67MB）</a>
+<p style="font-size:12px;color:#888">百度网盘 · 含 Python 安装包</p>
+
+<p style="margin-top:12px">📺 <a href="[B站视频链接]">B站演示视频</a> · <a href="#pricing">💰 定价</a></p>
+
+<h2>✨ 功能一览</h2>
+
+<div class="feature-grid">
+<div class="feature-card">
+<h3>📂 工程检查</h3>
+<p>脱机文件 · 路径越轨 · 轨道结构 · 启用禁用片段</p>
+</div>
+<div class="feature-card">
+<h3>📝 字幕检查</h3>
+<p>换行不规范 · 时长异常 · 异体字 · 违禁词（系统+个人双词典）</p>
+</div>
+<div class="feature-card">
+<h3>🎬 视频检查</h3>
+<p>夹帧 · 黑帧 · 黑边 · 变速 · 视频越轨 · 直通编辑 · 尾板</p>
+</div>
+<div class="feature-card">
+<h3>🎨 色彩检查</h3>
+<p>缺调色节点 · 调色标记</p>
+</div>
+<div class="feature-card">
+<h3>🔊 音频检查</h3>
+<p>声道异常 · 音频越轨</p>
+</div>
+<div class="feature-card">
+<h3>🤖 AI 字幕校对</h3>
+<p>DeepSeek 逐句检查错别字、错词、漏字</p>
+</div>
+<div class="feature-card">
+<h3>📊 一键报告</h3>
+<p>22 项同时跑，3 秒出结果，分组可折叠</p>
+</div>
+<div class="feature-card">
+<h3>🔄 自动更新</h3>
+<p>后台检测新版本，弹窗显示日志，一键更新</p>
+</div>
+</div>
+
+<h2>💰 定价</h2>
+
+<div class="price-box">
+<div class="amount">XX 元</div>
+<div class="unit">永久授权 · 一机一码</div>
+</div>
+<p style="text-align:center;color:#888;font-size:13px">（定价待定，联系微信咨询）</p>
+
+<div class="highlight">
+<strong>💡 AI 字幕校对成本参考</strong><br>
+以 100 分钟 × 60 集短剧为例，全部字幕校对两遍：
+<table class="cost-table">
+<tr><th>项目</th><th>数值</th></tr>
+<tr><td>总段数</td><td>约 12 万段</td></tr>
+<tr><td>总 Token 消耗</td><td>约 1,920 万</td></tr>
+<tr><td>DeepSeek 费用</td><td>约 <strong>100 元</strong></td></tr>
+<tr><td>每集均摊</td><td>约 <strong>1.66 元</strong></td></tr>
+</table>
+DeepSeek 充值 10 元够用一整部剧。
+</div>
+
+<h2>📦 安装</h2>
+
+<div class="step">
+<p><span class="num">1</span> <strong>解压 zip</strong> — 双击下载的 zip，Mac 自动解压成文件夹</p>
+<p style="color:#888;font-size:13px;margin-left:32px">⚠ 不要在压缩包里直接双击安装脚本！先在 Finder 里解压。</p>
+</div>
+
+<div class="step">
+<p><span class="num">2</span> <strong>双击「安装.command」</strong></p>
+<p style="margin-left:32px">→ 终端弹出 → 检测 Python → 输入管理员密码 → ✅ 安装完成</p>
+</div>
+
+<div class="step">
+<p><span class="num">3</span> <strong>打开 DaVinci Resolve</strong> → 菜单栏 <code>Workspace</code> → <code>Scripts</code> → <code>交付自检工具</code></p>
+</div>
+
+<h2>⚙️ 配置（首次使用）</h2>
+
+<div class="step">
+<p><span class="num">1</span> 插件启动后，点击 <strong>「开始检查」下方</strong> 的 <strong>⚙ 配置</strong> 按钮</p>
+</div>
+
+<div class="step">
+<p><span class="num">2</span> <strong>DeepSeek API Key</strong></p>
+<p style="margin-left:32px">去 <a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com → API Keys</a> 创建，粘贴过来</p>
+<p style="color:#888;font-size:13px;margin-left:32px">AI 校对字幕专用。可不填，只影响 AI 功能。</p>
+</div>
+
+<div class="step">
+<p><span class="num">3</span> 飞书 App ID / Secret · 个人词典 — 按需配置</p>
+</div>
+
+<h2>✅ 使用</h2>
+<div class="step">
+<p>打开达芬奇 → 项目/时间线 → <code>Workspace → Scripts → 交付自检工具</code> → <strong>开始检查</strong></p>
+</div>
+
+<h2>🤖 AI 字幕校对</h2>
+<div class="step">
+<p>检查完成后 → 点击 <strong>AI 校对字幕</strong> → DeepSeek 逐句检查</p>
+<p style="color:#888;font-size:13px">试用期 30 天内免费。到期后需激活码继续使用。其他 21 项检查始终免费。</p>
+</div>
+
+<h2>💳 购买激活码</h2>
+<div class="step" id="pricing">
+<p>试用 30 天。到期后 AI 校对暂停，其他检查不受影响。</p>
+<p>联系购买：<strong>微信 paladinpp</strong>（电影裁缝 Bryan）</p>
+<p style="color:#888;font-size:13px">格式 <code>XXXX-XXXX-XXXX</code>，配置页输入即永久激活。换电脑可自助转移。</p>
+</div>
+
+<h2>🔄 更新</h2>
+<div class="step">
+<p>自动检测，右下角显示 <span style="color:#60ff60">✓ 最新</span> 或 <span style="color:#f0c040">⬆ 更新</span>。点击弹窗确认 → 自动安装 → 重启达芬奇。</p>
+</div>
+
+<div class="footer">
+<p>© 电影裁缝 Bryan · 西安幕屿剧创</p>
+<p>B站 / 抖音 / 小红书：电影裁缝 Bryan</p>
+</div>
+
+</div>
+</body>
+</html>
