@@ -888,7 +888,7 @@ CONFIG_SECTIONS = [
 
 # ── 各 type 的 UI 构建函数 → [widget, ...] ──
 def _build_activation_code():
-    inp = ui.LineEdit({"ID": "cfg_activation", "Text": "", "PlaceholderText": "输入激活码..."})
+    inp = ui.LineEdit({"ID": "cfg_activation", "Text": "", "PlaceholderText": "XXXX-XXXX-XXXX"})
     if not os.environ.get("WORKBUDDY_PERSONAL"):
         inp["Visible"] = False
     return [inp]
@@ -1902,19 +1902,89 @@ _UPDATING = False
 _UPDATE_INFO = {}  # 版本检查结果，防止 NameError
 
 def _do_update(ev):
-    """下载 zip → 解压 → 覆盖安装目录 → 提示重启达芬奇。同步执行，UI 短暂冻结。"""
+    """弹更新日志 → 确认后一直留在屏幕上 → 下载完成变关闭按钮"""
     global _UPDATING
     if _BUSY or _UPDATING or not _UPDATE_INFO.get("update_available"):
-        _action_log(f"⚠ 更新被阻止: BUSY={_BUSY} UPDATING={_UPDATING} avail={_UPDATE_INFO.get('update_available')}")
         return
-    _UPDATING = True
-    _lock_ui("更新中")
-    itm[BTN_UPDATE].Text = "⏳ 下载中..."
-    itm[HINT_LB].Text = "正在下载更新，请稍候..."
-    _do_update_sync()
+
+    notes = _UPDATE_INFO.get("notes", "") or "暂无更新说明"
+    new_ver = _UPDATE_INFO.get("latest", "?")
+    CX, CY, CW, CH = 560, 240, 520, 400
+    update_disp = bmd.UIDispatcher(fu.UIManager)
+    _items = {}
+
+    _items["up_icon"]   = ui.Label({"ID": "up_icon", "Text": "🎉", "StyleSheet": "font-size:24px", "Weight": 0})
+    _items["up_title"]  = ui.Label({"ID": "up_title", "Text": f"交付自检工具 v{new_ver}",
+                                    "StyleSheet": "font-size:17px;font-weight:bold;color:rgb(255,255,255)"})
+    _items["up_body"]   = ui.Label({"ID": "up_body", "Text": notes, "WordWrap": True,
+                                    "StyleSheet": "font-size:14px;color:rgb(200,200,200);line-height:22px"})
+    _items["up_status"] = ui.Label({"ID": "up_status", "Text": "",
+                                    "StyleSheet": "font-size:13px;color:rgb(140,140,140)", "Weight": 0})
+    _items["updateNotesCancel"] = ui.Button({"ID": "updateNotesCancel", "Text": "取消",
+                                    "StyleSheet": BTN_STYLE_SM, "Weight": 0, "MinimumSize": [80, SIZE_BTN_H]})
+    _items["updateNotesGo"]     = ui.Button({"ID": "updateNotesGo", "Text": "立即更新",
+                                    "StyleSheet": "background-color:rgb(60,140,220);color:#fff;font-size:13px;font-weight:bold;border-radius:3px;padding:4px 16px",
+                                    "Weight": 0, "MinimumSize": [88, SIZE_BTN_H]})
+
+    dlg = update_disp.AddWindow(
+        {"WindowTitle": f"新版本 v{new_ver}", "ID": "updateNotesDlg",
+         "Geometry": [CX, CY, CW, CH], "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True}},
+        [ui.VGroup({"Spacing": 10},
+         [ui.HGroup({"Spacing": 8, "Weight": 0}, [_items["up_icon"], _items["up_title"]]),
+          _items["up_body"], ui.VGap({"Weight": 1}), _items["up_status"],
+          ui.HGroup({"Spacing": 14, "Weight": 0},
+           [ui.HGap({"Weight": 1}), _items["updateNotesCancel"], _items["updateNotesGo"]])])])
+    dlg.Show()
+    _items = dlg.GetItems()
+    _action_log(f"🪟 更新弹窗: 标题=新版本 v{new_ver}, 按钮=立即更新|取消")
+
+    _go_clicked = [False]
+
+    def _cancel(ev):
+        _action_log("🪟 取消")
+        dlg.Hide(); update_disp.ExitLoop()
+
+    def _go(ev):
+        if _go_clicked[0]:
+            _action_log("🪟 关闭"); dlg.Hide(); update_disp.ExitLoop(); return
+        _go_clicked[0] = True
+        _action_log("🪟 开始下载")
+        _items["updateNotesGo"].Text = "下载中…"; _items["updateNotesGo"].Enabled = False
+        _items["up_status"].Text = "⬇ 179KB — 网络稳定几秒就好"
+
+        try:
+            import importlib, shared.updater as _upd, config as _cfg
+            importlib.reload(_upd)
+            r = _upd.check("delivery_checker", _cfg.__version__)
+            if r.get("update_available"): _UPDATE_INFO.update(r)
+        except Exception: pass
+
+        try:
+            _UPDATING = True
+            _do_update_sync()
+            _items["up_icon"].Text = "✅"
+            _items["up_title"].Text = "更新完成"
+            _items["up_body"].Text = "请重启 DaVinci Resolve 生效"
+            _items["up_status"].Text = ""
+            _action_log("🪟 ✅更新完成")
+        except Exception as e:
+            _items["up_icon"].Text = "❌"
+            _items["up_title"].Text = "更新失败"
+            _items["up_body"].Text = str(e)[:200]
+            _items["up_status"].Text = ""
+            _action_log(f"🪟 ❌更新失败: {str(e)[:80]}")
+        _UPDATING = False
+        _items["updateNotesGo"].Text = "关闭"; _items["updateNotesGo"].Enabled = True
+
+    dlg.On["updateNotesGo"].Clicked = _go
+    dlg.On["updateNotesCancel"].Clicked = _cancel
+    dlg.On["updateNotesDlg"].Close = _cancel
+
+    update_disp.RunLoop()
+    del update_disp
 
 def _do_update_sync():
-    """同步下载 + 安装"""
+    """同步下载 + 安装 — 每步写日志方便远程监控"""
     from urllib.request import Request, urlopen
     from urllib.parse import quote, urlparse, urlunparse
     import json, subprocess, tempfile, zipfile, shlex, ssl, base64, hashlib
@@ -1926,13 +1996,10 @@ def _do_update_sync():
     url = _UPDATE_INFO.get("urls", "")
     urls = url if isinstance(url, list) else ([url] if url else [])
     if not urls:
-        itm[HINT_LB].Text = "更新地址无效"
-        _unlock_ui()
-        _UPDATING = False
-        return
+        raise RuntimeError("更新地址无效")
     expected_sha256 = _UPDATE_INFO.get("sha256")
+    _action_log(f"📦 下载链路: {len(urls)} 条, 第一条: {urls[0][:60]}...")
 
-    itm[HINT_LB].Text = "⏳ 正在下载更新…"
     try:
         data = None
         last_err = ""
@@ -1947,6 +2014,7 @@ def _do_update_sync():
                 last_err = str(e); continue
             try:
                 req.add_header("User-Agent", "DaVinciPlugin/delivery_checker")
+                _action_log(f"   ⬇ [{idx+1}/{len(urls)}] {dl_url[:80]}...")
                 with urlopen(req, timeout=TIMEOUT_DOWNLOAD_SINGLE, context=_ctx) as resp:
                     data = resp.read()
                 if data and len(data) >= MIN_DOWNLOAD_SIZE:
@@ -1974,8 +2042,7 @@ def _do_update_sync():
             if got != expected_sha256:
                 raise RuntimeError(f"SHA256 校验失败: {got[:16]}... ≠ {expected_sha256[:16]}...")
             _action_log("   SHA256 ✓")
-        _action_log(f"   下载完成: {len(data)//1024}KB")
-
+        _action_log(f"   📦 下载完成: {len(data)//1024}KB, 开始安装…")
         _tmp_dir = tempfile.mkdtemp(dir="/tmp")  # root 可访问，不用用户沙箱
         zip_path = os.path.join(_tmp_dir, "update.zip")
         with open(zip_path, "wb") as f:
@@ -2029,14 +2096,10 @@ def _do_update_sync():
         _action_log("✅ 更新完成，等待重启达芬奇")
     except Exception as e:
         _action_log(f"❌ 更新失败: {e}")
-        # 更新失败 → 自动走报错通道，引导用户上传日志
         global _UI_ERROR_COUNT
         _UI_ERROR_COUNT += 1
         _update_err_counter()
-        itm[HINT_LB].Text = "❌ 更新下载失败，请点击右侧按钮上报日志"
-        itm[BTN_UPDATE].Text = "⬆ 更新"
-        _unlock_ui()
-        _UPDATING = False
+        raise
     finally:
         if _tmp_dir:
             import shutil; shutil.rmtree(_tmp_dir, ignore_errors=True)
@@ -2166,6 +2229,7 @@ def main():
         itm[BTN_UPDATE].Text = "✓ 最新"
 
     # ══ License ══
+    _ai_allowed = True  # 默认允许
     try:
         from shared.license import init_trial, verify_local, load_credential
         cred = load_credential()
@@ -2176,6 +2240,7 @@ def main():
             if is_trial:
                 d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
                 text = f"试用剩余 {d} 天"
+                _ai_allowed = d > 0  # 0天=到期
             else:
                 text = "已激活 ✓"
             itm[TRIAL_LB].Text = msg if not ok else text
@@ -2183,12 +2248,12 @@ def main():
         else:
             ok, msg = init_trial()
             if ok:
-                # 重新加载凭证，用统一格式显示
                 cred = load_credential()
                 if cred:
                     p = cred.get("payload", {})
                     d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
                     text = f"试用剩余 {d} 天"
+                    _ai_allowed = d > 0
                 else:
                     text = msg
             else:
@@ -2197,6 +2262,9 @@ def main():
             _action_log(f"License试用: {'✅' if ok else '❌'} → 显示: \"{text}\"")
     except Exception as e:
         _action_log(f"License异常: {type(e).__name__}: {e}")
+        _ai_allowed = False
+    if not _ai_allowed:
+        itm[BTN_AI_TYPO].Enabled = False
 
     disp.RunLoop()
     dlg.Hide()
