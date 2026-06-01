@@ -961,7 +961,11 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     if duration_sec < 41:
         results.append(_make_result("fail",
             detail=f"时长 {duration_sec:.0f}s（不足41s）",
-            reason="低于付费集最低时长要求，请检查是否缺漏情节"))
+            reason="低于付费集最低时长（抖音短剧单集≥41s）"))
+    elif duration_sec > 180:
+        results.append(_make_result("fail",
+            detail=f"时长 {_fmt_duration(duration_sec)}（超过180s）",
+            reason="抖音单集≤3分钟，超时驳回。建议优化至90秒左右（6月5日起执行）"))
     else:
         results.append(_make_result("pass", detail=f"时长: {_fmt_duration(duration_sec)} (通过)"))
 
