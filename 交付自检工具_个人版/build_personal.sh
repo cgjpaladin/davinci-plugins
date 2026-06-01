@@ -4,18 +4,17 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WS="$(cd "$SCRIPT_DIR/.." && pwd)"
 PKG="$SCRIPT_DIR/_build/交付自检工具_个人版"
-ZIP="$HOME/Desktop/交付自检工具_个人版.zip"
+ZIP="$SCRIPT_DIR/_build/交付自检工具_个人版.zip"
 # --all 模式：一次输出全量 + 增量两个包
 if [ "$1" = "--all" ]; then
     bash "$0" && bash "$0" --update
-    echo "═══ 全量 + 增量 完成 ═══"
-    ls -lh "$HOME/Desktop/交付自检工具_个人版.zip" "$HOME/Desktop/交付自检工具_更新包.zip"
+    echo "═══ 全量包 + 增量包 完成 ═══"
     exit 0
 fi
 # 增量更新包用 ASCII 根目录名避免 zip 乱码
 if [ "$1" = "--update" ]; then
     PKG="$SCRIPT_DIR/_build/davinci_plugin_update"
-    ZIP="$HOME/Desktop/交付自检工具_更新包.zip"
+    ZIP="$SCRIPT_DIR/_build/交付自检工具_更新包.zip"
 fi
 PY_PKG="$HOME/Desktop/交付自检工具_个人版/Python安装包.pkg"
 
@@ -96,3 +95,10 @@ if [ "$VER_SRC" != "\"$VER_ZIP\"" ]; then
     exit 1
 fi
 echo "✅ 出厂检验通过: $VER_ZIP"
+
+# 11. 预热 ghproxy 缓存（可选）
+if [ "${WARM_CDN:-0}" = "1" ]; then
+    GH_URL="https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v${VER_ZIP}/update_latest.zip"
+    echo "🔥 预热 CDN 缓存..."
+    curl -sLo /dev/null -w "  ghproxy: %{time_total}s\n" "$GH_URL" || true
+fi
