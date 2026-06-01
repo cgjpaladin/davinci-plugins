@@ -33,8 +33,10 @@ cp "$WS/交付自检工具"/launcher_personal.py "$WS/交付自检工具"/shell_
 cp "$WS/shared"/{deploy_config,fusionscript_loader,log_writer,camera_detect,script_parser,llm_typo_check,llm_providers,timecode,mappings,launcher_router,subtitle_state,macos_utils,updater,update_config,license,_write_env}.py "$PKG/交付自检工具/shared/"
 cp "$WS/shared/ui/theme.py" "$PKG/交付自检工具/shared/ui/"
 
-# 4. pypdf（纯 Python PDF 提取）
-cp -r "$WS/shared/pypdf" "$PKG/交付自检工具/shared/"
+# 4. pypdf（纯 Python PDF 提取 — 全量包含，增量包跳过）
+if [ "$1" != "--update" ]; then
+    cp -r "$WS/shared/pypdf" "$PKG/交付自检工具/shared/"
+fi
 
 # 5. dftt_timecode
 cp "$WS/shared/dftt_timecode"/{__init__,error,pattern}.py "$PKG/交付自检工具/shared/dftt_timecode/"
