@@ -558,7 +558,7 @@ def _api_keys_path():
 def _load_api_keys():
     try:
         with open(_api_keys_path(), encoding="utf-8") as f: return json.load(f)
-    except: return {}
+    except Exception: return {}  # noop: 文件不存在/权限不足/JSON损坏
 
 def _save_api_keys(keys):
     os.makedirs(os.path.dirname(_api_keys_path()), exist_ok=True)
@@ -621,7 +621,7 @@ def _action_log(msg: str):
     if any(k in msg for k in ("异常", "崩溃", "Traceback", "ModuleNotFound", "ImportError")):
         _UI_ERROR_COUNT += 1
         try: _update_err_counter()
-        except: pass
+        except Exception: pass  # noop: 配置写入失败不影响主流程
 
 
 # ═══════════════════════════════════════════
@@ -1009,7 +1009,7 @@ def _show_config_dialog():
                             if not _keys.get("feishu_secret"):
                                 _keys["feishu_secret"] = line.split("=", 1)[1].strip().strip('"').strip("'")
                                 _migrated = True
-            except: pass
+            except Exception: pass  # noop: 配置写入失败不影响主流程
             if _migrated and _keys:
                 _save_api_keys(_keys); _action_log("📂 从 .env 迁移了 API 配置")
                 break
@@ -1021,7 +1021,7 @@ def _show_config_dialog():
         if _keys.get("deepseek_key"): cfg["cfg_deepseek_key"].Text = _mask(_keys["deepseek_key"])
         if _keys.get("feishu_app_id"): cfg["cfg_feishu_app_id"].Text = _keys["feishu_app_id"]
         if _keys.get("feishu_secret"): cfg["cfg_feishu_secret"].Text = _mask(_keys["feishu_secret"])
-    except: pass
+    except Exception: pass  # noop: 控件未创建/加载
     # 未激活时停用按钮灰掉
     try:
         from shared.license import load_credential
@@ -1079,7 +1079,7 @@ def _show_config_dialog():
                                 try:
                                     from shared.license_ui import _update_license_ui
                                     _update_license_ui()
-                                except: pass
+                                except Exception: pass  # noop: 配置写入失败不影响主流程
                         else:
                             err = msg
                     except Exception as e:
@@ -1097,6 +1097,7 @@ def _show_config_dialog():
                         _action_log(f"🔑 {section['label']} 已保存")
                     except Exception as e:
                         err = f"保存失败: {e}"
+                        _action_log(f"⚠ API Key 保存异常: {e}")
             elif t == "deactivate":
                 pass  # 停用按钮独立处理
             elif t == "censor_personal":
@@ -1126,7 +1127,7 @@ def _show_config_dialog():
         _action_log(f"🔓 停用: {'✅' if ok else '❌'} {msg}")
         config_dlg.Hide(); config_disp.ExitLoop()
     try: config_dlg.On["cfg_deactivate_btn"].Clicked = _do_deactivate
-    except: pass
+    except Exception: pass  # noop: SMB用户无此按钮
     config_dlg.On[CONFIG_WIN_ID].Close = lambda ev: config_disp.ExitLoop()
 
     _action_log("⚙ 打开配置窗口")
@@ -1837,7 +1838,7 @@ def _do_upload(logs_dir):
             try:
                 resp = json.loads(_proc.stdout)
                 ok = resp.get("status") == "ok"
-            except: pass
+            except Exception: pass  # noop: 配置写入失败不影响主流程
         if ok:
             _action_log(f"✅ 已上传日志 ({_UI_ERROR_COUNT} 个报错)" if _UI_ERROR_COUNT else "✅ 已上传日志")
             itm[BTN_ERR_SEND].Text = "✅ 已上传"

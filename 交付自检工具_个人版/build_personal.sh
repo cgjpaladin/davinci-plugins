@@ -77,3 +77,22 @@ zip -rq "$ZIP" "$(basename "$PKG")/"
 rm -rf "$PKG"
 
 ls -lh "$ZIP"
+
+# 10. 出厂检验：zip 内版本号必须和源码一致
+VER_SRC=$(grep '__version__' "$WS/交付自检工具/config.py" | head -1 | grep -o '"[^"]*"')
+VER_ZIP=$(python3 -c "
+import zipfile, sys
+zf = zipfile.ZipFile('$ZIP', metadata_encoding='utf-8')
+for n in zf.namelist():
+    if 'config.py' in n:
+        for L in zf.read(n).decode().split('\n'):
+            if '__version__' in L:
+                import re; m=re.search(r'\"([^\"]+)\"',L);
+                if m: print(m.group(1)); sys.exit(0)
+")
+if [ "$VER_SRC" != "\"$VER_ZIP\"" ]; then
+    echo "❌ 出厂检验失败: zip内=$VER_ZIP 源码=$VER_SRC"
+    rm -f "$ZIP"
+    exit 1
+fi
+echo "✅ 出厂检验通过: $VER_ZIP"
