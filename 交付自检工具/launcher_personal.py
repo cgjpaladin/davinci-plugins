@@ -31,6 +31,7 @@ _log.launcher(f"个人版启动 ui: {os.path.join(_HERE, 'ui.py')}")
 
 _env = os.environ.copy()
 _env["PYTHONIOENCODING"] = "utf-8"
+_env["PYTHONUTF8"] = "1"            # PEP 540: 全局 UTF-8 模式
 _env["WORKBUDDY_PERSONAL"] = "1"
 
 # 加载安装目录 .env 的 API Key
@@ -46,4 +47,4 @@ if os.path.exists(_dotenv):
     except Exception:
         pass
 
-subprocess.Popen([_PYTHON, os.path.join(_HERE, 'ui.py')], env=_env)
+subprocess.Popen([_PYTHON, "-B", os.path.join(_HERE, 'ui.py')], env=_env)

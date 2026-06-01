@@ -88,4 +88,5 @@ if '--dry-run' in sys.argv:
 
 _env = os.environ.copy()
 _env["PYTHONIOENCODING"] = "utf-8"
-subprocess.Popen([_PYTHON, _UI_SCRIPT], env=_env)
+_env["PYTHONUTF8"] = "1"
+subprocess.Popen([_PYTHON, "-B", _UI_SCRIPT], env=_env)
