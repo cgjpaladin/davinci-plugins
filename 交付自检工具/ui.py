@@ -552,6 +552,18 @@ def _unlock_ui():
     itm[BTN_AI_TYPO].Enabled = True
 
 # ── 配置持久化（本地 JSON，每人独立）──
+def _api_keys_path():
+    return os.path.join(os.path.expanduser("~/Library/Application Support/交付自检"), "api_keys.json")
+
+def _load_api_keys():
+    try:
+        with open(_api_keys_path()) as f: return json.load(f)
+    except: return {}
+
+def _save_api_keys(keys):
+    os.makedirs(os.path.dirname(_api_keys_path()), exist_ok=True)
+    with open(_api_keys_path(), "w") as f: json.dump(keys, f, indent=2)
+
 def _save_config_to_file():
     """保存当前配置到本地 JSON 文件"""
     try:
@@ -866,108 +878,28 @@ def _render_group(group_name, sections, tree, parent_group=""):
 # 调顺序：移动 dict 位置
 # 删项：删 dict + 删对应的 _build_xxx / _save_xxx
 CONFIG_SECTIONS = [
-    {
-        "id": "track_count",
-        "label": "轨道数量预设",
-        "type": "track_preset",
-    },
-    {
-        "id": "clamp_threshold",
-        "label": "字幕时长阈值",
-        "type": "clamp_threshold",
-    },
-    {
-        "id": "video_clamp_threshold",
-        "label": "视频夹帧阈值",
-        "type": "video_clamp_threshold",
-    },
-    {
-        "id": "black_frame_sec",
-        "label": "黑帧时长阈值",
-        "type": "black_frame_sec",
-    },
-    {
-        "id": "censor_system_subs",
-        "label": "系统词典",
-        "type": "censor_system_subs",
-    },
-    {
-        "id": "censor_personal",
-        "label": "个人词典",
-        "type": "censor_personal",
-    },
+    {"id": "activation_code", "label": "激活码", "type": "activation_code"},
+    {"id": "deactivate",      "label": "转移授权", "type": "deactivate"},
+    {"id": "deepseek_key",   "label": "DeepSeek API Key", "type": "api_key"},
+    {"id": "feishu_app_id",  "label": "飞书 App ID", "type": "api_key"},
+    {"id": "feishu_secret",  "label": "飞书 App Secret", "type": "api_key"},
+    {"id": "censor_personal", "label": "个人词典", "type": "censor_personal"},
 ]
 
 # ── 各 type 的 UI 构建函数 → [widget, ...] ──
-def _build_track_preset():
-    return [
-        ui.HGroup({"Spacing": SPACE_RELAXED, "Weight": 0}, [
-            ui.Label({"Text": "字幕", "StyleSheet": "color:rgb(150,150,150);font-size:13px",
-                      "Weight": 0, "MinimumSize": [SIZE_BTN_SM_W, SIZE_LINE_H]}),
-            ui.LineEdit({"ID": "cfg_sub", "Text": str(_track_values[0]),
-                         "MaximumSize": [35, 22], "Weight": 0}),
-            ui.Label({"Text": "视频", "StyleSheet": "color:rgb(150,150,150);font-size:13px",
-                      "Weight": 0, "MinimumSize": [SIZE_BTN_SM_W, SIZE_LINE_H]}),
-            ui.LineEdit({"ID": "cfg_vid", "Text": str(_track_values[1]),
-                         "MaximumSize": [35, 22], "Weight": 0}),
-            ui.Label({"Text": "音频", "StyleSheet": "color:rgb(150,150,150);font-size:13px",
-                      "Weight": 0, "MinimumSize": [SIZE_BTN_SM_W, SIZE_LINE_H]}),
-            ui.LineEdit({"ID": "cfg_aud", "Text": str(_track_values[2]),
-                         "MaximumSize": [35, 22], "Weight": 0}),
-        ]),
-    ]
+def _build_activation_code():
+    inp = ui.LineEdit({"ID": "cfg_activation", "Text": "", "PlaceholderText": "输入激活码..."})
+    if not os.environ.get("WORKBUDDY_PERSONAL"):
+        inp["Visible"] = False
+    return [inp]
 
-def _build_clamp_threshold():
-    return [
-        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
-            ui.LineEdit({"ID": "cfg_clamp", "Text": str(_clamp_value),
-                         "MaximumSize": [45, 22], "Weight": 0}),
-            ui.Label({"Text": "帧（≤此值判定为过短/夹帧）",
-                      "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0}),
-        ]),
-    ]
-
-def _build_video_clamp_threshold():
-    return [
-        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
-            ui.LineEdit({"ID": "cfg_vid_clamp", "Text": str(_video_clamp_threshold),
-                         "MaximumSize": [45, 22], "Weight": 0}),
-            ui.Label({"Text": "帧（≤此值判定为视频夹帧）",
-                      "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0}),
-        ]),
-    ]
-
-def _build_black_frame_sec():
-    return [
-        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
-            ui.LineEdit({"ID": "cfg_black_sec", "Text": str(int(_black_frame_sec)),
-                         "MaximumSize": [35, 22], "Weight": 0}),
-            ui.Label({"Text": "秒（≥此值判定为大段黑场）",
-                      "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0}),
-        ]),
-    ]
-
-def _build_censor_system_subs():
-    return [
-        ui.VGroup({"Spacing": SPACE_COMPACT, "Weight": 0}, [
-            ui.HGroup({"Spacing": SPACE_WIDE, "Weight": 0}, [
-                ui.CheckBox({"ID": "cfg_csub_cn", "Text": "中文词库 (4.0k词)",
-                             "StyleSheet": "color:rgb(200,200,200);font-size:12px",
-                             "Weight": 0, "Checked": True}),
-                ui.CheckBox({"ID": "cfg_csub_en", "Text": "英文词库 (2.7k词)",
-                             "StyleSheet": "color:rgb(200,200,200);font-size:12px",
-                             "Weight": 0, "Checked": True}),
-            ]),
-            ui.HGroup({"Spacing": SPACE_WIDE, "Weight": 0}, [
-                ui.CheckBox({"ID": "cfg_csub_bw", "Text": "通用违禁词 (1.6k词)",
-                             "StyleSheet": "color:rgb(200,200,200);font-size:12px",
-                             "Weight": 0, "Checked": True}),
-                ui.CheckBox({"ID": "cfg_csub_sms", "Text": "短信违禁词 (2.3k词)",
-                             "StyleSheet": "color:rgb(200,200,200);font-size:12px",
-                             "Weight": 0, "Checked": True}),
-            ]),
-        ]),
-    ]
+def _build_api_key_input(sid, label):
+    placeholder = {"deepseek_key": "sk-...", "feishu_app_id": "cli_...", "feishu_secret": "密钥"}.get(sid, "")
+    is_secret = "secret" in sid or "key" in sid
+    kw = {"ID": f"cfg_{sid}", "Text": "", "PlaceholderText": placeholder,
+          "MinimumSize": [200, 22], "Weight": 0}
+    if is_secret: kw["EchoMode"] = "Password"
+    return [ui.LineEdit(kw)]
 
 def _build_censor_personal():
     return [
@@ -979,13 +911,27 @@ def _build_censor_personal():
         ]),
     ]
 
+def _build_activation_code():
+    return [ui.LineEdit({"ID": "cfg_activation", "Text": "", "PlaceholderText": "输入激活码..."})]
+
+def _build_api_key():
+    return [ui.LineEdit({"ID": "cfg_apikey", "Text": "", "PlaceholderText": "sk-...", "EchoMode": "Password"})]
+
+def _build_feishu_app_id():
+    return [ui.LineEdit({"ID": "cfg_feishu_id", "Text": "", "PlaceholderText": "cli_..."})]
+
+def _build_feishu_secret():
+    return [ui.LineEdit({"ID": "cfg_feishu_secret", "Text": "", "PlaceholderText": "密钥", "EchoMode": "Password"})]  # CONFIG_SECTIONS 结束
+
+def _build_deactivate():
+    return [ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用并释放到其他机器",
+                       "StyleSheet": BTN_STYLE_SM, "Weight": 0})]
+
 _SECTION_BUILDERS = {
-    "track_preset":             _build_track_preset,
-    "clamp_threshold":          _build_clamp_threshold,
-    "video_clamp_threshold":    _build_video_clamp_threshold,
-    "black_frame_sec":          _build_black_frame_sec,
-    "censor_system_subs":       _build_censor_system_subs,
-    "censor_personal":          _build_censor_personal,
+    "activation_code":  _build_activation_code,
+    "deactivate":       _build_deactivate,
+    "api_key":          _build_api_key_input,
+    "censor_personal":  _build_censor_personal,
 }
 
 
@@ -995,14 +941,16 @@ def _show_config_dialog():
 
     config_disp = bmd.UIDispatcher(fu.UIManager)
 
-    # ── 从注册表生成布局 ──
+    # ── 从注册表生成布局（个人版过滤）──
+    _is_personal = bool(os.environ.get("WORKBUDDY_PERSONAL"))
+    _sections = CONFIG_SECTIONS if _is_personal else [s for s in CONFIG_SECTIONS if s["id"] == "censor_personal"]
     # 节间间距（section 与 section 之间）
     _SECTION_GAP = 8
     body_widgets = [
         ui.Label({"Text": "配置", "StyleSheet": "font-size:15px;font-weight:bold;color:rgb(220,220,220)",
                   "Weight": 0}),
     ]
-    for section in CONFIG_SECTIONS:
+    for section in _sections:
         sec_widgets = [ui.Label({
             "Text": section["label"],
             "StyleSheet": "font-size:13px;font-weight:bold;color:rgb(220,220,220)",
@@ -1010,7 +958,10 @@ def _show_config_dialog():
         })]
         builder = _SECTION_BUILDERS.get(section["type"])
         if builder:
-            sec_widgets.extend(builder())
+            if section["type"] == "api_key":
+                sec_widgets.extend(builder(section["id"], section["label"]))
+            else:
+                sec_widgets.extend(builder())
         else:
             sec_widgets.append(ui.Label({
                 "Text": f"(未知类型: {section['type']})",
@@ -1041,11 +992,62 @@ def _show_config_dialog():
     config_dlg = config_disp.AddWindow({
         "WindowTitle": "交付自检工具 — 配置",
         "ID": CONFIG_WIN_ID,
-        "Geometry": [820, 120, 420, 430],
+        "Geometry": [820, 120, 360, 400],
         "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
     }, config_layout)
 
     cfg = config_dlg.GetItems()
+
+    # ── 预填（掩码显示，真值保留在 _api_values）──
+    _keys = _load_api_keys()
+    # 从 .env 迁移旧配置（兼容旧变量名）
+    _migrated = False
+    if not _keys or not _keys.get("deepseek_key"):
+        for _env_candidate in [
+            os.path.join(_SCRIPT_DIR, ".env"),
+            "/Volumes/MYJC/06_Software/达芬奇脚本/shared/.env",
+        ]:
+            if not os.path.exists(_env_candidate): continue
+            try:
+                with open(_env_candidate) as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("DEEPSEEK_API_KEY=") and not _keys.get("deepseek_key"):
+                            _keys["deepseek_key"] = line.split("=", 1)[1].strip().strip('"').strip("'")
+                            _migrated = True
+                        elif line.startswith("FEISHU_APP_ID=") or line.startswith("FEISHU_BOT_APP_ID="):
+                            if not _keys.get("feishu_app_id"):
+                                _keys["feishu_app_id"] = line.split("=", 1)[1].strip().strip('"').strip("'")
+                                _migrated = True
+                        elif line.startswith("FEISHU_APP_SECRET=") or line.startswith("FEISHU_BOT_APP_SECRET="):
+                            if not _keys.get("feishu_secret"):
+                                _keys["feishu_secret"] = line.split("=", 1)[1].strip().strip('"').strip("'")
+                                _migrated = True
+            except: pass
+            if _migrated and _keys:
+                _save_api_keys(_keys); _action_log("📂 从 .env 迁移了 API 配置")
+                break
+    _api_values = {k: v for k, v in _keys.items() if v}
+    def _mask(val):
+        return val[:5] + "…" + val[-4:] if len(val) > 12 else val[:4] + "…" if len(val) > 8 else val
+    try:
+        if _keys.get("activation_code"): cfg["cfg_activation"].Text = _keys["activation_code"]
+        if _keys.get("deepseek_key"): cfg["cfg_deepseek_key"].Text = _mask(_keys["deepseek_key"])
+        if _keys.get("feishu_app_id"): cfg["cfg_feishu_app_id"].Text = _keys["feishu_app_id"]
+        if _keys.get("feishu_secret"): cfg["cfg_feishu_secret"].Text = _mask(_keys["feishu_secret"])
+    except: pass
+    # 未激活时停用按钮灰掉
+    try:
+        from shared.license import load_credential
+        cred = load_credential()
+        if not cred or cred.get("is_trial", True):
+            cfg["cfg_deactivate_btn"].Enabled = False
+    except: pass
+    try:
+        if _keys.get("deepseek_key"): cfg["cfg_deepseek_key"].Text = _keys["deepseek_key"]
+        if _keys.get("feishu_app_id"): cfg["cfg_feishu_app_id"].Text = _keys["feishu_app_id"]
+        if _keys.get("feishu_secret"): cfg["cfg_feishu_secret"].Text = _keys["feishu_secret"]
+    except: pass
 
     # ── 轨道数量（LineEdit 直输）──
     try:
@@ -1068,97 +1070,63 @@ def _show_config_dialog():
         except Exception:
             pass
 
-    # ── 保存（按类型分发）──
+    # ── 保存 ──
     def _save(ev):
-        global _clamp_value, _track_values, _censor_subs, _video_clamp_threshold, _black_frame_sec
-        msg_parts = []
+        global _censor_subs
         err = ""
-
-        try:
-            for section in CONFIG_SECTIONS:
-                t = section["type"]
-                if t == "clamp_threshold":
+        for section in _sections:
+            t = section["type"]
+            if t == "activation_code":
+                code = cfg["cfg_activation"].Text.strip().upper()
+                if code:
                     try:
-                        cv = int(cfg["cfg_clamp"].Text)
-                        if cv < 1:
-                            err = "时长阈值不能小于1"
-                            continue
-                    except ValueError:
-                        err = f"时长阈值无效: {cfg['cfg_clamp'].Text}"
-                        continue
-                    old = _clamp_value
-                    _clamp_value = cv
-                    if old != cv:
-                        msg_parts.append(f"阈值 {old}→{cv}")
-
-                elif t == "video_clamp_threshold":
+                        from shared.license import activate, heartbeat
+                        ok, msg = activate(code)
+                        _action_log(f"🔑 激活: {'✅' if ok else '❌'} {msg}")
+                        if ok:
+                            _keys = _load_api_keys(); _keys["activation_code"] = code; _save_api_keys(_keys)
+                            # 激活成功后立刻刷新 License 状态
+                            ok2, _ = heartbeat()
+                            if ok2:
+                                _action_log("✅ License 已更新为正式授权")
+                                # 更新 UI 显示
+                                try:
+                                    from shared.license_ui import _update_license_ui
+                                    _update_license_ui()
+                                except: pass
+                        else:
+                            err = msg
+                    except Exception as e:
+                        err = f"激活失败: {e}"
+            elif t == "api_key":
+                sid = section["id"]
+                val = cfg[f"cfg_{sid}"].Text.strip()
+                if val:
                     try:
-                        cv = int(cfg["cfg_vid_clamp"].Text)
-                        if cv < 1:
-                            err = "视频夹帧阈值不能小于1"
-                            continue
-                    except ValueError:
-                        err = f"视频夹帧阈值无效: {cfg['cfg_vid_clamp'].Text}"
-                        continue
-                    old = _video_clamp_threshold
-                    _video_clamp_threshold = cv
-                    if old != cv:
-                        msg_parts.append(f"视频夹帧 {old}→{cv}")
+                        _keys = _load_api_keys()
+                        # 如果用户输入的是掩码（含"…"），保留存储的真值
+                        if "…" in val:
+                            val = _api_values.get(sid, val)
+                        _keys[sid] = val; _save_api_keys(_keys)
+                        _action_log(f"🔑 {section['label']} 已保存")
+                    except Exception as e:
+                        err = f"保存失败: {e}"
+            elif t == "deactivate":
+                pass  # 停用按钮独立处理
+            elif t == "censor_personal":
+                pass
+        if err:
+            _action_log(f"⚠ {err}")
+        config_dlg.Hide(); config_disp.ExitLoop()
 
-                elif t == "black_frame_sec":
-                    try:
-                        cv = float(cfg["cfg_black_sec"].Text)
-                        if cv <= 0:
-                            err = "黑帧阈值必须大于0"
-                            continue
-                    except ValueError:
-                        err = f"黑帧阈值无效: {cfg['cfg_black_sec'].Text}"
-                        continue
-                    old = _black_frame_sec
-                    _black_frame_sec = cv
-                    if old != cv:
-                        msg_parts.append(f"黑帧 {old}s→{cv}s")
+    def _reset_defaults():
+        _censor_subs = {"base": True, "en": True, "bw": True, "bw_sms": True}
+        for cbox_id, key in SUB_CBOX_MAP:
+            try: cfg[cbox_id].Checked = _censor_subs.get(key, True)
+            except: pass
+        _action_log("🔄 配置已恢复默认")
 
-                elif t == "track_preset":
-                    old = _track_values.copy()
-                    try:
-                        sv = int(cfg["cfg_sub"].Text)
-                        vv = int(cfg["cfg_vid"].Text)
-                        av = int(cfg["cfg_aud"].Text)
-                    except Exception:
-                        err = "轨道数量读取失败"
-                        continue
-                    _track_values = [sv, vv, av]
-                    if old != _track_values:
-                        msg_parts.append(f"轨道 {old}→{_track_values}")
-
-                elif t == "censor_system_subs":
-                    old_subs = _censor_subs.copy()
-                    for cbox_id, key in SUB_CBOX_MAP:
-                        try:
-                            _censor_subs[key] = cfg[cbox_id].Checked
-                        except Exception:
-                            pass
-                    if old_subs != _censor_subs:
-                        msg_parts.append(f"词典 {old_subs}→{_censor_subs}")
-
-                elif t == "censor_personal":
-                    pass  # 编辑按钮独立处理
-
-            if msg_parts:
-                _action_log("⚙ 配置保存: " + ", ".join(msg_parts))
-            else:
-                _action_log("⚙ 配置保存: 无变更")
-            _save_config_to_file()
-            if err:
-                _action_log(f"⚠ 配置保存（部分跳过）: {err}")
-        except Exception as e:
-            _action_log(f"⚠ 配置保存异常: {e}")
-        finally:
-            config_dlg.Hide()
-            config_disp.ExitLoop()
-
-    # ── 编辑违禁词（打开系统文本编辑）──
+    # ── 编辑违禁词 ──
     censor_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
     def _edit_censor(ev):
         import subprocess
@@ -1172,26 +1140,14 @@ def _show_config_dialog():
     config_dlg.On["cfg_cancel"].Clicked = lambda ev: config_disp.ExitLoop()
     config_dlg.On["cfg_reset"].Clicked = lambda ev: _reset_defaults()
 
-    def _reset_defaults():
-        global _track_values, _clamp_value, _video_clamp_threshold, _black_frame_sec, _censor_subs
-        _track_values = [DEFAULT_SUBTITLE_TRACKS, DEFAULT_VIDEO_TRACKS, DEFAULT_AUDIO_TRACKS]
-        _clamp_value = DEFAULT_CLAMP_THRESHOLD
-        _video_clamp_threshold = 2
-        _black_frame_sec = DEFAULT_BLACK_FRAME_SEC
-        _censor_subs = {"base": True, "en": True, "bw": True, "bw_sms": True}
-        _save_config_to_file()
-        try:
-            cfg["cfg_sub"].Text = str(_track_values[0])
-            cfg["cfg_vid"].Text = str(_track_values[1])
-            cfg["cfg_aud"].Text = str(_track_values[2])
-            cfg["cfg_clamp"].Text = str(_clamp_value)
-            cfg["cfg_vid_clamp"].Text = str(_video_clamp_threshold)
-            cfg["cfg_black_sec"].Text = str(int(_black_frame_sec))
-            for cbox_id, key in SUB_CBOX_MAP:
-                cfg[cbox_id].Checked = _censor_subs.get(key, True)
-        except Exception:
-            pass
-        _action_log("🔄 配置已恢复默认")
+    # ── 停用按钮 ──
+    def _do_deactivate(ev):
+        from shared.license import deactivate
+        ok, msg = deactivate()
+        _action_log(f"🔓 停用: {'✅' if ok else '❌'} {msg}")
+        config_dlg.Hide(); config_disp.ExitLoop()
+    try: config_dlg.On["cfg_deactivate_btn"].Clicked = _do_deactivate
+    except: pass
     config_dlg.On[CONFIG_WIN_ID].Close = lambda ev: config_disp.ExitLoop()
 
     _action_log("⚙ 打开配置窗口")

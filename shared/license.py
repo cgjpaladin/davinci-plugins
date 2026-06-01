@@ -362,3 +362,17 @@ def heartbeat() -> Tuple[bool, str]:
         save_credential(token)
 
     return True, resp.get("msg", "心跳成功")
+
+def deactivate() -> Tuple[bool, str]:
+    """停用本机授权 → 释放激活码，允许转移到其他机器。"""
+    fp = _machine_fingerprint()
+    req = {"action": "deactivate", "machine_fingerprint": fp}
+    try:
+        raw = _api_post(req)
+        response = json.loads(raw)
+        _clear_license_token()
+        ok = response.get("status") == "ok"
+        return ok, response.get("msg", "停用失败")
+    except Exception as e:
+        _clear_license_token()
+        return False, f"网络错误: {e}"
