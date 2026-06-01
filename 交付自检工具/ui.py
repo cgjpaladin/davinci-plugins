@@ -346,7 +346,7 @@ def _run_censor_system(timeline, fps, **_kw):
     ]
     # 加载个人词典白名单
     whitelist_path = None
-    personal_csv = "短剧违禁词表.csv"
+    personal_csv = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
     white_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
     try:
         if os.path.isfile(personal_csv):
@@ -390,7 +390,7 @@ def _run_censor_system(timeline, fps, **_kw):
     # 过滤个人词典已覆盖的词
     personal_words = set()
     if _kw.get("personal_enabled"):
-        personal_path = "短剧违禁词表.csv"
+        personal_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
         if os.path.isfile(personal_path):
             with open(personal_path, "r", encoding="utf-8") as f:
                 for line in f:
@@ -407,7 +407,7 @@ def _run_censor_system(timeline, fps, **_kw):
 def _run_censor_personal(timeline, fps, **_kw):
     """个人词典（黑名单+白名单）"""
     import tempfile, csv
-    csv_path = "短剧违禁词表.csv"
+    csv_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
     black_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
     white_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
     try:
@@ -904,24 +904,12 @@ def _build_api_key_input(sid, label):
 def _build_censor_personal():
     return [
         ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
-            ui.Button({"ID": "cfg_edit_censor", "Text": "在 Finder 中打开",
+            ui.Button({"ID": "cfg_edit_censor", "Text": "在 Finder 中定位",
                        "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
-            ui.Label({"Text": "右键 CSV → 打开方式 → WPS Office 编辑",
+            ui.Label({"Text": "右键 → 打开方式 → WPS / Excel / Numbers",
                       "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0}),
         ]),
     ]
-
-def _build_activation_code():
-    return [ui.LineEdit({"ID": "cfg_activation", "Text": "", "PlaceholderText": "输入激活码..."})]
-
-def _build_api_key():
-    return [ui.LineEdit({"ID": "cfg_apikey", "Text": "", "PlaceholderText": "sk-...", "EchoMode": "Password"})]
-
-def _build_feishu_app_id():
-    return [ui.LineEdit({"ID": "cfg_feishu_id", "Text": "", "PlaceholderText": "cli_..."})]
-
-def _build_feishu_secret():
-    return [ui.LineEdit({"ID": "cfg_feishu_secret", "Text": "", "PlaceholderText": "密钥", "EchoMode": "Password"})]  # CONFIG_SECTIONS 结束
 
 def _build_deactivate():
     return [ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用并释放到其他机器",
@@ -978,8 +966,6 @@ def _show_config_dialog():
             # ── 按钮（底部居中）──
             ui.HGroup({"Spacing": SPACE_WIDE, "Weight": 0}, [
                 ui.HGap({"Weight": 1}),
-                ui.Button({"ID": "cfg_reset", "Text": "恢复默认",
-                           "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Button({"ID": "cfg_cancel", "Text": "取消",
                            "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Button({"ID": "cfg_save", "Text": "保存",
@@ -1119,26 +1105,19 @@ def _show_config_dialog():
             _action_log(f"⚠ {err}")
         config_dlg.Hide(); config_disp.ExitLoop()
 
-    def _reset_defaults():
-        _censor_subs = {"base": True, "en": True, "bw": True, "bw_sms": True}
-        for cbox_id, key in SUB_CBOX_MAP:
-            try: cfg[cbox_id].Checked = _censor_subs.get(key, True)
-            except: pass
-        _action_log("🔄 配置已恢复默认")
-
     # ── 编辑违禁词 ──
-    censor_path = "短剧违禁词表.csv"
+    censor_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
     def _edit_censor(ev):
         import subprocess
         from check_core import clear_censor_cache
         clear_censor_cache(censor_path)
         subprocess.Popen(["open", "-R", censor_path])
-        _action_log("📝 在 Finder 中定位个人词典")
+        itm[HINT_LB].Text = "右键「短剧违禁词表.csv」→ 打开方式 → WPS / Excel / Numbers"
+        _action_log("📝 Finder 已定位个人词典")
 
     config_dlg.On["cfg_edit_censor"].Clicked = _edit_censor
     config_dlg.On["cfg_save"].Clicked = _save
     config_dlg.On["cfg_cancel"].Clicked = lambda ev: config_disp.ExitLoop()
-    config_dlg.On["cfg_reset"].Clicked = lambda ev: _reset_defaults()
 
     # ── 停用按钮 ──
     def _do_deactivate(ev):

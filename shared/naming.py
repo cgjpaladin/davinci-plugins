@@ -15,7 +15,7 @@ FIELD_CONFIG = [
     {"key":"desc",   "name":"",    "label":"镜头描述",   "def":"","hint":"由制作方式决定"},
     {"key":"method", "name":"",    "label":"制作方式",   "def":"","dv":["请选择","智能分镜版","双轨版","角色专属版"]},
     {"key":"author", "name":"",    "label":"制作者",     "def":"","hint":"请输入姓名"},
-    {"key":"ver",    "name":"v",   "label":"v 版本号",   "def":"01","regex":r"^\d{2,3}(\.\d+)?$","hint":"01"},
+    {"key":"ver",    "name":"v",   "label":"制作批次",   "def":"01","regex":r"^\d{2,3}(\.\d+)?$","hint":"01"},
     {"key":"status", "name":"",    "label":"通过情况",   "def":"","dv":["请选择","OK","KP","NG"]},
 ]
 
@@ -211,11 +211,11 @@ def parse_filename(path):
 
 
 def build_folder(root, entry):
-    """构造归档路径: root/EP/EP_SC_method_ver/filename"""
+    """构造归档路径: root/EP/V{ver}/EP_SC_method_ver/filename"""
     f = entry.fields
     compound = "EP{ep}_SC{sc}_{method}_v{ver}".format(**f)
     name = build_filename(f) + entry.ext if hasattr(entry, 'ext') else build_filename(f)
-    return os.path.join(root, "EP" + f["ep"], compound, name)
+    return os.path.join(root, "EP" + f["ep"], "V" + f.get("ver", "01"), compound, name)
 
 
 # ============================================================
