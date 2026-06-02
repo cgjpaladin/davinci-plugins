@@ -543,7 +543,7 @@ _BUSY = False
 def _lock_ui(label: str):
     global _BUSY; _BUSY = True
     itm[BTN_START].Enabled = False; itm[BTN_UPDATE].Enabled = False
-    itm[BTN_ERR_SEND].Enabled = False; itm[BTN_AI_TYPO].Enabled = False
+#     itm[BTN_ERR_SEND].Enabled = False; # itm[BTN_AI_TYPO].Enabled = False  # subtitledetection always on
 
 def _unlock_ui():
     global _BUSY; _BUSY = False
@@ -749,7 +749,7 @@ window_layout = [
                 ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
                     ui.LineEdit({"ID": EDIT_SCRIPT_SRC, "Text": "",
                                 "Weight": 1,
-                                "PlaceholderText": "粘贴链接/路径，或拖拽文件"}),
+                                "PlaceholderText": "粘贴飞书链接或本地剧本路径"}),
                     ui.Button({"ID": "btn_browse_script", "Text": "📂",
                                "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                                "MinimumSize": [SIZE_BTN_SM_W, SIZE_BTN_SM_W]}),
@@ -1915,7 +1915,7 @@ def _do_update(ev):
 
     notes = _UPDATE_INFO.get("notes", "") or "暂无更新说明"
     new_ver = _UPDATE_INFO.get("latest", "?")
-    CX, CY, CW, CH = 560, 240, 520, 400
+    CX, CY, CW, CH = 560, 240, 520, 520
     update_disp = bmd.UIDispatcher(fu.UIManager)
     _items = {}
 
@@ -2118,7 +2118,7 @@ def _on_script_src_changed(ev):
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
     if "feishu.cn" in src or "docs.qq.com" in src:
         ok = ok and len(src) > 30
-    itm[BTN_AI_TYPO].Enabled = ok and not _checking
+    itm[BTN_AI_TYPO].Enabled = not _checking
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
 dlg.On[EDIT_SCRIPT_SRC].TextChanged = _on_script_src_changed
@@ -2227,7 +2227,7 @@ def main():
             itm[BTN_UPDATE]["StyleSheet"] = "background-color:rgb(220,180,60);color:#1a1a1a;font-size:11px;font-weight:bold;border-radius:3px;padding:2px 8px"
             if _result.get("force"):
                 itm[BTN_START].Enabled = False
-                itm[BTN_AI_TYPO].Enabled = False
+                itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
                 itm[HINT_LB].Text += "（必须更新）"
         else:
             itm[BTN_UPDATE].Text = "✓ 最新"
@@ -2269,8 +2269,9 @@ def main():
     except Exception as e:
         _action_log(f"License异常: {type(e).__name__}: {e}")
         _ai_allowed = False
+    # Subtitledetection always available (system rules), only AI gated
     if not _ai_allowed:
-        itm[BTN_AI_TYPO].Enabled = False
+        itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"  # system rules still work
 
     disp.RunLoop()
     dlg.Hide()
