@@ -343,6 +343,7 @@ def _run_censor_system(timeline, fps, **_kw):
         ("en",     ["censor_en.txt"]),
         ("bw",     ["censor_bw.txt"]),
         ("bw_sms", ["censor_bw_sms.txt"]),
+        ("city",   ["cities_cn.txt"]),
     ]
     # 加载个人词典白名单
     whitelist_path = None
@@ -825,7 +826,7 @@ itm = dlg.GetItems()
 # 初始状态
 # ═══════════════════════════════════════════
 itm[BTN_START].Enabled = False
-itm[BTN_AI_TYPO].Enabled = False
+itm[BTN_AI_TYPO].Enabled = True
 itm[EDIT_SCRIPT_SRC].Text = ""
 
 # Tree 表头
@@ -1263,6 +1264,13 @@ def _run_ai_typo():
     if _BUSY or _checking:
         return
     _checking = True
+    itm[HINT_LB].Text = ""
+    itm[HINT_LB]["StyleSheet"] = f"{STYLE_HINT};"
+    itm[GROUP_TREE].Clear()
+    itm[TREE_RESULT].Clear()
+    itm["lbl_gate_warn"].Text = ""
+    itm["lbl_gate_warn"].Visible = False
+    _action_log("🧹 已清提示+分类+结果树+门控警告")
     _lock_ui("检查中")
 
 
@@ -1282,19 +1290,58 @@ def _run_ai_typo():
             return _stop("❌ 未找到当前时间线")
         entries = []
         entry_starts = []
-        for ti in range(1, timeline.GetTrackCount("subtitle") + 1):
-            for it in (timeline.GetItemListInTrack("subtitle", ti) or []):
-                try:
-                    entries.append(it.GetName() or "")
-                    entry_starts.append(it.GetStart())
-                except Exception:
-                    pass
+        for it in (timeline.GetItemListInTrack("subtitle", 1) or []):
+            try:
+                entries.append(it.GetName() or "")
+                entry_starts.append(it.GetStart())
+            except Exception:
+                pass
         if not entries:
             return _stop("⚠ 当前时间线无字幕，跳过校对")
         _action_log(f"📝 字幕: {len(entries)} 条")
 
         # ═══ 门1: 下载+解析剧本 ═══
         src = itm[EDIT_SCRIPT_SRC].Text.strip()
+        if not src:
+            itm[HINT_LB].Text = "字幕系统检测中..."
+            itm[HINT_LB]["StyleSheet"] = f"{STYLE_HINT};"
+            try:
+                from check_core import preload_timeline_items as _preload
+                fps = float(timeline.GetSetting("timelineFrameRate") or 25.0)
+                _preload(timeline, track_types=["subtitle"])
+                sections = {"文本":{"subgroup":"文本","group":"字幕","rows":[]},
+                           "合规":{"subgroup":"合规","group":"字幕","rows":[]}}
+                for _nm,_fn,_sg in [("换行",_run_sub_linebreak_check,"文本"),("时长",_run_sub_duration_check,"文本"),
+                                     ("异体字",_run_sub_glyph_check,"合规"),("系统词典",_run_censor_system,"合规"),
+                                     ("个人词典",_run_censor_personal,"合规")]:
+                    cr = _fn(timeline,fps)
+                    _action_log(f"  {_nm}: {len(cr)} 项")
+                    for r in cr:
+                        if r.get("is_summary"): continue
+                        icon = "❌" if r.get("status")=="fail" else "⚠"
+                        sections[_sg]["rows"].append({
+                            FIELD_TO_COLUMN["track"]:r.get("track",""),
+                            FIELD_TO_COLUMN["timecode"]:r.get("timecode",""),
+                            FIELD_TO_COLUMN["detail"]:f"{icon} | {r.get('detail','')}",
+                            FIELD_TO_COLUMN["reason"]:r.get("reason","")})
+                for sg in sections.values():
+                    sg["rows"].sort(key=lambda r: r.get(FIELD_TO_COLUMN["timecode"],""))
+                tree = itm[TREE_RESULT]; tree.Clear(); _setup_tree_header(tree)
+                itm[GROUP_TREE].Clear()
+                global _cached_sections; _cached_sections = list(sections.values())
+                _render_group("字幕",[s for s in sections.values() if s["rows"]],tree)
+                gt = itm[GROUP_TREE]; hdr = gt.NewItem(); hdr.Text[0] = "分类"; gt.SetHeaderItem(hdr)
+                for sg_name in ["文本","合规"]:
+                    if sections.get(sg_name,{}).get("rows"):
+                        gi = gt.NewItem(); gi.Text[0] = sg_name; gt.AddTopLevelItem(gi)
+                total = sum(len(s["rows"]) for s in sections.values())
+                _action_log(f"📝 字幕系统检测: {total} 项")
+                _stop("字幕系统检测完成")
+            except Exception as e:
+                import traceback; _action_log(f"❌ {traceback.format_exc()}")
+                _stop(f"检测失败: {e}")
+            _checking = False; _unlock_ui(); return
+
         itm[LBL_SCRIPT_STATUS].Text = "🔄 解析剧本..."
         try:
             parsed = parse_script(src)
@@ -1313,7 +1360,51 @@ def _run_ai_typo():
         # ═══ LLM 校对（含剧集一致性 + 集号匹配） ═══
         itm[HINT_LB].Text = "AI 校对中..."
         _action_log(f"🤖 LLM 校对开始 ({len(entries)}字幕 vs {len(all_lines)}行剧本)")
-        result = check_typos_cached(entries, parsed.get("characters", []), all_lines)
+
+        # 先跑系统规则：换行/时长→直接渲染，违禁词/异体字→喂给AI
+        from check_core import preload_timeline_items as _preload2
+        sys_candidates = ""
+        direct_results = []  # 换行/时长，不经AI直接显示
+        try:
+            fps = float(timeline.GetSetting("timelineFrameRate") or 25.0)
+            _preload2(timeline, track_types=["subtitle"])
+            # 换行+时长 → 直接进Tree
+            for _nm, _fn in [("换行",_run_sub_linebreak_check),("时长",_run_sub_duration_check)]:
+                for r in _fn(timeline, fps):
+                    if not r.get("is_summary"):
+                        r["_check_name"] = _nm
+                        direct_results.append(r)
+            # 违禁词+异体字 → 序列化喂给AI
+            sys_results = []
+            for _nm, _fn in [("异体字",_run_sub_glyph_check),("系统词典",_run_censor_system),
+                              ("个人词典",_run_censor_personal)]:
+                for r in _fn(timeline, fps):
+                    if r.get("is_summary"): continue
+                    r["_check_name"] = _nm
+                    sys_results.append(r)
+            lines = []
+            for r in sys_results:
+                tc = r.get("timecode", "")
+                detail = r.get("detail", "")
+                reason = r.get("reason", "")
+                cname = r.get("_check_name", "")
+                lines.append(f"- {tc} [{cname}] {detail}（系统：{reason}）")
+            if lines:
+                sys_candidates = "\n".join(lines)
+            _action_log(f"📋 系统候选 {len(lines)} 条，全部喂给 AI")
+        except Exception:
+            _action_log("⚠ 系统规则预检失败，跳过候选")
+            sys_candidates = ""
+
+        tl_name = timeline.GetName() or ""
+        ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
+        try:
+            cpl = int(timeline.GetSetting().get("limitSubtitleCPL", 0))
+        except Exception:
+            cpl = 0
+        result = check_typos_cached(entries, all_lines,
+                                    timeline_name=tl_name, episode=ep_input,
+                                    system_candidates=sys_candidates, cpl=cpl)
         if result.get("error"):
             attempts = result.get("attempts", [])
             if attempts:
@@ -1336,44 +1427,70 @@ def _run_ai_typo():
         tree = itm[TREE_RESULT]
         tree.Clear()
         _setup_tree_header(tree)
+        all_rows = []  # 收集所有行，最后统一排序
 
-        # 传错剧本：只返回一行警告
+        # 先添加直接结果（换行/时长），等 AI 结果也加入后统一渲染
+        for r in direct_results:
+            icon = "❌" if r.get("status")=="fail" else "⚠"
+            all_rows.append({"track": r.get("track",""), "tc": r.get("timecode",""),
+                           "msg": f"{icon} | {r.get('detail','')}（{r.get('_check_name','系统')}）",
+                           "reason": r.get("reason","")})
+
+        # 传错剧本：警告插入 all_rows，但不阻止渲染系统结果
         if result.get("same_show") is False:
-            row = tree.NewItem()
-            _set_row(row, {"track": "ST1", "tc": "00:00:00:00",
+            all_rows.insert(0, {"track": "ST1", "tc": "00:00:00:00",
                            "msg": "⚠ 字幕与剧本疑似不同剧集",
                            "reason": "请检查剧本链接或手动输入正确集号"})
-            tree.AddTopLevelItem(row)
             _action_log("⚠ LLM 判定字幕与剧本非同一部剧")
             itm[HINT_LB].Text = "⚠ 疑似不同剧集"
-            return
 
-        if not corrections:
-            itm[HINT_LB].Text = f"✅ 未发现错别字  ({provider}/{model})  |  AI 校对结果仅供参考"
-            _action_log(f"✅ 校对完成: 0处错别字 ({provider}/{model})")
-            return
+        # AI 有结果才追加 corrections
+        if corrections:
+            from timecode import SMPTE
+            smpte = SMPTE()
+            smpte.fps = float(timeline.GetSetting("timelineFrameRate") or 25)
+            smpte.df = False
 
-        from timecode import SMPTE
-        fps = float(timeline.GetSetting("timelineFrameRate") or 25)
-        smpte = SMPTE(); smpte.fps = fps; smpte.df = False
+            for c in corrections:
+                idx = c['index'] - 1
+                tc_str = ""
+                if 0 <= idx < len(entry_starts):
+                    tc_str = smpte.gettc(entry_starts[idx])
+                icon = "❌" if c.get('reason', '') in ('角色名称错误', '错别字', '漏字', '多字', '的得地', '性别错配', '英文缩写', '标点缺失', '真实地名', '数字转中文', '违禁词', '断句') else "⚠"
+                all_rows.append({"track": "ST1", "tc": tc_str,
+                               "msg": f"{icon} | {c['original']} → {c['correction']}（{c.get('reason', '')}）",
+                               "reason": c.get('reason', '')})
 
-        for c in corrections:
-            idx = c['index'] - 1
-            tc_str = ""
-            if 0 <= idx < len(entry_starts):
-                tc_str = smpte.gettc(entry_starts[idx])
-            row = tree.NewItem()
-            _set_row(row, {"track": "ST1", "tc": tc_str,
-                           "msg": f"{c['original']}——{c.get('reason', '')}",
-                           "reason": f"应改为「{c['correction']}」"})
-            tree.AddTopLevelItem(row)
+        # 统一渲染：系统结果 + AI 结果，按时码排序
+        if all_rows:
+            from timecode import SMPTE as _SMPTE
+            _s = _SMPTE()
+            _s.fps = float(timeline.GetSetting("timelineFrameRate") or 25)
+            _s.df = False
+            all_rows.sort(key=lambda r: _s.get_frame(r.get("tc","00:00:00:00")))
+            for r in all_rows:
+                row = tree.NewItem()
+                _set_row(row, r)
+                tree.AddTopLevelItem(row)
 
-        itm[HINT_LB].Text = (
-            f"🔍 发现 {len(corrections)} 处错别字"
-            f"  |  模型: {provider}/{model}"
-            f"  |  AI 校对结果仅供参考，请剪辑师自行甄别"
-        )
-        _action_log(f"🔍 发现 {len(corrections)} 处错别字 ({provider}/{model})")
+        # 重建左侧分类（不建的话 group_tree 是空的）
+        gt = itm[GROUP_TREE]; gt.Clear()
+        hdr = gt.NewItem(); hdr.Text[0] = "分类"; gt.SetHeaderItem(hdr)
+        gi = gt.NewItem(); gi.Text[0] = "字幕检测"; gt.AddTopLevelItem(gi)
+        # 同步 _cached_sections，否则点击分类时 handler 找不到数据
+        _cached_sections = [{"subgroup": "字幕检测", "group": "字幕", "rows": all_rows}]
+
+        if corrections:
+            itm[HINT_LB].Text = (
+                f"🔍 发现 {len(corrections)} 处错别字"
+                f"  |  模型: {provider}/{model}"
+                f"  |  AI 校对结果仅供参考，请剪辑师自行甄别"
+            )
+            _action_log(f"🔍 发现 {len(corrections)} 处错别字 ({provider}/{model})")
+        else:
+            total = len(all_rows)
+            itm[HINT_LB].Text = f"✅ 未发现错别字，{total} 项系统问题  ({provider}/{model})"
+            _action_log(f"✅ 校对完成: 0处错别字, {total}系统 ({provider}/{model})")
 
     except Exception as e:
         _action_log(f"💥 AI校对崩溃: {e}\n{traceback.format_exc()}")
@@ -1398,7 +1515,7 @@ def _start_check():
 
     try:
         any_checked = any(
-            itm[c["chk_id"]].Checked for c in CHECKS if c.get("run_fn")
+            itm[c["chk_id"]].Checked for c in CHECKS if c.get("run_fn") and c.get("group") != "字幕"
         )
         if not any_checked:
             _action_log("⚠ 未选择任何检查项")
@@ -1504,7 +1621,7 @@ def _start_check():
         # （门关闭 → 对应检查跳过，轨道也不用预加载）
         needed = set()
         for check in CHECKS:
-            if check.get("hidden"):
+            if check.get("hidden") or check.get("group") == "字幕":
                 continue
             g = check.get("gate", "")
             if check.get("run_fn") and itm[check["chk_id"]].Checked:
@@ -1529,7 +1646,7 @@ def _start_check():
 
         # 按注册表顺序执行检查
         for check in CHECKS:
-            if not check.get("run_fn"):
+            if not check.get("run_fn") or check.get("group") == "字幕":
                 continue
             if not itm[check["chk_id"]].Checked:
                 continue
@@ -1543,7 +1660,7 @@ def _start_check():
             try:
                 all_results = list(check["run_fn"](
                     timeline=timeline, fps=fps, project=project,
-                    personal_enabled=itm[CHK_CENSOR_PERSONAL].Checked,
+                    personal_enabled=itm.get(CHK_CENSOR_PERSONAL,True),
                     io_range=io_range, debug_log=_action_log))
             except Exception:
                 import traceback
@@ -1873,7 +1990,7 @@ def _update_err_counter():
     """报错时更新按钮文字和提示"""
     if _UI_ERROR_COUNT > 0:
         itm[BTN_ERR_SEND].Text = f"⚠️ {_UI_ERROR_COUNT} 个报错"
-        itm[HINT_LB].Text = f"检测到 {_UI_ERROR_COUNT} 个软件异常，请点击右侧按钮上报"
+        # 不覆盖 HINT_LB — 那是给业务结果用的
     else:
         itm[BTN_ERR_SEND].Text = "📋 上传日志"
 dlg.On[BTN_ERR_SEND].Clicked = _on_err_report

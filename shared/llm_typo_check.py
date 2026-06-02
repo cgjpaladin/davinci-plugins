@@ -12,92 +12,204 @@ import hashlib
 import time
 from llm_providers import call_with_fallback
 
-_MAX_BATCH = 60
-_MAX_CONTEXT = 500  # 全文方案需要更大上限
 # (硬过滤暂关，等模型稳定后再启用)
 # _FUZZY_PAIRS = {...}
 
 
-def check_typos(asr_lines: list[str], characters: list[str],
+def check_typos(asr_lines: list[str],
                 context_lines: list[str] = None,
-                timeline_name: str = "", episode: str = "") -> dict:
-    """校对一批 ASR 字幕。超长自动分批。
+                timeline_name: str = "", episode: str = "",
+                system_candidates: str = "", cpl: int = 0) -> dict:
+    """校对 ASR 字幕。分任务双跑：P1 查 8 类错误（不含断句），P2 专注断句。
+
+    DS V4 Pro 200K 上下文，不截断不分批。
+    cpl: 达芬奇字幕单行字数上限（0=无限制）
 
     Returns:
         {"ok": True, "corrections": [{index, original, correction, reason}]}
     """
     if not asr_lines or all(not t.strip() for t in asr_lines):
-        return {"ok": True, "corrections": [], "provider": "none"}
+        return {"ok": True, "corrections": [], "provider": "none", "same_show": True}
 
     context_lines = context_lines or []
-    characters = characters or []
 
-    if len(asr_lines) > _MAX_BATCH:
-        all_c = []
-        for start in range(0, len(asr_lines), _MAX_BATCH):
-            batch = asr_lines[start:start + _MAX_BATCH]
-            r = _single(batch, characters, context_lines, offset=start,
-                        timeline_name=timeline_name, episode=episode)
-            if r.get("ok"):
-                all_c.extend(r.get("corrections", []))
-            else:
-                return r
-        return {"ok": True, "corrections": all_c,
-                "provider": r.get("provider"), "model": r.get("model")}
+    # P1: 8 类错误（角色名/的得地/性别/缩写/标点/地名/错别字/违禁词），temp=0.1 保守
+    r1 = _single(asr_lines, context_lines, offset=0,
+                 timeline_name=timeline_name, episode=episode,
+                 system_candidates=system_candidates, cpl=cpl, temperature=0.1,
+                 rules_subset=[1,2,3,4,5,6,7,8])
+    # P2: 仅断句，temp=0.2 探索边缘
+    r2 = _single(asr_lines, context_lines, offset=0,
+                 timeline_name=timeline_name, episode=episode,
+                 system_candidates=system_candidates, cpl=cpl, temperature=0.2,
+                 rules_subset=[9])
 
-    return _single(asr_lines, characters, context_lines, offset=0,
-                   timeline_name=timeline_name, episode=episode)
+    if not r1.get("ok") and not r2.get("ok"):
+        return r1
+
+    # 并集去重
+    c1 = r1.get("corrections", []) if r1.get("ok") else []
+    c2 = r2.get("corrections", []) if r2.get("ok") else []
+    seen = set()
+    merged = []
+    for c in c1:
+        key = (c.get("index"), c.get("original"))
+        if key not in seen:
+            seen.add(key)
+            c["_pass"] = 1
+            merged.append(c)
+    for c in c2:
+        key = (c.get("index"), c.get("original"))
+        if key not in seen:
+            seen.add(key)
+            c["_pass"] = 2
+            merged.append(c)
+
+    return {"ok": True, "corrections": merged,
+            "same_show": r1.get("same_show", True),
+            "provider": r1.get("provider") or r2.get("provider", "?"),
+            "model": r1.get("model") or r2.get("model", "?"),
+            "_passes": 2,
+            "_raw1": r1.get("_raw", ""),
+            "_raw2": r2.get("_raw", "")}
 
 
-def _single(asr_lines, characters, context_lines, offset=0, timeline_name="", episode=""):
+def _single(asr_lines, context_lines, offset=0, timeline_name="", episode="", system_candidates="", cpl=0, temperature=0, rules_subset=None):
     asr_list = "\n".join(f"[{offset + i + 1}] {t}" for i, t in enumerate(asr_lines))
-    char_list = "、".join(characters) if characters else "（无人物信息）"
-    context = "\n".join(context_lines[:_MAX_CONTEXT]) if context_lines else ""
+    context = "\n".join(context_lines) if context_lines else ""
+
+    if rules_subset is None:
+        rules_subset = list(range(1, 10))
+
+    # ── 规则文本（按编号）──
+    _rules = {
+        1: ("1. 人名写错 →「角色名称错误」\n"),
+        2: ("2. 的/地/得 混用 →「的得地」\n"),
+        3: ("3. 他/她/它 性别错配 →「性别错配」\n"),
+        4: ("4. 英文缩写 →「英文缩写」。例：NBA→美国职业篮球联赛、ICU→重症监护室\n"),
+        5: ("5. 《》或「」缺失 →「标点缺失」\n"),
+        6: ("6. 中国境内真实地名（省/市/县/区）→「真实地名」\n"
+            "   系统词典已覆盖全国 390+ 城市名，候选列表中已标出。\n"
+            "   correction 写「应替换为架空地名」，不编造具体名字。\n"
+            "   外国地名不报（短剧里通常是剧情需要）。\n"),
+        7: ("7. 错别字/多字/漏字 →「错别字」「多字」或「漏字」\n"
+            "   常见错别字：\n"
+            "   在见→再见、以经→已经、在来→再来、决对→绝对、气分→气氛\n"
+            "   做/作、象/像、侯/候、即/既、坐/座、买/卖、遍/篇、\n"
+            "   连/联、须/需、到/倒、带/戴、长/常、代/带、那/哪\n"),
+        8: ("8. 脏话/涉政词 →「违禁词」\n"),
+        9: ("9. 断句错误 →「断句」。\n"
+            "    只报一个完整词语被切成两半的情况。\n"
+            "    不报语法性断点（如「非」「是」「就」等引发的自然断句）。\n"
+            + (f"    修正后每句字数均不得超过 {cpl}。若无论怎么调整都会超，则不报。\n" if cpl > 0 else "") +
+            "    original 和 correction 都写两句，用 ｜ 分隔：\n"
+            "    例：original=\"我时常幻想如果｜我是一个亿万富翁\"\n"
+            "        correction=\"我时常幻想｜如果我是一个亿万富翁\"\n"
+            "    例：original=\"我知道你今｜天救了我们两次\"\n"
+            "        correction=\"我知道你｜今天救了我们两次\"\n"),
+    }
+    rules_section = "\n".join(_rules[r] for r in rules_subset if r in _rules)
+
+    # ── JSON 示例（按规则过滤）──
+    _examples = {
+        1: '  {"index": 21, "original": "冰言给我出来", "correction": "冰颜给我出来", "reason": "角色名称错误"},\n'
+           '  {"index": 22, "original": "林页轻而易举的救了她", "correction": "林野轻而易举地救了她", "reason": "角色名称错误,的得地"},\n',
+        2: '  {"index": 55, "original": "他轻而易举的救了她", "correction": "他轻而易举地救了她", "reason": "的得地"},\n',
+        3: '  {"index": 28, "original": "他是我的妻子", "correction": "她是我的妻子", "reason": "性别错配"},\n',
+        4: '  {"index": 12, "original": "他是NBA球员", "correction": "他是美国职业篮球联赛球员", "reason": "英文缩写"},\n',
+        5: '  {"index": 36, "original": "修罗血玉是本好书", "correction": "《修罗血玉》是本好书", "reason": "标点缺失"},\n',
+        6: '  {"index": 42, "original": "我来自北京", "correction": "应替换为架空地名", "reason": "真实地名"},\n',
+        7: '  {"index": 14, "original": "他要五仟万", "correction": "他要五千万", "reason": "错别字"},\n',
+        8: '  {"index": 1, "original": "习近平", "correction": "请结合剧情自行判断", "reason": "违禁词"},\n'
+           '  {"index": 2, "original": "你他妈敢打老子", "correction": "你敢打我", "reason": "违禁词"},\n',
+        9: '  {"index": 10, "original": "我时常幻想如果｜我是一个亿万富翁", "correction": "我时常幻想｜如果我是一个亿万富翁", "reason": "断句"},\n'
+           '  {"index": 30, "original": "我知道你今｜天救了我们两次", "correction": "我知道你｜今天救了我们两次", "reason": "断句"},\n'
+           '  {"index": 3, "original": "从今天起做｜做我的贴身保镖", "correction": "从今天起｜做我的贴身保镖", "reason": "断句"}\n',
+    }
+    examples_section = "".join(_examples[r] for r in rules_subset if r in _examples)
+
+    # ── 系统候选段（P1 包含，P2 不需要）──
+    system_section = ""
+    if 1 in rules_subset:  # P1 才显示系统候选
+        system_section = (
+            "### 3. 审查系统候选\n"
+            "用户消息末尾有候选列表，含两类：\n"
+            "① 违禁词：系统词典覆盖 4975 条涉政/脏话词汇，检出几乎全对。\n"
+            "   你只需过滤极少数上下文误报（保留的 reason 写「违禁词」）：\n"
+            "- 候选含「逼」→ 原文是「逼我/逼迫」→ 不报（强迫义）\n"
+            "- 候选含「奶」→ 原文是「姑奶奶」→ 不报（称呼）\n"
+            "- 候选含「八九」→ 在计数中（一二三四五六七八九十）→ 不报\n"
+            "- 候选含「你妈」→ 原文是「你妈妈最近身体如何」→ 不报（称呼）\n"
+            "② 真实地名：系统词典覆盖全国 390+ 城市名。\n"
+            "   标出即是中国真实地名，直接报，reason「真实地名」，\n"
+            "   correction 写「应替换为架空地名」。\n"
+            "   虚构地名（如苏城、王家庄）不会出现在候选里。\n"
+        )
+
+    # ── reason 列表（按规则过滤）──
+    _reason_names = {1:"角色名称错误",2:"的得地",3:"性别错配",4:"英文缩写",
+                     5:"标点缺失",6:"真实地名",7:"错别字",8:"违禁词",9:"断句"}
+    reason_line = ("- reason: 一个或多个，用逗号分隔。可选值：" + " / ".join(
+            _reason_names[r] for r in rules_subset if r in _reason_names) + "\n")
 
     messages = [
         {"role": "system", "content": (
-            "你是短剧字幕校对专家。只找字幕里真正的语言错误。\n\n"
-            "### 角色（你的立场）\n"
-            "字幕 ≠ 剧本逐字稿。剪辑师出于过审、风格、节奏考虑，有权修改台词。\n"
-            "——不要因为字幕用词和剧本不同就报错。那不是你的工作。\n\n"
-            "### 规则（优先级从高到低）\n"
-            "1. 人名写错 → 最高优先级。参考剧本开头人物小传里的人名。\n"
-            "2. 的/地/得 混用 → 报，reason 写「的得地」\n"
-            "3. 他/她/它 性别/属性错配 → 报，reason 写「性别错配」\n"
-            "4. 英文缩写 → 报，reason 写「英文缩写」\n"
-            "5. 书名号《》或专有名词双引号「」缺失 → 报，reason 写「标点缺失」\n"
-            "6. 真实城市/地名（如北京、上海、杭州）→ 报，reason 写「真实地名」\n"
-            "7. 错别字（同音/形近/多字/漏字）→ 报，reason 写具体错误类型\n"
-            "8. 阿拉伯数字必须改写为中文数字。例：1000亿→一千亿、50%→百分之五十。用「一二三四五六七八九十百千万亿」。reason 写「数字转中文」\n\n"
-            "### 禁止事项\n"
-            "- 剧本原文含脏话/敏感词而字幕改了 → 这是过审行为，不要报，不要建议改回去。\n"
-            "  例：剧本「小畜生」→字幕「小可爱」→ 通过；剧本「他妈的」→字幕「他喵的」→ 通过。\n"
-            "- 短剧字幕不使用逗号、句号、感叹号等标点 → 不要报「缺少标点」\n"
-            "- 相邻字幕内容相同是正常口语重复 → 不要报\n"
-            "- 断句/换行是剪辑师的设计选择 → 不要报「应合并为一句」\n\n"
-            "### 输出字段说明\n"
-            "- correction: 只写应改成的正确字词，不写整句，不写说明\n"
-            "- reason: 错误类型——选：角色名称错误/错别字/的得地/性别错配/英文缩写/真实地名/漏字/多字\n\n"
-            "### same_show 判断标准\n"
-            "看完剧本全文和字幕行后判断是否属于同一部剧：\n"
-            "- same_show=false：字幕里的人名在剧本里一个都找不到，或情节完全无关\n"
-            "- same_show=true：人名大量重叠，情节有关联\n"
-            "- 不确定时优先 false\n\n"
-            "### 输出\n"
-            "JSON：{\"same_show\": true/false, \"corrections\": [{index, original, correction, reason}]}\n"
-            "只输出 JSON，不要其他任何文字。"
+            "你是短剧字幕校对专家。输出 JSON 格式。\n"
+            "只找字幕里真正的语文错误。不要因为字幕用词和剧本不同就报错——\n"
+            "剪辑师有权修改台词（过审/风格/节奏），那不是你的工作。\n\n"
+            "## 你会收到什么\n\n"
+            "用户消息包含：\n"
+            "① 剧本全文 — 用于理解故事背景、人物关系、语境\n"
+            "② 时间线名称 — 用于自动匹配集号\n"
+            "③ 用户指定集号 — 可能为空\n"
+            "④ 字幕行 — [序号] 文本格式\n"
+            "⑤ 系统检测候选 — 可能为空（系统词典的关键词匹配结果）\n\n"
+            "## 你要做什么（以下列为准，无其他隐藏规则）\n\n"
+            "### 1. 读剧本的人物小传，定位剧集\n"
+            "剧本开头一般有「人物小传」或「人物简介」段落，从中提取角色名和性别。\n"
+            "剧本中用「--- 第 N 集 ---」标记分隔各集。根据时间线名称判断集号\n"
+            "（如 EP03_剪辑_v01 → 第3集），用户指定集号优先。\n"
+            "除匹配集外也读前后各一集（第3集→也读第2、4集），理解剧情连贯性。\n\n"
+            "### 2. 逐行检查字幕\n"
+            "找出以下语文错误（reason 必须是括号内的精确值）：\n\n"
+            + rules_section +
+            "注意：换行/轨间分隔属于系统检测范畴，你不需处理。\n"
+            "correction 中不要添加标点符号（！。，？、……），只有《》「」这类书名号引号是例外。\n\n"
+            + system_section +
+            "### 4. 这些情况不报\n"
+            "- 剧本脏话已被改成别的词（小畜生→小可爱）→ 已过审，不报\n"
+            "- 缺少标点符号：短剧字幕不用逗号句号\n"
+            "- 相邻字幕内容相同（连续两声「姐妹们」）→ 口语重复\n"
+            "- 不要把字幕改写成剧本台词 → original 只改错的那个字\n\n"
+            "## 输出字段说明\n\n"
+            "- index: 字幕行号（从1开始）\n"
+            "- original: 完整字幕文本（整句）\n"
+            "- correction: 修正后的完整字幕文本（整句）\n"
+            + reason_line +
+            "- same_show: 必须输出。人名重叠、情节关联=true。\n"
+            "             完全找不到、情节无关=false。不确定→true\n\n"
+            "## 输出格式\n\n"
+            '{"same_show": true, "corrections": [\n'
+            + examples_section +
+            "]}\n"
+            "无错误：{\"same_show\": true, \"corrections\": []}"
         )},
         {"role": "user", "content": (
-            f"剧本全文：\n{context}\n\n"
-            f"时间线名称：{timeline_name}\n"
-            f"用户指定集号：{episode}\n\n"
-            f"字幕行：\n{asr_list}\n\n"
-            f"短剧字幕口语化，不要改成书面语。只报真正的错别字。\n"
-            f"剧本开头有人物小传，从那里提取人名和性别信息。"
-        )},
+            "剧本全文（「--- 第 N 集 ---」分隔）：\n__C__\n\n"
+            "时间线：__T__\n"
+            "集号：__E__\n\n"
+            "字幕（[序号]）：\n__A__"
+        ).replace("__C__", context).replace("__T__", timeline_name)
+         .replace("__E__", episode or "（自动匹配）").replace("__A__", asr_list)
+         + ("" if not system_candidates else (
+            "\n\n## 系统候选\n\n"
+            "以下被系统词典标出。结合上下文判断：\n"
+            + system_candidates
+         ))},
     ]
 
-    result = call_with_fallback(messages, max_tokens=2048, temperature=0.1)
+    result = call_with_fallback(messages, max_tokens=16384, temperature=temperature,
+                                response_format={"type": "json_object"})
     if not result.get("ok"):
         return result
 
@@ -117,7 +229,9 @@ def _single(asr_lines, characters, context_lines, offset=0, timeline_name="", ep
         data = json.loads(raw)
         # 对象格式 {same_show, corrections} 或数组 [{...}]
         if isinstance(data, dict):
-            same_show = data.get("same_show", True)
+            same_show = data.get("same_show")
+            if same_show is None:
+                same_show = True  # null → 默认true
             corrections = data.get("corrections", [])
         elif isinstance(data, list):
             same_show = True
@@ -169,8 +283,9 @@ def _single(asr_lines, characters, context_lines, offset=0, timeline_name="", ep
         })
 
     return {"ok": True, "corrections": valid,
-            "same_show": same_show,
-            "provider": result["provider"], "model": result["model"]}
+            "same_show": same_show if same_show is not None else True,
+            "provider": result["provider"], "model": result["model"],
+            "_raw": result["content"][:500]}
 
 
 # ── 缓存 ──
@@ -179,13 +294,14 @@ def _hash_lines(lines):
     return hashlib.sha256("\n".join(t.strip() for t in lines).encode()).hexdigest()[:16]
 
 
-def check_typos_cached(asr_lines, characters, context_lines=None):
+def check_typos_cached(asr_lines, context_lines=None,
+                       timeline_name="", episode="", system_candidates="", cpl=0):
     cache_dir = os.path.expanduser("~/Library/Application Support/交付自检")
     cache_file = os.path.join(cache_dir, "typo_cache.json")
     # 缓存键含模型名：换模型自动失效
     from llm_providers import _providers as _prov
     model = _prov[0]["name"] if _prov else "unknown"
-    h = _hash_lines(asr_lines + (context_lines or []) + [model])
+    h = _hash_lines(asr_lines + (context_lines or []) + [model, system_candidates, str(cpl), timeline_name, episode])
     cache = {}
     try:
         os.makedirs(cache_dir, exist_ok=True)
@@ -196,7 +312,9 @@ def check_typos_cached(asr_lines, characters, context_lines=None):
         pass
     if h in cache:
         return cache[h]
-    result = check_typos(asr_lines, characters, context_lines)
+    result = check_typos(asr_lines, context_lines,
+                        timeline_name=timeline_name, episode=episode,
+                        system_candidates=system_candidates, cpl=cpl)
     if result.get("ok"):
         cache[h] = result
         try:

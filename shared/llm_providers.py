@@ -23,25 +23,11 @@ _SSL_CTX = ssl._create_unverified_context()
 # ══════════════════════════════════════
 
 _providers = [
-    # DeepSeek V4 Pro（主力，纠错能力强）
+    # DeepSeek V4 Pro（唯一主力，不降级；关 thinking mode，校对是确定性任务）
     {"name": "deepseek-v4-pro", "priority": 1, "vendor": "deepseek",
      "url": "https://api.deepseek.com/v1/chat/completions",
-     "key_env": "DEEPSEEK_API_KEY", "format": "openai"},
-
-    # DeepSeek V4 Flash（备用，快+便宜）
-    {"name": "deepseek-v4-flash", "priority": 2, "vendor": "deepseek",
-     "url": "https://api.deepseek.com/v1/chat/completions",
-     "key_env": "DEEPSEEK_API_KEY", "format": "openai"},
-
-    # 千问 Plus（第三备用）
-    {"name": "qwen-plus",      "priority": 3, "vendor": "qwen",
-     "url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
-     "key_env": "DASHSCOPE_API_KEY", "format": "dashscope"},
-
-    # 智谱 GLM-4-Flash（第四备用）
-    {"name": "glm-4-flash",    "priority": 4, "vendor": "zhipu",
-     "url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-     "key_env": "ZHIPU_API_KEY", "format": "openai"},
+     "key_env": "DEEPSEEK_API_KEY", "format": "openai",
+     "extra_body": {"thinking": {"type": "disabled"}}},
 ]
 
 # 重试错误码
@@ -94,7 +80,7 @@ def _call_dashscope(cfg: dict, messages: list[dict],
     req.add_header("Content-Type", "application/json")
 
     try:
-        with urlopen(req, timeout=60, context=_SSL_CTX) as resp:
+        with urlopen(req, timeout=300, context=_SSL_CTX) as resp:
             data = json.loads(resp.read())
     except HTTPError as e:
         try:
@@ -104,7 +90,7 @@ def _call_dashscope(cfg: dict, messages: list[dict],
     except URLError as e:
         reason = str(e)
         if "timeout" in reason.lower() or "timed out" in reason.lower():
-            return {"error": "network_timeout", "message": "AI 接口响应超时（>60秒），请检查网络或稍后重试"}
+            return {"error": "network_timeout", "message": "AI 接口响应超时（>300秒），请检查网络或稍后重试"}
         return {"error": "network", "message": reason[:200]}
 
     code = data.get("code", "")
@@ -119,7 +105,8 @@ def _call_dashscope(cfg: dict, messages: list[dict],
 
 
 def _call_openai_compat(cfg: dict, messages: list[dict],
-                        max_tokens: int, temperature: float) -> dict:
+                        max_tokens: int, temperature: float,
+                        response_format: dict = None) -> dict:
     """OpenAI 兼容格式（智谱、DeepSeek）。"""
     api_key = _get_key(cfg["key_env"])
     if not api_key:
@@ -131,6 +118,8 @@ def _call_openai_compat(cfg: dict, messages: list[dict],
         "max_tokens": max_tokens,
         "temperature": temperature,
     }
+    if response_format:
+        body_dict["response_format"] = response_format
     # 合并供应商额外参数（如 DeepSeek thinking disabled）
     body_dict.update(cfg.get("extra_body", {}))
 
@@ -140,7 +129,7 @@ def _call_openai_compat(cfg: dict, messages: list[dict],
     req.add_header("Content-Type", "application/json")
 
     try:
-        with urlopen(req, timeout=60, context=_SSL_CTX) as resp:
+        with urlopen(req, timeout=300, context=_SSL_CTX) as resp:
             data = json.loads(resp.read())
     except HTTPError as e:
         try:
@@ -150,7 +139,7 @@ def _call_openai_compat(cfg: dict, messages: list[dict],
     except URLError as e:
         reason = str(e)
         if "timeout" in reason.lower() or "timed out" in reason.lower():
-            return {"error": "network_timeout", "message": "AI 接口响应超时（>60秒），请检查网络或稍后重试"}
+            return {"error": "network_timeout", "message": "AI 接口响应超时（>300秒），请检查网络或稍后重试"}
         return {"error": "network", "message": reason[:200]}
 
     # OpenAI 兼容格式：choices[0].message.content
@@ -170,8 +159,9 @@ def _call_openai_compat(cfg: dict, messages: list[dict],
     return {"error": "parse", "raw": str(data)[:200]}
 
 
-def call_with_fallback(messages: list[dict], max_tokens: int = 512,
-                       temperature: float = 0.1) -> dict:
+def call_with_fallback(messages: list[dict], max_tokens: int = 2048,
+                       temperature: float = 0.1,
+                       response_format: dict = None) -> dict:
     """多供应商自动降级调用。
 
     Returns:
@@ -183,7 +173,8 @@ def call_with_fallback(messages: list[dict], max_tokens: int = 512,
         if p["format"] == "dashscope":
             result = _call_dashscope(p, messages, max_tokens, temperature)
         else:
-            result = _call_openai_compat(p, messages, max_tokens, temperature)
+            result = _call_openai_compat(p, messages, max_tokens, temperature,
+                                         response_format=response_format)
 
         attempts.append({"model": p["name"], "result": result.get("error", "ok")})
 

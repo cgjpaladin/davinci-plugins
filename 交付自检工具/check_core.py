@@ -326,7 +326,7 @@ def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0, io_range=Non
     total_count = 0
     disabled_count = 0
 
-    for si in range(1, subtitle_count + 1):
+    for si in range(1, 2):  # 仅 ST1（主力字幕轨）
         track = _track_short("subtitle", si)
         items = _get_items(timeline, "subtitle", si)
         if not items:
@@ -740,7 +740,7 @@ def check_subtitle_glyph(timeline, fps=25.0, io_range=None) -> list:
 
     smpte = _get_smpte(fps)
 
-    for si in range(1, subtitle_count + 1):
+    for si in range(1, 2):  # 仅 ST1（主力字幕轨）
         items = _get_items(timeline, "subtitle", si)
         if not items:
             continue
@@ -786,7 +786,7 @@ def check_subtitle_linebreak(timeline, fps=25.0, io_range=None) -> list:
     smpte.fps = fps
     smpte.df = False
 
-    for si in range(1, subtitle_count + 1):
+    for si in range(1, 2):  # 仅 ST1（主力字幕轨）
         items = _get_items(timeline, "subtitle", si)
         if not items:
             continue
@@ -897,7 +897,7 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn
         return [_make_result("fail", detail="无字幕轨道", is_summary=True)]
 
     smpte = _get_smpte(fps)
-    for si in range(1, subtitle_count + 1):
+    for si in range(1, 2):  # 仅 ST1（主力字幕轨）
         items = _get_items(timeline, "subtitle", si)
         if not items:
             continue
