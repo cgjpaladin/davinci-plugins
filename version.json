@@ -1,1 +1,22 @@
-{"delivery_checker": {"version": "2.4.0", "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.4.0/u_v240.zip", "urls": ["https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.4.0/u_v240.zip", "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.4.0/u_v240.zip"], "sha256": "c989ee54cc6b7a50849598631cd5566c16982f83d09c588cd2d5e6a1031855fe", "notes": "\u6296\u97f3\u77ed\u5267\u65f6\u957f\u5408\u89c4: \u22643\u5206\u949f\u7ea2\u7ebf + \u5efa\u8bae90\u79d2 + \u4e0d\u8db341s\u62e6\u622a"}}
+{
+  "delivery_checker": {
+    "version": "2.4.0",
+    "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.4.0/u_v240.zip",
+    "urls": [
+      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.4.0/u_v240.zip",
+      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.4.0/u_v240.zip"
+    ],
+    "sha256": "c989ee54cc6b7a50849598631cd5566c16982f83d09c588cd2d5e6a1031855fe",
+    "notes": "## v2.5.0\n\n🎨 UI重构：字幕检测独立面板，左区去掉字幕行，右区全新字幕检测\n🤖 AI提示词重写：不再逐字对照，脏话变体不误报\n📏 建议文字去括号冗余",
+    "history": [
+      {
+        "version": "2.4.0",
+        "notes": "## v2.4.0\n\n📏 抖音短剧时长合规（6月5日起执行）\n\n| 时长 | 结果 | 说明 |\n|------|:--:|------|\n| ＜41s | 🔴 | 低于付费集最低时长 |\n| ＞180s | 🔴 | 超时驳回，建议优化至90s |\n| 41~180s | 🟢 | 通过 |"
+      },
+      {
+        "version": "2.5.0",
+        "notes": "## v2.5.0\n\n🎨 UI重构：字幕检测独立面板，左区去掉字幕行，右区全新字幕检测\n🤖 AI提示词重写：不再逐字对照，脏话变体不误报\n📏 建议文字去括号冗余"
+      }
+    ]
+  }
+}

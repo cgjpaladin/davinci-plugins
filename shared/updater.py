@@ -110,15 +110,23 @@ def check(product: str, current_version: str,
 
     latest_version = latest_info.get("version", "")
     if _version_compare(latest_version, current_version) > 0:
-        # 下载链接: urls（复数）优先，url（单数）兜底 — 不合并避免重复
         dl_raw = latest_info.get("urls") or latest_info.get("url", "")
         dl_urls = dl_raw if isinstance(dl_raw, list) else ([dl_raw] if dl_raw else [])
+
+        # 累积公告：把比当前版本新的所有版本公告拼在一起
+        notes = latest_info.get("notes", "")
+        history = latest_info.get("history", [])
+        if history:
+            relevant = [h["notes"] for h in history
+                        if _version_compare(h["version"], current_version) > 0]
+            if relevant:
+                notes = "\n\n".join(relevant)
 
         result = {
             "update_available": True,
             "latest": latest_version,
             "urls": dl_urls,
-            "notes": latest_info.get("notes", ""),
+            "notes": notes,
             "sha256": latest_info.get("sha256"),
             "force": latest_info.get("force", False),
         }

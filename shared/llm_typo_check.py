@@ -19,7 +19,8 @@ _MAX_CONTEXT = 500  # 全文方案需要更大上限
 
 
 def check_typos(asr_lines: list[str], characters: list[str],
-                context_lines: list[str] = None) -> dict:
+                context_lines: list[str] = None,
+                timeline_name: str = "", episode: str = "") -> dict:
     """校对一批 ASR 字幕。超长自动分批。
 
     Returns:
@@ -35,7 +36,8 @@ def check_typos(asr_lines: list[str], characters: list[str],
         all_c = []
         for start in range(0, len(asr_lines), _MAX_BATCH):
             batch = asr_lines[start:start + _MAX_BATCH]
-            r = _single(batch, characters, context_lines, offset=start)
+            r = _single(batch, characters, context_lines, offset=start,
+                        timeline_name=timeline_name, episode=episode)
             if r.get("ok"):
                 all_c.extend(r.get("corrections", []))
             else:
@@ -43,47 +45,55 @@ def check_typos(asr_lines: list[str], characters: list[str],
         return {"ok": True, "corrections": all_c,
                 "provider": r.get("provider"), "model": r.get("model")}
 
-    return _single(asr_lines, characters, context_lines, offset=0)
+    return _single(asr_lines, characters, context_lines, offset=0,
+                   timeline_name=timeline_name, episode=episode)
 
 
-def _single(asr_lines, characters, context_lines, offset=0):
+def _single(asr_lines, characters, context_lines, offset=0, timeline_name="", episode=""):
     asr_list = "\n".join(f"[{offset + i + 1}] {t}" for i, t in enumerate(asr_lines))
     char_list = "、".join(characters) if characters else "（无人物信息）"
-    context = "\n".join(context_lines[:_MAX_CONTEXT]) if context_lines else "（无剧本上下文）"
+    context = "\n".join(context_lines[:_MAX_CONTEXT]) if context_lines else ""
 
     messages = [
         {"role": "system", "content": (
-            "你是短剧字幕校对专家。只找字幕里的错别字。\n\n"
+            "你是短剧字幕校对专家。只找字幕里真正的语言错误。\n\n"
+            "### 角色（你的立场）\n"
+            "字幕 ≠ 剧本逐字稿。剪辑师出于过审、风格、节奏考虑，有权修改台词。\n"
+            "——不要因为字幕用词和剧本不同就报错。那不是你的工作。\n\n"
             "### 规则（优先级从高到低）\n"
-            "1. 人名写错 → 最高优先级。参考人名：" + char_list + "\n"
+            "1. 人名写错 → 最高优先级。参考剧本开头人物小传里的人名。\n"
             "2. 的/地/得 混用 → 报，reason 写「的得地」\n"
             "3. 他/她/它 性别/属性错配 → 报，reason 写「性别错配」\n"
             "4. 英文缩写 → 报，reason 写「英文缩写」\n"
             "5. 书名号《》或专有名词双引号「」缺失 → 报，reason 写「标点缺失」\n"
             "6. 真实城市/地名（如北京、上海、杭州）→ 报，reason 写「真实地名」\n"
             "7. 错别字（同音/形近/多字/漏字）→ 报，reason 写具体错误类型\n"
-            "8. 阿拉伯数字必须改写为中文数字。例：1000亿→一千亿、50%→百分之五十、500元→五百元、3个人→三个人。用「一二三四五六七八九十百千万亿」。reason 写「数字转中文」\n\n"
+            "8. 阿拉伯数字必须改写为中文数字。例：1000亿→一千亿、50%→百分之五十。用「一二三四五六七八九十百千万亿」。reason 写「数字转中文」\n\n"
             "### 禁止事项\n"
+            "- 剧本原文含脏话/敏感词而字幕改了 → 这是过审行为，不要报，不要建议改回去。\n"
+            "  例：剧本「小畜生」→字幕「小可爱」→ 通过；剧本「他妈的」→字幕「他喵的」→ 通过。\n"
             "- 短剧字幕不使用逗号、句号、感叹号等标点 → 不要报「缺少标点」\n"
-            "- 相邻字幕内容相同是正常口语重复（如连续两声「姐妹们」）→ 不要报\n"
-            "- 不要把字幕改写成剧本台词 → original 只改错的字\n"
+            "- 相邻字幕内容相同是正常口语重复 → 不要报\n"
             "- 断句/换行是剪辑师的设计选择 → 不要报「应合并为一句」\n\n"
             "### 输出字段说明\n"
-            "- correction: 只写应改成的正确字词（如「林野」「拯救」「地」），不写整句，不写说明\n"
+            "- correction: 只写应改成的正确字词，不写整句，不写说明\n"
             "- reason: 错误类型——选：角色名称错误/错别字/的得地/性别错配/英文缩写/真实地名/漏字/多字\n\n"
             "### same_show 判断标准\n"
-            "看完「剧本全文」和「字幕行」后判断是否属于同一部剧：\n"
-            "- same_show=false：字幕里的人名在剧本里一个都找不到，或情节完全没有关联。\n"
-            "- same_show=true：人名大量重叠，情节有关联。\n"
-            "- 不确定时优先 false（宁可误报让用户复查，不能漏过传错剧本）。\n\n"
+            "看完剧本全文和字幕行后判断是否属于同一部剧：\n"
+            "- same_show=false：字幕里的人名在剧本里一个都找不到，或情节完全无关\n"
+            "- same_show=true：人名大量重叠，情节有关联\n"
+            "- 不确定时优先 false\n\n"
             "### 输出\n"
             "JSON：{\"same_show\": true/false, \"corrections\": [{index, original, correction, reason}]}\n"
             "只输出 JSON，不要其他任何文字。"
         )},
         {"role": "user", "content": (
-            f"剧本全文（用「--- 第N集 ---」分隔）：\n{context}\n\n"
+            f"剧本全文：\n{context}\n\n"
+            f"时间线名称：{timeline_name}\n"
+            f"用户指定集号：{episode}\n\n"
             f"字幕行：\n{asr_list}\n\n"
-            f"自动匹配字幕对应的集号。短剧字幕口语化，不要改成书面语。只报真正的错别字。"
+            f"短剧字幕口语化，不要改成书面语。只报真正的错别字。\n"
+            f"剧本开头有人物小传，从那里提取人名和性别信息。"
         )},
     ]
 

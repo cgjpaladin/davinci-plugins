@@ -100,7 +100,7 @@ COLUMNS = [
 _ENABLED_COLS = [c for c in COLUMNS if c.get("enabled", True)]
 
 # ── 结果分组顺序（四大分组，控制 Tree 渲染层级）──
-GROUP_ORDER = ["工程", "视频", "音频", "字幕", "色彩"]
+GROUP_ORDER = ["工程", "视频", "音频", "色彩"]
 
 # ── check_core 输出字段 → Tree 列 key 映射（单一真相源）──
 # 加新字段规则：这里加一行 → COLUMNS 加一列 → _process_result 自动映射
@@ -200,7 +200,7 @@ PAD_PANEL_WIDE = "padding:4px 12px"
 RAD_BTN = "3px"                  # 按钮圆角
 RAD_PANEL = "4px"                # 面板圆角
 # ── 分割线 ──
-DIVIDER_BARS = 7                 # 竖线字符数
+DIVIDER_BARS = 6                 # 竖线字符数
 
 # ── 复合样式 ──
 STYLE_HEADING = f"{FONT_H1};{FONT_BOLD};color:#ccc"
@@ -681,9 +681,9 @@ def _build_group_rows(group_name, extras=None):
 # ── 特殊控件常量（已迁移到「配置」弹窗）──
 
 window_layout = [
-    ui.VGroup({"Spacing": 8}, [
+    ui.VGroup({"Spacing": 2}, [
 
-        # ── 上半区：检查选项 + 开始按钮（左 2/3）| AI校对（右 1/3）──
+        # ── 上半区：常规检查（左）| 字幕检测（右）──
         ui.HGroup({"Spacing": SPACE_RELAXED, "Weight": 0}, [
 
             # ====== 左区：原始检查面板 ======
@@ -705,11 +705,10 @@ window_layout = [
                 *_build_group_rows("工程"),
                 *_build_group_rows("视频"),
                 *_build_group_rows("音频"),
-                *_build_group_rows("字幕"),
                 *_build_group_rows("色彩"),
                 ]),
 
-                ui.HGap({"Weight": 1}),
+                ui.HGap({"Weight": 0, "MinimumSize": [10, 0]}),
 
                 # 开始检查 + 配置
                 ui.VGroup({"Spacing": SPACE_SM, "Weight": 0}, [
@@ -737,17 +736,15 @@ window_layout = [
                           "Weight": 0, "MinimumSize": [0, SIZE_LINE_H]}),
                 ui.Label({"Text": "┃", "StyleSheet": STYLE_DIVIDER,
                           "Weight": 0, "MinimumSize": [0, SIZE_LINE_H]}),
-                ui.Label({"Text": "┃", "StyleSheet": STYLE_DIVIDER,
-                          "Weight": 0, "MinimumSize": [0, SIZE_LINE_H]}),
             ]),
             ui.HGap({"Weight": 0, "MinimumSize": SIZE_GAP_TINY}),
 
-            # ====== 右区：AI校对面板 ======
+            # ====== 右区：字幕检测面板 ======
             ui.VGroup({"Spacing": SPACE_TIGHT, "Weight": 0, "MinimumSize": [220, 0]}, [
-                ui.Label({"ID": "lbl_ai_title", "Text": "AI 字幕校对",
+                ui.Label({"ID": "lbl_ai_title", "Text": "字幕检测",
                           "StyleSheet": STYLE_HEADING,
                           "Weight": 0, "Alignment": {"AlignHCenter": True}}),
-                ui.Label({"ID": "lbl_ai_hint", "Text": "飞书文档链接 / 本地路径:",
+                ui.Label({"ID": "lbl_ai_hint", "Text": "剧本（可选，填了启用 AI 校对）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
                     ui.LineEdit({"ID": EDIT_SCRIPT_SRC, "Text": "",
@@ -757,15 +754,17 @@ window_layout = [
                                "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                                "MinimumSize": [SIZE_BTN_SM_W, SIZE_BTN_SM_W]}),
                 ]),
-                ui.Label({"ID": "lbl_ai_ep", "Text": "手动输入精准集号（可选）:",
+                ui.Label({"ID": "lbl_ai_ep", "Text": "集号（可选，匹配更快）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
-                ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
-                            "Weight": 0, "PlaceholderText": "08 或 07-09",
-                            "MinimumSize": [130, 0]}),
-                ui.Label({"ID": LBL_SCRIPT_STATUS, "Text": "",
-                          "StyleSheet": "font-size:11px;color:#888",
-                          "Weight": 0}),
-                ui.Button({"ID": BTN_AI_TYPO, "Text": "开始校对",
+                ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
+                    ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
+                                "Weight": 0, "PlaceholderText": "08 或 07-09",
+                                "MinimumSize": [130, 0]}),
+                    ui.Label({"ID": LBL_SCRIPT_STATUS, "Text": "",
+                              "StyleSheet": "font-size:11px;color:#888",
+                              "Weight": 0}),
+                ]),
+                ui.Button({"ID": BTN_AI_TYPO, "Text": "字幕检测",
                               "StyleSheet": BTN_PRIMARY.replace("100", "80"),
                               "Weight": 0, "MinimumSize": [108, 36]}),
             ]),
