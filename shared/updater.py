@@ -113,9 +113,18 @@ def check(product: str, current_version: str,
         dl_raw = latest_info.get("urls") or latest_info.get("url", "")
         dl_urls = dl_raw if isinstance(dl_raw, list) else ([dl_raw] if dl_raw else [])
 
-        # 累积公告：把比当前版本新的所有版本公告拼在一起
+        # 累积公告：从 notes/history 中过滤比当前版本新的所有公告
         notes = latest_info.get("notes", "")
         history = latest_info.get("history", [])
+        if not history and notes:
+            # 解析 notes 中的 "## vX.Y.Z" 标题来构建 history
+            import re
+            sections = re.split(r'(?=## v\d)', notes)
+            history = []
+            for sec in sections:
+                m = re.search(r'v(\d+\.\d+\.\d+)', sec)
+                if m:
+                    history.append({"version": m.group(1), "notes": sec.strip()})
         if history:
             relevant = [h["notes"] for h in history
                         if _version_compare(h["version"], current_version) > 0]
