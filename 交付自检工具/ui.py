@@ -755,12 +755,12 @@ window_layout = [
                                "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                                "MinimumSize": [SIZE_BTN_SM_W, SIZE_BTN_SM_W]}),
                 ]),
-                ui.Label({"ID": "lbl_ai_ep", "Text": "集号（可选，匹配更快）:",
+                ui.Label({"ID": "lbl_ai_ep", "Text": "集号（如 08 或 07-09）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
                     ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
-                                "Weight": 0, "PlaceholderText": "08 或 07-09",
-                                "MinimumSize": [130, 0]}),
+                                "Weight": 0,
+                                "MinimumSize": [110, 0]}),
                     ui.Label({"ID": LBL_SCRIPT_STATUS, "Text": "",
                               "StyleSheet": "font-size:11px;color:#888",
                               "Weight": 0}),
@@ -1471,7 +1471,7 @@ def _run_ai_typo():
                 tc_str = ""
                 if 0 <= idx < len(entry_starts):
                     tc_str = smpte.gettc(entry_starts[idx])
-                icon = "❌" if c.get('reason', '') in ('角色名称错误', '错别字', '漏字', '多字', '的得地', '性别错配', '英文缩写', '标点缺失', '真实地名', '数字转中文', '违禁词', '断句') else "⚠"
+                icon = "⚠"
                 row = {"track": "ST1", "tc": tc_str,
                        "msg": f"{icon} | {c['original']} → {c['correction']}（{c.get('reason', '')}）",
                        "reason": c.get('reason', '')}
