@@ -916,11 +916,10 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn
                 if wl_pattern and wl_pattern.search(word):
                     continue
                 sug = suggestion_map.get(word, "")
-                reason_text = f"建议替换为: {sug}" if sug else "检查违禁词"
+                reason_text = "检查违禁词"
                 status = "warn" if use_warn else "fail"
                 issues.append(_make_result(status, track=track, timecode=tc,
-                    detail=word,
-                    reason=reason_text))
+                    detail=word, reason=reason_text))
 
     if not issues:
         return [_make_result("pass", detail="无违禁词", is_summary=True)]

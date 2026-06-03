@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""LLM 错别字校对 — 多供应商自动降级 + 缓存。
+"""LLM 错别字校对 — 多供应商自动降级。
 
 用法:
-    from llm_typo_check import check_typos, check_typos_cached
-    r = check_typos(asr_lines, characters, context_lines)
+    from llm_typo_check import check_typos
+    r = check_typos(asr_lines, context_lines)
+
+注意: AI 结果不做缓存。剧本解析的缓存由 script_parser 管理。
 """
 
 import json
 import os
-import hashlib
-import time
 from llm_providers import call_with_fallback
 
 # (硬过滤暂关，等模型稳定后再启用)
@@ -33,15 +33,15 @@ def check_typos(asr_lines: list[str],
 
     context_lines = context_lines or []
 
-    # P1: 8 类错误（角色名/的得地/性别/缩写/标点/地名/错别字/违禁词），temp=0.1 保守
+    # P1: 8 类错误，temp=0.2（0.15以下过于保守，模型会忽略系统候选）
     r1 = _single(asr_lines, context_lines, offset=0,
                  timeline_name=timeline_name, episode=episode,
-                 system_candidates=system_candidates, cpl=cpl, temperature=0.1,
+                 system_candidates=system_candidates, cpl=cpl, temperature=0.2,
                  rules_subset=[1,2,3,4,5,6,7,8])
-    # P2: 仅断句，temp=0.2 探索边缘
+    # P2: 仅断句，temp=0.25（0.2有1/3概率跑出空结果）
     r2 = _single(asr_lines, context_lines, offset=0,
                  timeline_name=timeline_name, episode=episode,
-                 system_candidates=system_candidates, cpl=cpl, temperature=0.2,
+                 system_candidates=system_candidates, cpl=cpl, temperature=0.25,
                  rules_subset=[9])
 
     if not r1.get("ok") and not r2.get("ok"):
@@ -96,7 +96,7 @@ def _single(asr_lines, context_lines, offset=0, timeline_name="", episode="", sy
             "   常见错别字：\n"
             "   在见→再见、以经→已经、在来→再来、决对→绝对、气分→气氛\n"
             "   做/作、象/像、侯/候、即/既、坐/座、买/卖、遍/篇、\n"
-            "   连/联、须/需、到/倒、带/戴、长/常、代/带、那/哪\n"),
+            "   连/联、须/需、到/倒、带/戴、长/常、代/带、那/哪、两/俩\n"),
         8: ("8. 脏话/涉政词 →「违禁词」\n"),
         9: ("9. 断句错误 →「断句」。\n"
             "    只报一个完整词语被切成两半的情况。\n"
@@ -134,9 +134,9 @@ def _single(asr_lines, context_lines, offset=0, timeline_name="", episode="", sy
         system_section = (
             "### 3. 审查系统候选\n"
             "用户消息末尾有候选列表，含两类：\n"
-            "① 违禁词：系统词典覆盖 4975 条涉政/脏话词汇，检出几乎全对。\n"
-            "   你只需过滤极少数上下文误报（保留的 reason 写「违禁词」）：\n"
-            "- 候选含「逼」→ 原文是「逼我/逼迫」→ 不报（强迫义）\n"
+            "① 违禁词：系统词典已检出。**全部报出**（reason=违禁词），仅排除以下误报：\n"
+            "- 候选含「逼」→ 原文是「逼我/逼迫/逼供」→ 不报（强迫义）\n"
+            "  原文是「逼人/死逼/傻逼」→ 报（骂人义）\n"
             "- 候选含「奶」→ 原文是「姑奶奶」→ 不报（称呼）\n"
             "- 候选含「八九」→ 在计数中（一二三四五六七八九十）→ 不报\n"
             "- 候选含「你妈」→ 原文是「你妈妈最近身体如何」→ 不报（称呼）\n"
@@ -177,7 +177,6 @@ def _single(asr_lines, context_lines, offset=0, timeline_name="", episode="", sy
             "correction 中不要添加标点符号（！。，？、……），只有《》「」这类书名号引号是例外。\n\n"
             + system_section +
             "### 4. 这些情况不报\n"
-            "- 剧本脏话已被改成别的词（小畜生→小可爱）→ 已过审，不报\n"
             "- 缺少标点符号：短剧字幕不用逗号句号\n"
             "- 相邻字幕内容相同（连续两声「姐妹们」）→ 口语重复\n"
             "- 不要把字幕改写成剧本台词 → original 只改错的那个字\n\n"
@@ -286,45 +285,3 @@ def _single(asr_lines, context_lines, offset=0, timeline_name="", episode="", sy
             "same_show": same_show if same_show is not None else True,
             "provider": result["provider"], "model": result["model"],
             "_raw": result["content"][:500]}
-
-
-# ── 缓存 ──
-
-def _hash_lines(lines):
-    return hashlib.sha256("\n".join(t.strip() for t in lines).encode()).hexdigest()[:16]
-
-
-def check_typos_cached(asr_lines, context_lines=None,
-                       timeline_name="", episode="", system_candidates="", cpl=0):
-    cache_dir = os.path.expanduser("~/Library/Application Support/交付自检")
-    cache_file = os.path.join(cache_dir, "typo_cache.json")
-    # 缓存键含模型名：换模型自动失效
-    from llm_providers import _providers as _prov
-    model = _prov[0]["name"] if _prov else "unknown"
-    h = _hash_lines(asr_lines + (context_lines or []) + [model, system_candidates, str(cpl), timeline_name, episode])
-    cache = {}
-    try:
-        os.makedirs(cache_dir, exist_ok=True)
-        if os.path.exists(cache_file):
-            with open(cache_file, encoding="utf-8") as f:
-                cache = json.load(f) or {}
-    except Exception:
-        pass
-    if h in cache:
-        return cache[h]
-    result = check_typos(asr_lines, context_lines,
-                        timeline_name=timeline_name, episode=episode,
-                        system_candidates=system_candidates, cpl=cpl)
-    if result.get("ok"):
-        cache[h] = result
-        try:
-            if len(cache) > 500:
-                oldest = sorted(cache, key=lambda k: cache[k].get("_ts", 0))[:100]
-                for k in oldest:
-                    del cache[k]
-            result["_ts"] = time.time()
-            with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump(cache, f, ensure_ascii=False)
-        except Exception:
-            pass
-    return result

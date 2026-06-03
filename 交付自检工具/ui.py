@@ -619,7 +619,7 @@ def _action_log(msg: str):
         pass
     if any(k in _stderr_msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
         print(_stderr_msg, file=sys.stderr)
-    if any(k in msg for k in ("异常", "崩溃", "Traceback", "ModuleNotFound", "ImportError")):
+    if any(k in msg for k in ("异常", "崩溃", "Traceback", "ModuleNotFound", "ImportError")) and "结构异常" not in msg and "格式异常" not in msg:
         _UI_ERROR_COUNT += 1
         try: _update_err_counter()
         except Exception: pass  # noop: 配置写入失败不影响主流程
@@ -1279,7 +1279,7 @@ def _run_ai_typo():
         _action_log(msg)
 
     try:
-        from llm_typo_check import check_typos_cached
+        from llm_typo_check import check_typos
         from script_parser import parse_script, match_timeline, set_log_callback
         set_log_callback(_action_log)
 
@@ -1356,6 +1356,8 @@ def _run_ai_typo():
             all_lines.extend(parsed["episodes"][ep])
         itm[LBL_SCRIPT_STATUS].Text = f"📖 全文 ({len(parsed.get('episodes',{}))}集)"
         _action_log(f"📖 剧本: {len(parsed.get('episodes',{}))}集, {len(all_lines)}行（全文）")
+        _ts_start = time.time()
+        itm[BTN_START].Enabled = False; itm[BTN_AI_TYPO].Enabled = False
 
         # ═══ LLM 校对（含剧集一致性 + 集号匹配） ═══
         itm[HINT_LB].Text = "AI 校对中..."
@@ -1386,12 +1388,15 @@ def _run_ai_typo():
             for r in sys_results:
                 tc = r.get("timecode", "")
                 detail = r.get("detail", "")
-                reason = r.get("reason", "")
                 cname = r.get("_check_name", "")
-                lines.append(f"- {tc} [{cname}] {detail}（系统：{reason}）")
+                # 统一用指令式格式，让 AI 直接行动而非审查
+                if "真实地名" in cname:
+                    lines.append(f"- {tc} 出现真实地名「{detail}」→ 应替换为架空地名")
+                else:
+                    lines.append(f"- {tc} 出现违禁词「{detail}」→ 应修正")
             if lines:
                 sys_candidates = "\n".join(lines)
-            _action_log(f"📋 系统候选 {len(lines)} 条，全部喂给 AI")
+            _action_log(f"📋 系统候选 {len(lines)} 条，喂给 AI（+{time.time()-_ts_start:.0f}s）")
         except Exception:
             _action_log("⚠ 系统规则预检失败，跳过候选")
             sys_candidates = ""
@@ -1402,9 +1407,10 @@ def _run_ai_typo():
             cpl = int(timeline.GetSetting().get("limitSubtitleCPL", 0))
         except Exception:
             cpl = 0
-        result = check_typos_cached(entries, all_lines,
+        result = check_typos(entries, all_lines,
                                     timeline_name=tl_name, episode=ep_input,
                                     system_candidates=sys_candidates, cpl=cpl)
+        _action_log(f"🤖 AI 校对完成（+{time.time()-_ts_start:.0f}s）")
         if result.get("error"):
             attempts = result.get("attempts", [])
             if attempts:
@@ -1415,26 +1421,34 @@ def _run_ai_typo():
             _action_log(msg)
             return _stop(msg)
 
+        corrections = result.get("corrections", [])
+        provider = result.get("provider", "?")
+        model = result.get("model", "?")
+        _action_log(f"🤖 AI 结果: {len(corrections)}处修正, same_show={result.get('same_show')} ({provider}/{model})")
+
         # ═══ 存档：完整保存本次校对的输入+输出（复盘用）═══
         _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
                            itm[EDIT_SCRIPT_SRC].Text.strip(), result,
                            project=resolve.GetProjectManager().GetCurrentProject())
 
-        corrections = result.get("corrections", [])
-        provider = result.get("provider", "?")
-        model = result.get("model", "?")
-
+        _action_log("🎨 开始渲染结果...")
         tree = itm[TREE_RESULT]
         tree.Clear()
+        tree.ColumnCount = len(_ENABLED_COLS)
         _setup_tree_header(tree)
         all_rows = []  # 收集所有行，最后统一排序
+        direct_rows = []  # 单独跟踪：系统检测（换行/时长）
+        ai_rows = []      # 单独跟踪：AI 修正
 
         # 先添加直接结果（换行/时长），等 AI 结果也加入后统一渲染
         for r in direct_results:
             icon = "❌" if r.get("status")=="fail" else "⚠"
-            all_rows.append({"track": r.get("track",""), "tc": r.get("timecode",""),
-                           "msg": f"{icon} | {r.get('detail','')}（{r.get('_check_name','系统')}）",
-                           "reason": r.get("reason","")})
+            row = {"track": r.get("track",""), "tc": r.get("timecode",""),
+                   "msg": f"{icon} | {r.get('detail','')}（{r.get('_check_name','系统')}）",
+                   "reason": r.get("reason","")}
+            all_rows.append(row)
+            direct_rows.append(row)
+        _action_log(f"🎨 direct={len(direct_rows)}")
 
         # 传错剧本：警告插入 all_rows，但不阻止渲染系统结果
         if result.get("same_show") is False:
@@ -1445,6 +1459,7 @@ def _run_ai_typo():
             itm[HINT_LB].Text = "⚠ 疑似不同剧集"
 
         # AI 有结果才追加 corrections
+        _action_log(f"🎨 corrections={len(corrections)}")
         if corrections:
             from timecode import SMPTE
             smpte = SMPTE()
@@ -1457,36 +1472,58 @@ def _run_ai_typo():
                 if 0 <= idx < len(entry_starts):
                     tc_str = smpte.gettc(entry_starts[idx])
                 icon = "❌" if c.get('reason', '') in ('角色名称错误', '错别字', '漏字', '多字', '的得地', '性别错配', '英文缩写', '标点缺失', '真实地名', '数字转中文', '违禁词', '断句') else "⚠"
-                all_rows.append({"track": "ST1", "tc": tc_str,
-                               "msg": f"{icon} | {c['original']} → {c['correction']}（{c.get('reason', '')}）",
-                               "reason": c.get('reason', '')})
+                row = {"track": "ST1", "tc": tc_str,
+                       "msg": f"{icon} | {c['original']} → {c['correction']}（{c.get('reason', '')}）",
+                       "reason": c.get('reason', '')}
+                all_rows.append(row)
+                ai_rows.append(row)
 
-        # 统一渲染：系统结果 + AI 结果，按时码排序
-        if all_rows:
-            from timecode import SMPTE as _SMPTE
-            _s = _SMPTE()
-            _s.fps = float(timeline.GetSetting("timelineFrameRate") or 25)
-            _s.df = False
-            all_rows.sort(key=lambda r: _s.get_frame(r.get("tc","00:00:00:00")))
-            for r in all_rows:
-                row = tree.NewItem()
-                _set_row(row, r)
-                tree.AddTopLevelItem(row)
+        # 统一渲染：系统结果在前，AI 结果在后，各自按时码排序
+        _action_log(f"🎨 direct={len(direct_rows)} ai={len(ai_rows)} rendering...")
+        _render_err = None
+        if direct_rows or ai_rows:
+            try:
+                from timecode import SMPTE as _SMPTE
+                _s = _SMPTE()
+                _s.fps = float(timeline.GetSetting("timelineFrameRate") or 25)
+                _s.df = False
+                direct_rows.sort(key=lambda r: _s.getframes(r.get("tc") or "00:00:00:00"))
+                ai_rows.sort(key=lambda r: _s.getframes(r.get("tc") or "00:00:00:00"))
+                for r in direct_rows + ai_rows:
+                    row = tree.NewItem()
+                    _set_row(row, r)
+                    tree.AddTopLevelItem(row)
+                _action_log(f"🎨 rendered={len(all_rows)} rows")
+            except Exception as _e:
+                _render_err = str(_e)
+                _action_log(f"🎨 render FAIL: {_render_err}")
+        else:
+            # 无任何结果时显示一行提示，避免用户以为卡住了
+            row = tree.NewItem()
+            _set_row(row, {"track": "—", "tc": "—", "msg": "✅ 未发现问题", "reason": f"AI: {provider}/{model}"})
+            tree.AddTopLevelItem(row)
 
-        # 重建左侧分类（不建的话 group_tree 是空的）
+        # 重建左侧分类（用 · 前缀区分子类，匹配 _on_group_click）
         gt = itm[GROUP_TREE]; gt.Clear()
         hdr = gt.NewItem(); hdr.Text[0] = "分类"; gt.SetHeaderItem(hdr)
-        gi = gt.NewItem(); gi.Text[0] = "字幕检测"; gt.AddTopLevelItem(gi)
-        # 同步 _cached_sections，否则点击分类时 handler 找不到数据
-        _cached_sections = [{"subgroup": "字幕检测", "group": "字幕", "rows": all_rows}]
+        _cached_sections = []
+        if direct_rows:
+            _cached_sections.append({"subgroup": "文本", "group": "字幕", "rows": direct_rows})
+        if ai_rows:
+            _cached_sections.append({"subgroup": "AI检测", "group": "字幕", "rows": ai_rows})
+        for sg in _cached_sections:
+            gi = gt.NewItem(); gi.Text[0] = f"· {sg['subgroup']}"; gi.Text[1] = sg["group"]; gt.AddTopLevelItem(gi)
+        _action_log(f"🎨 _cached_sections={len(_cached_sections)} [{', '.join(s['subgroup']+':'+str(len(s['rows'])) for s in _cached_sections)}]")
 
-        if corrections:
+        total_all = len(all_rows)
+        if corrections or direct_results:
             itm[HINT_LB].Text = (
-                f"🔍 发现 {len(corrections)} 处错别字"
+                f"🔍 发现 {total_all} 处问题"
+                f"（系统: {len(direct_results)}处 + AI: {len(corrections)}处）"
                 f"  |  模型: {provider}/{model}"
                 f"  |  AI 校对结果仅供参考，请剪辑师自行甄别"
             )
-            _action_log(f"🔍 发现 {len(corrections)} 处错别字 ({provider}/{model})")
+            _action_log(f"🔍 发现 {total_all} 处问题（系统={len(direct_results)} AI={len(corrections)}）({provider}/{model})")
         else:
             total = len(all_rows)
             itm[HINT_LB].Text = f"✅ 未发现错别字，{total} 项系统问题  ({provider}/{model})"
@@ -1499,6 +1536,7 @@ def _run_ai_typo():
     finally:
         _unlock_ui()
         _checking = False
+        itm[BTN_START].Enabled = True; itm[BTN_AI_TYPO].Enabled = True
 
 
 # ═══════════════════════════════════════════
