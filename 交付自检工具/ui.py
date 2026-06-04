@@ -276,6 +276,37 @@ def _run_sub_linebreak_check(timeline, fps, **_kw):
     """字幕换行（CPL + 硬换行）"""
     return check_subtitle_linebreak(timeline, fps, io_range=_kw.get("io_range"))
 
+def _run_fw_check(timeline, fps, **_kw):
+    """字幕全半角检测"""
+    import re
+    fw_pattern = re.compile(r'[\uff00-\uffef]')  # 全角字符范围
+    fw_to_hw = str.maketrans(
+        '０１２３４５６７８９ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ'
+        '！＂＃＄％＆＇（）＊＋，－．／：；＜＝＞？＠［＼］＾＿｀｛｜｝～',
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+        '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~')
+    results = []
+    for it in (timeline.GetItemListInTrack("subtitle", 1) or []):
+        try:
+            text = it.GetName() or ""
+            fw_chars = fw_pattern.findall(text)
+            if fw_chars:
+                fixed = text.translate(fw_to_hw)
+                if fixed != text:
+                    from timecode import SMPTE
+                    s = SMPTE(); s.fps = float(fps); s.df = False
+                    tc = s.gettc(int(it.GetStart()))
+                    results.append({"status": "fail", "track": "ST1",
+                                    "timecode": tc,
+                                    "detail": f"{text} → {fixed}",
+                                    "reason": "全角转半角"})
+        except Exception:
+            pass
+    if not results:
+        results.append({"status": "pass", "detail": "无全角字符", "is_summary": True})
+    return results
+
+
 def _run_fragment_check(timeline, fps, **_kw):
     """片段状态（启用/禁用）"""
     return check_disabled_items(timeline, fps, io_range=_kw.get("io_range"))
@@ -1312,6 +1343,7 @@ def _run_ai_typo():
                 sections = {"文本":{"subgroup":"文本","group":"字幕","rows":[]},
                            "合规":{"subgroup":"合规","group":"字幕","rows":[]}}
                 for _nm,_fn,_sg in [("换行",_run_sub_linebreak_check,"文本"),("时长",_run_sub_duration_check,"文本"),
+                                     ("全半角",_run_fw_check,"文本"),
                                      ("异体字",_run_sub_glyph_check,"合规"),("系统词典",_run_censor_system,"合规"),
                                      ("个人词典",_run_censor_personal,"合规")]:
                     cr = _fn(timeline,fps)

@@ -32,6 +32,7 @@ def clear_censor_cache(path=None):
     else:
         _censor_cache.pop(path, None)
 
+
 def preload_timeline_items(timeline, track_types=None):
     """预加载轨道片段列表及常用属性，避免重复 IPC。
 

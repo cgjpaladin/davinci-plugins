@@ -11,9 +11,9 @@ U+2F800-U+2FA1F  # CJK Compatibility Ideographs Supplement — 补充兼容汉�
 U+2F00-U+2FDF    # Kangxi Radicals — 康熙部首（214 个）
 U+2E80-U+2EFF    # CJK Radicals Supplement — 补充部首
 
-# ── 全角拉丁/假名（中文排版不用全角拉丁）──
-U+FF01-U+FF5E    # Fullwidth ASCII — 全角标点+拉丁字母（！ＡＢＣ等）
-U+FF5F-U+FF60    # Fullwidth brackets — 全角括号对
+# ── 全角拉丁/假名（已改为独立的全半角检测，不在此处重复）──
+#U+FF01-U+FF5E    # Fullwidth ASCII — 全角标点+拉丁字母（！ＡＢＣ等）
+#U+FF5F-U+FF60    # Fullwidth brackets — 全角括号对
 
 # ── 私用区（字体内部字符/自定义字，跨平台不兼容）──
 U+E000-U+F8FF    # Private Use Area — BMP 私用区
