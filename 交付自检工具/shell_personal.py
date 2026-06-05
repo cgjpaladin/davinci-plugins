@@ -28,4 +28,6 @@ if not _PYTHON:
     _PYTHON = shutil.which("python3") or "/usr/bin/python3"
 _env = os.environ.copy()
 _env["PYTHONIOENCODING"] = "utf-8"
-subprocess.Popen([_PYTHON, _LAUNCHER], env=_env)
+_env["PYTHONUTF8"] = "1"
+_env["WORKBUDDY_PERSONAL"] = "1"
+subprocess.Popen([_PYTHON, "-B", _LAUNCHER], env=_env)

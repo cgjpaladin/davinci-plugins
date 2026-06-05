@@ -195,17 +195,14 @@ lark-cli docs +fetch --doc "<url或token>" --as bot
 - `pricing_defaults.EST_BASE_SECS / EST_PER_CLIP_SECS` — 目前基于无痕+鬼手数据
 - 新工具可覆盖或追加自己的常量
 
-**飞书文档**：
-- `lark-cli docs +fetch --doc "<url或token>" --as bot` 读外部租户文档
-- 配置文件 `~/.lark-cli/config.json` 已配 app cli_a940d087f9b89cc9
-
 ## 壳方案 + 部署架构 (2026-05-25)
 
 - **永久壳**: shell.py(40行) 每台机器 Fusion Scripts 目录，永不更新。找 Python(数字排序)→deploy.json→SMB launcher+看门狗
 - **launcher.py**: sys.executable，设 WORKBUDDY_PRODUCT 环境变量
 - **deploy_config.py**: load()/get_smb_mount()/get_python_path()，取代 6 份拷贝
 - **SSL**: 全仓 _create_unverified_context()，Python 3.14 兼容
-- **日志**: tools/check_logs.sh 四源；stderr 双写确保 ResolveDebug.txt 可见
+- **日志**: `tools/check_logs.sh <hostname>` 四源全出——插件日志 + 系统日志 + 进程状态 + 崩溃报告。**不加任何 grep 过滤，不预设关键词**。达芬奇系统日志只收 Traceback，插件的 UI 日志（~/.workbuddy/logs/）才收完整错误。别人报「用不了」，第一动作跑 check_logs.sh。
+- **构建前 `rm -rf _build`**：`_splice.py` 写入 `_build/` 目录，不删旧目录会导致 splice 读旧缓存 → 打包产物和源码不一致。bug 修了但没生效，浪费多轮排查。
 
 ## 一键更新系统 (2026-05-31)
 
@@ -246,7 +243,9 @@ git push --force  # 推 version.json + update_latest.zip
 - PyInstaller 后必须 `codesign --force --deep --sign -` 重签
 - `cp -R` 到被签名锁住的旧 app 会嵌套（220MB），必须先 `rm -rf`
 
-**体积**：每个 app ~110MB（ffmpeg 54MB + Python 15MB + PIL/lxml 20MB + 其他 20MB）### 更新前端到端验证（2026-06-01 铁律）
+**体积**：每个 app ~110MB（ffmpeg 54MB + Python 15MB + PIL/lxml 20MB + 其他 20MB）
+
+### 更新前端到端验证（2026-06-01 铁律）
 ```bash
 bash 交付自检工具_个人版/build_personal.sh --update
 python3 -c "解压zip→找install_update.command→bash -n语法→copytree到/tmp/_deli_src"

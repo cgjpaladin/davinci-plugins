@@ -1474,11 +1474,11 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
 
 
 
-from deploy_config import get_smb_mount
+from deploy_config import get_smb_paths
 from config import IS_PERSONAL as _IS_PERSONAL
 
-_SMB_PREFIX = (get_smb_mount(default="/Volumes/MYJC")
-               if not os.environ.get("WORKBUDDY_PERSONAL") else "")
+_SMB_PREFIXES = (get_smb_paths()
+                 if not os.environ.get("WORKBUDDY_PERSONAL") else [])
 
 # ── 片段文件信息缓存（脱机+路径检测共享，避免重复 IPC）──
 _clip_files_cache = None  # {(track, name): {"start": int, "mp": item|None, "path": str|None}}
@@ -1526,15 +1526,15 @@ def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list
     """检查当前时间线素材路径是否在服务器上（使用共享缓存）。"""
     issues = []
     # 个人版跳过路径检测
-    if not _SMB_PREFIX:
-        return [_make_result("pass", detail="路径检测: 非服务器环境，已跳过", is_summary=True)]
+    if not _SMB_PREFIXES:
+        return [_make_result("pass", detail="路径检测: 未配置服务器路径，已跳过", is_summary=True)]
     seen = set()
     for (track, name), info in _collect_clip_files(timeline, io_range).items():
         path = info["path"]
         if not path or path in seen:
             continue
         seen.add(path)
-        if not path.startswith(_SMB_PREFIX):
+        if not any(path.startswith(p) for p in _SMB_PREFIXES):
             smpte = _get_smpte(fps)
             tc = smpte.gettc(info["start"])
             issues.append(_make_result("fail", track=track, timecode=tc,

@@ -583,18 +583,25 @@ def _unlock_ui():
     itm[BTN_UPDATE].Enabled = True; itm[BTN_ERR_SEND].Enabled = True
     itm[BTN_AI_TYPO].Enabled = True
 
-# ── 配置持久化（本地 JSON，每人独立）──
-def _api_keys_path():
-    return os.path.join(os.path.expanduser("~/Library/Application Support/交付自检"), "api_keys.json")
-
+# ── 凭证持久化（macOS Keychain，零明文落盘）──
 def _load_api_keys():
-    try:
-        with open(_api_keys_path(), encoding="utf-8") as f: return json.load(f)
-    except Exception: return {}  # noop: 文件不存在/权限不足/JSON损坏
+    from shared.secure_store import load_all, migrate_legacy
+    keys = load_all()
+    if not keys:
+        migrate_legacy()
+        keys = load_all()
+    if not keys:
+        return {}
+    return keys
 
 def _save_api_keys(keys):
-    os.makedirs(os.path.dirname(_api_keys_path()), exist_ok=True)
-    with open(_api_keys_path(), "w") as f: json.dump(keys, f, indent=2)
+    from shared.secure_store import save
+    for k, v in keys.items():
+        if v:
+            save(k, v)
+
+def _api_keys_path():  # 保留兼容旧调用
+    return os.path.join(os.path.expanduser("~/Library/Application Support/交付自检"), "api_keys.json")
 
 def _save_config_to_file():
     """保存当前配置到本地 JSON 文件"""
@@ -914,6 +921,7 @@ CONFIG_SECTIONS = [
     {"id": "deepseek_key",   "label": "DeepSeek API Key", "type": "api_key"},
     {"id": "feishu_app_id",  "label": "飞书 App ID", "type": "api_key"},
     {"id": "feishu_secret",  "label": "飞书 App Secret", "type": "api_key"},
+    {"id": "smb_paths",      "label": "服务器素材路径", "type": "smb_paths"},
     {"id": "censor_personal", "label": "个人词典", "type": "censor_personal"},
 ]
 
@@ -948,10 +956,24 @@ def _build_deactivate():
     return [ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用并释放到其他机器",
                        "StyleSheet": BTN_STYLE_SM, "Weight": 0})]
 
+def _build_smb_paths():
+    """服务器素材路径配置：Label 显示当前路径 + 添加/清除按钮"""
+    return [
+        ui.Label({"ID": "cfg_smb_paths_label", "Text": "",
+                  "StyleSheet": "color:rgb(180,180,180);font-size:12px", "Weight": 0}),
+        ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
+            ui.Button({"ID": "cfg_smb_add", "Text": "+ 添加路径",
+                       "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
+            ui.Button({"ID": "cfg_smb_clear", "Text": "清除全部",
+                       "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
+        ]),
+    ]
+
 _SECTION_BUILDERS = {
     "activation_code":  _build_activation_code,
     "deactivate":       _build_deactivate,
     "api_key":          _build_api_key_input,
+    "smb_paths":        _build_smb_paths,
     "censor_personal":  _build_censor_personal,
 }
 
@@ -964,7 +986,7 @@ def _show_config_dialog():
 
     # ── 从注册表生成布局（个人版过滤）──
     _is_personal = bool(os.environ.get("WORKBUDDY_PERSONAL"))
-    _sections = CONFIG_SECTIONS if _is_personal else [s for s in CONFIG_SECTIONS if s["id"] == "censor_personal"]
+    _sections = CONFIG_SECTIONS if _is_personal else [s for s in CONFIG_SECTIONS if s["id"] in ("censor_personal", "smb_paths")]
     # 节间间距（section 与 section 之间）
     _SECTION_GAP = 8
     body_widgets = [
@@ -1135,6 +1157,13 @@ def _show_config_dialog():
                         _action_log(f"⚠ API Key 保存异常: {e}")
             elif t == "deactivate":
                 pass  # 停用按钮独立处理
+            elif t == "smb_paths":
+                try:
+                    from shared.deploy_config import save_smb_paths
+                    ok = save_smb_paths(_smb_paths_cache)
+                    _action_log(f"{'✅' if ok else '⚠'} 服务器路径: {len(_smb_paths_cache)} 条")
+                except Exception as e:
+                    _action_log(f"⚠ 路径保存失败: {e}")
             elif t == "censor_personal":
                 pass
         if err:
@@ -1154,7 +1183,41 @@ def _show_config_dialog():
         itm[HINT_LB].Text = "右键「短剧违禁词表.csv」→ 打开方式 → WPS / Excel / Numbers"
         _action_log("📝 Finder 已定位个人词典")
 
+    # ── SMB 路径编辑 ──（_smb_paths_cache 已在上方从 deploy.json 加载）
+
+    def _refresh_smb_paths_label():
+        nonlocal _smb_paths_cache
+        if _smb_paths_cache:
+            lines = "\n".join(f"  {p}" for p in _smb_paths_cache)
+            cfg["cfg_smb_paths_label"].Text = lines
+        else:
+            cfg["cfg_smb_paths_label"].Text = "（未配置，路径检测将跳过）"
+
+    def _add_smb_path(ev):
+        nonlocal _smb_paths_cache
+        import subprocess
+        try:
+            result = subprocess.run([
+                "osascript", "-e",
+                'POSIX path of (choose folder with prompt "选择素材所在文件夹")'
+            ], capture_output=True, text=True, encoding="utf-8", timeout=60)
+            path = result.stdout.strip()
+            if path and path not in _smb_paths_cache:
+                _smb_paths_cache.append(path)
+                _refresh_smb_paths_label()
+                _action_log(f"📂 添加路径: {path}")
+        except Exception as e:
+            _action_log(f"⚠ 文件夹选择失败: {e}")
+
+    def _clear_smb_paths(ev):
+        nonlocal _smb_paths_cache
+        _smb_paths_cache = []
+        _refresh_smb_paths_label()
+        _action_log("🗑 已清除所有路径")
+
     config_dlg.On["cfg_edit_censor"].Clicked = _edit_censor
+    config_dlg.On["cfg_smb_add"].Clicked = _add_smb_path
+    config_dlg.On["cfg_smb_clear"].Clicked = _clear_smb_paths
     config_dlg.On["cfg_save"].Clicked = _save
     config_dlg.On["cfg_cancel"].Clicked = lambda ev: config_disp.ExitLoop()
 
@@ -1169,6 +1232,14 @@ def _show_config_dialog():
     config_dlg.On[CONFIG_WIN_ID].Close = lambda ev: config_disp.ExitLoop()
 
     _action_log("⚙ 打开配置窗口")
+    # 初始化 SMB 路径显示（必须在 handler 定义之后调用 _refresh_smb_paths_label）
+    try:
+        from shared.deploy_config import get_smb_paths
+        _smb_paths_cache = get_smb_paths()
+        _refresh_smb_paths_label()
+    except Exception:
+        _smb_paths_cache = []
+
     config_dlg.Show()
     config_disp.RunLoop()
     config_dlg.Hide()
@@ -2370,8 +2441,25 @@ def main():
                             os.environ[_k] = _v
         except Exception:
             pass
-    if os.environ.get("DEEPSEEK_KEY", "").startswith("sk-"):
-        pass  # key loaded, will be used by _get_key
+    # api_keys.json 的 key 通过 Keychain 读取 → 注入 os.environ
+    # .env 是安装时的种子，之后 Keychain 是唯一存储源
+    _ENV_MAP = {
+        "deepseek_key": "DEEPSEEK_API_KEY",
+        "feishu_app_id": "FEISHU_BOT_APP_ID",
+        "feishu_secret": "FEISHU_BOT_APP_SECRET",
+    }
+    try:
+        from shared.secure_store import load_all, migrate_legacy
+        _keystore = load_all()
+        if not _keystore:
+            migrate_legacy()
+            _keystore = load_all()
+        for _k, _env_k in _ENV_MAP.items():
+            if _keystore.get(_k):
+                os.environ[_env_k] = _keystore[_k]
+        _action_log("🔐 Keychain 凭证已注入环境变量")
+    except Exception as _e:
+        _action_log("⚠ Keychain 不可用，使用 .env 兜底")
 
     _action_log("═══ 交付自检 启动 v" + version_string() + " ═══")
     # 防重复窗口（PID 锁文件，跨进程可用）

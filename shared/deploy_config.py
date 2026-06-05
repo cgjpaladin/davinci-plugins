@@ -18,9 +18,36 @@ def load() -> dict:
 
 
 def get_smb_mount(default="/Volumes/MYJC") -> str:
-    """读取 SMB 挂载点。"""
+    """读取 SMB 挂载点（向后兼容）。"""
     cfg = load()
     return cfg.get("smb_mount", default) or default
+
+
+def get_smb_paths() -> list:
+    """读取服务器素材路径列表。支持旧版 smb_mount 单字符串自动迁移。"""
+    cfg = load()
+    paths = cfg.get("smb_paths")
+    if isinstance(paths, list) and paths:
+        return [p for p in paths if isinstance(p, str) and p.strip()]
+    # 向后兼容：旧版 smb_mount 单路径
+    old = cfg.get("smb_mount", "").strip()
+    if old:
+        return [old]
+    return []
+
+
+def save_smb_paths(paths: list) -> bool:
+    """保存服务器素材路径列表到 deploy.json。"""
+    cfg_path = _os.path.expanduser("~/达芬奇插件工坊/deploy.json")
+    cfg = load()
+    cfg["smb_paths"] = [p.strip() for p in paths if isinstance(p, str) and p.strip()]
+    try:
+        _os.makedirs(_os.path.dirname(cfg_path), exist_ok=True)
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            _json.dump(cfg, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception:
+        return False
 
 
 def get_python_path() -> str:

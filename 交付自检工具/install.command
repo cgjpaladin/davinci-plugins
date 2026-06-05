@@ -50,7 +50,7 @@ echo ""
 # ═══════════════════════════════════════
 # 1. 解压完整性
 # ═══════════════════════════════════════
-echo "→ [1/7] 检查安装文件..."
+echo "→ [1/6] 检查安装文件..."
 if [ ! -d "$SOURCE" ]; then
     echo "❌ 找不到 $SOURCE"
     echo "请将 zip 解压后再运行。不要在压缩包里直接双击。"
@@ -68,7 +68,7 @@ if [ $IS_UPDATE -eq 0 ]; then
 # ═══════════════════════════════════════
 # 2. Python 检测+安装
 # ═══════════════════════════════════════
-echo "→ [2/7] 检测 Python..."
+echo "→ [2/6] 检测 Python..."
 PYTHON=""
 FRAMEWORK_OK=""
 HAS_CLT=0
@@ -119,87 +119,26 @@ echo ""
 # ═══════════════════════════════════════
 # 3. 已安装检测
 # ═══════════════════════════════════════
-echo "→ [3/7] 检查已有安装..."
+echo "→ [3/6] 检查已有安装..."
 if [ -d "$INSTALL_DIR" ]; then
     echo "   发现已有安装"
-    RESPONSE=$(osascript -e 'button returned of (display dialog "已安装过。\n\n请选择：" buttons {"更新 Key", "覆盖安装", "取消"} default button "覆盖安装" with icon caution)' 2>/dev/null || echo "取消")
+    RESPONSE=$(osascript -e 'button returned of (display dialog "已安装过。\n\n请选择：" buttons {"覆盖安装", "取消"} default button "取消" with icon caution)' 2>/dev/null || echo "取消")
     echo "   用户选择: $RESPONSE"
     case "$RESPONSE" in
-        "更新 Key")
-            RESP=$(osascript -e 'button returned of (display dialog "更新哪种凭证？" buttons {"DeepSeek", "飞书", "取消"} default button "DeepSeek" with icon note)' 2>/dev/null)
-            echo "   更新: $RESP"
-            if [ "$RESP" = "DeepSeek" ] || [ -z "$RESP" ]; then
-                API_KEY=$(osascript -e 'text returned of (display dialog "输入 DeepSeek API Key（留空不修改）\n\n获取地址: platform.deepseek.com → API Keys" default answer "" buttons {"取消", "保存"} default button "保存" with icon note)' 2>/dev/null)
-                if [ -n "$API_KEY" ]; then
-                    echo "   写入 DeepSeek Key..."
-                    osascript -e "do shell script \"$PYTHON -c \\\"
-p='$INSTALL_DIR/.env'
-lines=[l.rstrip() for l in open(p)]
-for i,l in enumerate(lines):
-    if l.startswith('DEEPSEEK_API_KEY='): lines[i]='DEEPSEEK_API_KEY=$API_KEY'; break
-else: lines.append('DEEPSEEK_API_KEY=$API_KEY')
-open(p,'w').write(chr(10).join(lines))
-\\\" with administrator privileges" 2>/dev/null
-                    osascript -e 'display dialog "DeepSeek Key 已更新！" buttons {"好的"} default button 1 with icon note'
-                fi
-            elif [ "$RESP" = "飞书" ]; then
-                FS_APP=$(osascript -e 'text returned of (display dialog "飞书 Bot App ID（留空不修改）" default answer "" buttons {"取消", "保存"} default button "保存" with icon note)' 2>/dev/null)
-                if [ -n "$FS_APP" ]; then
-                    FS_SEC=$(osascript -e 'text returned of (display dialog "飞书 Bot App Secret" default answer "" buttons {"取消", "保存"} default button "保存" with hidden answer with icon note)' 2>/dev/null)
-                    if [ -n "$FS_SEC" ]; then
-                        echo "   写入飞书凭证..."
-                        osascript -e "do shell script \"$PYTHON -c \\\"
-p='$INSTALL_DIR/.env'
-lines=[l.rstrip() for l in open(p)]
-for prefix,val in [('FEISHU_BOT_APP_ID=','$FS_APP'),('FEISHU_BOT_APP_SECRET=','$FS_SEC')]:
-    for i,l in enumerate(lines):
-        if l.startswith(prefix): lines[i]=prefix+val; break
-    else: lines.append(prefix+val)
-open(p,'w').write(chr(10).join(lines))
-\\\" with administrator privileges" 2>/dev/null
-                        osascript -e 'display dialog "飞书凭证已更新！" buttons {"好的"} default button 1 with icon note'
-                    fi
-                fi
-            fi
-            exit 0
+        "覆盖安装")
+            echo "   将执行覆盖安装..."
             ;;
         "取消")
             echo "   用户取消"
             exit 0
             ;;
     esac
-    echo "   将执行覆盖安装..."
 else
     echo "   首次安装"
 fi
 echo ""
 
-# ═══════════════════════════════════════
-# 4. 凭证输入
-# ═══════════════════════════════════════
-echo "→ [4/7] 输入凭证（均可跳过）..."
-API_KEY=$(osascript -e 'text returned of (display dialog "请输入 DeepSeek API Key（没有可留空，以后补）\n\n获取地址: platform.deepseek.com → API Keys" default answer "" buttons {"跳过", "保存"} default button "保存" with icon note)' 2>/dev/null || echo "")
-if [ -n "$API_KEY" ]; then
-    echo "   ✅ DeepSeek Key: ${API_KEY:0:10}..."
-else
-    echo "   ⏭ 跳过 DeepSeek Key"
-fi
 
-FEISHU_APP=$(osascript -e 'text returned of (display dialog "飞书 Bot App ID（可选，用于下载飞书文档）\n\n没有可留空，以后补" default answer "" buttons {"跳过", "保存"} default button "保存" with icon note)' 2>/dev/null || echo "")
-FEISHU_SECRET=""
-if [ -n "$FEISHU_APP" ]; then
-    echo "   ✅ 飞书 App ID: $FEISHU_APP"
-    FEISHU_SECRET=$(osascript -e 'text returned of (display dialog "飞书 Bot App Secret" default answer "" buttons {"跳过", "保存"} default button "保存" with hidden answer with icon note)' 2>/dev/null || echo "")
-    if [ -n "$FEISHU_SECRET" ]; then
-        echo "   ✅ 飞书 Secret: 已输入"
-    else
-        echo "   ⏭ 跳过飞书 Secret（只有 App ID 不够）"
-        FEISHU_APP=""
-    fi
-else
-    echo "   ⏭ 跳过飞书凭证"
-fi
-echo ""
 else
     # --update 模式：快速检测 Framework Python
     echo "→ 检测 Python..."
@@ -215,9 +154,9 @@ else
 fi
 
 # ═══════════════════════════════════════
-# 5. 中转文件
+# 4. 中转文件
 # ═══════════════════════════════════════
-echo "→ [5/7] 准备安装..."
+echo "→ [4/6] 准备安装..."
 rm -rf /tmp/_deli_src 2>/dev/null
 if ! cp -r "$SOURCE" /tmp/_deli_src 2>/dev/null; then
     echo "   ❌ 复制到 /tmp 失败"
@@ -228,14 +167,10 @@ echo "   ✅ 源文件已复制到 /tmp/_deli_src ($(find /tmp/_deli_src -type f
 echo ""
 
 # ═══════════════════════════════════════
-# 6. 管理员安装
+# 5. 管理员安装
 # ═══════════════════════════════════════
-echo "→ [6/7] 安装到系统目录（请在弹出的窗口中输入密码）..."
+echo "→ [5/6] 安装到系统目录（请在弹出的窗口中输入密码）..."
 
-# 用 tmp 文件安全传递凭证（避免 shell 注入）
-echo "$API_KEY" > /tmp/_deli_apikey 2>/dev/null
-echo "$FEISHU_APP" > /tmp/_deli_fsapp 2>/dev/null
-echo "$FEISHU_SECRET" > /tmp/_deli_fssec 2>/dev/null
 
 INSTALL_LOG="/tmp/_deli_install.log"
 if [ $IS_UPDATE -eq 1 ]; then
@@ -252,7 +187,7 @@ if [ $IS_UPDATE -eq 1 ]; then
     echo "  → chown" && chown -R $USER "$INSTALL_DIR" &&
     echo "  → clean pyc" && find "$INSTALL_DIR" -name '__pycache__' -exec rm -rf {} + 2>/dev/null; true &&
     echo "  → restore/init .env" && if [ -f /tmp/_deli_env_bak ]; then cp /tmp/_deli_env_bak "$INSTALL_DIR/.env"; rm -f /tmp/_deli_env_bak; else cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"; fi &&
-    echo "  → write credentials" && "$PYTHON" "$INSTALL_DIR/shared/_write_env.py" && echo "  ✅ 安装完成"
+    echo "  → write license config" && "$PYTHON" "$INSTALL_DIR/shared/_write_env.py" && echo "  ✅ 安装完成"
     _UPDATE_OK=1
 elif osascript <<EOF 2>"$INSTALL_LOG"
 do shell script "
@@ -278,31 +213,6 @@ do shell script "
         cp '$INSTALL_DIR/.env.example' '$INSTALL_DIR/.env'
     fi &&
 
-    if [ -f /tmp/_deli_apikey ] || [ -f /tmp/_deli_fsapp ]; then
-        echo '  → write credentials' >> '$INSTALL_LOG' &&
-        $PYTHON -c '
-import os
-p = \"$INSTALL_DIR/.env\"
-lines = [l.rstrip() for l in open(p)]
-for fname, prefix in [(\"/tmp/_deli_apikey\", \"DEEPSEEK_API_KEY=\"), 
-                       (\"/tmp/_deli_fsapp\", \"FEISHU_BOT_APP_ID=\"),
-                       (\"/tmp/_deli_fssec\", \"FEISHU_BOT_APP_SECRET=\")]:
-    if os.path.exists(fname):
-        val = open(fname).read().strip()
-        if val:
-            replaced = False
-            for i, l in enumerate(lines):
-                if l.startswith(prefix):
-                    lines[i] = prefix + val
-                    replaced = True
-                    break
-            if not replaced:
-                lines.append(prefix + val)
-open(p, \"w\").write(chr(10).join(lines))
-' &&
-        rm -f /tmp/_deli_apikey /tmp/_deli_fsapp /tmp/_deli_fssec
-    fi &&
-
     echo '  → cleanup' >> '$INSTALL_LOG' &&
     rm -rf /tmp/_deli_src
 " with administrator privileges
@@ -324,9 +234,9 @@ fi
 echo ""
 
 # ═══════════════════════════════════════
-# 7. 验证
+# 6. 验证
 # ═══════════════════════════════════════
-echo "→ [7/7] 验证安装..."
+echo "→ [6/6] 验证安装..."
 
 PASS=1
 
