@@ -2224,7 +2224,7 @@ def _do_update(ev):
         _go_clicked[0] = True
         _action_log("🪟 开始下载")
         _items["updateNotesGo"].Text = "下载中…"; _items["updateNotesGo"].Enabled = False
-        _items["up_status"].Text = "⬇ 179KB — 网络稳定几秒就好"
+        _items["up_status"].Text = "⏳ 准备下载…"
 
         try:
             import importlib, shared.updater as _upd, config as _cfg
@@ -2234,8 +2234,16 @@ def _do_update(ev):
         except Exception: pass
 
         try:
+            def _update_progress(downloaded, total):
+                if total:
+                    pct = downloaded * 100 // total
+                    bar_fill = pct // 5
+                    bar = "█" * bar_fill + "░" * (20 - bar_fill)
+                    _items["up_status"].Text = f"⬇ [{bar}] {pct}% {downloaded//1024}/{total//1024}KB"
+                else:
+                    _items["up_status"].Text = f"⬇ {downloaded//1024}KB 已下载"
             _UPDATING = True
-            _do_update_sync()
+            _do_update_sync(progress_callback=_update_progress)
             _items["up_icon"].Text = "✅"
             _items["up_title"].Text = "更新完成"
             _items["up_body"].Text = "请重启 DaVinci Resolve 生效"
@@ -2257,8 +2265,8 @@ def _do_update(ev):
     update_disp.RunLoop()
     del update_disp
 
-def _do_update_sync():
-    """同步下载 + 安装 — 每步写日志方便远程监控"""
+def _do_update_sync(progress_callback=None):
+    """同步下载 + 安装 — 每步写日志方便远程监控。progress_callback(downloaded, total)"""
     from urllib.request import Request, urlopen
     from urllib.parse import quote, urlparse, urlunparse
     import json, subprocess, tempfile, zipfile, shlex, ssl, base64, hashlib
@@ -2288,11 +2296,34 @@ def _do_update_sync():
                 last_err = str(e); continue
             try:
                 req.add_header("User-Agent", "DaVinciPlugin/delivery_checker")
-                _action_log(f"   ⬇ [{idx+1}/{len(urls)}] {dl_url[:80]}...")
+                # 先 HEAD 拿文件大小
+                head_req = Request(safe, method="HEAD")
+                head_req.add_header("User-Agent", "DaVinciPlugin/delivery_checker")
+                total_size = 0
+                try:
+                    with urlopen(head_req, timeout=10, context=_ctx) as hr:
+                        total_size = int(hr.getheader("Content-Length", 0))
+                except Exception:
+                    pass
+                _action_log(f"   ⬇ [{idx+1}/{len(urls)}] {dl_url[:80]}... size={total_size//1024}KB" if total_size else f"   ⬇ [{idx+1}/{len(urls)}] {dl_url[:80]}...")
                 with urlopen(req, timeout=TIMEOUT_DOWNLOAD_SINGLE, context=_ctx) as resp:
-                    data = resp.read()
+                    chunks = []
+                    downloaded = 0
+                    CHUNK = 8192
+                    while True:
+                        chunk = resp.read(CHUNK)
+                        if not chunk:
+                            break
+                        chunks.append(chunk)
+                        downloaded += len(chunk)
+                        if progress_callback:
+                            try:
+                                progress_callback(downloaded, total_size)
+                            except Exception:
+                                pass
+                    data = b"".join(chunks)
                 if data and len(data) >= MIN_DOWNLOAD_SIZE:
-                    if data[:4] != b'PK\x03\x04':  # 不是 zip 文件（CDN 返回 HTML 等）
+                    if data[:4] != b'PK\x03\x04':
                         last_err = "响应不是 zip 文件"; continue
                     break
                 last_err = "下载文件无效"
