@@ -1,13 +1,13 @@
 {
   "delivery_checker": {
-    "version": "2.5.4",
-    "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.4/update_latest.zip",
+    "version": "2.5.5",
+    "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.5/update_latest.zip",
     "urls": [
-      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.4/update_latest.zip",
-      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.4/update_latest.zip"
+      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.5/update_latest.zip",
+      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.5/update_latest.zip"
     ],
-    "sha256": "e69b35e4eb6d311a2dcc30157f2d9e376ff1117fe46b8df47358f4712ec1ea03",
-    "notes": "## v2.5.4\n\n试用到期自动禁用字幕检测，常规检查不受影响",
+    "sha256": "46627e552f2a25562419419b8b99d7616e1ff17d1146b357d1b31723e2366313",
+    "notes": "## v2.5.5\n\n激活后实时恢复按钮+标签，不需重启\n凭证三冗余→单文件\n停用后禁用+提示",
     "history": [
       {
         "version": "2.4.0",
@@ -28,6 +28,10 @@
       {
         "version": "2.5.4",
         "notes": "## v2.5.4\n\n试用到期自动禁用字幕检测，常规检查不受影响"
+      },
+      {
+        "version": "2.5.5",
+        "notes": "## v2.5.5\n\n激活后实时恢复按钮+标签，不需重启\n凭证三冗余→单文件\n停用后禁用+提示"
       }
     ]
   }
