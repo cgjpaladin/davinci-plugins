@@ -1,13 +1,13 @@
 {
   "delivery_checker": {
-    "version": "2.4.0",
-    "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.4.0/u_v240.zip",
+    "version": "2.5.1",
+    "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.1/update_latest.zip",
     "urls": [
-      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.4.0/u_v240.zip",
-      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.4.0/u_v240.zip"
+      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.1/update_latest.zip",
+      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.1/update_latest.zip"
     ],
-    "sha256": "c989ee54cc6b7a50849598631cd5566c16982f83d09c588cd2d5e6a1031855fe",
-    "notes": "## v2.5.0\n\n🎨 UI重构：字幕检测独立面板，左区去掉字幕行，右区全新字幕检测\n🤖 AI提示词重写：不再逐字对照，脏话变体不误报\n📏 建议文字去括号冗余",
+    "sha256": "5a67098188e72b442a39bc71344ef24de8a27fdca832b1045966075be7f5dbcb",
+    "notes": "## v2.5.1\n\n🗂 路径检测：支持多路径白名单，配置页添加/删除，音频素材也纳入范围\n🔤 全半角检测：自动检测字幕中的全角数字/字母，建议修正为半角\n📝 错别字校对：AI 准确率大幅提升，不再对照剧本逐字改字幕\n🔧 配置页：服务器路径支持逐条删除\n🐛 修复：路径检测单选时遗漏音频、全角字符被异体字重复报错",
     "history": [
       {
         "version": "2.4.0",
@@ -16,6 +16,10 @@
       {
         "version": "2.5.0",
         "notes": "## v2.5.0\n\n🎨 UI重构：字幕检测独立面板，左区去掉字幕行，右区全新字幕检测\n🤖 AI提示词重写：不再逐字对照，脏话变体不误报\n📏 建议文字去括号冗余"
+      },
+      {
+        "version": "2.5.1",
+        "notes": "## v2.5.1\n\n🗂 路径检测：支持多路径白名单，配置页添加/删除，音频素材也纳入范围\n🔤 全半角检测：自动检测字幕中的全角数字/字母，建议修正为半角\n📝 错别字校对：AI 准确率大幅提升，不再对照剧本逐字改字幕\n🔧 配置页：服务器路径支持逐条删除\n🐛 修复：路径检测单选时遗漏音频、全角字符被异体字重复报错"
       }
     ]
   }
