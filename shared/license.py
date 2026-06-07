@@ -10,7 +10,6 @@ import hmac
 import json
 import os
 import plistlib
-import os
 import ssl
 import stat
 import subprocess
@@ -115,7 +114,7 @@ def get_machine_fingerprint() -> str:
 
 
 # ═══════════════════════════════════════════
-# T2: 凭证读写 + 三备份
+# T2: 凭证读写
 # ═══════════════════════════════════════════
 
 def _protect_file(path: Path):
@@ -148,7 +147,7 @@ def load_credential() -> Optional[dict]:
         for old in _OLD_PATHS:
             try:
                 if old.exists():
-                    old.parent.mkdir(parents=True, exist_ok=True)  # no-op for existing
+                    _CREDENTIAL_PATH.parent.mkdir(parents=True, exist_ok=True)
                     import shutil
                     shutil.copy2(old, _CREDENTIAL_PATH)
                     _protect_file(_CREDENTIAL_PATH)
