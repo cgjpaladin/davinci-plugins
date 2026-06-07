@@ -1557,8 +1557,6 @@ def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list
     """检查当前时间线素材路径是否在服务器上（使用共享缓存）。"""
     issues = []
     # 现场读 deploy.json，不缓存——配置页改路径后立即生效
-    if os.environ.get("WORKBUDDY_PERSONAL"):
-        return [_make_result("pass", detail="路径检测: 个人版已跳过", is_summary=True)]
     prefixes = get_smb_paths()
     if not prefixes:
         return [_make_result("pass", detail="路径检测: 未配置服务器路径，已跳过", is_summary=True)]
