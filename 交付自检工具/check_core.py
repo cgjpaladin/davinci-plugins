@@ -1477,15 +1477,12 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
 from deploy_config import get_smb_paths
 from config import IS_PERSONAL as _IS_PERSONAL
 
-_SMB_PREFIXES = (get_smb_paths()
-                 if not os.environ.get("WORKBUDDY_PERSONAL") else [])
-
 # ── 片段文件信息缓存（脱机+路径检测共享，避免重复 IPC）──
 _clip_files_cache = None  # {(track, name): {"start": int, "mp": item|None, "path": str|None}}
 
 
 def _collect_clip_files(timeline, io_range=None):
-    """收集当前时间线所有视频轨片段的基本文件信息。缓存优先。"""
+    """收集当前时间线所有视频轨+音频轨片段的基本文件信息。缓存优先。"""
     global _clip_files_cache
     if _clip_files_cache is not None:
         return _clip_files_cache
@@ -1513,6 +1510,40 @@ def _collect_clip_files(timeline, io_range=None):
             key = (f"V{vi}", name)
             if key not in info:
                 info[key] = {"start": start, "mp": mp, "path": path, "track": f"V{vi}", "mp_type": mp_type}
+    for ai in range(1, timeline.GetTrackCount("audio") + 1):
+        for it in _get_items(timeline, "audio", ai):
+            if not _in_io_range(it, io_range):
+                continue
+            if _get_cached(it, "enabled", True) is False:
+                continue
+            name = _get_clip_name(it)
+            start = _get_cached(it, "start", -1)
+            if start < 0:  # 音频未预加载
+                try:
+                    start = int(it.GetStart())
+                except Exception:
+                    start = 0
+            mp = _get_cached(it, "mp")
+            # 音频轨未预加载，mp 为空时直接取
+            if mp is None:
+                try:
+                    mp = it.GetMediaPoolItem()
+                except Exception:
+                    pass
+            path = ""
+            mp_type = ""
+            if mp is not None:
+                try:
+                    path = mp.GetClipProperty("File Path") or ""
+                except Exception:
+                    pass
+                try:
+                    mp_type = mp.GetClipProperty("Type") or ""
+                except Exception:
+                    pass
+            key = (f"A{ai}", name)
+            if key not in info:
+                info[key] = {"start": start, "mp": mp, "path": path, "track": f"A{ai}", "mp_type": mp_type}
     _clip_files_cache = info
     return info
 
@@ -1525,8 +1556,11 @@ def _clear_clip_files_cache():
 def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list:
     """检查当前时间线素材路径是否在服务器上（使用共享缓存）。"""
     issues = []
-    # 个人版跳过路径检测
-    if not _SMB_PREFIXES:
+    # 现场读 deploy.json，不缓存——配置页改路径后立即生效
+    if os.environ.get("WORKBUDDY_PERSONAL"):
+        return [_make_result("pass", detail="路径检测: 个人版已跳过", is_summary=True)]
+    prefixes = get_smb_paths()
+    if not prefixes:
         return [_make_result("pass", detail="路径检测: 未配置服务器路径，已跳过", is_summary=True)]
     seen = set()
     for (track, name), info in _collect_clip_files(timeline, io_range).items():
@@ -1534,7 +1568,7 @@ def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list
         if not path or path in seen:
             continue
         seen.add(path)
-        if not any(path.startswith(p) for p in _SMB_PREFIXES):
+        if not any(path.startswith(p) for p in prefixes):
             smpte = _get_smpte(fps)
             tc = smpte.gettc(info["start"])
             issues.append(_make_result("fail", track=track, timecode=tc,

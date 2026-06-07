@@ -332,10 +332,13 @@ def _single(asr_lines, context_lines, offset=0, timeline_name="", episode="", sy
         # full = asr_lines[idx - offset - 1] if idx - offset - 1 < len(asr_lines) else ""
         # if corr and corr in full:
         #     continue
+        reason = str(c.get("reason", "")).strip()
+        # 归一化: AI 偶尔把「错别字」写成「错字」
+        reason = reason.replace("错字", "错别字")
         valid.append({
             "index": idx, "original": orig,
             "correction": corr,
-            "reason": str(c.get("reason", "")),
+            "reason": reason,
         })
 
     return {"ok": True, "corrections": valid,

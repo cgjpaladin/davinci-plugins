@@ -288,3 +288,31 @@ bash /tmp/_deli_src/install_update.command --update  # 模拟安装
 - 出厂检验：zip 内版本号与源码不一致 → 硬拦截
 - 版本 bump：用 `python3 tools/bump_version.py` 精确替换，不用 `sed`
 - 发布后预热 ghproxy：`WARM_CDN=1 bash build_personal.sh --update`
+
+## 路径检测重构（2026-06-07）
+
+- **配置驱动**：`deploy.json` 的 `smb_paths` 字段（数组），空 = 全放行，非空 = 白名单模式
+- **与硬编码解耦**：全程不依赖 `/Volumes/MYJC`，旧 `smb_mount` 兼容已砍
+- **注册表**：路径/脱机检测 `tracks` 必须含 `["video", "audio"]`（仅 `video` 会导致音频漏检）
+- **懒加载**：`check_path_location()` 内部每次现场读 deploy.json，不缓存 `_SMB_PREFIXES`
+- **缓存清理**：每次「开始检查」前调 `_clear_clip_files_cache()`，防止 I/O 范围变化返回旧数据
+- **音频兜底**：音频轨未预加载时 `_get_cached(it, "mp")` 返回 None → 直接调 `it.GetMediaPoolItem()`
+
+## 全半角检测（2026-06-07）
+
+- **系统检测不通过 AI**：正则 `[\uff00-\uffef]`，`str.maketrans` 生成建议修正
+- `status=fail`，分类「字幕 → 文本」（与换行/时长同类）
+- **防重复**：`bad_char_ranges.txt` 中全角行 `U+FF01-U+FF5E` 已注释
+- 异体字检测不再抓全角字符
+
+## 错别字提示词优化（2026-06-04）
+
+- 7 条规则全补完整示例（original → correction + 原因），含不改反例
+- 剧本用途三段论：角色名性别 / 剧情大纲 / 当前场戏上下文，禁止逐行比对
+- 标点归并：「标点缺失或多余」，涵盖书名号《》和引号「」
+- `reason` 归一化：AI 输出「错字」自动映射为「错别字」
+
+## 配置页 SMB 路径编辑（2026-06-07）
+
+- ComboBox 选择路径 + 删除按钮（`− 删除路径`）+ 文件夹选择器添加
+- ComboBox API：`CurrentText`（非 `Text`）取值，`Clear()`+`AddItem()` 刷新

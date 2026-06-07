@@ -27,12 +27,8 @@ def get_smb_paths() -> list:
     """读取服务器素材路径列表。支持旧版 smb_mount 单字符串自动迁移。"""
     cfg = load()
     paths = cfg.get("smb_paths")
-    if isinstance(paths, list) and paths:
+    if isinstance(paths, list):
         return [p for p in paths if isinstance(p, str) and p.strip()]
-    # 向后兼容：旧版 smb_mount 单路径
-    old = cfg.get("smb_mount", "").strip()
-    if old:
-        return [old]
     return []
 
 

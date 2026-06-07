@@ -211,9 +211,9 @@ def parse_filename(path):
 
 
 def build_folder(root, entry):
-    """构造归档路径: root/EP/V{ver}/EP_SC_method_ver/filename"""
+    """构造归档路径: root/EP/V{ver}/EP_SC_ver/filename"""
     f = entry.fields
-    compound = "EP{ep}_SC{sc}_{method}_v{ver}".format(**f)
+    compound = "EP{ep}_SC{sc}_v{ver}".format(**f)
     name = build_filename(f) + entry.ext if hasattr(entry, 'ext') else build_filename(f)
     return os.path.join(root, "EP" + f["ep"], "V" + f.get("ver", "01"), compound, name)
 

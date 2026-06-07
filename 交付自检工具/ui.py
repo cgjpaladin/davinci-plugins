@@ -504,8 +504,8 @@ def _filter_covered(results, personal_words):
 CHECKS = [
     # gate="" → 不用门控制，直接跑
     {"id": "timeline",      "section": "工程设置", "chk_id": CHK_TIMELINE,      "group": "工程", "subgroup": "设置",   "run_fn": _run_timeline_check,     "tracks": [], "gate": ""},
-    {"id": "offline",       "section": "脱机检测", "chk_id": CHK_OFFLINE,       "group": "工程", "subgroup": "路径",   "run_fn": _run_offline_check,       "tracks": ["video"], "gate": ""},
-    {"id": "path",          "section": "路径检测", "chk_id": CHK_PATH,           "group": "工程", "subgroup": "路径",   "run_fn": _run_path_check,          "tracks": ["video"], "gate": ""},
+    {"id": "offline",       "section": "脱机检测", "chk_id": CHK_OFFLINE,       "group": "工程", "subgroup": "路径",   "run_fn": _run_offline_check,       "tracks": ["video", "audio"], "gate": ""},
+    {"id": "path",          "section": "路径检测", "chk_id": CHK_PATH,           "group": "工程", "subgroup": "路径",   "run_fn": _run_path_check,          "tracks": ["video", "audio"], "gate": ""},
     {"id": "track",         "section": "轨道结构", "chk_id": CHK_TRACK,          "group": "工程", "subgroup": "轨道",   "run_fn": _run_track_check,        "tracks": ["subtitle","video","audio"], "gate": ""},
     {"id": "fragment",      "section": "启用/禁用", "chk_id": CHK_FRAGMENT,       "group": "工程", "subgroup": "启用",   "run_fn": _run_fragment_check,      "tracks": ["subtitle","video","audio"], "gate": "all"},
     # 字幕门
@@ -957,14 +957,13 @@ def _build_deactivate():
                        "StyleSheet": BTN_STYLE_SM, "Weight": 0})]
 
 def _build_smb_paths():
-    """服务器素材路径配置：Label 显示当前路径 + 添加/清除按钮"""
+    """服务器素材路径配置：ComboBox 选择 + 添加/删除按钮"""
     return [
-        ui.Label({"ID": "cfg_smb_paths_label", "Text": "",
-                  "StyleSheet": "color:rgb(180,180,180);font-size:12px", "Weight": 0}),
+        ui.ComboBox({"ID": "cfg_smb_paths_combo", "Text": ""}),
         ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
             ui.Button({"ID": "cfg_smb_add", "Text": "+ 添加路径",
                        "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
-            ui.Button({"ID": "cfg_smb_clear", "Text": "清除全部",
+            ui.Button({"ID": "cfg_smb_del", "Text": "− 删除路径",
                        "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
         ]),
     ]
@@ -1162,6 +1161,9 @@ def _show_config_dialog():
                     from shared.deploy_config import save_smb_paths
                     ok = save_smb_paths(_smb_paths_cache)
                     _action_log(f"{'✅' if ok else '⚠'} 服务器路径: {len(_smb_paths_cache)} 条")
+                    # 清缓存让下次检测重新采集路径信息
+                    from check_core import _clear_clip_files_cache
+                    _clear_clip_files_cache()
                 except Exception as e:
                     _action_log(f"⚠ 路径保存失败: {e}")
             elif t == "censor_personal":
@@ -1185,13 +1187,16 @@ def _show_config_dialog():
 
     # ── SMB 路径编辑 ──（_smb_paths_cache 已在上方从 deploy.json 加载）
 
-    def _refresh_smb_paths_label():
+    def _refresh_smb_paths_combo():
         nonlocal _smb_paths_cache
+        c = cfg["cfg_smb_paths_combo"]
+        c.Clear()
         if _smb_paths_cache:
-            lines = "\n".join(f"  {p}" for p in _smb_paths_cache)
-            cfg["cfg_smb_paths_label"].Text = lines
+            for p in _smb_paths_cache:
+                c.AddItem(p)
+            c.Text = _smb_paths_cache[0]
         else:
-            cfg["cfg_smb_paths_label"].Text = "（未配置，路径检测将跳过）"
+            c.Text = "（未配置，路径检测将跳过）"
 
     def _add_smb_path(ev):
         nonlocal _smb_paths_cache
@@ -1204,20 +1209,23 @@ def _show_config_dialog():
             path = result.stdout.strip()
             if path and path not in _smb_paths_cache:
                 _smb_paths_cache.append(path)
-                _refresh_smb_paths_label()
+                _refresh_smb_paths_combo()
                 _action_log(f"📂 添加路径: {path}")
         except Exception as e:
             _action_log(f"⚠ 文件夹选择失败: {e}")
 
-    def _clear_smb_paths(ev):
+    def _delete_smb_path(ev):
         nonlocal _smb_paths_cache
-        _smb_paths_cache = []
-        _refresh_smb_paths_label()
-        _action_log("🗑 已清除所有路径")
+        selected = cfg["cfg_smb_paths_combo"].CurrentText
+        if not selected or selected not in _smb_paths_cache:
+            return
+        _smb_paths_cache.remove(selected)
+        _refresh_smb_paths_combo()
+        _action_log(f"🗑 删除路径: {selected}")
 
     config_dlg.On["cfg_edit_censor"].Clicked = _edit_censor
     config_dlg.On["cfg_smb_add"].Clicked = _add_smb_path
-    config_dlg.On["cfg_smb_clear"].Clicked = _clear_smb_paths
+    config_dlg.On["cfg_smb_del"].Clicked = _delete_smb_path
     config_dlg.On["cfg_save"].Clicked = _save
     config_dlg.On["cfg_cancel"].Clicked = lambda ev: config_disp.ExitLoop()
 
@@ -1232,11 +1240,11 @@ def _show_config_dialog():
     config_dlg.On[CONFIG_WIN_ID].Close = lambda ev: config_disp.ExitLoop()
 
     _action_log("⚙ 打开配置窗口")
-    # 初始化 SMB 路径显示（必须在 handler 定义之后调用 _refresh_smb_paths_label）
+    # 初始化 SMB 路径显示（必须在 handler 定义之后调用 _refresh_smb_paths_combo）
     try:
         from shared.deploy_config import get_smb_paths
         _smb_paths_cache = get_smb_paths()
-        _refresh_smb_paths_label()
+        _refresh_smb_paths_combo()
     except Exception:
         _smb_paths_cache = []
 
@@ -1769,6 +1777,8 @@ def _start_check():
                 if not g or gates_ok:
                     needed.update(check.get("tracks", []))
         try:
+            from check_core import _clear_clip_files_cache
+            _clear_clip_files_cache()
             preload_timeline_items(timeline, track_types=list(needed) if needed else None)
         except Exception:
             _action_log("⚠ 预加载失败（可能是旧版 API），回退逐条查询")
