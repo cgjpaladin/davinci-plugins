@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.3/update_latest.zip",
       "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.3/update_latest.zip"
     ],
-    "sha256": "f0822ea7ea6c7f01bca28277d8b3ef39c0a246664eacb5a8496db4a95c8030d8",
+    "sha256": "0113fd18fe437b646e43fa9d985bf36222a6b1df843105577b076301c6a1d8a4",
     "notes": "## v2.5.3\n\n⬇ 下载进度条：实时显示百分比和速度，不再盲等\n📏 配置页标签：脱机素材检测路径（可多选）\n📐 配置页拉高到 500px",
     "history": [
       {
