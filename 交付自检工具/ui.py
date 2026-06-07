@@ -87,6 +87,9 @@ TRIAL_LB = "trial_lb"
 ERR_LB = "err_lb"
 BTN_ERR_SEND = "btn_err_send"
 
+# License 状态（main() 中设置，_unlock_ui 等位置需要读取）
+_ai_allowed = True
+
 # ── 结果列定义：加/删/挪/开关列只改这里 ──
 #   enabled=False → 列暂时隐藏，不删定义
 COLUMNS = [
@@ -581,7 +584,7 @@ def _unlock_ui():
     global _BUSY; _BUSY = False
     itm[BTN_START].Enabled = True; itm[BTN_START].Text = "开始检查"
     itm[BTN_UPDATE].Enabled = True; itm[BTN_ERR_SEND].Enabled = True
-    itm[BTN_AI_TYPO].Enabled = True
+    if _ai_allowed: itm[BTN_AI_TYPO].Enabled = True
 
 # ── 凭证持久化（macOS Keychain，零明文落盘）──
 def _load_api_keys():
@@ -864,7 +867,7 @@ itm = dlg.GetItems()
 # 初始状态
 # ═══════════════════════════════════════════
 itm[BTN_START].Enabled = False
-itm[BTN_AI_TYPO].Enabled = True
+itm[BTN_AI_TYPO].Enabled = _ai_allowed
 itm[EDIT_SCRIPT_SRC].Text = ""
 
 # Tree 表头
@@ -1373,6 +1376,9 @@ def _run_ai_typo():
     global _checking
     if _BUSY or _checking:
         return
+    if not _ai_allowed:
+        itm[HINT_LB].Text = "试用已到期，请联系购买: 微信 paladinpp"
+        return
     _checking = True
     itm[HINT_LB].Text = ""
     itm[HINT_LB]["StyleSheet"] = f"{STYLE_HINT};"
@@ -1453,7 +1459,7 @@ def _run_ai_typo():
                 _stop(f"检测失败: {e}")
             _checking = False; _unlock_ui(); return
 
-        itm[LBL_SCRIPT_STATUS].Text = "🔄 解析剧本..."
+        itm[LBL_SCRIPT_STATUS].Text = ""
         try:
             parsed = parse_script(src)
             _action_log(f"📖 剧本: {len(parsed.get('episodes',{}))} 集")
@@ -1465,7 +1471,7 @@ def _run_ai_typo():
         for ep in sorted(parsed.get("episodes", {}).keys()):
             all_lines.append(f"--- 第{ep}集 ---")
             all_lines.extend(parsed["episodes"][ep])
-        itm[LBL_SCRIPT_STATUS].Text = f"📖 全文 ({len(parsed.get('episodes',{}))}集)"
+        itm[LBL_SCRIPT_STATUS].Text = ""
         _action_log(f"📖 剧本: {len(parsed.get('episodes',{}))}集, {len(all_lines)}行（全文）")
         _ts_start = time.time()
         itm[BTN_START].Enabled = False; itm[BTN_AI_TYPO].Enabled = False
@@ -1647,7 +1653,7 @@ def _run_ai_typo():
     finally:
         _unlock_ui()
         _checking = False
-        itm[BTN_START].Enabled = True; itm[BTN_AI_TYPO].Enabled = True
+        itm[BTN_START].Enabled = True; itm[BTN_AI_TYPO].Enabled = _ai_allowed
 
 
 # ═══════════════════════════════════════════
@@ -2417,7 +2423,7 @@ def _on_script_src_changed(ev):
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
     if "feishu.cn" in src or "docs.qq.com" in src:
         ok = ok and len(src) > 30
-    itm[BTN_AI_TYPO].Enabled = not _checking
+    itm[BTN_AI_TYPO].Enabled = not _checking and _ai_allowed
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
 dlg.On[EDIT_SCRIPT_SRC].TextChanged = _on_script_src_changed
@@ -2551,7 +2557,9 @@ def main():
         itm[BTN_UPDATE].Text = "✓ 最新"
 
     # ══ License ══
+    global _ai_allowed
     _ai_allowed = True  # 默认允许
+    _trial_expired = False
     try:
         from shared.license import init_trial, verify_local, load_credential
         cred = load_credential()
@@ -2563,6 +2571,8 @@ def main():
                 d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
                 text = f"试用剩余 {d} 天  |  联系购买: 微信 paladinpp"
                 _ai_allowed = d > 0
+                if not _ai_allowed:
+                    _trial_expired = True
             else:
                 text = "已激活 ✓"
             itm[TRIAL_LB].Text = msg if not ok else text
@@ -2585,9 +2595,14 @@ def main():
     except Exception as e:
         _action_log(f"License异常: {type(e).__name__}: {e}")
         _ai_allowed = False
-    # Subtitledetection always available (system rules), only AI gated
+    # 试用到期 → 禁用字幕检测 + 提示
     if not _ai_allowed:
-        itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"  # system rules still work
+        itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
+        itm[BTN_AI_TYPO].Enabled = False
+        if _trial_expired:
+            itm[HINT_LB].Text = "试用已到期，请联系购买: 微信 paladinpp"
+        elif not cred:
+            itm[HINT_LB].Text = ""  # 首次启动尝试初始化，静默
 
     disp.RunLoop()
     dlg.Hide()
