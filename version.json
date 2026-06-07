@@ -1,12 +1,12 @@
 {
   "delivery_checker": {
-    "version": "2.5.1",
-    "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.1/update_latest.zip",
+    "version": "2.5.2",
+    "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.2/update_latest.zip",
     "urls": [
-      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.1/update_latest.zip",
-      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.1/update_latest.zip"
+      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.2/update_latest.zip",
+      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.2/update_latest.zip"
     ],
-    "sha256": "5a67098188e72b442a39bc71344ef24de8a27fdca832b1045966075be7f5dbcb",
+    "sha256": "052cfb34ae5b3c5402f712a553609601a5a2a864913cc2d2a213b0a1173ca922",
     "notes": "## v2.5.1\n\n🗂 路径检测：支持多路径白名单，配置页添加/删除，音频素材也纳入范围\n🔤 全半角检测：自动检测字幕中的全角数字/字母，建议修正为半角\n📝 错别字校对：AI 准确率大幅提升，不再对照剧本逐字改字幕\n🔧 配置页：服务器路径支持逐条删除\n🐛 修复：路径检测单选时遗漏音频、全角字符被异体字重复报错",
     "history": [
       {
