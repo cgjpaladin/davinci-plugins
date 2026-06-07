@@ -2246,7 +2246,7 @@ def _do_update(ev):
             _do_update_sync(progress_callback=_update_progress)
             _items["up_icon"].Text = "✅"
             _items["up_title"].Text = "更新完成"
-            _items["up_body"].Text = "请重启 DaVinci Resolve 生效"
+            _items["up_body"].Text = "请重启达芬奇插件生效"
             _items["up_status"].Text = ""
             _action_log("🪟 ✅更新完成")
         except Exception as e:
@@ -2394,7 +2394,7 @@ def _do_update_sync(progress_callback=None):
             except Exception:
                 pass
             raise RuntimeError(err)
-        itm[HINT_LB].Text = "✅ 更新完成！请重启达芬奇生效"
+        itm[HINT_LB].Text = "✅ 更新完成！请重启达芬奇插件生效"
         itm[BTN_UPDATE].Text = "✅"
         _unlock_ui()
         _UPDATING = False
