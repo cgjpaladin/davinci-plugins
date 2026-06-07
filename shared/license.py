@@ -49,15 +49,12 @@ if not BACKEND_URL:
         except FileNotFoundError:
             continue
 
-# 凭证存储路径（3 份冗余）
-def _get_credential_paths() -> list:
-    """macOS 三份冗余路径"""
-    home = Path.home()
-    return [
-        home / "Library" / "Application Support" / "Blackmagic Design" / "DaVinci Resolve" / "license.dat",
-        home / "Library" / "Preferences" / "com.blackmagicdesign.resolve" / "license.dat",
-        home / ".config" / "dv_license" / "license.dat",
-    ]
+_CREDENTIAL_PATH = Path.home() / ".config" / "dv_license" / "license.dat"
+# 旧冗余路径（写入已废弃，仅用于迁移）
+_OLD_PATHS = [
+    Path.home() / "Library" / "Application Support" / "Blackmagic Design" / "DaVinci Resolve" / "license.dat",
+    Path.home() / "Library" / "Preferences" / "com.blackmagicdesign.resolve" / "license.dat",
+]
 
 
 # ═══════════════════════════════════════════
@@ -129,71 +126,52 @@ def _protect_file(path: Path):
 
 
 def save_credential(data: dict) -> None:
-    """将凭证写入三个冗余路径"""
+    """将凭证写入唯一路径"""
     payload = json.dumps(data)
-    for path in _get_credential_paths():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(payload)
-        _protect_file(path)
-
-
-def load_credential() -> Optional[dict]:
-    """从三份备份中读取一份合法凭证。
-
-    优先级：第一个存在的 → 交叉校验（多数投票）。
-    """
-    paths = _get_credential_paths()
-    valid = []
-
-    for path in paths:
-        if not path.exists():
-            continue
+    _CREDENTIAL_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(_CREDENTIAL_PATH, "w", encoding="utf-8") as f:
+        f.write(payload)
+    _protect_file(_CREDENTIAL_PATH)
+    # 清理旧冗余文件
+    for old in _OLD_PATHS:
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                cred = json.load(f)
-            # 基本格式校验
-            if "payload" in cred and "signature" in cred:
-                valid.append(cred)
-        except Exception:
-            continue
-
-    if not valid:
-        return None
-
-    # 多数投票：取出现次数最多的那份
-    best = max(valid, key=lambda c: sum(
-        1 for v in valid if json.dumps(v, sort_keys=True) == json.dumps(c, sort_keys=True)
-    ))
-    return best
-
-
-def cross_validate_and_repair() -> bool:
-    """交叉校验三份备份，自动修复不一致的文件。
-
-    返回 True 表示至少有一份合法凭证可用。
-    """
-    best = load_credential()
-    if best is None:
-        return False
-
-    # 用最佳凭证修复所有路径
-    for path in _get_credential_paths():
-        try:
-            if path.exists():
-                with open(path, "r", encoding="utf-8") as f:
-                    existing = json.load(f)
-                if json.dumps(existing, sort_keys=True) == json.dumps(best, sort_keys=True):
-                    continue  # 一致，跳过
-            # 不一致或不存在 → 写入
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(best, f)
-            _protect_file(path)
+            if old.exists():
+                old.unlink()
         except Exception:
             pass
 
-    return True
+
+def load_credential() -> Optional[dict]:
+    """从唯一路径读取凭证。检测到旧冗余路径时自动迁移。"""
+    # 迁移：旧路径有 → 新路径没有 → 搬过来
+    if not _CREDENTIAL_PATH.exists():
+        for old in _OLD_PATHS:
+            try:
+                if old.exists():
+                    old.parent.mkdir(parents=True, exist_ok=True)  # no-op for existing
+                    import shutil
+                    shutil.copy2(old, _CREDENTIAL_PATH)
+                    _protect_file(_CREDENTIAL_PATH)
+                    break
+            except Exception:
+                continue
+
+    if not _CREDENTIAL_PATH.exists():
+        return None
+
+    try:
+        with open(_CREDENTIAL_PATH, "r", encoding="utf-8") as f:
+            cred = json.load(f)
+        if "payload" in cred and "signature" in cred:
+            return cred
+    except Exception:
+        pass
+    return None
+
+
+def cross_validate_and_repair() -> bool:
+    """仅校验单文件凭证存在（已废弃三冗余，保留接口兼容）。"""
+    return load_credential() is not None
 
 
 # ═══════════════════════════════════════════
@@ -365,14 +343,24 @@ def heartbeat() -> Tuple[bool, str]:
 
 def deactivate() -> Tuple[bool, str]:
     """停用本机授权 → 释放激活码，允许转移到其他机器。"""
-    fp = _machine_fingerprint()
-    req = {"action": "deactivate", "machine_fingerprint": fp}
+    if not BACKEND_URL:
+        return False, "未配置授权后端"
+    fp = get_machine_fingerprint()
+    ok, resp = _post_to_backend("/license", {
+        "action": "deactivate",
+        "machine_fingerprint": fp,
+    })
+    if not ok:
+        return False, resp.get("msg", "停用失败")
+    if resp.get("status") != "ok":
+        return False, resp.get("msg", "停用失败")
+    _clear_credential()
+    return True, resp.get("msg", "已停用")
+
+def _clear_credential():
+    """删除本地凭证文件"""
     try:
-        raw = _api_post(req)
-        response = json.loads(raw)
-        _clear_license_token()
-        ok = response.get("status") == "ok"
-        return ok, response.get("msg", "停用失败")
-    except Exception as e:
-        _clear_license_token()
-        return False, f"网络错误: {e}"
+        if _CREDENTIAL_PATH.exists():
+            _CREDENTIAL_PATH.unlink()
+    except Exception:
+        pass
