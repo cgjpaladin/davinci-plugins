@@ -3,7 +3,7 @@
 > 我是小裁缝的**插件分身**。
 > 管 AI 去字幕/交付自检、灰度发布部署。❌ 不管 Mac mini 运维、SMB 存储。
 
-> v2.7 | 2026-06-01 | v2.2.31 配置页重做 + 一机一码 + 自助停用 + PYTHONUTF8
+> v2.8 | 2026-06-08 | 下载进度条 + 试用到期 + 激活修复 + License 单文件
 
 ## 终局
 
@@ -14,7 +14,7 @@
 | 产品 | 版本 | 状态 |
 |------|------|------|
 | AI去字幕 | v1.11.3 | ✅ |
-| 交付自检 | v2.0.30 | ✅ |
+| 交付自检 | v2.5.5 | ✅ |
 | 批量命名工具 | v3.4 | ✅ 表格版，8字段(Ep/Sc/Gr/Tk/desc/method/author/v/status)，导表+硬编码消除 |
 | 批量命名工具_创壹特供版 | v1.1 | ✅ 表格版，9字段(EP/SC/SH/TK/desc/type/author/V/status)，导表+死代码清理 |
 | AI换口型 | — | 待开发 |
@@ -204,30 +204,28 @@ lark-cli docs +fetch --doc "<url或token>" --as bot
 - **日志**: `tools/check_logs.sh <hostname>` 四源全出——插件日志 + 系统日志 + 进程状态 + 崩溃报告。**不加任何 grep 过滤，不预设关键词**。达芬奇系统日志只收 Traceback，插件的 UI 日志（~/.workbuddy/logs/）才收完整错误。别人报「用不了」，第一动作跑 check_logs.sh。
 - **构建前 `rm -rf _build`**：`_splice.py` 写入 `_build/` 目录，不删旧目录会导致 splice 读旧缓存 → 打包产物和源码不一致。bug 修了但没生效，浪费多轮排查。
 
-## 一键更新系统 (2026-05-31)
+## 一键更新系统 (2026-06-08 更新)
 
 ### 架构
 - **版本检查**：多链路回退 jsDelivr CDN → GitHub API → GHProxy
-- **下载**：多链路回退 + SHA256 校验，优先 GitHub API base64（国内可达）
+- **下载**：HEAD 拿文件大小 + 分块下载 + 进度条回调，60s 超时
 - **安装**：`do shell script "/bin/bash install_update.command --update"` → 直接 root 覆盖
 - **配置入口**：`shared/update_config.py`（仓库名、多链路 URL、超时、校验参数——换仓库只改这一个文件）
 - **全 ASCII 铁律**：zip 根目录、URL 中的文件名、.command 文件名三者全部英文
 
-### 分发四模式
-| 模式 | 怎么用 |
-|------|------|
-| 本地 dev | python3 ui.py 直连达芬奇 |
-| SMB 公司 | /Volumes/MYJC/06_Software/达芬奇脚本/ |
-| 个人全量(67MB) | build_personal.sh → 含 Python pkg，新用户首次 |
-| 个人增量(512KB) | build_personal.sh --update → 纯代码，点「⬆ 更新」用 |
+### 个人版发布 (GitHub Release)
 
-### 发布（GitHub Release + ghproxy 加速）
 ```bash
-bash build_personal.sh --update           # 出增量包
-gh release create v2.2.x <zip> --title "v2.2.x"  # 上传 Release
-# version.json 含 ghproxy/ghproxy CDN/直连 三路下载
-git push --force  # 推 version.json + update_latest.zip
+cd 交付自检工具_个人版 && rm -rf _build && bash build_personal.sh --update
+SHA=$(shasum -a 256 _build/交付自检工具_更新包.zip | awk '{print $1}')
+gh release create v2.x.y _build/交付自检工具_更新包.zip \
+  --repo cgjpaladin/davinci-plugins --title "v2.x.y" --notes "公告"
+git add version.json && git commit --no-verify -m "v2.x.y 发布" && git push
 ```
+
+- git remote 必须 HTTPS, GH_TOKEN 有 repo scope
+- 测试机：**dd-mbp**（ZT 10.163.15.58, User ttttt, SSH 免密），本机是 DEV 模式不触发更新
+- 增量包 ~192KB（不含 Python/pkg）
 
 ## macOS DMG 分发（2026-05-28 沉淀）
 
@@ -270,24 +268,36 @@ bash /tmp/_deli_src/install_update.command --update  # 模拟安装
 - 显示密文（`sk-ab…xyz`），保存时检测掩码保留真值
 - SMB 用户过滤：`if not WORKBUDDY_PERSONAL` → 只渲染 `censor_personal`
 
-### 一机一码 + 自助停用
+### License / 激活系统 (v2.5.5)
 
-- FC: `activate` 检查 key→FP→status，`max_devices=1` 强制唯一
-- FC: `deactivate` 删 license + 重置 key 为 `sold`
-- 插件：停用按钮试用期灰掉（`load_credential().get("is_trial")`）
+#### 凭证
+- 单文件 `~/.config/dv_license/license.dat`（废弃三冗余）
+- 旧路径文件在 `save_credential()` 时自动清理，`load_credential()` 启动时自动迁移
 
-### PYTHONUTF8=1
+#### 状态机
+```
+启动 → 无凭证 → init_trial()（需 BACKEND_URL）
+       有凭证 → trial 有效 → _ai_allowed=True
+                 trial 到期 → _ai_allowed=False → 按钮灰 + 提示购买
+                 已激活 → _ai_allowed=True
+激活 → _ai_allowed=True → 按钮立即恢复（不需重启）
+停用 → _ai_allowed=False → 按钮灰 + 提示重启试用
+```
 
-- 两 launcher（personal + SMB）都设 `PYTHONUTF8=1`
-- `open()`/`zipfile` 默认 UTF-8，杜绝 ASCII 编码中文乱码
+#### 当前状态
+- `WB_LICENSE_URL` 未配置 → `init_trial()` 失败静默 → `_ai_allowed=True` 兜底
+- `license_server.py` 未部署到云函数
+- keys 表为空，无激活码生成工具
+- 服务端缺 `deactivate` 路由
+- 详见 `knowledge/license-activation-flow.md`
 
-### 增量包优化
+#### 激活码格式
+`XXXX-XXXX-XXXX`（12 位大写），生成：`uuid.uuid4().hex[:12].upper()`
 
-- build_personal.sh `--update` 模式跳过 pypdf（首次安装已含）
-- 512KB → 179KB
-- 出厂检验：zip 内版本号与源码不一致 → 硬拦截
-- 版本 bump：用 `python3 tools/bump_version.py` 精确替换，不用 `sed`
-- 发布后预热 ghproxy：`WARM_CDN=1 bash build_personal.sh --update`
+### PYTHONUTF8=1 + -B
+
+- 两 launcher（personal + SMB）都设 `PYTHONUTF8=1` + `-B`（不生成 pyc）
+- `open()`/`zipfile` 默认 UTF-8，杜绝编码乱码。增量包 ~192KB
 
 ## 路径检测重构（2026-06-07）
 

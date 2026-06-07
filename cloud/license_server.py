@@ -23,6 +23,8 @@ from typing import Dict, Tuple
 # 配置（云函数环境变量）
 # ═══════════════════════════════════════════
 
+ADMIN_KEY = os.environ.get("ADMIN_KEY", "").encode("utf-8")
+
 HMAC_SECRET = os.environ.get("HMAC_SECRET", "CHANGE_ME_IN_SCF_ENV").encode("utf-8")
 DB_PATH = os.environ.get("DB_PATH", "/tmp/license.db")
 TRIAL_DAYS = 30            # 试用天数
@@ -276,6 +278,38 @@ def _handle_heartbeat(data: dict) -> dict:
     return {"status": "error", "msg": "未找到授权记录"}
 
 
+def _handle_manage(data: dict) -> dict:
+    """管理操作：生成激活码（需 ADMIN_KEY 验证）"""
+    key = data.get("admin_key", "")
+    if not key or key.encode("utf-8") != ADMIN_KEY:
+        return {"status": "error", "msg": "管理密钥错误"}
+    action = data.get("manage_action", "")
+    if action == "gen_key":
+        new_key = os.urandom(6).hex().upper()
+        formatted = f"{new_key[:4]}-{new_key[4:8]}-{new_key[8:12]}"
+        db = _get_db()
+        db.execute(
+            "INSERT OR IGNORE INTO keys (activate_key, status, created_at) VALUES (?, 'sold', ?)",
+            (formatted, int(time.time()))
+        )
+        db.commit()
+        return {"status": "ok", "key": formatted, "msg": f"激活码已生成: {formatted}"}
+    elif action == "list_keys":
+        db = _get_db()
+        rows = db.execute("SELECT * FROM keys ORDER BY created_at DESC LIMIT 20").fetchall()
+        return {"status": "ok", "keys": [dict(r) for r in rows]}
+    elif action == "delete_trial":
+        fp = data.get("machine_fingerprint", "")
+        if fp:
+            db = _get_db()
+            db.execute("DELETE FROM trials WHERE machine_fingerprint = ?", (fp,))
+            db.commit()
+            return {"status": "ok", "msg": f"已删除试用记录: {fp[:16]}..."}
+        return {"status": "error", "msg": "缺少 machine_fingerprint"}
+    else:
+        return {"status": "error", "msg": f"未知管理操作: {action}"}
+
+
 # ═══════════════════════════════════════════
 # SCF 入口
 # ═══════════════════════════════════════════
@@ -284,6 +318,7 @@ ROUTES = {
     "init_trial": _handle_init_trial,
     "activate": _handle_activate,
     "heartbeat": _handle_heartbeat,
+    "manage": _handle_manage,
 }
 
 
