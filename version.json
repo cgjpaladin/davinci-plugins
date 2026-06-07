@@ -1,13 +1,13 @@
 {
   "delivery_checker": {
-    "version": "2.5.3",
-    "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.3/update_latest.zip",
+    "version": "2.5.4",
+    "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.4/update_latest.zip",
     "urls": [
-      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.3/update_latest.zip",
-      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.3/update_latest.zip"
+      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.4/update_latest.zip",
+      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.4/update_latest.zip"
     ],
-    "sha256": "0113fd18fe437b646e43fa9d985bf36222a6b1df843105577b076301c6a1d8a4",
-    "notes": "## v2.5.3\n\n⬇ 下载进度条：实时显示百分比和速度，不再盲等\n📏 配置页标签：脱机素材检测路径（可多选）\n📐 配置页拉高到 500px",
+    "sha256": "e69b35e4eb6d311a2dcc30157f2d9e376ff1117fe46b8df47358f4712ec1ea03",
+    "notes": "## v2.5.4\n\n试用到期自动禁用字幕检测，常规检查不受影响",
     "history": [
       {
         "version": "2.4.0",
@@ -24,6 +24,10 @@
       {
         "version": "2.5.3",
         "notes": "## v2.5.3\n\n⬇ 下载进度条：实时显示百分比和速度，不再盲等\n📏 配置页标签：脱机素材检测路径（可多选）\n📐 配置页拉高到 500px"
+      },
+      {
+        "version": "2.5.4",
+        "notes": "## v2.5.4\n\n试用到期自动禁用字幕检测，常规检查不受影响"
       }
     ]
   }
