@@ -1130,15 +1130,15 @@ def _show_config_dialog():
                         _action_log(f"🔑 激活: {'✅' if ok else '❌'} {msg}")
                         if ok:
                             _keys = _load_api_keys(); _keys["activation_code"] = code; _save_api_keys(_keys)
-                            # 激活成功后立刻刷新 License 状态
                             ok2, _ = heartbeat()
                             if ok2:
-                                _action_log("✅ License 已更新为正式授权")
-                                # 更新 UI 显示
-                                try:
-                                    from shared.license_ui import _update_license_ui
-                                    _update_license_ui()
-                                except Exception: pass  # noop: 配置写入失败不影响主流程
+                                _action_log("✅ License 已激活")
+                                global _ai_allowed
+                                _ai_allowed = True
+                                itm[BTN_AI_TYPO].Text = "字幕检测"
+                                itm[BTN_AI_TYPO].Enabled = True
+                                itm[TRIAL_LB].Text = "已激活 ✓"
+                                itm[HINT_LB].Text = ""
                         else:
                             err = msg
                     except Exception as e:
@@ -1237,6 +1237,13 @@ def _show_config_dialog():
         from shared.license import deactivate
         ok, msg = deactivate()
         _action_log(f"🔓 停用: {'✅' if ok else '❌'} {msg}")
+        if ok:
+            global _ai_allowed
+            _ai_allowed = False
+            itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
+            itm[BTN_AI_TYPO].Enabled = False
+            itm[TRIAL_LB].Text = ""
+            itm[HINT_LB].Text = "授权已停用，重启以重新试用"
         config_dlg.Hide(); config_disp.ExitLoop()
     try: config_dlg.On["cfg_deactivate_btn"].Clicked = _do_deactivate
     except Exception: pass  # noop: SMB用户无此按钮
