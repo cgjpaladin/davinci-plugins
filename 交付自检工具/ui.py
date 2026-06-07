@@ -921,7 +921,7 @@ CONFIG_SECTIONS = [
     {"id": "deepseek_key",   "label": "DeepSeek API Key", "type": "api_key"},
     {"id": "feishu_app_id",  "label": "飞书 App ID", "type": "api_key"},
     {"id": "feishu_secret",  "label": "飞书 App Secret", "type": "api_key"},
-    {"id": "smb_paths",      "label": "服务器素材路径", "type": "smb_paths"},
+    {"id": "smb_paths",      "label": "脱机素材检测路径（可多选）", "type": "smb_paths"},
     {"id": "censor_personal", "label": "个人词典", "type": "censor_personal"},
 ]
 
@@ -1034,7 +1034,7 @@ def _show_config_dialog():
     config_dlg = config_disp.AddWindow({
         "WindowTitle": "交付自检工具 — 配置",
         "ID": CONFIG_WIN_ID,
-        "Geometry": [820, 120, 360, 400],
+        "Geometry": [820, 120, 360, 500],
         "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
     }, config_layout)
 
