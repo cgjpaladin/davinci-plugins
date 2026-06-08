@@ -103,7 +103,7 @@ async function handleInitTrial(data) {
   if (!fp) return { status: 'error', msg: '机器指纹为空' };
 
   // Check existing trial records
-  const records = await listRecords(`CurrentValue.[状态]="trial"`);
+  const records = await listRecords(`CurrentValue.[状态]="试用中"`);
   const existing = records.find(r => r.fields.机器指纹 === fp);
   const now = Math.floor(Date.now() / 1000);
 
@@ -121,7 +121,7 @@ async function handleInitTrial(data) {
   }
 
   const trialEnd = now + TRIAL_DAYS * 86400;
-  await addRecord({ 激活码: '', 状态: 'trial', 机器指纹: fp, created_at: now });
+  await addRecord({ 激活码: '', 状态: '试用中', 机器指纹: fp, created_at: now });
 
   const payload = {
     activate_key: '', machine_fingerprint: fp, issue_time: now,
@@ -140,12 +140,12 @@ async function handleActivate(data) {
   const records = await listRecords(`CurrentValue.[激活码]="${key}"`);
   const match = records[0];
   if (!match) return { status: 'error', msg: '激活码无效' };
-  if (match.fields.状态 !== 'sold') return { status: 'error', msg: `激活码状态异常（${match.fields.状态}）` };
+  if (match.fields.状态 !== '待售') return { status: 'error', msg: `激活码状态异常（${match.fields.状态}）` };
 
   const now = Math.floor(Date.now() / 1000);
   const expireTime = now + 365 * 86400 * 10; // 10 年买断
 
-  await updateRecord(match.record_id, { 状态: 'activated', 机器指纹: fp, created_at: now });
+  await updateRecord(match.record_id, { 状态: '已激活', 机器指纹: fp, created_at: now });
 
   const payload = {
     activate_key: key, machine_fingerprint: fp, issue_time: now,
@@ -164,7 +164,7 @@ async function handleHeartbeat(data) {
   const grantEnd = now + OFFLINE_GRANT_DAYS * 86400;
 
   const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`);
-  const activated = records.find(r => r.fields.状态 === 'activated' && r.fields.激活码);
+  const activated = records.find(r => r.fields.状态 === '已激活' && r.fields.激活码);
   if (activated) {
     const payload = {
       activate_key: activated.fields.激活码, machine_fingerprint: fp,
@@ -176,7 +176,7 @@ async function handleHeartbeat(data) {
     return { status: 'ok', msg: '心跳成功', license_token: makeToken(payload) };
   }
 
-  const trial = records.find(r => r.fields.状态 === 'trial');
+  const trial = records.find(r => r.fields.状态 === '试用中');
   if (trial) {
     const trialEnd = (trial.fields.created_at || now) + TRIAL_DAYS * 86400;
     if (now > trialEnd) return { status: 'error', msg: '试用已结束' };
@@ -201,7 +201,7 @@ async function handleManage(data) {
     const newKey = crypto.randomBytes(6).toString('hex').toUpperCase();
     const formatted = `${newKey.slice(0,4)}-${newKey.slice(4,8)}-${newKey.slice(8,12)}`;
     const now = Math.floor(Date.now() / 1000);
-    await addRecord({ 激活码: formatted, 状态: 'sold', 机器指纹: '', created_at: now });
+    await addRecord({ 激活码: formatted, 状态: '待售', 机器指纹: '', created_at: now });
     return { status: 'ok', key: formatted, msg: `激活码已生成: ${formatted}` };
   }
   if (action === 'list_keys') {
@@ -213,7 +213,7 @@ async function handleManage(data) {
     if (!fp) return { status: 'error', msg: '缺少 machine_fingerprint' };
     const records = await listRecords(`CurrentValue.[machine_fp]="${fp}"`);
     for (const r of records) {
-      if (r.fields.状态 === 'trial') {
+      if (r.fields.状态 === '试用中') {
         await feishuReq('DELETE', `bitable/v1/apps/${BASE_TOKEN}/tables/${TABLE_ID}/records/${r.record_id}`);
       }
     }
