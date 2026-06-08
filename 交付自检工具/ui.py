@@ -930,12 +930,18 @@ CONFIG_SECTIONS = [
 
 # ── 各 type 的 UI 构建函数 → [widget, ...] ──
 def _build_activation_code():
-    inp = ui.LineEdit({"ID": "cfg_activation", "Text": "", "PlaceholderText": "XXXX-XXXX-XXXX（不区分大小写）"})
+    kw = {"MinimumSize": [54, 22], "Weight": 0, "MaxLength": 4}
+    seg1 = ui.LineEdit({**kw, "ID": "cfg_activation_1", "Text": "", "PlaceholderText": "XXXX"})
+    seg2 = ui.LineEdit({**kw, "ID": "cfg_activation_2", "Text": "", "PlaceholderText": "XXXX"})
+    seg3 = ui.LineEdit({**kw, "ID": "cfg_activation_3", "Text": "", "PlaceholderText": "XXXX"})
     if not os.environ.get("WORKBUDDY_PERSONAL"):
-        inp["Visible"] = False
-    return [inp,
-            ui.Label({"Text": "💬 联系购买: 微信 paladinpp",
-                      "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0})]
+        seg1["Visible"] = seg2["Visible"] = seg3["Visible"] = False
+    return [ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
+        seg1, ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
+        seg2, ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
+        seg3,
+    ]), ui.Label({"Text": "💬 联系购买: 微信 paladinpp",
+                  "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0})]
 
 def _build_api_key_input(sid, label):
     placeholder = {"deepseek_key": "sk-...", "feishu_app_id": "cli_...", "feishu_secret": "密钥"}.get(sid, "")
@@ -1076,7 +1082,12 @@ def _show_config_dialog():
     def _mask(val):
         return val[:5] + "…" + val[-4:] if len(val) > 12 else val[:4] + "…" if len(val) > 8 else val
     try:
-        if _keys.get("activation_code"): cfg["cfg_activation"].Text = _mask(_keys["activation_code"])
+        if _keys.get("activation_code"):
+            parts = _keys["activation_code"].split("-")
+            if len(parts) == 3:
+                cfg["cfg_activation_1"].Text = _mask(parts[0])
+                cfg["cfg_activation_2"].Text = _mask(parts[1])
+                cfg["cfg_activation_3"].Text = _mask(parts[2])
         if _keys.get("deepseek_key"): cfg["cfg_deepseek_key"].Text = _mask(_keys["deepseek_key"])
         if _keys.get("feishu_app_id"): cfg["cfg_feishu_app_id"].Text = _keys["feishu_app_id"]
         if _keys.get("feishu_secret"): cfg["cfg_feishu_secret"].Text = _mask(_keys["feishu_secret"])
@@ -1122,10 +1133,14 @@ def _show_config_dialog():
         for section in _sections:
             t = section["type"]
             if t == "activation_code":
-                code = cfg["cfg_activation"].Text.strip().upper()
-                # 掩码检测：如果是掩码形式，保留原存储值
-                if "…" in code:
-                    code = _keys.get("activation_code", code)
+                c1 = cfg["cfg_activation_1"].Text.strip().upper()
+                c2 = cfg["cfg_activation_2"].Text.strip().upper()
+                c3 = cfg["cfg_activation_3"].Text.strip().upper()
+                # 掩码检测：如果任一字段是掩码形式，保留原存储值
+                if "…" in c1 or "…" in c2 or "…" in c3:
+                    code = _keys.get("activation_code", "")
+                else:
+                    code = f"{c1}-{c2}-{c3}" if c1 and c2 and c3 else ""
                 if code:
                     try:
                         from shared.license import activate, heartbeat
