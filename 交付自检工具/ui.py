@@ -919,7 +919,7 @@ def _render_group(group_name, sections, tree, parent_group=""):
 # 调顺序：移动 dict 位置
 # 删项：删 dict + 删对应的 _build_xxx / _save_xxx
 CONFIG_SECTIONS = [
-    {"id": "activation_code", "label": "激活码", "type": "activation_code"},
+    {"id": "activation_code", "label": "激活码（不区分大小写）", "type": "activation_code"},
     {"id": "deactivate",      "label": "转移授权", "type": "deactivate"},
     {"id": "deepseek_key",   "label": "DeepSeek API Key", "type": "api_key"},
     {"id": "feishu_app_id",  "label": "飞书 App ID", "type": "api_key"},
