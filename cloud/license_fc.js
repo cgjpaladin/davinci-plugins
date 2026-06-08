@@ -140,7 +140,8 @@ async function handleActivate(data) {
   const records = await listRecords(`CurrentValue.[激活码]="${key}"`);
   const match = records[0];
   if (!match) return { status: 'error', msg: '激活码无效' };
-  if (match.fields.状态 !== '待售') return { status: 'error', msg: `激活码状态异常（${match.fields.状态}）` };
+  const currentStatus = match.fields.状态 || '待售'; // 旧记录无状态字段视为待售
+  if (currentStatus !== '待售') return { status: 'error', msg: `激活码状态异常（${currentStatus}）` };
 
   const now = Math.floor(Date.now() / 1000);
   const expireTime = now + 365 * 86400 * 10; // 10 年买断
