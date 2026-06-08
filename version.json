@@ -1,13 +1,13 @@
 {
   "delivery_checker": {
-    "version": "2.5.5",
+    "version": "2.5.6",
     "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.5/update_latest.zip",
     "urls": [
-      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.5/update_latest.zip",
-      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.5/update_latest.zip"
+      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.6/update_latest.zip",
+      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.6/update_latest.zip"
     ],
-    "sha256": "46627e552f2a25562419419b8b99d7616e1ff17d1146b357d1b31723e2366313",
-    "notes": "## v2.5.5\n\n激活后实时恢复按钮+标签，不需重启\n凭证三冗余→单文件\n停用后禁用+提示",
+    "sha256": "6ee1816f4e551c664dcaa2cb71498016e9b5eef87e1c9c4ddfdc4a72ff948bf5",
+    "notes": "激活码系统全链路通：飞书Base+Node.js FC，用户开箱即用",
     "history": [
       {
         "version": "2.4.0",
@@ -32,6 +32,10 @@
       {
         "version": "2.5.5",
         "notes": "## v2.5.5\n\n激活后实时恢复按钮+标签，不需重启\n凭证三冗余→单文件\n停用后禁用+提示"
+      },
+      {
+        "version": "2.5.6",
+        "notes": "激活码系统全链路通"
       }
     ]
   }
