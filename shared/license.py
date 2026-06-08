@@ -82,13 +82,16 @@ def get_machine_fingerprint() -> str:
         ioreg_uuid = plist_data.get("IOPlatformUUID", "")
         raw_parts.append(ioreg_uuid)
     except Exception:
-        raw_parts.append("uuid_fallback")
+        raw_parts.append(os.urandom(16).hex())
 
     # 2. MAC 地址
     try:
         raw_parts.append(str(uuid.getnode()))
     except Exception:
-        raw_parts.append("mac_fallback")
+        raw_parts.append(str(uuid.getnode()))
+        # uuid.getnode 返回 0 时用随机值兜底
+        if raw_parts[-1] == "0":
+            raw_parts[-1] = os.urandom(16).hex()
 
     # 3. Volume UUID
     try:
@@ -101,9 +104,9 @@ def get_machine_fingerprint() -> str:
                 raw_parts.append(line.split(":", 1)[1].strip())
                 break
         else:
-            raw_parts.append("vol_fallback")
+            raw_parts.append(os.urandom(16).hex())
     except Exception:
-        raw_parts.append("vol_fallback")
+        raw_parts.append(os.urandom(16).hex())
 
     # 4. CPU 架构
     raw_parts.append(os.uname().machine)
