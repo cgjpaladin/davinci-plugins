@@ -1,13 +1,13 @@
 {
   "delivery_checker": {
-    "version": "2.5.6",
+    "version": "2.5.7",
     "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.5/update_latest.zip",
     "urls": [
-      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.6/update_latest.zip",
-      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.6/update_latest.zip"
+      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.7/update_latest.zip",
+      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.7/update_latest.zip"
     ],
-    "sha256": "6ee1816f4e551c664dcaa2cb71498016e9b5eef87e1c9c4ddfdc4a72ff948bf5",
-    "notes": "激活码系统全链路通：飞书Base+Node.js FC，用户开箱即用",
+    "sha256": "fbfe1e6a96defe890a19185d8c27b115b6c22c641171b8a2b96e8f64515c8914",
+    "notes": "修复指纹fallback碰撞风险",
     "history": [
       {
         "version": "2.4.0",
@@ -36,6 +36,10 @@
       {
         "version": "2.5.6",
         "notes": "激活码系统全链路通"
+      },
+      {
+        "version": "2.5.7",
+        "notes": "修复指纹fallback碰撞风险"
       }
     ]
   }
