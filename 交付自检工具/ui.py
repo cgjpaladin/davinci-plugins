@@ -930,7 +930,7 @@ CONFIG_SECTIONS = [
 
 # ── 各 type 的 UI 构建函数 → [widget, ...] ──
 def _build_activation_code():
-    inp = ui.LineEdit({"ID": "cfg_activation", "Text": "", "PlaceholderText": "XXXX-XXXX-XXXX"})
+    inp = ui.LineEdit({"ID": "cfg_activation", "Text": "", "PlaceholderText": "XXXX-XXXX-XXXX（不区分大小写）"})
     if not os.environ.get("WORKBUDDY_PERSONAL"):
         inp["Visible"] = False
     return [inp,
@@ -1076,7 +1076,7 @@ def _show_config_dialog():
     def _mask(val):
         return val[:5] + "…" + val[-4:] if len(val) > 12 else val[:4] + "…" if len(val) > 8 else val
     try:
-        if _keys.get("activation_code"): cfg["cfg_activation"].Text = _keys["activation_code"]
+        if _keys.get("activation_code"): cfg["cfg_activation"].Text = _mask(_keys["activation_code"])
         if _keys.get("deepseek_key"): cfg["cfg_deepseek_key"].Text = _mask(_keys["deepseek_key"])
         if _keys.get("feishu_app_id"): cfg["cfg_feishu_app_id"].Text = _keys["feishu_app_id"]
         if _keys.get("feishu_secret"): cfg["cfg_feishu_secret"].Text = _mask(_keys["feishu_secret"])
@@ -1123,6 +1123,9 @@ def _show_config_dialog():
             t = section["type"]
             if t == "activation_code":
                 code = cfg["cfg_activation"].Text.strip().upper()
+                # 掩码检测：如果是掩码形式，保留原存储值
+                if "…" in code:
+                    code = _keys.get("activation_code", code)
                 if code:
                     try:
                         from shared.license import activate, heartbeat
