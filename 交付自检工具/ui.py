@@ -930,12 +930,17 @@ CONFIG_SECTIONS = [
 
 # ── 各 type 的 UI 构建函数 → [widget, ...] ──
 def _build_activation_code():
+    if not os.environ.get("WORKBUDDY_PERSONAL"):
+        return [ui.Label({"ID": "cfg_activation_status", "Text": "", "Visible": False})]
+    # 已激活：显示文本
+    if _ai_allowed:
+        return [ui.Label({"ID": "cfg_activation_status", "Text": "✅ 已激活",
+                          "StyleSheet": "color:rgb(80,200,100);font-size:13px", "Weight": 0})]
+    # 未激活：三格输入
     kw = {"MinimumSize": [54, 22], "Weight": 0, "MaxLength": 4}
     seg1 = ui.LineEdit({**kw, "ID": "cfg_activation_1", "Text": "", "PlaceholderText": "XXXX"})
     seg2 = ui.LineEdit({**kw, "ID": "cfg_activation_2", "Text": "", "PlaceholderText": "XXXX"})
     seg3 = ui.LineEdit({**kw, "ID": "cfg_activation_3", "Text": "", "PlaceholderText": "XXXX"})
-    if not os.environ.get("WORKBUDDY_PERSONAL"):
-        seg1["Visible"] = seg2["Visible"] = seg3["Visible"] = False
     return [ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
         seg1, ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
         seg2, ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
@@ -962,6 +967,8 @@ def _build_censor_personal():
     ]
 
 def _build_deactivate():
+    if not _ai_allowed:
+        return [ui.Label({"ID": "cfg_deactivate_placeholder", "Text": "", "Visible": False})]
     return [ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用并释放到其他机器",
                        "StyleSheet": BTN_STYLE_SM, "Weight": 0})]
 
@@ -1139,37 +1146,31 @@ def _show_config_dialog():
             _save_busy = False
 
     def _do_save(ev):
-        global _censor_subs
+        global _censor_subs, _ai_allowed
         err = ""
         for section in _sections:
             t = section["type"]
             if t == "activation_code":
+                # 已激活则跳过
+                if _ai_allowed:
+                    continue
                 c1 = cfg["cfg_activation_1"].Text.strip().upper()
                 c2 = cfg["cfg_activation_2"].Text.strip().upper()
                 c3 = cfg["cfg_activation_3"].Text.strip().upper()
-                # 掩码检测：如果任一字段是掩码形式，保留原存储值
-                if "…" in c1 or "…" in c2 or "…" in c3:
-                    code = _keys.get("activation_code", "")
-                else:
-                    code = f"{c1}-{c2}-{c3}" if c1 and c2 and c3 else ""
+                code = f"{c1}-{c2}-{c3}" if c1 and c2 and c3 else ""
                 if code:
                     try:
-                        from shared.license import activate, heartbeat
+                        from shared.license import activate
                         ok, msg = activate(code)
                         _action_log(f"🔑 激活: {'✅' if ok else '❌'} {msg}")
                         if ok:
                             _keys = _load_api_keys(); _keys["activation_code"] = code; _save_api_keys(_keys)
-                            ok2, _ = heartbeat()
-                            if ok2:
-                                _action_log("✅ License 已激活")
-                                global _ai_allowed
-                                _ai_allowed = True
-                                itm[BTN_AI_TYPO].Text = "字幕检测"
-                                itm[BTN_AI_TYPO].Enabled = True
-                                itm[TRIAL_LB].Text = "已激活 ✓"
-                                itm[HINT_LB].Text = ""
-                        else:
-                            err = msg
+                            # 立即更新 UI，不阻塞
+                            _ai_allowed = True
+                            itm[BTN_AI_TYPO].Text = "字幕检测"
+                            itm[BTN_AI_TYPO].Enabled = True
+                            itm[TRIAL_LB].Text = "已激活 ✓"
+                            itm[HINT_LB].Text = ""
                     except Exception as e:
                         err = f"激活失败: {e}"
             elif t == "api_key":
