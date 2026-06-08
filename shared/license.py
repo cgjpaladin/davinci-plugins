@@ -25,14 +25,15 @@ from typing import Dict, Optional, Tuple
 # 配置
 # ═══════════════════════════════════════════
 
-# 云函数地址 — 环境变量优先，兜底读 shared/.env
+# 云函数地址 — 环境变量优先，兜底读 shared/.env，最后用硬编码默认值
+_DEFAULT_BACKEND_URL = "https://license-node-mtqaghwijy.cn-hangzhou.fcapp.run"
 BACKEND_URL = os.environ.get("WB_LICENSE_URL", "")
 
 if not BACKEND_URL:
     # 尝试从 shared/.env 读取（达芬奇 Launcher 不会自动传环境变量）
     _env_paths = [
         os.path.join(os.path.dirname(__file__), ".env"),
-        os.path.join(os.path.expanduser("~"), ".config", "davinci", ".env"),  # 用户级 fallback
+        os.path.join(os.path.expanduser("~"), ".config", "davinci", ".env"),
         "/Volumes/MYJC/06_Software/达芬奇脚本/shared/.env",
     ]
     for _ep in _env_paths:
@@ -47,6 +48,9 @@ if not BACKEND_URL:
                 break
         except FileNotFoundError:
             continue
+
+if not BACKEND_URL:
+    BACKEND_URL = _DEFAULT_BACKEND_URL
 
 _CREDENTIAL_PATH = Path.home() / ".config" / "dv_license" / "license.dat"
 # 旧冗余路径（写入已废弃，仅用于迁移）
