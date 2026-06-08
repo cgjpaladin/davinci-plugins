@@ -1127,7 +1127,18 @@ def _show_config_dialog():
             pass
 
     # ── 保存 ──
+    _save_busy = False
     def _save(ev):
+        nonlocal _save_busy
+        if _save_busy:
+            return
+        _save_busy = True
+        try:
+            _do_save(ev)
+        finally:
+            _save_busy = False
+
+    def _do_save(ev):
         global _censor_subs
         err = ""
         for section in _sections:
