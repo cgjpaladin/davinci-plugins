@@ -212,7 +212,12 @@ def _post_to_backend(endpoint: str, data: dict, timeout: int = 10) -> Tuple[bool
             with urllib.request.urlopen(req, timeout=timeout, context=_SSL_CTX) as resp:
                 return True, json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
-            last_err = f"HTTP {e.code}"
+            # 尝试读 body 里的错误信息
+            try:
+                body = json.loads(e.read().decode("utf-8"))
+                last_err = body.get("msg", f"HTTP {e.code}")
+            except Exception:
+                last_err = f"HTTP {e.code}"
         except urllib.error.URLError as e:
             last_err = str(e.reason)
         except Exception as e:
