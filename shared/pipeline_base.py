@@ -360,9 +360,11 @@ class BasePipeline(ABC):
 
         # 逐文件进度（进日志区，不只是状态栏）
         downloaded = [0]  # 闭包捕获
+        _current_name = [""]  # on_progress 需要显示文件名
 
         def _on_start(name: str):
             downloaded[0] += 1
+            _current_name[0] = name
             self.ui.set_status(f"下载中... {name}")
             self.log.info(f"下载中... ({downloaded[0]}/{total}) {name}")
 
@@ -372,6 +374,16 @@ class BasePipeline(ABC):
         def _on_fail(name, err):
             self.log.fail(f"下载失败: {name} — {err}")
 
+        def _on_progress(downloaded_bytes: int, total_bytes: int):
+            # 进度回调：每 ~64KB 触发一次 (约 5次/秒)
+            idx = downloaded[0]  # 当前是第几个文件
+            name = _current_name[0]
+            if total_bytes:
+                pct = downloaded_bytes * 100 // total_bytes
+                self.ui.set_status(f"下载中... ({idx}/{total}) {name} {pct}%")
+            else:
+                self.ui.set_status(f"下载中... ({idx}/{total}) {name} {downloaded_bytes//1024}KB")
+
         success_count, fail_list, output_files = download_and_apply(
             results, self._output_dir, self._mode,
             check_stop=self._get_stop_check(),
@@ -379,6 +391,7 @@ class BasePipeline(ABC):
             on_start=_on_start,
             on_done=_on_done,
             on_fail=_on_fail,
+            on_progress=_on_progress,
         )
 
         self._report["results"] = {

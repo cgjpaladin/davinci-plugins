@@ -15,7 +15,7 @@
 |------|------|------|
 | AI去字幕 | v1.11.3 | ✅ |
 | 交付自检 | v2.5.5 | ✅ |
-| 批量命名工具 | v3.4 | ✅ 表格版，8字段(Ep/Sc/Gr/Tk/desc/method/author/v/status)，导表+硬编码消除 |
+| 批量命名工具 | v3.6 | ✅ 表格版，8字段(Ep/Sc/Gr/Tk/desc/method/author/v/status)，导表+硬编码消除+审查模式+DMG分发 |
 | 批量命名工具_创壹特供版 | v1.1 | ✅ 表格版，9字段(EP/SC/SH/TK/desc/type/author/V/status)，导表+死代码清理 |
 | AI换口型 | — | 待开发 |
 | AI语音克隆 | — | 待开发 |
@@ -115,6 +115,7 @@
 - 表格版（主）：`renamer_web.py` `app_table.js/css` `renamer_table.html`（根目录）
 - 卡片版（备用）：`card/app.js` `card/app.css` `card/renamer_web.html`
 - `_splice.py` 和 `build.sh` 均引用 `card/` 路径
+- **版本号唯一来源**：`app_table.js` 第 1 行 `const APP_VERSION='x.y'`。`_splice.py` 自动从 JS 提取版本号生成 `version_info.txt`，HTML 运行时注入。改版只改一处。（2026-06-04 解耦）
 
 ### 解析系统
 - `shared/naming.py`：`FILENAME_RE` 从 `FIELD_CONFIG` 自动生成（`_build_filename_re`）

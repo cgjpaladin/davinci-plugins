@@ -544,6 +544,7 @@ def download_and_apply(
     on_done: Optional[Callable] = None,
     on_fail: Optional[Callable] = None,
     on_start: Optional[Callable] = None,
+    on_progress: Optional[Callable] = None,
     provider: str = "",
 ) -> tuple:
     """
@@ -606,11 +607,21 @@ def download_and_apply(
             with urllib.request.urlopen(result.output_path, context=_DL_CTX, timeout=120) as resp:
                 expected_size = int(resp.headers.get("Content-Length", 0))
                 with open(dl, 'wb') as f:
+                    downloaded = 0
+                    last_reported = 0
                     while True:
                         chunk = resp.read(8192)
                         if not chunk:
                             break
                         f.write(chunk)
+                        downloaded += len(chunk)
+                        # 每 64KB 或完成时回调一次，在 GIL 保护的子线程内安全写入 UIManager
+                        if on_progress and (downloaded - last_reported >= 65536 or not chunk):
+                            try:
+                                on_progress(downloaded, expected_size)
+                            except Exception:
+                                pass  # 进度回调失败不影响下载
+                            last_reported = downloaded
             if is_remote:
                 oss_tracker.track_download(os.path.getsize(dl))
         except Exception as e:
