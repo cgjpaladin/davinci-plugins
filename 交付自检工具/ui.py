@@ -1097,9 +1097,10 @@ def _show_config_dialog():
     def _mask(val):
         return val[:5] + "…" + val[-4:] if len(val) > 12 else val[:4] + "…" if len(val) > 8 else val
     try:
-        # 仅在已激活时回填激活码（已激活状态显示文本而非输入框，此分支仅用于遗留过渡）
-        # 未激活时不预填，避免旧码残留
-        if _keys.get("activation_code") and _ai_allowed:
+        # 仅在已激活（非试用）时回填激活码；试用/未激活不预填，避免旧码残留
+        from shared.license import load_credential
+        c = load_credential()
+        if _keys.get("activation_code") and c and not c.get("payload", {}).get("is_trial", True):
             parts = _keys["activation_code"].split("-")
             if len(parts) == 3:
                 cfg["cfg_activation_1"].Text = _mask(parts[0])
@@ -1297,6 +1298,10 @@ def _show_config_dialog():
         if ok:
             global _ai_allowed
             _ai_allowed = False
+            # 删除存储的旧激活码，防止下一用户捡到
+            _keys = _load_api_keys()
+            if _keys.get("activation_code"):
+                del _keys["activation_code"]; _save_api_keys(_keys)
             itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
             itm[BTN_AI_TYPO].Enabled = False
             itm[TRIAL_LB].Text = ""
