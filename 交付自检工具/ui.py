@@ -2626,12 +2626,19 @@ def main():
             ok, msg = verify_local()
             p = cred.get("payload", {})
             is_trial = p.get("is_trial", True)
+            trial_used = p.get("trial_used", False)
             if is_trial:
                 d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                text = f"试用剩余 {d} 天"
-                _ai_allowed = d > 0
-                if not _ai_allowed:
+                # 停用标记：trial已用完 + 已过期 → 等同于「试用到期」
+                if trial_used and d <= 0:
+                    text = "已停用"
+                    _ai_allowed = False
                     _trial_expired = True
+                else:
+                    text = f"试用剩余 {d} 天"
+                    _ai_allowed = d > 0
+                    if not _ai_allowed:
+                        _trial_expired = True
             else:
                 text = "已激活 ✓"
             itm[TRIAL_LB].Text = msg if not ok else text

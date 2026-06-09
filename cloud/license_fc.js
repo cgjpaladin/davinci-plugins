@@ -1,5 +1,6 @@
 // License 激活中间件 — Node.js, 阿里云 FC
 // 飞书 Base 表格存激活码，FC 做中间层隐藏密钥
+// v3 重构：纯激活码管理，试用纯本地，无心跳
 
 const crypto = require('crypto');
 const https = require('https');
@@ -11,7 +12,6 @@ const BASE_TOKEN = process.env.BASE_TOKEN || 'JEqDbwMoiazH4ds8VIwcEBj8n9f';
 const TABLE_ID = process.env.TABLE_ID || 'tblKV7yxqsqgyAyK';
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const HMAC_SECRET = (process.env.HMAC_SECRET || 'change_me').substring(0, 64);
-const TRIAL_DAYS = 30;
 const OFFLINE_GRANT_DAYS = 30;
 
 let cachedToken = null;
@@ -98,40 +98,8 @@ function makeToken(payload) {
 }
 
 // ── Handlers ──
-async function handleInitTrial(data) {
-  const fp = data.machine_fingerprint || '';
-  if (!fp) return { status: 'error', msg: '机器指纹为空' };
 
-  // Check existing trial records
-  const records = await listRecords(`CurrentValue.[状态]="试用中"`);
-  const existing = records.find(r => r.fields.机器指纹 === fp);
-  const now = Math.floor(Date.now() / 1000);
-
-  if (existing) {
-    const trialEnd = existing.fields.创建时间 ? Math.floor(existing.fields.创建时间 / 1000) + TRIAL_DAYS * 86400 : now + TRIAL_DAYS * 86400;
-    if (now > trialEnd) return { status: 'error', msg: '试用已结束，请购买正式授权' };
-    const days = Math.max(0, Math.floor((trialEnd - now) / 86400));
-    const payload = {
-      activate_key: '', machine_fingerprint: fp, issue_time: now,
-      expire_time: trialEnd, offline_grant_end: now + OFFLINE_GRANT_DAYS * 86400,
-      nonce: crypto.randomBytes(8).toString('hex'),
-      platform: data.platform || 'unknown', products: {}, is_trial: true,
-    };
-    return { status: 'ok', msg: `试用中，剩余 ${days} 天`, license_token: makeToken(payload), trial_days: days };
-  }
-
-  const trialEnd = now + TRIAL_DAYS * 86400;
-  await addRecord({ 激活码: '', 状态: '试用中', 机器指纹: fp, 创建时间: Date.now() });
-
-  const payload = {
-    activate_key: '', machine_fingerprint: fp, issue_time: now,
-    expire_time: trialEnd, offline_grant_end: now + OFFLINE_GRANT_DAYS * 86400,
-    nonce: crypto.randomBytes(8).toString('hex'),
-    platform: data.platform || 'unknown', products: {}, is_trial: true,
-  };
-  return { status: 'ok', msg: `试用开始，剩余 ${TRIAL_DAYS} 天`, license_token: makeToken(payload), trial_days: TRIAL_DAYS };
-}
-
+// 激活：仅接受「待激活」状态的码
 async function handleActivate(data) {
   const key = (data.activate_key || '').trim().toUpperCase();
   const fp = data.machine_fingerprint || '';
@@ -140,11 +108,11 @@ async function handleActivate(data) {
   const records = await listRecords(`CurrentValue.[激活码]="${key}"`);
   const match = records[0];
   if (!match) return { status: 'error', msg: '激活码无效' };
-  const currentStatus = match.fields.状态 || '待售'; // 旧记录无状态字段视为待售
-  if (currentStatus !== '待售') return { status: 'error', msg: `激活码状态异常（${currentStatus}）` };
+  const currentStatus = match.fields.状态 || '';
+  if (currentStatus !== '待激活') return { status: 'error', msg: `激活码状态异常（${currentStatus}）` };
 
   const now = Math.floor(Date.now() / 1000);
-  const expireTime = now + 365 * 86400 * 10; // 10 年买断
+  const expireTime = now + 365 * 86400 * 100; // 永久（~100年）
 
   await updateRecord(match.record_id, { 状态: '已激活', 机器指纹: fp, 创建时间: Date.now() });
 
@@ -164,54 +132,18 @@ async function handleActivate(data) {
   return { status: 'ok', msg: '激活成功', license_token: makeToken(payload) };
 }
 
-async function handleHeartbeat(data) {
-  const fp = data.machine_fingerprint || '';
-  if (!fp) return { status: 'error', msg: '机器指纹为空' };
-
-  const now = Math.floor(Date.now() / 1000);
-  const grantEnd = now + OFFLINE_GRANT_DAYS * 86400;
-
-  const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`);
-  const activated = records.find(r => r.fields.状态 === '已激活' && r.fields.激活码);
-  if (activated) {
-    const payload = {
-      activate_key: activated.fields.激活码, machine_fingerprint: fp,
-      issue_time: Math.floor(activated.fields.创建时间 / 1000) || now,
-      expire_time: (Math.floor(activated.fields.创建时间 / 1000) || now) + 365 * 86400 * 10,
-      offline_grant_end: grantEnd, nonce: crypto.randomBytes(8).toString('hex'),
-      platform: data.platform || 'unknown', products: { delivery_checker: true }, is_trial: false,
-    };
-    return { status: 'ok', msg: '心跳成功', license_token: makeToken(payload) };
-  }
-
-  const trial = records.find(r => r.fields.状态 === '试用中');
-  if (trial) {
-    const trialEnd = (Math.floor(trial.fields.创建时间 / 1000) || now) + TRIAL_DAYS * 86400;
-    if (now > trialEnd) return { status: 'error', msg: '试用已结束' };
-    const payload = {
-      activate_key: '', machine_fingerprint: fp,
-      issue_time: Math.floor(trial.fields.创建时间 / 1000) || now,
-      expire_time: trialEnd, offline_grant_end: grantEnd,
-      nonce: crypto.randomBytes(8).toString('hex'),
-      platform: data.platform || 'unknown', products: {}, is_trial: true,
-    };
-    return { status: 'ok', msg: '心跳成功', license_token: makeToken(payload) };
-  }
-
-  return { status: 'error', msg: '未找到授权记录' };
-}
-
+// 停用：将已激活码重置为待激活，释放到其他机器
 async function handleDeactivate(data) {
   const fp = (data.machine_fingerprint || '').trim();
   if (!fp) return { status: 'error', msg: '机器指纹为空' };
   const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`);
   const activated = records.find(r => r.fields.状态 === '已激活');
   if (!activated) return { status: 'error', msg: '未找到此机器的激活记录' };
-  // 重置为待售，释放激活码
-  await updateRecord(activated.record_id, { 状态: '待售', 机器指纹: '' });
+  await updateRecord(activated.record_id, { 状态: '待激活', 机器指纹: '' });
   return { status: 'ok', msg: '已停用，激活码已释放' };
 }
 
+// 管理后台
 async function handleManage(data) {
   if (!data.admin_key || data.admin_key !== ADMIN_KEY) return { status: 'error', msg: '管理密钥错误' };
 
@@ -219,7 +151,6 @@ async function handleManage(data) {
   if (action === 'gen_key') {
     const newKey = crypto.randomBytes(6).toString('hex').toUpperCase();
     const formatted = `${newKey.slice(0,4)}-${newKey.slice(4,8)}-${newKey.slice(8,12)}`;
-    const now = Math.floor(Date.now() / 1000);
     await addRecord({ 激活码: formatted, 状态: '待售', 机器指纹: '', 创建时间: Date.now() });
     return { status: 'ok', key: formatted, msg: `激活码已生成: ${formatted}` };
   }
@@ -227,27 +158,19 @@ async function handleManage(data) {
     const records = await listRecords('');
     return { status: 'ok', keys: records.map(r => ({ ...r.fields, record_id: r.record_id })) };
   }
-  if (action === 'delete_trial') {
-    const fp = data.machine_fingerprint || '';
-    if (!fp) return { status: 'error', msg: '缺少 machine_fingerprint' };
-    const records = await listRecords(`CurrentValue.[machine_fp]="${fp}"`);
-    for (const r of records) {
-      if (r.fields.状态 === '试用中') {
-        await feishuReq('DELETE', `bitable/v1/apps/${BASE_TOKEN}/tables/${TABLE_ID}/records/${r.record_id}`);
-      }
-    }
-    return { status: 'ok', msg: `已删除试用记录: ${fp.slice(0,12)}...` };
-  }
   return { status: 'error', msg: `未知管理操作: ${action}` };
 }
 
-const ROUTES = { init_trial: handleInitTrial, activate: handleActivate, heartbeat: handleHeartbeat, deactivate: handleDeactivate, manage: handleManage };
+const ROUTES = {
+  activate: handleActivate,
+  deactivate: handleDeactivate,
+  manage: handleManage,
+};
 
 // ── FC 入口 ──
 exports.main_handler = async function(event, context) {
   let body;
   try {
-    // FC 3.0 HTTP trigger: event is a Buffer containing the full request JSON
     const raw = Buffer.from(event).toString('utf-8');
     const evt = JSON.parse(raw);
     const bodyStr = evt.body;

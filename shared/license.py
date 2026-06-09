@@ -233,35 +233,30 @@ def _post_to_backend(endpoint: str, data: dict, timeout: int = 10) -> Tuple[bool
 # ═══════════════════════════════════════════
 
 def init_trial() -> Tuple[bool, str]:
-    """首次试用初始化。
+    """首次试用初始化 — 纯本地，不调服务端。
 
-    采集指纹 → 发云函数 → 收凭证 → 本地存三份。
+    写本地凭据：is_trial=True, trial_used=True, expire_time=now+30d。
+    一台机器一辈子只试用一次。
 
     Returns:
         (success, message)
     """
-    if not BACKEND_URL:
-        return False, "未配置授权后端（离线模式）"
-
+    now = int(time.time())
     fp = get_machine_fingerprint()
-    ok, resp = _post_to_backend("/license", {
-        "action": "init_trial",
+    payload = {
+        "activate_key": "",
         "machine_fingerprint": fp,
-    })
-    if not ok:
-        return False, resp.get("msg", "连接后端失败")
-
-    if resp.get("status") != "ok":
-        return False, resp.get("msg", "试用初始化失败")
-
-    token = resp.get("license_token")
-    if token:
-        # token 是 JSON 字符串，解析后存
-        if isinstance(token, str):
-            token = json.loads(token)
-        save_credential(token)
-
-    return True, resp.get("msg", f"试用开始，剩余 {resp.get('trial_days', 30)} 天")
+        "issue_time": now,
+        "expire_time": now + 30 * 86400,
+        "offline_grant_end": now + 3 * 86400,
+        "nonce": os.urandom(8).hex(),
+        "platform": "Darwin",
+        "products": {},
+        "is_trial": True,
+        "trial_used": True,
+    }
+    save_credential({"payload": payload, "signature": "local_trial"})
+    return True, f"试用开始，剩余 30 天"
 
 
 def activate(activate_key: str) -> Tuple[bool, str]:
@@ -295,9 +290,9 @@ def activate(activate_key: str) -> Tuple[bool, str]:
 
 
 def verify_local() -> Tuple[bool, str]:
-    """本地离线校验：仅检查宽限期时间戳。
+    """本地离线校验。
 
-    不验签、不连网。签名校验由下次心跳在服务端完成。
+    不验签、不连网。检查时间戳 + 停用标记。
 
     Returns:
         (is_valid, message)
@@ -308,6 +303,12 @@ def verify_local() -> Tuple[bool, str]:
 
     payload = cred.get("payload", {})
     now = int(time.time())
+
+    # 停用标记 → 视为无效（由上层决定回退试用）
+    if payload.get("trial_used") and payload.get("is_trial", True):
+        expire = payload.get("expire_time", 0)
+        if expire and now > expire:
+            return False, "授权已停用"
 
     # 检查离线宽限期
     grant_end = payload.get("offline_grant_end", 0)
@@ -321,40 +322,17 @@ def verify_local() -> Tuple[bool, str]:
         return False, "系统时间异常"
 
     return True, "凭证有效"
-
-
-def heartbeat() -> Tuple[bool, str]:
-    """月度心跳同步。
-
-    上传本地凭证 + 最新指纹 → 服务端重签 → 更新本地三份。
-
-    Returns:
-        (success, message)
+def _clear_credential():
+    """删除本地凭证文件（已废弃—停用现在写标记而非删除）"""
+    try:
+        if _CREDENTIAL_PATH.exists():
+            _CREDENTIAL_PATH.unlink()
+    except Exception:
+        pass -> Tuple[bool, str]:
+    """停用本机授权 → 释放激活码，允许转移到其他机器。
+    
+    成功后不删凭证，改为写停用标记——让插件回到试用状态（如果试用期内）。
     """
-    if not BACKEND_URL:
-        return True, "离线模式，跳过心跳"
-
-    cred = load_credential()
-    fp = get_machine_fingerprint()
-
-    ok, resp = _post_to_backend("/license", {
-        "action": "heartbeat",
-        "license_token": json.dumps(cred) if cred else "",
-        "machine_fingerprint": fp,
-    })
-    if not ok:
-        return False, resp.get("msg", "心跳失败")
-
-    token = resp.get("license_token")
-    if token:
-        if isinstance(token, str):
-            token = json.loads(token)
-        save_credential(token)
-
-    return True, resp.get("msg", "心跳成功")
-
-def deactivate() -> Tuple[bool, str]:
-    """停用本机授权 → 释放激活码，允许转移到其他机器。"""
     if not BACKEND_URL:
         return False, "未配置授权后端"
     fp = get_machine_fingerprint()
@@ -366,7 +344,21 @@ def deactivate() -> Tuple[bool, str]:
         return False, resp.get("msg", "停用失败")
     if resp.get("status") != "ok":
         return False, resp.get("msg", "停用失败")
-    _clear_credential()
+    # 写停用标记（不删凭证），保留试用状态
+    now = int(time.time())
+    payload = {
+        "activate_key": "",
+        "machine_fingerprint": fp,
+        "issue_time": now - 31 * 86400,  # 假旧时间
+        "expire_time": now - 1,          # 已过期
+        "offline_grant_end": now - 1,
+        "nonce": os.urandom(8).hex(),
+        "platform": "Darwin",
+        "products": {},
+        "is_trial": True,
+        "trial_used": True,
+    }
+    save_credential({"payload": payload, "signature": "deactivated"})
     return True, resp.get("msg", "已停用")
 
 def _clear_credential():
