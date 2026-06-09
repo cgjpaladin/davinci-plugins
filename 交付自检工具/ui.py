@@ -1189,7 +1189,7 @@ def _show_config_dialog():
                             _bad = True; break
                     if _bad:
                         _activation_failed = True
-                        try: cfg["cfg_hint"].Text = "⚠ 激活码仅支持大写字母和数字"
+                        try: cfg["cfg_hint"].Text = "⚠ 激活码仅支持字母和数字"
                         except: pass
                     elif not code:
                         _activation_failed = True
