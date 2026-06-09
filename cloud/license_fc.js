@@ -194,6 +194,17 @@ async function handleHeartbeat(data) {
   return { status: 'error', msg: '未找到授权记录' };
 }
 
+async function handleDeactivate(data) {
+  const fp = (data.machine_fingerprint || '').trim();
+  if (!fp) return { status: 'error', msg: '机器指纹为空' };
+  const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`);
+  const activated = records.find(r => r.fields.状态 === '已激活');
+  if (!activated) return { status: 'error', msg: '未找到此机器的激活记录' };
+  // 重置为待售，释放激活码
+  await updateRecord(activated.record_id, { 状态: '待售', 机器指纹: '' });
+  return { status: 'ok', msg: '已停用，激活码已释放' };
+}
+
 async function handleManage(data) {
   if (!data.admin_key || data.admin_key !== ADMIN_KEY) return { status: 'error', msg: '管理密钥错误' };
 
@@ -223,7 +234,7 @@ async function handleManage(data) {
   return { status: 'error', msg: `未知管理操作: ${action}` };
 }
 
-const ROUTES = { init_trial: handleInitTrial, activate: handleActivate, heartbeat: handleHeartbeat, manage: handleManage };
+const ROUTES = { init_trial: handleInitTrial, activate: handleActivate, heartbeat: handleHeartbeat, deactivate: handleDeactivate, manage: handleManage };
 
 // ── FC 入口 ──
 exports.main_handler = async function(event, context) {
