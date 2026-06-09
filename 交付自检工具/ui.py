@@ -1312,7 +1312,7 @@ def _show_config_dialog():
             itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
             itm[BTN_AI_TYPO].Enabled = False
             itm[TRIAL_LB].Text = ""
-            itm[HINT_LB].Text = "授权已停用，重启以重新试用"
+            itm[HINT_LB].Text = "授权已停用"
         config_dlg.Hide(); config_disp.ExitLoop()
     try: config_dlg.On["cfg_deactivate_btn"].Clicked = _do_deactivate
     except Exception: pass  # noop: SMB用户无此按钮
