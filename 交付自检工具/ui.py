@@ -967,10 +967,12 @@ def _build_censor_personal():
     ]
 
 def _build_deactivate():
+    btn = ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用并释放到其他机器",
+                     "StyleSheet": BTN_STYLE_SM, "Weight": 0})
     if not _ai_allowed:
-        return [ui.Label({"ID": "cfg_deactivate_placeholder", "Text": "", "Visible": False})]
-    return [ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用并释放到其他机器",
-                       "StyleSheet": BTN_STYLE_SM, "Weight": 0})]
+        btn["Enabled"] = False
+        btn["Text"] = "请先激活再停用"
+    return [btn]
 
 def _build_smb_paths():
     """服务器素材路径配置：ComboBox 选择 + 添加/删除按钮"""
@@ -1103,10 +1105,12 @@ def _show_config_dialog():
     except Exception: pass  # noop: 控件未创建/加载
     # 未激活时停用按钮灰掉
     try:
-        from shared.license import load_credential
-        cred = load_credential()
-        if not cred or cred.get("is_trial", True):
+        if not _ai_allowed:
             cfg["cfg_deactivate_btn"].Enabled = False
+            cfg["cfg_deactivate_btn"].Text = "请先激活再停用"
+        else:
+            cfg["cfg_deactivate_btn"].Enabled = True
+            cfg["cfg_deactivate_btn"].Text = "停用并释放到其他机器"
     except: pass
     try:
         if _keys.get("deepseek_key"): cfg["cfg_deepseek_key"].Text = _keys["deepseek_key"]
