@@ -1193,6 +1193,12 @@ def _show_config_dialog():
                             itm[HINT_LB].Text = ""
                         else:
                             # 用户输错码不视为异常，仅提示不记入错误日志
+                            # 服务端消息 → 用户友好文案
+                            _human = {"激活码无效": "此激活码不存在，请检查是否输入正确",
+                                       "激活码状态异常（待售）": "此激活码不存在，请检查是否输入正确",
+                                       "激活码状态异常（已激活）": "此激活码已在其他设备使用，请先在其他设备上停用"}
+                            for k, v in _human.items():
+                                if k in msg: msg = v; break
                             try: cfg["cfg_hint"].Text = f"⚠ {msg}"
                             except: pass
                     except Exception as e:
