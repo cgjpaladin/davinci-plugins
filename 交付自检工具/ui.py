@@ -1166,9 +1166,14 @@ def _show_config_dialog():
         for section in _sections:
             t = section["type"]
             if t == "activation_code":
-                # 已激活则跳过
-                if _ai_allowed:
-                    continue
+                # 已激活码激活的跳过（is_trial=False），试用中有 is_trial=True 仍可输入激活码
+                try:
+                    from shared.license import load_credential
+                    c = load_credential()
+                    if c and not c.get("payload", {}).get("is_trial", True):
+                        continue
+                except Exception:
+                    pass
                 c1 = cfg["cfg_activation_1"].Text.strip().upper()
                 c2 = cfg["cfg_activation_2"].Text.strip().upper()
                 c3 = cfg["cfg_activation_3"].Text.strip().upper()
