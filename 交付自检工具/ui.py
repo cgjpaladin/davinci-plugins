@@ -1194,6 +1194,8 @@ def _show_config_dialog():
                         except: pass
                 if code and not _activation_failed:
                     try:
+                        try: cfg["cfg_hint"].Text = "⏳ 正在连接服务器…"
+                        except: pass
                         from shared.license import activate, load_credential
                         # 激活前记住试用剩余天数（停用时恢复）
                         _trial_save = 0
@@ -1329,6 +1331,8 @@ def _show_config_dialog():
 
     # ── 停用按钮 ──
     def _do_deactivate(ev):
+        try: cfg["cfg_hint"].Text = "⏳ 正在连接服务器…"
+        except: pass
         from shared.license import deactivate
         ok, msg = deactivate()
         _action_log(f"🔓 停用: {'✅' if ok else '❌'} {msg}")
