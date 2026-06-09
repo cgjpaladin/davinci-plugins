@@ -328,7 +328,10 @@ def _clear_credential():
         if _CREDENTIAL_PATH.exists():
             _CREDENTIAL_PATH.unlink()
     except Exception:
-        pass -> Tuple[bool, str]:
+        pass
+
+
+def deactivate() -> Tuple[bool, str]:
     """停用本机授权 → 释放激活码，允许转移到其他机器。
     
     成功后不删凭证，改为写停用标记——让插件回到试用状态（如果试用期内）。
