@@ -75,11 +75,12 @@ def get_machine_fingerprint() -> str:
     # 1. IOPlatformUUID（主板唯一标识）
     try:
         result = subprocess.run(
-            ["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"],
-            capture_output=True, text=True, timeout=5
+            ["ioreg", "-a", "-rd1", "-c", "IOPlatformExpertDevice"],
+            capture_output=True, timeout=5
         )
-        plist_data = plistlib.loads(result.stdout.encode("utf-8"))
-        ioreg_uuid = plist_data.get("IOPlatformUUID", "")
+        plist_data = plistlib.loads(result.stdout)
+        # -a 输出是数组 [{...}]，取第一个元素
+        ioreg_uuid = (plist_data[0] if isinstance(plist_data, list) and plist_data else plist_data).get("IOPlatformUUID", "")
         raw_parts.append(ioreg_uuid)
     except Exception:
         raw_parts.append(os.urandom(16).hex())
