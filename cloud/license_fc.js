@@ -148,6 +148,13 @@ async function handleActivate(data) {
 
   await updateRecord(match.record_id, { 状态: '已激活', 机器指纹: fp, 创建时间: Date.now() });
 
+  // 乐观锁：等待 200ms 后重读，确认未被并发写入覆盖
+  await new Promise(r => setTimeout(r, 200));
+  const verify = await listRecords(`CurrentValue.[激活码]="${key}"`);
+  if (verify[0] && verify[0].fields.机器指纹 !== fp) {
+    return { status: 'error', msg: '激活码已被其他设备抢先使用' };
+  }
+
   const payload = {
     activate_key: key, machine_fingerprint: fp, issue_time: now,
     expire_time: expireTime, offline_grant_end: now + OFFLINE_GRANT_DAYS * 86400,
