@@ -1180,6 +1180,21 @@ def _show_config_dialog():
                 c2 = cfg["cfg_activation_2"].Text.strip().upper()
                 c3 = cfg["cfg_activation_3"].Text.strip().upper()
                 code = f"{c1}-{c2}-{c3}" if c1 and c2 and c3 else ""
+                if c1 or c2 or c3:
+                    # 检查非法字符
+                    import re
+                    _bad = False
+                    for _part in (c1, c2, c3):
+                        if _part and not re.fullmatch(r'[A-Z0-9]+', _part):
+                            _bad = True; break
+                    if _bad:
+                        _activation_failed = True
+                        try: cfg["cfg_hint"].Text = "⚠ 激活码仅支持大写字母和数字"
+                        except: pass
+                    elif not code:
+                        _activation_failed = True
+                        try: cfg["cfg_hint"].Text = "⚠ 请完整输入 12 位激活码（每格 4 位）"
+                        except: pass
                 if code:
                     try:
                         from shared.license import activate, load_credential
@@ -1208,14 +1223,8 @@ def _show_config_dialog():
                     except Exception as e:
                         err = f"激活失败: {e}"
                 else:
-                    if c1 or c2 or c3:
-                        # 部分输入 → 提示完成
-                        _activation_failed = True
-                        try: cfg["cfg_hint"].Text = "⚠ 请完整输入 12 位激活码（每格 4 位）"
-                        except: pass
-                    else:
-                        # 全部清空 → 清除存储的旧码
-                        _keys = _load_api_keys()
+                    # 全部清空 → 清除存储的旧码
+                    _keys = _load_api_keys()
                         if _keys.get("activation_code"):
                             del _keys["activation_code"]; _save_api_keys(_keys)
             elif t == "api_key":
