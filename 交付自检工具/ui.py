@@ -1182,17 +1182,18 @@ def _show_config_dialog():
                 if code:
                     try:
                         from shared.license import activate, load_credential
-                        # 激活前记住试用到期日（activate 会覆盖凭据）
+                        # 激活前记住试用剩余天数（停用时恢复）
                         _trial_save = 0
                         c = load_credential()
                         if c and c.get("payload", {}).get("is_trial"):
-                            _trial_save = c["payload"].get("expire_time", 0)
+                            remain = max(0, c["payload"].get("expire_time", 0) - int(time.time()))
+                            _trial_save = remain
                         ok, msg = activate(code)
                         _action_log(f"🔑 激活: {'✅' if ok else '❌'} {msg}")
                         if ok:
                             _keys = _load_api_keys(); _keys["activation_code"] = code
                             if _trial_save:
-                                _keys["trial_expire"] = _trial_save
+                                _keys["trial_remain_secs"] = _trial_save
                             _save_api_keys(_keys)
                             _ai_allowed = True
                             itm[BTN_AI_TYPO].Text = "字幕检测"

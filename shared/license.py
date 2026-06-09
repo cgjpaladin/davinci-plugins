@@ -352,17 +352,16 @@ def deactivate() -> Tuple[bool, str]:
         return False, resp.get("msg", "停用失败")
     if resp.get("status") != "ok":
         return False, resp.get("msg", "停用失败")
-    # 写停用标记（不删凭证），恢复原始试用到期日
+    # 写停用标记（不删凭证），恢复原始试用剩余天数
     now = int(time.time())
-    # 读取激活前保存的试用到期日
     restored_expire = now - 1
     try:
         _api_path = Path.home() / "Library" / "Application Support" / "交付自检" / "api_keys.json"
         if _api_path.exists():
             keys = json.loads(_api_path.read_text(encoding="utf-8"))
-            saved = keys.get("trial_expire", 0)
-            if isinstance(saved, (int, float)) and saved > now:
-                restored_expire = int(saved)
+            saved = keys.get("trial_remain_secs", 0)
+            if isinstance(saved, (int, float)) and saved > 0:
+                restored_expire = now + int(saved)
     except Exception:
         pass
     payload = {
