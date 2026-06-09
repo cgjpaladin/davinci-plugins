@@ -1164,6 +1164,7 @@ def _show_config_dialog():
     def _do_save(ev):
         global _censor_subs, _ai_allowed
         err = ""
+        _activation_failed = False
         for section in _sections:
             t = section["type"]
             if t == "activation_code":
@@ -1202,6 +1203,7 @@ def _show_config_dialog():
                             itm[HINT_LB].Text = ""
                         else:
                             # 用户输错码不视为异常，仅提示不记入错误日志
+                            _activation_failed = True
                             # 服务端消息 → 用户友好文案
                             _human = {"激活码无效": "此激活码不存在，请检查是否输入正确",
                                        "激活码状态异常（待售）": "此激活码不存在，请检查是否输入正确",
@@ -1245,9 +1247,9 @@ def _show_config_dialog():
                     _action_log(f"⚠ 路径保存失败: {e}")
             elif t == "censor_personal":
                 pass
-        if err:
-            _action_log(f"⚠ {err}")
-            try: cfg["cfg_hint"].Text = f"⚠ {err}"
+        if err or _activation_failed:
+            if err: _action_log(f"⚠ {err}")
+            try: cfg["cfg_hint"].Text = f"⚠ {err}" if err else cfg["cfg_hint"].Text
             except: pass
             return  # 不关闭对话框，留在配置页让用户重试
         config_dlg.Hide(); config_disp.ExitLoop()
