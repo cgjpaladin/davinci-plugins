@@ -362,7 +362,7 @@ def deactivate() -> Tuple[bool, str]:
         "machine_fingerprint": fp,
         "issue_time": now - 31 * 86400,
         "expire_time": restored_expire,
-        "offline_grant_end": now - 1,
+        "offline_grant_end": max(restored_expire + 3 * 86400, now + 3 * 86400),
         "nonce": os.urandom(8).hex(),
         "platform": "Darwin",
         "products": {},
