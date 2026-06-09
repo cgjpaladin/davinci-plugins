@@ -253,7 +253,6 @@ def init_trial() -> Tuple[bool, str]:
         "platform": "Darwin",
         "products": {},
         "is_trial": True,
-        "trial_used": True,
     }
     save_credential({"payload": payload, "signature": "local_trial"})
     return True, f"试用开始，剩余 30 天"
