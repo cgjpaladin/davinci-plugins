@@ -1183,7 +1183,7 @@ def _show_config_dialog():
                 if any((c1, c2, c3)):
                     # 检查非法字符
                     import re
-                    _bad = any(_p and not re.fullmatch(r'[A-Z0-9]+', _p) for _p in (c1, c2, c3))
+                    _bad = any(_p and not re.fullmatch(r'[A-Z0-9]{4}', _p) for _p in (c1, c2, c3))
                     if _bad:
                         _activation_failed = True
                         try: cfg["cfg_hint"].Text = "⚠ 激活码仅支持字母和数字"
@@ -1195,6 +1195,7 @@ def _show_config_dialog():
                 if code and not _activation_failed:
                     try:
                         try: cfg["cfg_hint"].Text = "⏳ 正在连接服务器…"
+                            cfg["cfg_hint"]["StyleSheet"] = "color:rgb(220,160,40);font-size:12px"
                         except: pass
                         from shared.license import activate, load_credential
                         # 激活前记住试用剩余天数（停用时恢复）
@@ -1270,7 +1271,9 @@ def _show_config_dialog():
                 pass
         if err or _activation_failed:
             if err: _action_log(f"⚠ {err}")
-            try: cfg["cfg_hint"].Text = f"⚠ {err}" if err else cfg["cfg_hint"].Text
+            try:
+                cfg["cfg_hint"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
+                if err: cfg["cfg_hint"].Text = f"⚠ {err}"
             except: pass
             return  # 不关闭对话框，留在配置页让用户重试
         config_dlg.Hide(); config_disp.ExitLoop()
@@ -1332,6 +1335,7 @@ def _show_config_dialog():
     # ── 停用按钮 ──
     def _do_deactivate(ev):
         try: cfg["cfg_hint"].Text = "⏳ 正在连接服务器…"
+            cfg["cfg_hint"]["StyleSheet"] = "color:rgb(220,160,40);font-size:12px"
         except: pass
         from shared.license import deactivate
         ok, msg = deactivate()
