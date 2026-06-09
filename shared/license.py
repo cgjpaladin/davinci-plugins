@@ -320,13 +320,6 @@ def verify_local() -> Tuple[bool, str]:
         return False, "系统时间异常"
 
     return True, "凭证有效"
-def _clear_credential():
-    """删除本地凭证文件（已废弃—停用现在写标记而非删除）"""
-    try:
-        if _CREDENTIAL_PATH.exists():
-            _CREDENTIAL_PATH.unlink()
-    except Exception:
-        pass
 
 
 def deactivate() -> Tuple[bool, str]:
