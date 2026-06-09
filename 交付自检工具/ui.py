@@ -2643,7 +2643,6 @@ def main():
             ok, msg = verify_local()
             p = cred.get("payload", {})
             is_trial = p.get("is_trial", True)
-            trial_used = p.get("trial_used", False)
             if is_trial:
                 d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
                 text = f"试用剩余 {d} 天"
