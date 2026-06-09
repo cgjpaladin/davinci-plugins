@@ -114,7 +114,12 @@ async function handleActivate(data) {
   const now = Math.floor(Date.now() / 1000);
   const expireTime = now + 365 * 86400 * 100; // 永久（~100年）
 
-  await updateRecord(match.record_id, { 状态: '已激活', 机器指纹: fp, 创建时间: Date.now() });
+  // 首次激活时记录时间，停用-再激活不覆盖
+  const updateFields = { 状态: '已激活', 机器指纹: fp };
+  if (!match.fields.激活时间) {
+    updateFields.激活时间 = Date.now();
+  }
+  await updateRecord(match.record_id, updateFields);
 
   // 乐观锁：等待 200ms 后重读，确认未被并发写入覆盖
   await new Promise(r => setTimeout(r, 200));
@@ -151,7 +156,7 @@ async function handleManage(data) {
   if (action === 'gen_key') {
     const newKey = crypto.randomBytes(6).toString('hex').toUpperCase();
     const formatted = `${newKey.slice(0,4)}-${newKey.slice(4,8)}-${newKey.slice(8,12)}`;
-    await addRecord({ 激活码: formatted, 状态: '待售', 机器指纹: '', 创建时间: Date.now() });
+    await addRecord({ 激活码: formatted, 状态: '待售', 机器指纹: '' });
     return { status: 'ok', key: formatted, msg: `激活码已生成: ${formatted}` };
   }
   if (action === 'list_keys') {
