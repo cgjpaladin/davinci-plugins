@@ -932,11 +932,14 @@ CONFIG_SECTIONS = [
 def _build_activation_code():
     if not os.environ.get("WORKBUDDY_PERSONAL"):
         return [ui.Label({"ID": "cfg_activation_status", "Text": "", "Visible": False})]
-    # 已激活：显示文本
-    if _ai_allowed:
+    # 已激活（非试用）：显示文本
+    from shared.license import load_credential
+    cred = load_credential()
+    is_activated = cred and not cred.get("payload", {}).get("is_trial", True)
+    if is_activated:
         return [ui.Label({"ID": "cfg_activation_status", "Text": "✅ 已激活",
                           "StyleSheet": "color:rgb(80,200,100);font-size:13px", "Weight": 0})]
-    # 未激活：三格输入
+    # 未激活或试用中：三格输入
     kw = {"MinimumSize": [54, 22], "Weight": 0, "MaxLength": 4}
     seg1 = ui.LineEdit({**kw, "ID": "cfg_activation_1", "Text": "", "PlaceholderText": "XXXX"})
     seg2 = ui.LineEdit({**kw, "ID": "cfg_activation_2", "Text": "", "PlaceholderText": "XXXX"})
@@ -967,11 +970,14 @@ def _build_censor_personal():
     ]
 
 def _build_deactivate():
+    from shared.license import load_credential
+    cred = load_credential()
+    is_activated = cred and not cred.get("payload", {}).get("is_trial", True)
     btn = ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用并释放到其他机器",
                      "StyleSheet": BTN_STYLE_SM, "Weight": 0})
-    if not _ai_allowed:
+    if not is_activated:
         btn["Enabled"] = False
-        btn["Text"] = "请先激活再停用"
+        btn["Text"] = "请先输入激活码"
     return [btn]
 
 def _build_smb_paths():
@@ -1103,11 +1109,14 @@ def _show_config_dialog():
         if _keys.get("feishu_app_id"): cfg["cfg_feishu_app_id"].Text = _keys["feishu_app_id"]
         if _keys.get("feishu_secret"): cfg["cfg_feishu_secret"].Text = _mask(_keys["feishu_secret"])
     except Exception: pass  # noop: 控件未创建/加载
-    # 未激活时停用按钮灰掉
+    # 未激活时停用按钮灰掉（试用中也不算已激活）
     try:
-        if not _ai_allowed:
+        from shared.license import load_credential
+        c = load_credential()
+        activated = c and not c.get("payload", {}).get("is_trial", True)
+        if not activated:
             cfg["cfg_deactivate_btn"].Enabled = False
-            cfg["cfg_deactivate_btn"].Text = "请先激活再停用"
+            cfg["cfg_deactivate_btn"].Text = "请先输入激活码"
         else:
             cfg["cfg_deactivate_btn"].Enabled = True
             cfg["cfg_deactivate_btn"].Text = "停用并释放到其他机器"
