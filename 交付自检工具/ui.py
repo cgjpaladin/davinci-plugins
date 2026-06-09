@@ -1089,7 +1089,9 @@ def _show_config_dialog():
     def _mask(val):
         return val[:5] + "…" + val[-4:] if len(val) > 12 else val[:4] + "…" if len(val) > 8 else val
     try:
-        if _keys.get("activation_code"):
+        # 仅在已激活时回填激活码（已激活状态显示文本而非输入框，此分支仅用于遗留过渡）
+        # 未激活时不预填，避免旧码残留
+        if _keys.get("activation_code") and _ai_allowed:
             parts = _keys["activation_code"].split("-")
             if len(parts) == 3:
                 cfg["cfg_activation_1"].Text = _mask(parts[0])
@@ -1173,6 +1175,11 @@ def _show_config_dialog():
                             itm[HINT_LB].Text = ""
                     except Exception as e:
                         err = f"激活失败: {e}"
+                else:
+                    # 用户清空了激活码框，清除存储的旧码
+                    _keys = _load_api_keys()
+                    if _keys.get("activation_code"):
+                        del _keys["activation_code"]; _save_api_keys(_keys)
             elif t == "api_key":
                 sid = section["id"]
                 val = cfg[f"cfg_{sid}"].Text.strip()
@@ -2606,7 +2613,7 @@ def main():
             is_trial = p.get("is_trial", True)
             if is_trial:
                 d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                text = f"试用剩余 {d} 天  |  联系购买: 微信 paladinpp"
+                text = f"试用剩余 {d} 天"
                 _ai_allowed = d > 0
                 if not _ai_allowed:
                     _trial_expired = True
