@@ -304,6 +304,11 @@ def verify_local() -> Tuple[bool, str]:
     payload = cred.get("payload", {})
     now = int(time.time())
 
+    # 指纹校验：凭证拷贝到别的机器无效
+    stored_fp = payload.get("machine_fingerprint", "")
+    if stored_fp and stored_fp != get_machine_fingerprint():
+        return False, "凭证与当前设备不匹配"
+
     # 停用标记 → 视为无效（由上层决定回退试用）
     if payload.get("trial_used") and payload.get("is_trial", True):
         expire = payload.get("expire_time", 0)
