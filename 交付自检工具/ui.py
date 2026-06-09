@@ -2641,7 +2641,8 @@ def main():
                         _trial_expired = True
             else:
                 text = "已激活 ✓"
-            itm[TRIAL_LB].Text = msg if not ok else text
+            # 停用时 verify_local 返回错误信息，用我们自己的 text
+            itm[TRIAL_LB].Text = text if _ai_allowed or text == "已停用" else (msg if not ok else text)
             _action_log(f"License: {text}  ({'✅' if ok else '❌ '+msg})")
         else:
             ok, msg = init_trial()
