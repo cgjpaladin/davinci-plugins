@@ -1225,12 +1225,26 @@ def _show_config_dialog():
                 else:
                     # 全部清空 → 清除存储的旧码
                     _keys = _load_api_keys()
-                        if _keys.get("activation_code"):
-                            del _keys["activation_code"]; _save_api_keys(_keys)
+                    if _keys.get("activation_code"):
+                        del _keys["activation_code"]; _save_api_keys(_keys)
             elif t == "api_key":
                 sid = section["id"]
                 val = cfg[f"cfg_{sid}"].Text.strip()
                 if val:
+                    # 掩码（含"…"）→ 跳过校验，保留旧值
+                    if "…" not in val:
+                        _hints = {
+                            "deepseek_key": ("sk-", 35, "DeepSeek Key 应以 sk- 开头，至少 35 位"),
+                            "feishu_app_id": ("cli_", 20, "飞书 App ID 应以 cli_ 开头"),
+                            "feishu_secret": ("", 10, "飞书 App Secret 至少 10 位"),
+                        }
+                        if sid in _hints:
+                            prefix, min_len, hint = _hints[sid]
+                            if (prefix and not val.startswith(prefix)) or len(val) < min_len:
+                                _activation_failed = True
+                                try: cfg["cfg_hint"].Text = f"⚠ {hint}"
+                                except: pass
+                                continue
                     try:
                         _keys = _load_api_keys()
                         # 如果用户输入的是掩码（含"…"），保留存储的真值
