@@ -107,9 +107,9 @@ async function handleActivate(data) {
 
   const records = await listRecords(`CurrentValue.[激活码]="${key}"`);
   const match = records[0];
-  if (!match) return { status: 'error', msg: '激活码无效' };
+  if (!match) return { status: 'error', msg: '此激活码不存在，请检查是否输入正确' };
   const currentStatus = match.fields.状态 || '';
-  if (currentStatus !== '待激活') return { status: 'error', msg: `激活码状态异常（${currentStatus}）` };
+  if (currentStatus !== '待激活') return { status: 'error', msg: currentStatus === '已激活' ? '此激活码已在其他设备使用，请先在其他设备上停用' : '此激活码不存在，请检查是否输入正确' };
 
   const now = Math.floor(Date.now() / 1000);
   const expireTime = now + 365 * 86400 * 100; // 永久（~100年）

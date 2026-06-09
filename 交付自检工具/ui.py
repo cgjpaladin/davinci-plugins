@@ -660,7 +660,7 @@ def _action_log(msg: str):
         pass
     if any(k in _stderr_msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
         print(_stderr_msg, file=sys.stderr)
-    if any(k in msg for k in ("异常", "崩溃", "Traceback", "ModuleNotFound", "ImportError")) and "结构异常" not in msg and "格式异常" not in msg and "状态异常" not in msg:
+    if any(k in msg for k in ("异常", "崩溃", "Traceback", "ModuleNotFound", "ImportError")) and "结构异常" not in msg and "格式异常" not in msg:
         _UI_ERROR_COUNT += 1
         try: _update_err_counter()
         except Exception: pass  # noop: 配置写入失败不影响主流程
@@ -1202,14 +1202,7 @@ def _show_config_dialog():
                             itm[TRIAL_LB].Text = "已激活 ✓"
                             itm[HINT_LB].Text = ""
                         else:
-                            # 用户输错码不视为异常，仅提示不记入错误日志
                             _activation_failed = True
-                            # 服务端消息 → 用户友好文案
-                            _human = {"激活码无效": "此激活码不存在，请检查是否输入正确",
-                                       "激活码状态异常（待售）": "此激活码不存在，请检查是否输入正确",
-                                       "激活码状态异常（已激活）": "此激活码已在其他设备使用，请先在其他设备上停用"}
-                            for k, v in _human.items():
-                                if k in msg: msg = v; break
                             try: cfg["cfg_hint"].Text = f"⚠ {msg}"
                             except: pass
                     except Exception as e:
