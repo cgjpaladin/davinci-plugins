@@ -1453,7 +1453,7 @@ def _run_ai_typo():
     if _BUSY or _checking:
         return
     if not _ai_allowed:
-        itm[HINT_LB].Text = "试用已到期，请联系购买: 微信 paladinpp"
+        itm[TRIAL_LB].Text = "试用剩余 0 天  |  请联系购买: 微信 paladinpp"
         return
     _checking = True
     itm[HINT_LB].Text = ""
@@ -2676,7 +2676,7 @@ def main():
         itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
         itm[BTN_AI_TYPO].Enabled = False
         if _trial_expired:
-            itm[HINT_LB].Text = "试用已到期，请联系购买: 微信 paladinpp"
+            itm[TRIAL_LB].Text = "试用剩余 0 天  |  请联系购买: 微信 paladinpp"
         elif not cred:
             itm[HINT_LB].Text = ""  # 首次启动尝试初始化，静默
 
