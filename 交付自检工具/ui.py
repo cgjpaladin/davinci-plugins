@@ -1186,14 +1186,15 @@ def _show_config_dialog():
                         _action_log(f"🔑 激活: {'✅' if ok else '❌'} {msg}")
                         if ok:
                             _keys = _load_api_keys(); _keys["activation_code"] = code; _save_api_keys(_keys)
-                            # 立即更新 UI，不阻塞
                             _ai_allowed = True
                             itm[BTN_AI_TYPO].Text = "字幕检测"
                             itm[BTN_AI_TYPO].Enabled = True
                             itm[TRIAL_LB].Text = "已激活 ✓"
                             itm[HINT_LB].Text = ""
                         else:
-                            err = msg
+                            # 用户输错码不视为异常，仅提示不记入错误日志
+                            try: cfg["cfg_hint"].Text = f"⚠ {msg}"
+                            except: pass
                     except Exception as e:
                         err = f"激活失败: {e}"
                 else:
