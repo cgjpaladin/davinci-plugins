@@ -1185,7 +1185,13 @@ def _show_config_dialog():
                         ok, msg = activate(code)
                         _action_log(f"🔑 激活: {'✅' if ok else '❌'} {msg}")
                         if ok:
-                            _keys = _load_api_keys(); _keys["activation_code"] = code; _save_api_keys(_keys)
+                            _keys = _load_api_keys(); _keys["activation_code"] = code
+                            # 记住试用到期日，停用时恢复
+                            from shared.license import load_credential
+                            c = load_credential()
+                            if c and c.get("payload", {}).get("is_trial"):
+                                _keys["trial_expire"] = c["payload"].get("expire_time", 0)
+                            _save_api_keys(_keys)
                             _ai_allowed = True
                             itm[BTN_AI_TYPO].Text = "字幕检测"
                             itm[BTN_AI_TYPO].Enabled = True

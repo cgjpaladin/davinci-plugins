@@ -352,13 +352,24 @@ def deactivate() -> Tuple[bool, str]:
         return False, resp.get("msg", "停用失败")
     if resp.get("status") != "ok":
         return False, resp.get("msg", "停用失败")
-    # 写停用标记（不删凭证），保留试用状态
+    # 写停用标记（不删凭证），恢复原始试用到期日
     now = int(time.time())
+    # 读取激活前保存的试用到期日
+    restored_expire = now - 1
+    try:
+        _api_path = Path.home() / "Library" / "Application Support" / "交付自检" / "api_keys.json"
+        if _api_path.exists():
+            keys = json.loads(_api_path.read_text(encoding="utf-8"))
+            saved = keys.get("trial_expire", 0)
+            if isinstance(saved, (int, float)) and saved > now:
+                restored_expire = int(saved)
+    except Exception:
+        pass
     payload = {
         "activate_key": "",
         "machine_fingerprint": fp,
-        "issue_time": now - 31 * 86400,  # 假旧时间
-        "expire_time": now - 1,          # 已过期
+        "issue_time": now - 31 * 86400,
+        "expire_time": restored_expire,
         "offline_grant_end": now - 1,
         "nonce": os.urandom(8).hex(),
         "platform": "Darwin",
