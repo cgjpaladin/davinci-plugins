@@ -1180,13 +1180,10 @@ def _show_config_dialog():
                 c2 = cfg["cfg_activation_2"].Text.strip().upper()
                 c3 = cfg["cfg_activation_3"].Text.strip().upper()
                 code = f"{c1}-{c2}-{c3}" if c1 and c2 and c3 else ""
-                if c1 or c2 or c3:
+                if any((c1, c2, c3)):
                     # 检查非法字符
                     import re
-                    _bad = False
-                    for _part in (c1, c2, c3):
-                        if _part and not re.fullmatch(r'[A-Z0-9]+', _part):
-                            _bad = True; break
+                    _bad = any(_p and not re.fullmatch(r'[A-Z0-9]+', _p) for _p in (c1, c2, c3))
                     if _bad:
                         _activation_failed = True
                         try: cfg["cfg_hint"].Text = "⚠ 激活码仅支持字母和数字"
@@ -1195,7 +1192,7 @@ def _show_config_dialog():
                         _activation_failed = True
                         try: cfg["cfg_hint"].Text = "⚠ 请完整输入 12 位激活码（每格 4 位）"
                         except: pass
-                if code:
+                if code and not _activation_failed:
                     try:
                         from shared.license import activate, load_credential
                         # 激活前记住试用剩余天数（停用时恢复）
