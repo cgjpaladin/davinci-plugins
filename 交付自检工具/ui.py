@@ -1194,7 +1194,8 @@ def _show_config_dialog():
                         except: pass
                 if code and not _activation_failed:
                     try:
-                        try: cfg["cfg_hint"].Text = "⏳ 正在连接服务器…"
+                        try:
+                            cfg["cfg_hint"].Text = "⏳ 正在连接服务器…"
                             cfg["cfg_hint"]["StyleSheet"] = "color:rgb(220,160,40);font-size:12px"
                         except: pass
                         from shared.license import activate, load_credential
@@ -1334,7 +1335,8 @@ def _show_config_dialog():
 
     # ── 停用按钮 ──
     def _do_deactivate(ev):
-        try: cfg["cfg_hint"].Text = "⏳ 正在连接服务器…"
+        try:
+            cfg["cfg_hint"].Text = "⏳ 正在连接服务器…"
             cfg["cfg_hint"]["StyleSheet"] = "color:rgb(220,160,40);font-size:12px"
         except: pass
         from shared.license import deactivate
