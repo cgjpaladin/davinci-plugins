@@ -2646,20 +2646,13 @@ def main():
             trial_used = p.get("trial_used", False)
             if is_trial:
                 d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                # 停用标记：trial已用完 + 已过期 → 等同于「试用到期」
-                if trial_used and d <= 0:
-                    text = "已停用"
-                    _ai_allowed = False
+                text = f"试用剩余 {d} 天"
+                _ai_allowed = d > 0
+                if not _ai_allowed:
                     _trial_expired = True
-                else:
-                    text = f"试用剩余 {d} 天"
-                    _ai_allowed = d > 0
-                    if not _ai_allowed:
-                        _trial_expired = True
             else:
                 text = "已激活 ✓"
-            # 停用时 verify_local 返回错误信息，用我们自己的 text
-            itm[TRIAL_LB].Text = text if _ai_allowed or text == "已停用" else (msg if not ok else text)
+            itm[TRIAL_LB].Text = text if _ai_allowed else text
             _action_log(f"License: {text}  ({'✅' if ok else '❌ '+msg})")
         else:
             ok, msg = init_trial()
