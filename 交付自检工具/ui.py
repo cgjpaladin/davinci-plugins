@@ -1208,10 +1208,16 @@ def _show_config_dialog():
                     except Exception as e:
                         err = f"激活失败: {e}"
                 else:
-                    # 用户清空了激活码框，清除存储的旧码
-                    _keys = _load_api_keys()
-                    if _keys.get("activation_code"):
-                        del _keys["activation_code"]; _save_api_keys(_keys)
+                    if c1 or c2 or c3:
+                        # 部分输入 → 提示完成
+                        _activation_failed = True
+                        try: cfg["cfg_hint"].Text = "⚠ 请完整输入 12 位激活码（每格 4 位）"
+                        except: pass
+                    else:
+                        # 全部清空 → 清除存储的旧码
+                        _keys = _load_api_keys()
+                        if _keys.get("activation_code"):
+                            del _keys["activation_code"]; _save_api_keys(_keys)
             elif t == "api_key":
                 sid = section["id"]
                 val = cfg[f"cfg_{sid}"].Text.strip()
