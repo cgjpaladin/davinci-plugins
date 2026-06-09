@@ -660,7 +660,7 @@ def _action_log(msg: str):
         pass
     if any(k in _stderr_msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
         print(_stderr_msg, file=sys.stderr)
-    if any(k in msg for k in ("异常", "崩溃", "Traceback", "ModuleNotFound", "ImportError")) and "结构异常" not in msg and "格式异常" not in msg:
+    if any(k in msg for k in ("异常", "崩溃", "Traceback", "ModuleNotFound", "ImportError")) and "结构异常" not in msg and "格式异常" not in msg and "状态异常" not in msg:
         _UI_ERROR_COUNT += 1
         try: _update_err_counter()
         except Exception: pass  # noop: 配置写入失败不影响主流程
