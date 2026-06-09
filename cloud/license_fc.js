@@ -108,7 +108,7 @@ async function handleInitTrial(data) {
   const now = Math.floor(Date.now() / 1000);
 
   if (existing) {
-    const trialEnd = existing.fields.created_at ? existing.fields.created_at + TRIAL_DAYS * 86400 : now + TRIAL_DAYS * 86400;
+    const trialEnd = existing.fields.创建时间 ? Math.floor(existing.fields.创建时间 / 1000) + TRIAL_DAYS * 86400 : now + TRIAL_DAYS * 86400;
     if (now > trialEnd) return { status: 'error', msg: '试用已结束，请购买正式授权' };
     const days = Math.max(0, Math.floor((trialEnd - now) / 86400));
     const payload = {
@@ -121,7 +121,7 @@ async function handleInitTrial(data) {
   }
 
   const trialEnd = now + TRIAL_DAYS * 86400;
-  await addRecord({ 激活码: '', 状态: '试用中', 机器指纹: fp, created_at: now });
+  await addRecord({ 激活码: '', 状态: '试用中', 机器指纹: fp, 创建时间: Date.now() });
 
   const payload = {
     activate_key: '', machine_fingerprint: fp, issue_time: now,
@@ -146,7 +146,7 @@ async function handleActivate(data) {
   const now = Math.floor(Date.now() / 1000);
   const expireTime = now + 365 * 86400 * 10; // 10 年买断
 
-  await updateRecord(match.record_id, { 状态: '已激活', 机器指纹: fp, created_at: now });
+  await updateRecord(match.record_id, { 状态: '已激活', 机器指纹: fp, 创建时间: Date.now() });
 
   const payload = {
     activate_key: key, machine_fingerprint: fp, issue_time: now,
@@ -169,8 +169,8 @@ async function handleHeartbeat(data) {
   if (activated) {
     const payload = {
       activate_key: activated.fields.激活码, machine_fingerprint: fp,
-      issue_time: activated.fields.created_at || now,
-      expire_time: (activated.fields.created_at || now) + 365 * 86400 * 10,
+      issue_time: Math.floor(activated.fields.创建时间 / 1000) || now,
+      expire_time: (Math.floor(activated.fields.创建时间 / 1000) || now) + 365 * 86400 * 10,
       offline_grant_end: grantEnd, nonce: crypto.randomBytes(8).toString('hex'),
       platform: data.platform || 'unknown', products: { delivery_checker: true }, is_trial: false,
     };
@@ -179,11 +179,11 @@ async function handleHeartbeat(data) {
 
   const trial = records.find(r => r.fields.状态 === '试用中');
   if (trial) {
-    const trialEnd = (trial.fields.created_at || now) + TRIAL_DAYS * 86400;
+    const trialEnd = (Math.floor(trial.fields.创建时间 / 1000) || now) + TRIAL_DAYS * 86400;
     if (now > trialEnd) return { status: 'error', msg: '试用已结束' };
     const payload = {
       activate_key: '', machine_fingerprint: fp,
-      issue_time: trial.fields.created_at || now,
+      issue_time: Math.floor(trial.fields.创建时间 / 1000) || now,
       expire_time: trialEnd, offline_grant_end: grantEnd,
       nonce: crypto.randomBytes(8).toString('hex'),
       platform: data.platform || 'unknown', products: {}, is_trial: true,
@@ -213,7 +213,7 @@ async function handleManage(data) {
     const newKey = crypto.randomBytes(6).toString('hex').toUpperCase();
     const formatted = `${newKey.slice(0,4)}-${newKey.slice(4,8)}-${newKey.slice(8,12)}`;
     const now = Math.floor(Date.now() / 1000);
-    await addRecord({ 激活码: formatted, 状态: '待售', 机器指纹: '', created_at: now });
+    await addRecord({ 激活码: formatted, 状态: '待售', 机器指纹: '', 创建时间: Date.now() });
     return { status: 'ok', key: formatted, msg: `激活码已生成: ${formatted}` };
   }
   if (action === 'list_keys') {
