@@ -1173,6 +1173,8 @@ def _show_config_dialog():
                             itm[BTN_AI_TYPO].Enabled = True
                             itm[TRIAL_LB].Text = "已激活 ✓"
                             itm[HINT_LB].Text = ""
+                        else:
+                            err = msg
                     except Exception as e:
                         err = f"激活失败: {e}"
                 else:
