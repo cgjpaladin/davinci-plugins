@@ -2694,6 +2694,17 @@ def main():
                     _trial_expired = True
             else:
                 text = "已激活 ✓"
+                # 启动时联网校验：防止盗用/误操作吊销
+                try:
+                    from shared.license import verify_activation
+                    v_ok, v_msg = verify_activation()
+                    if not v_ok:
+                        _ai_allowed = False
+                        _trial_expired = True
+                        text = f"试用剩余 0 天"
+                        _action_log(f"License 吊销: {v_msg}")
+                except Exception:
+                    pass
             itm[TRIAL_LB].Text = text if _ai_allowed else text
             _action_log(f"License: {text}  ({'✅' if ok else '❌ '+msg})")
         else:

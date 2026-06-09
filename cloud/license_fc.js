@@ -166,9 +166,32 @@ async function handleManage(data) {
   return { status: 'error', msg: `未知管理操作: ${action}` };
 }
 
+// 启动时校验：激活码状态 + 指纹是否仍匹配
+async function handleVerifyStatus(data) {
+  const key = (data.activate_key || '').trim().toUpperCase();
+  const fp = data.machine_fingerprint || '';
+  if (!key || !fp) return { status: 'error', msg: '参数不完整' };
+
+  const records = await listRecords(`CurrentValue.[激活码]="${key}"`);
+  const match = records[0];
+  if (!match) return { status: 'revoked', msg: '授权已失效' };
+  if (match.fields.状态 !== '已激活') return { status: 'revoked', msg: '授权已失效' };
+  if (match.fields.机器指纹 !== fp) return { status: 'revoked', msg: '授权已失效' };
+
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    activate_key: key, machine_fingerprint: fp, issue_time: now,
+    expire_time: now + 365 * 86400 * 100, offline_grant_end: now + OFFLINE_GRANT_DAYS * 86400,
+    nonce: crypto.randomBytes(8).toString('hex'),
+    platform: data.platform || 'unknown', products: { delivery_checker: true }, is_trial: false,
+  };
+  return { status: 'ok', msg: '授权有效', license_token: makeToken(payload) };
+}
+
 const ROUTES = {
   activate: handleActivate,
   deactivate: handleDeactivate,
+  verify_status: handleVerifyStatus,
   manage: handleManage,
 };
 

@@ -288,6 +288,39 @@ def activate(activate_key: str) -> Tuple[bool, str]:
     return True, resp.get("msg", "激活成功")
 
 
+def verify_activation() -> Tuple[bool, str]:
+    """启动时联网校验：激活码是否仍有效（防止盗用/误操作）。
+    
+    仅对已激活凭据调用。revoked → 清除凭据并返回 False。
+    Returns: (still_valid, message)
+    """
+    if not BACKEND_URL:
+        return True, "离线模式"
+    cred = load_credential()
+    if not cred:
+        return True, ""  # 无凭据，不校验
+    p = cred.get("payload", {})
+    if p.get("is_trial", True):
+        return True, ""  # 试用不校验
+    fp = get_machine_fingerprint()
+    ok, resp = _post_to_backend("/license", {
+        "action": "verify_status",
+        "activate_key": p.get("activate_key", ""),
+        "machine_fingerprint": fp,
+    })
+    if not ok:
+        return True, ""  # 网络不通不锁
+    if resp.get("status") == "revoked":
+        _clear_credential()
+        return False, resp.get("msg", "授权已失效")
+    token = resp.get("license_token")
+    if token:
+        if isinstance(token, str):
+            token = json.loads(token)
+        save_credential(token)
+    return True, resp.get("msg", "授权有效")
+
+
 def verify_local() -> Tuple[bool, str]:
     """本地离线校验。
 
