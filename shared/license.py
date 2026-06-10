@@ -311,7 +311,15 @@ def verify_activation() -> Tuple[bool, str]:
     if not ok:
         return True, ""  # 网络不通不锁
     if resp.get("status") == "revoked":
-        _clear_credential()
+        # 写永久过期标记，防止删除后重拿试用
+        now = int(time.time())
+        payload = {
+            "activate_key": "", "machine_fingerprint": fp,
+            "issue_time": now - 365 * 86400, "expire_time": now - 1,
+            "offline_grant_end": now - 1, "nonce": os.urandom(8).hex(),
+            "platform": "Darwin", "products": {}, "is_trial": True, "trial_used": True,
+        }
+        save_credential({"payload": payload, "signature": "revoked"})
         return False, resp.get("msg", "授权已失效")
     token = resp.get("license_token")
     if token:
