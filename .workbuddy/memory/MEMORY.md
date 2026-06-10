@@ -3,7 +3,7 @@
 > 我是小裁缝的**插件分身**。
 > 管 AI 去字幕/交付自检、灰度发布部署。❌ 不管 Mac mini 运维、SMB 存储。
 
-> v2.8 | 2026-06-08 | 下载进度条 + 试用到期 + 激活修复 + License 单文件
+> v3.0 | 2026-06-10 | License v3 重构（纯本地试用/吊销校验/停用恢复）
 
 ## 终局
 
@@ -269,31 +269,43 @@ bash /tmp/_deli_src/install_update.command --update  # 模拟安装
 - 显示密文（`sk-ab…xyz`），保存时检测掩码保留真值
 - SMB 用户过滤：`if not WORKBUDDY_PERSONAL` → 只渲染 `censor_personal`
 
-### License / 激活系统 (v2.5.5)
+### License / 激活系统 (v3 — 2026-06-10 重构)
 
-#### 凭证
-- 单文件 `~/.config/dv_license/license.dat`（废弃三冗余）
-- 旧路径文件在 `save_credential()` 时自动清理，`load_credential()` 启动时自动迁移
+#### 架构
+- **试用纯本地**：`init_trial()` 写本地凭据，不调服务端。30 天一次性。
+- **无心跳**：仅启动时 `verify_status` 校验激活码是否仍有效。
+- **停用回归试用**：试用天数冻结（存 `trial_remain_secs`），停用时恢复剩余天数。
+- **吊销保护**：启动时联网查激活码+指纹 → revoked → 写过期凭据（非清空），防止删除重拿试用。
+- **凭证**：单文件 `~/.config/dv_license/license.dat`，隐藏 + 指纹校验。
+
+#### 表结构（飞书 Base）
+```
+激活码 | 状态(待售/待激活/已激活) | 机器指纹 | 激活时间 | 用户 | 备注
+```
+gen_key → 待售。Admin 手动改待激活。激活 → 已激活 + 带第一次激活时间。
 
 #### 状态机
 ```
-启动 → 无凭证 → init_trial()（需 BACKEND_URL）
-       有凭证 → trial 有效 → _ai_allowed=True
-                 trial 到期 → _ai_allowed=False → 按钮灰 + 提示购买
-                 已激活 → _ai_allowed=True
-激活 → _ai_allowed=True → 按钮立即恢复（不需重启）
-停用 → _ai_allowed=False → 按钮灰 + 提示重启试用
+启动 → 无凭证 → init_trial()（纯本地）→ 30 天试用
+       有凭证 → is_trial=True  → 试用剩余 N 天 / 0 天（到期）
+                 is_trial=False → verify_status → 已激活 ✓ / 吊销
+激活 → 服务端 validate → 待激活→已激活 → is_trial=False
+停用 → 服务端 deactivate → 已激活→待激活+清指纹 → is_trial=True（恢复试用天数）
 ```
 
-#### 当前状态
-- `WB_LICENSE_URL` 未配置 → `init_trial()` 失败静默 → `_ai_allowed=True` 兜底
-- `license_server.py` 未部署到云函数
-- keys 表为空，无激活码生成工具
-- 服务端缺 `deactivate` 路由
-- 详见 `knowledge/license-activation-flow.md`
+#### 关键规则
+- **`_ai_allowed` ≠ `is_trial`**。预填、保存跳过都应以 `load_credential().is_trial` 判断，不用 `_ai_allowed`。
+- **用户输错码不记入错误计数器**：`_activation_failed` 机制。
+- **黄字 = 许可证售卖**，**白字 = 功能指引**。
+- **服务端直出人性化消息**，客户端零翻译。
+- **每格必须 4 位 `[A-Z0-9]{4}`**，输入校验防汉字/符号。
+
+#### 云函数
+- `license-node` FC：JS 路由 `activate|deactivate|verify_status|manage`
+- `license.py`：`init_trial|activate|verify_activation|verify_local|deactivate`
 
 #### 激活码格式
-`XXXX-XXXX-XXXX`（12 位大写），生成：`uuid.uuid4().hex[:12].upper()`
+不分大小写，支持数字/字母/任意组合。gen_key 生成 `XXXX-XXXX-XXXX`（便于肉眼读）。管理后台可手填。
 
 ### PYTHONUTF8=1 + -B
 
