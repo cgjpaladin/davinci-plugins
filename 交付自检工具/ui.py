@@ -2675,64 +2675,68 @@ def main():
     except Exception:
         itm[BTN_UPDATE].Text = "✓ 最新"
 
-    # ══ License ══
+    # ══ License ══（仅个人版）
     global _ai_allowed
     _ai_allowed = True  # 默认允许
     _trial_expired = False
-    try:
-        from shared.license import init_trial, verify_local, load_credential
-        cred = load_credential()
-        if cred:
-            ok, msg = verify_local()
-            p = cred.get("payload", {})
-            is_trial = p.get("is_trial", True)
-            if is_trial:
-                d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                text = f"试用剩余 {d} 天"
-                _ai_allowed = d > 0
-                if not _ai_allowed:
-                    _trial_expired = True
-            else:
-                text = "已激活 ✓"
-                # 启动时联网校验：防止盗用/误操作吊销
-                try:
-                    from shared.license import verify_activation
-                    v_ok, v_msg = verify_activation()
-                    if not v_ok:
-                        _ai_allowed = False
-                        _trial_expired = True
-                        text = f"试用剩余 0 天"
-                        _action_log(f"License 吊销: {v_msg}")
-                except Exception:
-                    pass
-            itm[TRIAL_LB].Text = text if _ai_allowed else text
-            _action_log(f"License: {text}  ({'✅' if ok else '❌ '+msg})")
-        else:
-            ok, msg = init_trial()
-            if ok:
-                cred = load_credential()
-                if cred:
-                    p = cred.get("payload", {})
+    _cred = None
+    if IS_PERSONAL:
+        try:
+            from shared.license import init_trial, verify_local, load_credential
+            cred = load_credential()
+            _cred = cred
+            if cred:
+                ok, msg = verify_local()
+                p = cred.get("payload", {})
+                is_trial = p.get("is_trial", True)
+                if is_trial:
                     d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
                     text = f"试用剩余 {d} 天"
                     _ai_allowed = d > 0
+                    if not _ai_allowed:
+                        _trial_expired = True
                 else:
-                    text = msg
+                    text = "已激活 ✓"
+                    # 启动时联网校验：防止盗用/误操作吊销
+                    try:
+                        from shared.license import verify_activation
+                        v_ok, v_msg = verify_activation()
+                        if not v_ok:
+                            _ai_allowed = False
+                            _trial_expired = True
+                            text = f"试用剩余 0 天"
+                            _action_log(f"License 吊销: {v_msg}")
+                    except Exception:
+                        pass
+                itm[TRIAL_LB].Text = text if _ai_allowed else text
+                _action_log(f"License: {text}  ({'✅' if ok else '❌ '+msg})")
             else:
-                text = ""
-            itm[TRIAL_LB].Text = text
-            _action_log(f"License试用: {'✅' if ok else '❌'} → 显示: \"{text}\"")
-    except Exception as e:
-        _action_log(f"License异常: {type(e).__name__}: {e}")
-        _ai_allowed = False
-    # 试用到期 → 禁用字幕检测 + 提示
-    if not _ai_allowed:
-        itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
-        itm[BTN_AI_TYPO].Enabled = False
-        if _trial_expired:
-            itm[TRIAL_LB].Text = "试用剩余 0 天  |  请联系购买: 微信 paladinpp"
-        elif not cred:
-            itm[HINT_LB].Text = ""  # 首次启动尝试初始化，静默
+                ok, msg = init_trial()
+                if ok:
+                    cred = load_credential()
+                    _cred = cred
+                    if cred:
+                        p = cred.get("payload", {})
+                        d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
+                        text = f"试用剩余 {d} 天"
+                        _ai_allowed = d > 0
+                    else:
+                        text = msg
+                else:
+                    text = ""
+                itm[TRIAL_LB].Text = text
+                _action_log(f"License试用: {'✅' if ok else '❌'} → 显示: \"{text}\"")
+        except Exception as e:
+            _action_log(f"License异常: {type(e).__name__}: {e}")
+            _ai_allowed = False
+        # 试用到期 → 禁用字幕检测 + 提示
+        if not _ai_allowed:
+            itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
+            itm[BTN_AI_TYPO].Enabled = False
+            if _trial_expired:
+                itm[TRIAL_LB].Text = "试用剩余 0 天  |  请联系购买: 微信 paladinpp"
+            elif not _cred:
+                itm[HINT_LB].Text = ""  # 首次启动尝试初始化，静默
 
     disp.RunLoop()
     dlg.Hide()
