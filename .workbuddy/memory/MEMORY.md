@@ -4,6 +4,13 @@
 > 管 AI 去字幕/交付自检、灰度发布部署。❌ 不管 Mac mini 运维、SMB 存储。
 
 > v3.0 | 2026-06-10 | License v3 重构（纯本地试用/吊销校验/停用恢复）
+> 2026-06-12 | SMB 全量同步 + 个人版残留清理
+
+## 跨项目引用
+
+- **机器清单**：`~/WorkBuddy/达芬奇运维专家/config/machine_registry.json`（21 台，SSH alias: mini101-mini200）
+- **远程管理 skill**：`~/WorkBuddy/达芬奇运维专家/.workbuddy/skills/远程管理/SKILL.md`（SSH 免密/集群操作）
+- **所有机器 SSH 免密已配**：`ssh mini{101..110} mini{130..138} mini140 mini200`，密码 123456，sudo 可用。
 
 ## 终局
 
