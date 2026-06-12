@@ -242,18 +242,14 @@ def init_trial() -> Tuple[bool, str]:
     now = int(time.time())
     fp = get_machine_fingerprint()
 
-    # 服务端校验指纹是否已存在
+    # 服务端校验指纹是否已存在（断网降级：允许本地试用）
     if BACKEND_URL:
         ok, resp = _post_to_backend("/license", {
             "action": "init_trial",
             "machine_fingerprint": fp,
         })
-        if not ok:
-            return False, "网络异常，请稍后重试"
-        if resp.get("status") == "duplicate":
+        if ok and resp.get("status") == "duplicate":
             return False, "此设备已试用过，请联系购买"
-        if resp.get("status") != "ok":
-            return False, resp.get("msg", "试用失败")
 
     payload = {
         "activate_key": "",
