@@ -2723,7 +2723,8 @@ def main():
                     else:
                         text = msg
                 else:
-                    text = ""
+                    text = msg
+                    _ai_allowed = False
                 itm[TRIAL_LB].Text = text
                 _action_log(f"License试用: {'✅' if ok else '❌'} → 显示: \"{text}\"")
         except Exception as e:
