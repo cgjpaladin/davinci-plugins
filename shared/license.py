@@ -283,17 +283,18 @@ def init_trial() -> Tuple[bool, str]:
     return True, f"试用开始，剩余 30 天"
 
 
-def _try_register_trial(fp: str) -> None:
-    """静默登记旧版试用指纹，失败不阻塞。"""
+def _try_register_trial(fp: str) -> bool:
+    """静默登记旧版试用指纹。返回 True 表示登记成功。"""
     if not BACKEND_URL or not fp:
-        return
+        return False
     try:
-        _post_to_backend("/license", {
+        ok, resp = _post_to_backend("/license", {
             "action": "init_trial",
             "machine_fingerprint": fp,
         })
+        return ok and resp.get("status") == "ok"
     except Exception:
-        pass
+        return False
 
 
 def activate(activate_key: str) -> Tuple[bool, str]:
@@ -390,9 +391,9 @@ def verify_local() -> Tuple[bool, str]:
     # 时钟防退：系统时间倒退视为作弊
     last_seen = payload.get("last_seen", 0)
     if not last_seen and payload.get("is_trial"):
-        # 旧版试用（从未登记服务端）→ 补登记指纹，防删文件重拿试用
-        _try_register_trial(payload.get("machine_fingerprint", ""))
-        last_seen = now
+        # 旧版试用（从未登记服务端）→ 补登记指纹，失败则下次重启重试
+        if _try_register_trial(payload.get("machine_fingerprint", "")):
+            last_seen = now  # 登记成功才写时间，失败保留 0 触发下次重试
     if last_seen and now < last_seen - 3600:  # 容忍 1 小时误差（跨时区/夏令时）
         return False, "系统时间异常"
 
