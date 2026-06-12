@@ -397,8 +397,9 @@ def verify_local() -> Tuple[bool, str]:
     if last_seen and now < last_seen - 3600:  # 容忍 1 小时误差（跨时区/夏令时）
         return False, "系统时间异常"
 
-    # 更新最后合法时间
-    payload["last_seen"] = now
+    # 更新最后合法时间（登记成功/已登记才更新，旧版待补不写）
+    if last_seen:
+        payload["last_seen"] = now
     save_credential({"payload": payload, "signature": cred.get("signature", "")})
 
     # 检查离线宽限期
