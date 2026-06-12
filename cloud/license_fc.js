@@ -1,15 +1,18 @@
 // License 激活中间件 — Node.js, 阿里云 FC
 // 飞书 Base 表格存激活码，FC 做中间层隐藏密钥
 // v3 重构：纯激活码管理，试用纯本地，无心跳
+// v3.1：试用指纹服务端防无限重试 + 时钟防退
 
 const crypto = require('crypto');
+
 const https = require('https');
 
 // ── 配置 ──
 const FEISHU_APP_ID = process.env.FEISHU_APP_ID || '';
 const FEISHU_APP_SECRET = process.env.FEISHU_APP_SECRET || '';
-const BASE_TOKEN = process.env.BASE_TOKEN || 'JEqDbwMoiazH4ds8VIwcEBj8n9f';
-const TABLE_ID = process.env.TABLE_ID || 'tblKV7yxqsqgyAyK';
+const BASE_TOKEN = process.env.BASE_TOKEN || 'BRfGbDgaJa6ZYCsViuOcau2PnSe';
+const TABLE_ID = process.env.TABLE_ID || 'tbla9FSVEuuiayQH';
+const TRIAL_TABLE_ID = process.env.TRIAL_TABLE_ID || 'tblPHNcMFL2jwjwD';
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const HMAC_SECRET = (process.env.HMAC_SECRET || 'change_me').substring(0, 64);
 const OFFLINE_GRANT_DAYS = 30;
@@ -64,15 +67,17 @@ feishuReq = async function(method, path, body, skipToken) {
 };
 
 // ── Base CRUD ──
-async function listRecords(filter) {
+async function listRecords(filter, tableId) {
+  const tid = tableId || TABLE_ID;
   const resp = await feishuReq('GET',
-    `bitable/v1/apps/${BASE_TOKEN}/tables/${TABLE_ID}/records?page_size=500${filter ? '&filter=' + encodeURIComponent(filter) : ''}`);
+    `bitable/v1/apps/${BASE_TOKEN}/tables/${tid}/records?page_size=500${filter ? '&filter=' + encodeURIComponent(filter) : ''}`);
   return resp.data?.items || [];
 }
 
-async function addRecord(fields) {
+async function addRecord(fields, tableId) {
+  const tid = tableId || TABLE_ID;
   const resp = await feishuReq('POST',
-    `bitable/v1/apps/${BASE_TOKEN}/tables/${TABLE_ID}/records`,
+    `bitable/v1/apps/${BASE_TOKEN}/tables/${tid}/records`,
     { fields });
   if (resp.code && resp.code !== 0) throw new Error(`Feishu addRecord: ${resp.code} ${resp.msg}`);
   return resp.data?.record;
@@ -166,6 +171,18 @@ async function handleManage(data) {
   return { status: 'error', msg: `未知管理操作: ${action}` };
 }
 
+// 试用记录：服务端防无限白嫖
+async function handleInitTrial(data) {
+  const fp = (data.machine_fingerprint || '').trim();
+  if (!fp) return { status: 'error', msg: '参数不完整' };
+
+  const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`, TRIAL_TABLE_ID);
+  if (records.length > 0) return { status: 'duplicate', msg: '此设备已试用过，请联系购买' };
+
+  await addRecord({ 机器指纹: fp, 试用时间: Date.now() }, TRIAL_TABLE_ID);
+  return { status: 'ok', msg: '试用已登记' };
+}
+
 // 启动时校验：激活码状态 + 指纹是否仍匹配
 async function handleVerifyStatus(data) {
   const key = (data.activate_key || '').trim().toUpperCase();
@@ -192,6 +209,7 @@ const ROUTES = {
   activate: handleActivate,
   deactivate: handleDeactivate,
   verify_status: handleVerifyStatus,
+  init_trial: handleInitTrial,
   manage: handleManage,
 };
 

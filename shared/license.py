@@ -233,16 +233,28 @@ def _post_to_backend(endpoint: str, data: dict, timeout: int = 10) -> Tuple[bool
 # ═══════════════════════════════════════════
 
 def init_trial() -> Tuple[bool, str]:
-    """首次试用初始化 — 纯本地，不调服务端。
+    """首次试用初始化 — 服务端登记指纹，防无限白嫖。
 
-    写本地凭据：is_trial=True, trial_used=True, expire_time=now+30d。
     一台机器一辈子只试用一次。
-
     Returns:
         (success, message)
     """
     now = int(time.time())
     fp = get_machine_fingerprint()
+
+    # 服务端校验指纹是否已存在
+    if BACKEND_URL:
+        ok, resp = _post_to_backend("/license", {
+            "action": "init_trial",
+            "machine_fingerprint": fp,
+        })
+        if not ok:
+            return False, "网络异常，请稍后重试"
+        if resp.get("status") == "duplicate":
+            return False, "此设备已试用过，请联系购买"
+        if resp.get("status") != "ok":
+            return False, resp.get("msg", "试用失败")
+
     payload = {
         "activate_key": "",
         "machine_fingerprint": fp,
@@ -253,6 +265,7 @@ def init_trial() -> Tuple[bool, str]:
         "platform": "Darwin",
         "products": {},
         "is_trial": True,
+        "last_seen": now,
     }
     save_credential({"payload": payload, "signature": "local_trial"})
     return True, f"试用开始，剩余 30 天"
@@ -348,6 +361,15 @@ def verify_local() -> Tuple[bool, str]:
     stored_fp = payload.get("machine_fingerprint", "")
     if stored_fp and stored_fp != get_machine_fingerprint():
         return False, "凭证与当前设备不匹配"
+
+    # 时钟防退：系统时间倒退视为作弊
+    last_seen = payload.get("last_seen", 0)
+    if last_seen and now < last_seen - 3600:  # 容忍 1 小时误差（跨时区/夏令时）
+        return False, "系统时间异常"
+
+    # 更新最后合法时间
+    payload["last_seen"] = now
+    save_credential({"payload": payload, "signature": cred.get("signature", "")})
 
     # 检查离线宽限期
     grant_end = payload.get("offline_grant_end", 0)
