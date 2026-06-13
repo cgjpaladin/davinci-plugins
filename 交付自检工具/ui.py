@@ -838,7 +838,7 @@ window_layout = [
                 ui.Button({"ID": BTN_UPDATE, "Text": "✓ 最新",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [94, SIZE_BTN_H]}),
-                ui.Button({"ID": BTN_ERR_SEND, "Text": "📋 上传日志",
+                ui.Button({"ID": BTN_ERR_SEND, "Text": "📋 导出排错包",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [SIZE_BTN_LG_W, SIZE_BTN_H]}),
             ]),
@@ -2230,84 +2230,125 @@ dlg.On[BTN_CONFIG].Clicked = lambda ev: _show_config_dialog()
 dlg.On[BTN_AI_TYPO].Clicked = lambda ev: _run_ai_typo()
 
 _UI_ERROR_COUNT = 0
-_UI_UPLOADING = False
 
 def _on_err_report(ev):
-    """📋 上传日志（无报错时）/ 一键发送错误报告（有报错时）"""
-    global _UI_ERROR_COUNT, _UI_UPLOADING
-    _action_log(f"📤 上传按钮被点击 (error_count={_UI_ERROR_COUNT}, uploading={_UI_UPLOADING})")
-    if _BUSY or _UI_UPLOADING:
+    """导出排错包到本地"""
+    global _UI_ERROR_COUNT
+    _action_log(f"📤 导出按钮被点击 (error_count={_UI_ERROR_COUNT})")
+    if _BUSY:
         return
-    _UI_UPLOADING = True
-    _lock_ui("上传日志")
-    itm[BTN_ERR_SEND].Text = "⏳ 上传中..."
-    _do_upload(os.path.expanduser("~/.workbuddy/logs/交付自检工具"))
+    _lock_ui("导出排错包")
+    itm[BTN_ERR_SEND].Text = "⏳ 导出中..."
+    _export_debug_package()
+    _unlock_ui()
 
-def _do_upload(logs_dir):
-    """打包 + 上传到阿里云"""
-    global _UI_ERROR_COUNT, _UI_UPLOADING
-    import tempfile, zipfile, subprocess, json, os, time, base64
-    tmp = tempfile.mkdtemp()
+def _export_debug_package():
+    """打包日志 + 系统信息 → 用户选择目录 → zip → Finder 弹出"""
+    global _UI_ERROR_COUNT
+    import zipfile, subprocess, os, time, platform, socket, getpass
+    # ── 选目录 ──
     try:
-        zip_path = os.path.join(tmp, "logs.zip")
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            today = time.strftime("%Y-%m-%d")
-            for f in sorted(os.listdir(logs_dir)):
-                if today in f and f.endswith(".log"):
-                    zf.write(os.path.join(logs_dir, f), f)
-        with open(zip_path, "rb") as f:
-            data = f.read()
-        import socket as _sk, getpass as _gp
-        from shared.license import get_machine_fingerprint, BACKEND_URL as _bu
-        _payload = json.dumps({
-            "action": "report_error",
-            "machine_fingerprint": get_machine_fingerprint(),
-            "hostname": _sk.gethostname(), "username": _gp.getuser(),
-            "error_count": _UI_ERROR_COUNT,
-            "data_b64": base64.b64encode(data).decode(),
-        })
-        _url = (_bu or "https://license-yqvhkhvhgf.cn-hangzhou.fcapp.run") + "/license"
-        _proc = subprocess.run(
-            ["curl", "-s", "--connect-timeout", "10", "--max-time", "30",
-             "-X", "POST", "-d", _payload, _url],
-            capture_output=True, text=True, encoding="utf-8", timeout=35)
-        ok = False
-        if _proc.returncode == 0 and _proc.stdout:
-            try:
-                resp = json.loads(_proc.stdout)
-                ok = resp.get("status") == "ok"
-            except Exception: pass  # noop: 配置写入失败不影响主流程
-        if ok:
-            _action_log(f"✅ 已上传日志 ({_UI_ERROR_COUNT} 个报错)" if _UI_ERROR_COUNT else "✅ 已上传日志")
-            itm[BTN_ERR_SEND].Text = "✅ 已上传"
-            _unlock_ui()
-            _UI_UPLOADING = False
-            if _UI_ERROR_COUNT:
-                itm[HINT_LB].Text = "✅ 异常信息已上报，感谢反馈"
-            else:
-                itm[HINT_LB].Text = "✅ 日志已上传"
-            _UI_ERROR_COUNT = 0
-        else:
-            _action_log(f"❌ 上传失败: {_proc.stderr or _proc.stdout}")
-            itm[BTN_ERR_SEND].Text = "📋 上传日志"
-            itm[HINT_LB].Text = "请点击「开始检查」"
-            _UI_UPLOADING = False
-            _unlock_ui()
+        r = subprocess.run(
+            ["osascript", "-e",
+             'POSIX path of (choose folder with prompt "选择排错包导出位置")'],
+            capture_output=True, text=True, encoding="utf-8", timeout=60)
+        dest = r.stdout.strip()
+        if not dest or not os.path.isdir(dest):
+            itm[BTN_ERR_SEND].Text = "📋 导出排错包" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
+            return
     except Exception as e:
-        _action_log(f"❌ 上传异常: {e}")
-        itm[BTN_ERR_SEND].Text = "📋 上传日志"
-        _UI_UPLOADING = False
-        _unlock_ui()
-    finally:
-        import shutil; shutil.rmtree(tmp, ignore_errors=True)
+        _action_log(f"❌ 选目录失败: {e}")
+        itm[BTN_ERR_SEND].Text = "📋 导出排错包" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
+        return
+    # ── 文件名 ──
+    now = time.localtime()
+    from shared.license import get_machine_fingerprint
+    fp = get_machine_fingerprint()[:8]
+    zip_name = f"delivery-checker-debug-{now.tm_mon:02d}{now.tm_mday:02d}-{now.tm_hour:02d}{now.tm_min:02d}-{fp}.zip"
+    zip_path = os.path.join(dest, zip_name)
+    # ── 收集日志 ──
+    logs_dir = os.path.expanduser("~/.workbuddy/logs/交付自检工具")
+    today = time.strftime("%Y-%m-%d")
+    yesterday = time.strftime("%Y-%m-%d", time.localtime(time.time() - 86400))
+    log_files = []
+    # 日志文件有乱码主机名，按日期匹配
+    if os.path.isdir(logs_dir):
+        for f in sorted(os.listdir(logs_dir)):
+            full = os.path.join(logs_dir, f)
+            if not f.endswith(".log"):
+                continue
+            if today in f:
+                log_files.append((full, f"logs/ui-{today}.log"))
+            elif yesterday in f:
+                log_files.append((full, f"logs/ui-{yesterday}.log"))
+    # ── 系统信息 ──
+    info_lines = [
+        f"交付自检工具排错包",
+        f"版本: {version_string()}",
+        f"macOS: {platform.mac_ver()[0]}",
+        f"主机名: {socket.gethostname()}",
+        f"机器指纹: {fp}",
+        f"导出时间: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+    ]
+    # ── 状态信息 ──
+    state_lines = []
+    try:
+        from shared.license import load_credential
+        cred = load_credential()
+        if cred:
+            p = cred.get("payload", {})
+            if p.get("is_trial", True):
+                tsd = p.get("trial_start_date")
+                if tsd:
+                    from datetime import date as _dt
+                    d = max(0, 30 - (_dt.today() - _dt.fromordinal(tsd)).days)
+                    state_lines.append(f"授权: 试用剩余 {d} 天")
+                else:
+                    state_lines.append("授权: 试用（天数未知）")
+            else:
+                state_lines.append("授权: 已激活")
+        else:
+            state_lines.append("授权: 未初始化")
+    except Exception:
+        state_lines.append("授权: 读取失败")
+    try:
+        _keys = _load_api_keys()
+        apis = [k for k in ("deepseek_key", "feishu_app_id", "feishu_secret") if _keys.get(k)]
+        state_lines.append(f"API Key: {len(apis)}/3 已配置")
+    except Exception:
+        state_lines.append("API Key: 读取失败")
+    try:
+        from shared.deploy_config import load_smb_paths
+        paths = load_smb_paths()
+        state_lines.append(f"SMB路径: {len(paths)} 条")
+    except Exception:
+        state_lines.append("SMB路径: 读取失败")
+    state_lines.append(f"本次报错数: {_UI_ERROR_COUNT}")
+    # ── 写 zip ──
+    try:
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for src, arcname in log_files:
+                try:
+                    zf.write(src, arcname)
+                except Exception:
+                    pass
+            zf.writestr("info.txt", "\n".join(info_lines).encode("utf-8"))
+            zf.writestr("state.txt", "\n".join(state_lines).encode("utf-8"))
+        # Finder 弹出
+        subprocess.run(["open", "-R", zip_path], check=False)
+        _action_log(f"✅ 排错包已导出: {zip_name}")
+        _UI_ERROR_COUNT = 0
+        itm[BTN_ERR_SEND].Text = "✅ 已导出"
+    except Exception as e:
+        _action_log(f"❌ 导出失败: {e}")
+        itm[BTN_ERR_SEND].Text = "📋 导出排错包" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
 
 def _update_err_counter():
-    """报错时更新按钮文字和提示"""
+    """报错时更新按钮文字"""
     if _UI_ERROR_COUNT > 0:
         itm[BTN_ERR_SEND].Text = f"⚠️ {_UI_ERROR_COUNT} 个报错"
-        # 不覆盖 HINT_LB — 那是给业务结果用的
     else:
-        itm[BTN_ERR_SEND].Text = "📋 上传日志"
+        itm[BTN_ERR_SEND].Text = "📋 导出排错包"
 dlg.On[BTN_ERR_SEND].Clicked = _on_err_report
 
 def _browse_script(ev):
