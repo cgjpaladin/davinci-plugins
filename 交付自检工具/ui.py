@@ -1018,7 +1018,7 @@ def _build_auth_section():
             "StyleSheet": "color:rgb(200,180,60);font-size:12px", "Weight": 0}),
         ui.Label({"ID": "cfg_auth_activated_label", "Text": "✅ 已激活 | 永久授权", "Visible": False,
             "StyleSheet": "color:rgb(80,200,100);font-size:13px", "Weight": 0}),
-        ui.HGroup({"Spacing": 4, "Weight": 0, "Visible": False}, [
+        ui.HGroup({"Spacing": 4, "ID": "cfg_trial_code_grp", "Weight": 0, "Visible": False}, [
             ui.LineEdit({**kw, "ID": "cfg_trial_code_1", "Text": "", "PlaceholderText": "XXXX"}),
             ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
             ui.LineEdit({**kw, "ID": "cfg_trial_code_2", "Text": "", "PlaceholderText": "XXXX"}),
@@ -1036,7 +1036,7 @@ def _build_auth_section():
     # 初始状态
     if is_activated:
         widgets[2]["Visible"] = True   # cfg_auth_activated_label
-        widgets[6]["Visible"] = True   # cfg_deactivate_btn
+        widgets[5]["Visible"] = True   # cfg_deactivate_btn
     else:
         widgets[1]["Visible"] = True   # cfg_trial_status
         widgets[3]["Visible"] = True   # trial code group
@@ -1290,7 +1290,7 @@ def _show_config_dialog():
                     itm[TRIAL_LB].Text = "已激活 ✓"; itm[HINT_LB].Text = ""
                     # 切换为已激活显示
                     cfg["cfg_trial_status"].Visible = False
-                    cfg["cfg_trial_code_1"].Visible = False; cfg["cfg_trial_code_2"].Visible = False; cfg["cfg_trial_code_3"].Visible = False
+                    cfg["cfg_trial_code_grp"].Visible = False
                     cfg["cfg_trial_activate_btn"].Visible = False
                     cfg["cfg_auth_activated_label"].Visible = True
                     cfg["cfg_deactivate_btn"].Visible = True; cfg["cfg_deactivate_btn"].Enabled = True
@@ -1332,7 +1332,7 @@ def _show_config_dialog():
                         d = max(0, 30 - (_dt.today() - _dt.fromordinal(tsd)).days)
                         cfg["cfg_trial_status"].Text = f"⏳ 试用剩余 {d} 天"
                     cfg["cfg_trial_status"].Visible = True
-                    cfg["cfg_trial_code_1"].Visible = True; cfg["cfg_trial_code_2"].Visible = True; cfg["cfg_trial_code_3"].Visible = True
+                    cfg["cfg_trial_code_grp"].Visible = True
                     cfg["cfg_trial_activate_btn"].Visible = True
                     cfg["cfg_auth_activated_label"].Visible = False
                     cfg["cfg_deactivate_btn"].Visible = False
