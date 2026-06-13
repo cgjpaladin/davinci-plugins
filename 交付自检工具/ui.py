@@ -974,7 +974,7 @@ def _sec(title):
 
 def _build_auth_section():
     """授权管理：三行固定布局。初始化由调用方在 GetItems 后完成。"""
-    kw = {"MinimumSize": [54, 22], "Weight": 0, "MaxLength": 4, "FocusPolicy": "StrongFocus"}
+    kw = {"MinimumSize": [54, 22], "Weight": 0, "MaxLength": 4}
     return [
         _sec("授权管理"),
         ui.Label({"ID": "cfg_auth_status", "Text": "", "Weight": 0,
@@ -987,8 +987,8 @@ def _build_auth_section():
             ui.LineEdit({**kw, "ID": "cfg_trial_code_3", "Text": "", "PlaceholderText": "XXXX"}),
         ]),
         ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
-            ui.Button({"ID": "cfg_activate_btn", "Text": "激活", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
-            ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用", "StyleSheet": BTN_STYLE, "Weight": 0}),
+            ui.Button({"ID": "cfg_activate_btn", "Text": "激活", "StyleSheet": BTN_PRIMARY, "Weight": 0, "FocusPolicy": "NoFocus"}),
+            ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用", "StyleSheet": BTN_STYLE, "Weight": 0, "FocusPolicy": "NoFocus"}),
         ]),
         _sep(),
     ]
@@ -1286,8 +1286,6 @@ def _show_config_dialog():
                 _auth_busy = False
                 cfg["cfg_save"].Enabled = True
                 cfg["cfg_cancel"].Enabled = True
-                try: cfg["cfg_trial_code_1"].SetFocus("OtherFocusReason")
-                except Exception as e: _action_log(f"SetFocus异常: {e}")
 
         def _do_deactivate(ev):
             nonlocal _auth_busy
@@ -1339,8 +1337,6 @@ def _show_config_dialog():
                 _auth_busy = False
                 cfg["cfg_save"].Enabled = True
                 cfg["cfg_cancel"].Enabled = True
-                try: cfg["cfg_trial_code_1"].SetFocus("OtherFocusReason")
-                except Exception as e: _action_log(f"SetFocus异常: {e}")
 
         try: config_dlg.On["cfg_activate_btn"].Clicked = _do_activate
         except Exception: pass
