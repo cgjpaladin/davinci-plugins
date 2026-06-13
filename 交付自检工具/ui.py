@@ -2748,10 +2748,14 @@ def main():
         if not _ai_allowed:
             itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
             itm[BTN_AI_TYPO].Enabled = False
+            fp = (_cred or {}).get("payload", {}).get("machine_fingerprint", "")
+            fp_short = fp[:8] if fp else ""
             if _trial_expired:
-                itm[TRIAL_LB].Text = "试用剩余 0 天  |  请联系购买: 微信 paladinpp"
-            elif not _cred:
-                itm[HINT_LB].Text = ""  # 首次启动尝试初始化，静默
+                itm[TRIAL_LB].Text = f"试用剩余 0 天  |  请联系购买: 微信 paladinpp  |  ID: {fp_short}"
+            else:
+                itm[TRIAL_LB].Text = f"{itm[TRIAL_LB].Text}  |  ID: {fp_short}" if fp_short else itm[TRIAL_LB].Text
+            if not _cred:
+                itm[HINT_LB].Text = ""
 
     disp.RunLoop()
     dlg.Hide()
