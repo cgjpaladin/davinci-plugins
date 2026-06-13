@@ -510,6 +510,9 @@ def deactivate() -> Tuple[bool, str]:
         "trial_used": True,
     }
     save_credential({"payload": payload, "signature": "deactivated"})
+    # 从 FC 同步真实 trial_start_date
+    _sync_trial_start(payload, fp)
+    save_credential({"payload": payload, "signature": "deactivated"})
     return True, resp.get("msg", "已停用")
 
 def _clear_credential():
