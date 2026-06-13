@@ -27,14 +27,10 @@ import hmac
 import json
 import os
 import plistlib
-import ssl
 import stat
 import subprocess
 import time
 import uuid
-import urllib.request
-import urllib.error
-import urllib.parse
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -199,10 +195,8 @@ def cross_validate_and_repair() -> bool:
 
 
 # ═══════════════════════════════════════════
-# T3: HTTP 请求封装
+# T3: HTTP 请求封装 (curl 子进程，不受 DaVinci 沙箱限制)
 # ═══════════════════════════════════════════
-
-_SSL_CTX = ssl._create_unverified_context()
 
 
 def _post_to_backend(endpoint: str, data: dict, timeout: int = 10) -> Tuple[bool, dict]:
@@ -216,31 +210,25 @@ def _post_to_backend(endpoint: str, data: dict, timeout: int = 10) -> Tuple[bool
         return False, {"msg": "未配置后端地址"}
 
     req_data = json.dumps(data).encode("utf-8")
-    headers = {
-        "Content-Type": "application/json",
-        "User-Agent": "DaVinciPlugin/2.2",
-        "X-Platform": "Darwin",
-        "X-Request-Nonce": os.urandom(16).hex(),
-    }
-
     last_err = ""
     for attempt in range(2):
         try:
-            req = urllib.request.Request(url=url, data=req_data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=timeout, context=_SSL_CTX) as resp:
-                return True, json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            # 尝试读 body 里的错误信息
-            try:
-                body = json.loads(e.read().decode("utf-8"))
-                last_err = body.get("msg", f"HTTP {e.code}")
-            except Exception:
-                last_err = f"HTTP {e.code}"
-        except urllib.error.URLError as e:
-            last_err = str(e.reason)
+            r = subprocess.run(
+                ["curl", "-s", "--connect-timeout", str(timeout), "--max-time", str(timeout + 5),
+                 "-H", f"Content-Type: application/json",
+                 "-H", f"User-Agent: DaVinciPlugin/2.2",
+                 "-d", req_data.decode("utf-8"), url],
+                capture_output=True, text=True, timeout=timeout + 5)
+            if r.returncode == 0:
+                return True, json.loads(r.stdout)
+            last_err = r.stderr.strip() or f"exit {r.returncode}"
+        except subprocess.TimeoutExpired:
+            last_err = "超时"
+        except json.JSONDecodeError:
+            last_err = r.stdout[:200] if r.stdout else "空响应"
         except Exception as e:
             last_err = str(e)
-        time.sleep(1)  # 重试前等 1 秒
+        time.sleep(1)
 
     return False, {"msg": f"请求失败({last_err})"}
 
