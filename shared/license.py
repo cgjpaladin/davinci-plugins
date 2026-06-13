@@ -380,12 +380,13 @@ def verify_activation() -> Tuple[bool, str]:
         "machine_fingerprint": fp,
     })
     if not ok:
-        # FC 不通时累计失败次数，连续 5 次则视为吊销
-        fail_count = p.get("_verify_fail", 0) + 1
-        p["_verify_fail"] = fail_count
-        save_credential({"payload": p, "signature": cred.get("signature", "")})
-        if fail_count >= 5:
-            now = int(time.time())
+        # FC 不通：距上次成功校验 > 30 天才视为吊销
+        now = int(time.time())
+        last = p.get("_last_verify", 0)
+        if not last:
+            p["_last_verify"] = now  # 首次宽限
+            save_credential({"payload": p, "signature": cred.get("signature", "")})
+        elif now - last > 30 * 86400:
             payload = {
                 "activate_key": "", "machine_fingerprint": fp,
                 "issue_time": now - 365 * 86400, "expire_time": now - 1,
@@ -394,7 +395,7 @@ def verify_activation() -> Tuple[bool, str]:
             }
             save_credential({"payload": payload, "signature": "revoked"})
             return False, "授权校验失败，请联系管理员"
-        return True, ""  # 网络不通不锁，给宽限期
+        return True, ""
     if resp.get("status") == "revoked":
         # 写永久过期标记，防止删除后重拿试用
         now = int(time.time())
@@ -406,12 +407,12 @@ def verify_activation() -> Tuple[bool, str]:
         }
         save_credential({"payload": payload, "signature": "revoked"})
         return False, resp.get("msg", "授权已失效")
-    # 校验成功：更新凭证并清零失败计数
+    # 校验成功：更新凭证并刷新最后校验时间
     token = resp.get("license_token")
     if token:
         if isinstance(token, str):
             token = json.loads(token)
-        p.pop("_verify_fail", None)
+        token["payload"]["_last_verify"] = int(time.time())
         save_credential(token)
     return True, resp.get("msg", "授权有效")
 
