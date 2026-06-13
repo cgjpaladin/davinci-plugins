@@ -69,6 +69,7 @@ _IS_MACOS = sys.platform == "darwin"
 
 def save(name: str, value: str):
     """保存一个凭证。macOS → Keychain；其他 → chmod 600 文件。"""
+    value = str(value)  # 防御：int/float 转字符串，避免 subprocess 崩
     if _IS_MACOS:
         _macos_keychain_save(name, value)
     else:
