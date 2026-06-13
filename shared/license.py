@@ -146,11 +146,13 @@ def _protect_file(path: Path):
 
 
 def save_credential(data: dict) -> None:
-    """将凭证写入唯一路径"""
+    """将凭证写入唯一路径（原子写入，防并发损坏）"""
     payload = json.dumps(data)
     _CREDENTIAL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(_CREDENTIAL_PATH, "w", encoding="utf-8") as f:
+    tmp = _CREDENTIAL_PATH.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
         f.write(payload)
+    tmp.replace(_CREDENTIAL_PATH)  # macOS 原子 rename
     _protect_file(_CREDENTIAL_PATH)
     # 清理旧冗余文件
     for old in _OLD_PATHS:
