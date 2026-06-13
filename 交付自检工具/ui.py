@@ -1042,7 +1042,7 @@ def _show_config_dialog():
     config_dlg = config_disp.AddWindow({
         "WindowTitle": "交付自检工具 — 配置",
         "ID": CONFIG_WIN_ID,
-        "Geometry": [820, 120, 360, 620],
+        "Geometry": [820, 120, 400, 620],
         "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
     }, config_layout)
 
@@ -1240,6 +1240,8 @@ def _show_config_dialog():
                 cfg["cfg_trial_code_grp"]["Enabled"] = False
                 cfg["cfg_activate_btn"].Enabled = False
                 cfg["cfg_deactivate_btn"].Enabled = False
+                cfg["cfg_save"].Enabled = False
+                cfg["cfg_cancel"].Enabled = False
                 from shared.license import activate, load_credential
                 c = load_credential()
                 ts = 0
@@ -1275,8 +1277,8 @@ def _show_config_dialog():
                 cfg["cfg_deactivate_btn"].Enabled = False
             finally:
                 _auth_busy = False
-                try: cfg["cfg_trial_code_1"].SetFocus("OtherFocusReason")
-                except Exception: pass
+                cfg["cfg_save"].Enabled = True
+                cfg["cfg_cancel"].Enabled = True
 
         def _do_deactivate(ev):
             nonlocal _auth_busy
@@ -1287,6 +1289,8 @@ def _show_config_dialog():
                 cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,160,40);font-size:12px"
                 cfg["cfg_deactivate_btn"].Enabled = False
                 cfg["cfg_activate_btn"].Enabled = False
+                cfg["cfg_save"].Enabled = False
+                cfg["cfg_cancel"].Enabled = False
                 from shared.license import deactivate, load_credential
                 ok, msg = deactivate()
                 _action_log(f"🔓 停用: {'✅' if ok else '❌'} {msg}")
@@ -1322,8 +1326,8 @@ def _show_config_dialog():
                 cfg["cfg_deactivate_btn"].Enabled = True
             finally:
                 _auth_busy = False
-                try: cfg["cfg_trial_code_1"].SetFocus("OtherFocusReason")
-                except Exception: pass
+                cfg["cfg_save"].Enabled = True
+                cfg["cfg_cancel"].Enabled = True
 
         try: config_dlg.On["cfg_activate_btn"].Clicked = _do_activate
         except Exception: pass
