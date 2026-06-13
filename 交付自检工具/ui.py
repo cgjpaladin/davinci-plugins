@@ -993,6 +993,13 @@ def _build_auth_section():
         _sep(),
     ]
 
+# ── 试用文本统一格式 ──
+def _format_trial(days: int, fp: str = "") -> str:
+    if days > 0:
+        return f"试用剩余 {days} 天"
+    suffix = f"  |  请联系购买: 微信 paladinpp  |  ID: {fp}" if fp else "  |  请联系购买: 微信 paladinpp"
+    return f"试用剩余 0 天{suffix}"
+
 
 def _show_config_dialog():
     """打开配置窗口"""
@@ -1310,11 +1317,7 @@ def _show_config_dialog():
                         d = max(0, (p["expire_time"] - int(time.time())) // 86400)
                     else:
                         d = 30
-                    if d > 0:
-                        itm[TRIAL_LB].Text = f"试用剩余 {d} 天"
-                    else:
-                        fp_s = p.get("machine_fingerprint", "")[:8]
-                        itm[TRIAL_LB].Text = f"试用剩余 0 天  |  请联系购买: 微信 paladinpp  |  ID: {fp_s}"
+                    itm[TRIAL_LB].Text = _format_trial(d, p.get("machine_fingerprint", "")[:8])
                     cfg["cfg_auth_status"].Text = f"⏳ 试用剩余 {d} 天"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(200,180,60);font-size:12px"
                     cfg["cfg_trial_code_1"].Text = cfg["cfg_trial_code_2"].Text = cfg["cfg_trial_code_3"].Text = ""
@@ -1531,7 +1534,7 @@ def _run_ai_typo():
     if _BUSY or _checking:
         return
     if not _ai_allowed:
-        itm[TRIAL_LB].Text = "试用剩余 0 天  |  请联系购买: 微信 paladinpp"
+        itm[TRIAL_LB].Text = _format_trial(0)
         return
     _checking = True
     itm[HINT_LB].Text = ""
@@ -2722,13 +2725,13 @@ def main():
                             _ai_allowed = False
                         else:
                             d = max(0, 30 - elapsed)
-                            text = f"试用剩余 {d} 天"
+                            text = _format_trial(d)
                             _ai_allowed = d > 0
                             if not _ai_allowed:
                                 _trial_expired = True
                     else:
                         d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                        text = f"试用剩余 {d} 天"
+                        text = _format_trial(d)
                         _ai_allowed = d > 0
                         if not _ai_allowed:
                             _trial_expired = True
@@ -2738,7 +2741,7 @@ def main():
                         v_ok, v_msg = verify_activation()
                         if not v_ok:
                             _ai_allowed = False; _trial_expired = True
-                            text = "试用剩余 0 天"
+                            text = _format_trial(0)
                             _action_log(f"License 吊销: {v_msg}")
                     except Exception:
                         pass
@@ -2757,7 +2760,7 @@ def main():
                             d = max(0, 30 - (_dt_date.today() - _dt_date.fromordinal(tsd)).days)
                         else:
                             d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                        text = f"试用剩余 {d} 天"
+                        text = _format_trial(d)
                         _ai_allowed = d > 0
                     else:
                         text = msg
@@ -2775,7 +2778,7 @@ def main():
             fp = (_cred or {}).get("payload", {}).get("machine_fingerprint", "")
             fp_short = fp[:8] if fp else ""
             if _trial_expired:
-                itm[TRIAL_LB].Text = f"试用剩余 0 天  |  请联系购买: 微信 paladinpp  |  ID: {fp_short}"
+                itm[TRIAL_LB].Text = _format_trial(0, fp_short)
             else:
                 itm[TRIAL_LB].Text = f"{itm[TRIAL_LB].Text}  |  ID: {fp_short}" if fp_short else itm[TRIAL_LB].Text
             if not _cred:
