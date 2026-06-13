@@ -1534,7 +1534,8 @@ def _run_ai_typo():
     if _BUSY or _checking:
         return
     if not _ai_allowed:
-        itm[TRIAL_LB].Text = _format_trial(0)
+        fp = (_cred or {}).get("payload", {}).get("machine_fingerprint", "")[:8]
+        itm[TRIAL_LB].Text = _format_trial(0, fp)
         return
     _checking = True
     itm[HINT_LB].Text = ""
