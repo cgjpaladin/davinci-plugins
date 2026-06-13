@@ -274,7 +274,7 @@ def init_trial() -> Tuple[bool, str]:
         "activate_key": "",
         "machine_fingerprint": fp,
         "issue_time": trial_start,
-        "expire_time": trial_start + 30 * 86400,
+        "expire_time": trial_start + 30 * 86400 + 1,
         "offline_grant_end": trial_start + 3 * 86400,
         "nonce": os.urandom(8).hex(),
         "platform": "Darwin",
