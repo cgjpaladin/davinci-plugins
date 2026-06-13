@@ -1275,6 +1275,8 @@ def _show_config_dialog():
                 cfg["cfg_deactivate_btn"].Enabled = False
             finally:
                 _auth_busy = False
+                try: cfg["cfg_trial_code_1"].SetFocus("OtherFocusReason")
+                except Exception: pass
 
         def _do_deactivate(ev):
             nonlocal _auth_busy
@@ -1320,6 +1322,8 @@ def _show_config_dialog():
                 cfg["cfg_deactivate_btn"].Enabled = True
             finally:
                 _auth_busy = False
+                try: cfg["cfg_trial_code_1"].SetFocus("OtherFocusReason")
+                except Exception: pass
 
         try: config_dlg.On["cfg_activate_btn"].Clicked = _do_activate
         except Exception: pass
