@@ -2793,7 +2793,7 @@ def main():
     if not itm[HINT_LB].Text:
         itm[HINT_LB].Text = "请点击「开始检查」"
     if itm[TRIAL_LB].Text.startswith("⏳"):
-        itm[TRIAL_LB].Text = ""
+        itm[TRIAL_LB].Text = "试用权限异常，请联系裁缝老师"
 
     # 同步检查更新（短超时，失败不影响使用）
     try:
