@@ -281,7 +281,7 @@ def init_trial() -> Tuple[bool, str]:
         "platform": "Darwin",
         "products": {},
         "is_trial": True,
-        "trial_start_date": _dt.date.today().toordinal(),
+        "trial_start_date": _dt.date.fromtimestamp(trial_start).toordinal(),
         "last_seen": now,
     }
     save_credential({"payload": payload, "signature": "local_trial"})
