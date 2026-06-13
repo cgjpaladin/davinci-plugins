@@ -380,7 +380,14 @@ def verify_activation() -> Tuple[bool, str]:
         "machine_fingerprint": fp,
     })
     if not ok:
-        return True, ""  # 网络不通不锁
+        # FC 不通时累计失败次数，连续 5 次则视为吊销
+        fail_count = p.get("_verify_fail", 0) + 1
+        p["_verify_fail"] = fail_count
+        save_credential({"payload": p, "signature": cred.get("signature", "")})
+        if fail_count >= 5:
+            _revoke_credential(fp)  # 清凭据禁止离线无限续
+            return False, "授权校验失败，请联系管理员"
+        return True, ""  # 网络不通不锁，给宽限期
     if resp.get("status") == "revoked":
         # 写永久过期标记，防止删除后重拿试用
         now = int(time.time())
@@ -392,10 +399,12 @@ def verify_activation() -> Tuple[bool, str]:
         }
         save_credential({"payload": payload, "signature": "revoked"})
         return False, resp.get("msg", "授权已失效")
+    # 校验成功：更新凭证并清零失败计数
     token = resp.get("license_token")
     if token:
         if isinstance(token, str):
             token = json.loads(token)
+        p.pop("_verify_fail", None)
         save_credential(token)
     return True, resp.get("msg", "授权有效")
 
