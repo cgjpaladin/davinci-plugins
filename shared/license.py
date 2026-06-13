@@ -431,6 +431,8 @@ def verify_local() -> Tuple[bool, str]:
     # 更新最后合法时间（登记成功/已登记才更新，旧版待补不写）
     if last_seen:
         payload["last_seen"] = now
+    # 刷新离线宽限期（每次成功校验延长 3 天，不应从试用起始算）
+    payload["offline_grant_end"] = now + 3 * 86400
     save_credential({"payload": payload, "signature": cred.get("signature", "")})
 
     # 检查离线宽限期
