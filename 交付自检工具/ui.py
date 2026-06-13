@@ -578,7 +578,7 @@ _BUSY = False
 def _lock_ui(label: str):
     global _BUSY; _BUSY = True
     itm[BTN_START].Enabled = False; itm[BTN_UPDATE].Enabled = False
-#     itm[BTN_ERR_SEND].Enabled = False; # itm[BTN_AI_TYPO].Enabled = False  # subtitledetection always on
+    itm[BTN_ERR_SEND].Enabled = False
 
 def _unlock_ui():
     global _BUSY; _BUSY = False
