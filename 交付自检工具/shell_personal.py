@@ -30,4 +30,9 @@ _env = os.environ.copy()
 _env["PYTHONIOENCODING"] = "utf-8"
 _env["PYTHONUTF8"] = "1"
 _env["WORKBUDDY_PERSONAL"] = "1"
+# 清除旧 .pyc 缓存，防止加载过期字节码
+for _root, _dirs, _files in os.walk(_INSTALL_DIR):
+    for _d in _dirs:
+        if _d == "__pycache__":
+            shutil.rmtree(os.path.join(_root, _d), ignore_errors=True)
 subprocess.Popen([_PYTHON, "-B", _LAUNCHER], env=_env)
