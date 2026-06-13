@@ -1130,7 +1130,7 @@ def _show_config_dialog():
         if _keys.get("deepseek_key"): cfg["cfg_deepseek_key"].Text = _keys["deepseek_key"]
         if _keys.get("feishu_app_id"): cfg["cfg_feishu_app_id"].Text = _keys["feishu_app_id"]
         if _keys.get("feishu_secret"): cfg["cfg_feishu_secret"].Text = _keys["feishu_secret"]
-    except: pass
+    except Exception: pass  # noop: 控件未创建
 
     # ── 轨道数量（LineEdit 直输）──
     try:
@@ -1189,7 +1189,7 @@ def _show_config_dialog():
                                 try:
                                     cfg["cfg_hint"].Visible = True
                                     cfg["cfg_hint"].Text = f"⚠ {hint}"
-                                except: pass
+                                except Exception: _action_log(f"⚠ cfg_hint 渲染失败: {hint}")
                                 continue
                     try:
                         _keys = _load_api_keys()
@@ -1219,7 +1219,7 @@ def _show_config_dialog():
                 cfg["cfg_hint"].Visible = True
                 cfg["cfg_hint"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
                 if err: cfg["cfg_hint"].Text = f"⚠ {err}"
-            except: pass
+            except Exception: _action_log(f"⚠ cfg_hint 渲染失败: {err}")
             return  # 不关闭对话框，留在配置页让用户重试
         config_dlg.Hide(); config_disp.ExitLoop()
 

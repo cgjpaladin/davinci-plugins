@@ -48,6 +48,29 @@
 
 推全公司前必须灰度至少一台。
 
+## 发布安全网（2026-06-13 重构）
+
+### 版本管理
+- **唯一真相源**：`config.py.__version__`（纯 semver）+ `__channel__`（环境锁）
+- **环境隔离**：`__channel__ = "dev"` = 本地开发，`""` = 生产。repo 默认 dev。
+- **切换工具**：`交付自检工具/channel.sh dev|prod`，写后校验确认生效。
+- **bump 入口**：`publish.sh VERSION_BUMP=patch|minor|major`。
+
+### 四层硬拦截（dev 代码永不碰到产线）
+| 操作 | 拦截位置 | 行为 |
+|------|---------|------|
+| SMB 同步 | `publish_sync()` | dev → 拒绝 |
+| 灰度管理 | `gray.sh add/remove/promote` | dev → 拒绝（status 放行） |
+| 推全公司 | `publish_push_all()` | dev → 拒绝 + `trap EXIT` 自动切回 dev |
+| GitHub 发布 | `publish_release.sh` | dev 拒绝 + 版本一致性校验 + 历史保留 |
+
+### 产品注册表
+- `.precommit-products`：唯一真相源，一行一个产品目录。`# 产品名` = 归档不扫描。
+- `pre-commit.sh` 启动时双向校验：文件里写的必须存在目录，有 .py 的目录必须在文件里注册。
+
+### 个人版
+- `build_personal.sh` 打包前自动去 channel，永不带 `-dev` 后缀。
+
 ## 共享路径
 
 - **SMB**: `/Volumes/MYJC/06_Software/达芬奇脚本/`
@@ -77,21 +100,34 @@
 5. **UI 控件 API**: `ui.Widget({"ID": "id", ...})`，不是 `("id", {...})`
 6. **事件绑定**: `win.On["ID"].Clicked`，不是 `win.On.ID.Clicked`
 7. **中文版兼容**: GetClipProperty('Type') 返回「时间线」而非「Timeline」
+8. **达芬奇内 HTTPS 调用禁止 urllib**。DaVinci 子进程 SSL 沙箱限制。全部使用 `subprocess.run(["curl", ...])`。
+9. **sync 后必须重读凭证**。`verify_local` 写盘后 UI 须再次 `load_credential()`。
+10. **日期计算只用序数减法**，不用 timestamp 整除 86400。
+11. **`save()` 入口强制 str(value)**。macOS keychain 只接受字符串。
+12. **按钮互斥用 `Enabled`，禁用 `Visible`**。Visible=False 释放布局空间→跳动。
+13. **`config_dlg.RecalcLayout()` 必须在 `Show()` 后调用**。
+14. **金区(TRIAL_LB)=授权、灰区(HINT_LB)=指引，永不越界**。
+15. **UIManager 非默认事件必须 `Events:{Name:True}` 启用**。鬼猫猫文档确认仅 Clicked/Close 默认启用；FocusIn/KeyPress/SliderMoved 等必须控件定义时声明。——2026-06-13
+16. **`SetFocus()` 需要 `Events:{FocusIn:True}` 前置**。待验证。——2026-06-13
 
-## UIManager 已知限制（2026-05-24）
+## UIManager 已知限制（2026-06-13 更新）
 
-| 限制 | 影响 |
-|------|------|
-| 无 ScrollArea | 列表型 UI 不可行 |
-| Tree 无 SetItemText/SetItemChecked | 只能纯展示，不能交互勾选 |
+| 限制 | 影响 | 替代方案 |
+|------|------|---------|
+| 无通用 ScrollArea | VGroup/HGroup 内容超出截断 | Tree 有滚动 (VerticalScrollMode + ScrollToItem) |
+| Tree TextColor/BackgroundColor | v20.3.2 不渲染，API 存在 | 纯文字分隔替代 |
+| Tree 无 SetItemText/SetItemChecked | 只能纯展示，不能交互勾选 | TreeItem 有 CheckState[0]（需验证） |
 | VGroup 不裁剪溢出 | 控件多时窗口撑破屏幕 |
-
-→ 交付自检的 20 项 CheckBox + Tree 结果是 UIManager 上限。更复杂交互应评估 PySide6/Qt。
+| `SetFocus()` 不生效 | 需要 `Events:{FocusIn:True}` 在控件定义时启用 | 待验证 |
+| 无 Timer / Idle 回调 | 不能启动后延迟执行 | 所有初始化在 `disp.RunLoop()` 前同步完成 |
+| `Visible=False` 释放布局空间 | 隐藏后后续控件挤占空位 | 用 `Enabled=False` 替代，保持占位 |
+| 非默认事件不触发 | Clicked/Close 之外需 `Events:{Name:True}` 显式启用 | 鬼猫猫文档 2026-06-13 确认 |
 
 ## UI 设计规范
 
 - **标题栏**：纯产品名，不带版本号。`"WindowTitle": PRODUCT_NAME`
 - **右下角**：版本号。`f"{BRAND_NAME} | v{version_string()}"`
+- 详情见 `达芬奇交付自检开发` skill
 
 ## 运维铁律
 
@@ -161,8 +197,7 @@
 
 ## 参考
 
-- **HEIBA（黑靶）**：`docs/学习资料/HEIBA插件源码/INDEX.md`
-- **社区工具**：`Batch_Exporter_chs.py`（张来吃）、`DR-批量导出工具 v2.1.py`（派派的派）
+- **外部参考**：`knowledge/davinci-reference.md`（鬼猫猫/张来吃/派派的派/HEIBA）
 
 ## 进度条重构方案 (2026-05-24)
 

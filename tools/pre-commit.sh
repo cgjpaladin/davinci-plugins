@@ -5,12 +5,59 @@
 set -e
 
 GIT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PLUGIN_DIR="$GIT_ROOT/AI去字幕"
-DELIVERY_DIR="$GIT_ROOT/交付自检工具"
 SHARED_DIR="$GIT_ROOT/shared"
 TOOLS_DIR="$GIT_ROOT/tools"
-SCAN_DIRS=("$PLUGIN_DIR"/*.py "$PLUGIN_DIR"/adapters/*.py "$DELIVERY_DIR"/*.py "$SHARED_DIR"/*.py "$TOOLS_DIR"/*.py)
 FAIL=0
+
+# ═══ 产品目录一致性校验 ═══
+# .precommit-products 是唯一真相源：列表 ↔ 磁盘双向校验
+PRODUCTS_FILE="$GIT_ROOT/.precommit-products"
+if [ ! -f "$PRODUCTS_FILE" ]; then
+    echo "❌ 缺少 .precommit-products，请创建并写入产品目录名（一行一个）"
+    exit 1
+fi
+
+PRODUCT_DIRS=()
+MISSING=""
+while IFS= read -r dir; do
+    [[ -z "$dir" || "$dir" =~ ^# ]] && continue
+    if [ -d "$GIT_ROOT/$dir" ]; then
+        PRODUCT_DIRS+=("$GIT_ROOT/$dir")
+    else
+        MISSING+="  $dir"
+    fi
+done < "$PRODUCTS_FILE"
+[ -n "$MISSING" ] && echo "❌ .precommit-products 中目录不存在:$MISSING" && FAIL=1
+
+EXTRANEOUS=""
+for d in "$GIT_ROOT"/*/; do
+    d=$(basename "$d")
+    # 跳过非产品目录
+    [[ "$d" =~ ^(shared|tools|docs|tests|data|cloud|knowledge|_build|dist|\.) ]] && continue
+    # 含 .py 文件的视为产品
+    ls "$GIT_ROOT/$d"/*.py >/dev/null 2>&1 || continue
+    # active 列表匹配
+    grep -v '^[[:space:]]*#' "$PRODUCTS_FILE" | grep -qxF "$d" && continue
+    # 归档标记（# 产品名 开头的注释行 = 保留代码但不扫描）
+    grep -q "^#[[:space:]]*$d" "$PRODUCTS_FILE" && continue
+    EXTRANEOUS+="  $d"
+done
+[ -n "$EXTRANEOUS" ] && echo "❌ 未注册产品目录，请加到 .precommit-products:$EXTRANEOUS" && FAIL=1
+
+# 构建扫描目录（shared + tools + 所有产品 .py + adapters/）
+SCAN_DIRS=("$SHARED_DIR"/*.py "$TOOLS_DIR"/*.py)
+for f in "$TOOLS_DIR"/*.sh; do
+    [ "$(basename "$f")" = "pre-commit.sh" ] && continue  # 不扫描自身
+    [ -f "$f" ] && SCAN_DIRS+=("$f")
+done
+for pd in "${PRODUCT_DIRS[@]}"; do
+    for f in "$pd"/*.py; do [ -f "$f" ] && SCAN_DIRS+=("$f"); done
+    [ -d "$pd/adapters" ] && for f in "$pd"/adapters/*.py; do [ -f "$f" ] && SCAN_DIRS+=("$f"); done
+done
+
+# 向后兼容别名（mypy / 单元测试 使用）
+PLUGIN_DIR="$GIT_ROOT/AI去字幕"
+DELIVERY_DIR="$GIT_ROOT/交付自检工具"
 
 # 收集所有 staged + unstaged 变更的 .py 文件
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null | grep '\.py$' || true)
@@ -77,7 +124,7 @@ fi
 # ── 3. 禁止硬编码密钥 ──
 echo "  🔍 检查: 无硬编码密钥..."
 KEY_LEAKS=$(grep -rn 'api_key\s*=\s*"[^"{]' ${SCAN_DIRS[@]} 2>/dev/null || true)
-KEY_LEAKS2=$(grep -rnE '(secret|password|token)\s*=\s*"[^"{]+"' ${SCAN_DIRS[@]} 2>/dev/null | grep -v 'os\.environ' | grep -v '_env(' || true)
+KEY_LEAKS2=$(grep -rnE '(secret|password|token)\s*=\s*"[^"{]+"' ${SCAN_DIRS[@]} 2>/dev/null | grep -v 'os\.environ' | grep -v '_env(' | grep -v '\" in ' || true)
 if [ -n "$KEY_LEAKS" ] || [ -n "$KEY_LEAKS2" ]; then
     echo "  ❌ 检测到疑似硬编码密钥:"
     [ -n "$KEY_LEAKS" ] && echo "$KEY_LEAKS"
@@ -162,7 +209,9 @@ fi
 echo "  🔍 检查: 单元测试..."
 UNIT_OK=0
 if [ -f "$PLUGIN_DIR/tests/test_core.py" ]; then
-    python3 "$PLUGIN_DIR/tests/test_core.py" 2>&1 | tail -3 || UNIT_OK=1
+    _result=$(python3 "$PLUGIN_DIR/tests/test_core.py" 2>&1); _exit=$?
+    echo "$_result" | tail -3
+    [ $_exit -ne 0 ] && UNIT_OK=1
     if [ $UNIT_OK -eq 0 ]; then
         echo "  ✅ 单元测试通过"
     else

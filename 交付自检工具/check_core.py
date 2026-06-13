@@ -10,7 +10,7 @@ track / timecode / detail 均为干净独立字段，UI 端无需解析/截取�
 """
 
 from timecode import SMPTE
-from config import AUDIO_TRACK_PRESET, VIDEO_TRACK_PRESET, SUBTITLE_TRACK_PRESET
+from config import AUDIO_TRACK_PRESET, VIDEO_TRACK_PRESET, SUBTITLE_TRACK_PRESET, IS_PERSONAL as _IS_PERSONAL
 from camera_detect import is_camera_footage
 import json
 import os
@@ -120,8 +120,7 @@ def preload_timeline_items(timeline, track_types=None):
                             raw = it.GetSourceAudioChannelMapping()
                             if isinstance(raw, str):
                                 try:
-                                    import json as _json
-                                    cached["channel_mapping"] = _json.loads(raw)
+                                    cached["channel_mapping"] = json.loads(raw)
                                 except Exception:
                                     cached["channel_mapping"] = raw
                             else:
@@ -1475,7 +1474,6 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
 
 
 from deploy_config import get_smb_paths
-from config import IS_PERSONAL as _IS_PERSONAL
 
 # ── 片段文件信息缓存（脱机+路径检测共享，避免重复 IPC）──
 _clip_files_cache = None  # {(track, name): {"start": int, "mp": item|None, "path": str|None}}

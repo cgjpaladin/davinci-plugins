@@ -98,6 +98,28 @@ PRODUCTS = {
         "min_shared": "1.0",
         "description": "分析音频情绪标签辅助剪辑选曲",
     },
+
+    # ── 工具类（批量命名）──
+    "batch_renamer": {
+        "id": "batch_renamer",
+        "name": "批量命名工具",
+        "dir": "批量命名工具",
+        "category": "工具",
+        "pipeline": None,
+        "status": "active",
+        "min_shared": "1.0",
+        "description": "表格版批量重命名，8字段（Ep/Sc/Gr/Tk/desc/method/author/v/status）",
+    },
+    "batch_renamer_cy": {
+        "id": "batch_renamer_cy",
+        "name": "批量命名工具—创壹特供版",
+        "dir": "批量命名工具_创壹特供版",
+        "category": "工具",
+        "pipeline": None,
+        "status": "active",
+        "min_shared": "1.0",
+        "description": "创壹9字段特供版（EP/SC/SH/TK/desc/type/author/V/status）",
+    },
 }
 
 

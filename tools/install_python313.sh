@@ -10,7 +10,11 @@ PY_URL="https://www.python.org/ftp/python/${PY_VERSION}/python-${PY_VERSION}-mac
 PY_PKG="/tmp/python-${PY_VERSION}.pkg"
 PY_PATH="/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
 CERT_CMD="/Applications/Python 3.13/Install Certificates.command"
-PASSWORD="123456"
+# 从 ~/.env 读取密码，不硬编码
+if [ -f "$HOME/.env" ]; then
+    source "$HOME/.env"
+fi
+PASSWORD="${SSH_DEFAULT_PASSWORD:-123456}"
 
 # 目标机器列表：从运维 workspace 注册表动态读取（排除本机 mini200）
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

@@ -42,7 +42,7 @@ LOG_FILE="$LOG_DIR/${HOSTNAME:-local}_${LOG_DATE}.log"
 _ROOT=$(cd "$PRODUCT_DIR/.." && pwd)
 _HASH=$(git -C "$_ROOT" rev-parse --short HEAD 2>/dev/null || echo "none")
 _STAGE="${_STAGE:-build}"
-git -C "$_ROOT" add -A
+git -C "$_ROOT" add "$PRODUCT_NAME" shared/ tools/
 git -C "$_ROOT" commit --no-verify -m "${_STAGE}: $PRODUCT_NAME (from $_HASH)" 2>/dev/null || true
 
 publish_log() {
@@ -215,6 +215,22 @@ publish_push_all() {
         echo "   或告诉我「确认发布全公司」，我会帮你跑。"
         exit 1
     fi
+    # ═══ 硬拦截：dev 环境禁止推送产线 ═══
+    local dev_chk=$(cd "$PRODUCT_DIR" && python3 -c "import sys; sys.path.insert(0,'.'); from config import __channel__; print(__channel__)" 2>/dev/null || echo "")
+    if [ -n "$dev_chk" ]; then
+        echo "⛔ 当前处于开发环境（__channel__='$dev_chk'），禁止推送到产线！"
+        echo "   请先运行 ./channel.sh prod 切换到生产环境。"
+        exit 1
+    fi
+    # ═══ 自动恢复：发布结束/崩溃/Ctrl+C 后永远切回 dev ═══
+    _restore_dev() {
+        echo ""
+        echo "🔄 自动切回开发环境…"
+        cd "$PRODUCT_DIR"
+        sed -i '' 's/^__channel__ = ".*"/__channel__ = "dev"/' config.py
+        python3 -c "import sys; sys.path.insert(0,'.'); from config import version_string; print(f'  版本: {version_string()}（开发环境已恢复）')"
+    }
+    trap _restore_dev EXIT
     # ═══ 硬拦截：本地必须先更新再推 SMB ═══
     local launcher_chk=$(ls "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊/${PRODUCT_NAME}"*.py 2>/dev/null | head -1)
     if [ -z "$launcher_chk" ] || [ ! -f "$launcher_chk" ]; then
@@ -463,6 +479,14 @@ json.dump(cfg, open('$GRAY_CFG','w'), indent=2, ensure_ascii=False)
 # 环境变量: SYNC_EXTRA_DIRS="dicts" → 额外同步的目录（如交付自检的词典）
 publish_sync() {
     cd "$PRODUCT_DIR"
+
+    # ═══ 硬拦截：dev 环境禁止同步 SMB ═══
+    local dev_chk=$(python3 -c "from config import __channel__; print(__channel__)" 2>/dev/null || echo "")
+    if [ -n "$dev_chk" ]; then
+        echo "⛔ 当前处于开发环境（__channel__='$dev_chk'），禁止同步到 SMB！"
+        echo "   请先运行 ./channel.sh prod 切换到生产环境。"
+        exit 1
+    fi
 
     # ── 版本检查（比纯数字，忽略 -dev 通道）──
     SMB_RAW=$(python3 -c "import sys; sys.path.insert(0,'$SMB_DIR'); from config import __version__; print(__version__)" 2>/dev/null || echo "?")

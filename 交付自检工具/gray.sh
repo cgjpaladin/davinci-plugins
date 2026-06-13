@@ -9,6 +9,14 @@ GRAY_CFG="$SMB_DIR/gray.json"
 
 source "$SCRIPT_DIR/../tools/publish.sh"
 
+# ═══ 硬拦截：dev 环境禁止灰度操作 ═══
+_dev_chk=$(cd "$PRODUCT_DIR" && python3 -c "import sys; sys.path.insert(0,'.'); from config import __channel__; print(__channel__)" 2>/dev/null || echo "")
+if [ -n "$_dev_chk" ] && [ "${1:-}" != "status" ]; then
+    echo "⛔ 当前处于开发环境（__channel__='$_dev_chk'），禁止灰度操作！"
+    echo "   请先运行 ./channel.sh prod 切换到生产环境。"
+    exit 1
+fi
+
 _usage() {
     echo "灰度发布 — 交付自检工具"
     echo "  gray.sh add <id> [...]   加入灰度"

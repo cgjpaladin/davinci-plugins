@@ -38,7 +38,9 @@ _smb = _cfg.get("smb_root", "/Volumes/MYJC/06_Software/达芬奇脚本")
 _launcher = f"{_smb}/交付自检工具/launcher.py"
 
 # 3. 启动 SMB 上的真实 launcher
-_p = subprocess.Popen([_python, _launcher])
+_env = os.environ.copy()
+_env["PYTHONUTF8"] = "1"
+_p = subprocess.Popen([_python, _launcher], env=_env)
 
 # 4. 看门狗：达芬奇退出时杀掉孤儿子进程
 while True:

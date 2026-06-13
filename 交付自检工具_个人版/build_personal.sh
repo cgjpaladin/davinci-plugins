@@ -28,6 +28,10 @@ mkdir -p "$PKG/交付自检工具/shared/dftt_timecode/core" "$PKG/交付自检�
 cp "$WS/交付自检工具"/ui.py "$WS/交付自检工具"/check_core.py "$WS/交付自检工具"/config.py "$PKG/交付自检工具/"
 cp "$WS/交付自检工具"/launcher_personal.py "$WS/交付自检工具"/shell_personal.py "$WS/交付自检工具"/install.command "$WS/交付自检工具"/.env.example "$PKG/交付自检工具/"
 
+# 个人版发布永远不带 dev 通道
+sed -i '' 's/^__channel__ = ".*"/__channel__ = ""/' "$PKG/交付自检工具/config.py"
+python3 -c "import sys; sys.path.insert(0,'$PKG/交付自检工具'); from config import version_string; print(f'  ✅ 个人版: {version_string()}')"
+
 # 3. shared 模块（全套）
 cp "$WS/shared"/{deploy_config,fusionscript_loader,log_writer,camera_detect,script_parser,llm_typo_check,llm_providers,timecode,mappings,launcher_router,subtitle_state,macos_utils,updater,update_config,license,_write_env,secure_store}.py "$PKG/交付自检工具/shared/"
 cp "$WS/shared/ui/theme.py" "$PKG/交付自检工具/shared/ui/"

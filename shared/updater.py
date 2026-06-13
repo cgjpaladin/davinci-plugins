@@ -42,7 +42,10 @@ def _fetch_json_across_links(urls: list, timeout: float = 5.0) -> dict:
             if isinstance(data, dict) and data.get("encoding") == "base64":
                 data = json.loads(base64.b64decode(data["content"]).decode("utf-8"))
             return data
-        except Exception:
+        except Exception as e:
+            # 不中断，尝试下一条链路；但记录原因供排错
+            import logging
+            logging.getLogger("WB.updater").debug(f"链路不可达: {url[:60]}... — {e}")
             continue
     raise RuntimeError("所有更新链路均不可达")
 
@@ -166,16 +169,20 @@ def check_async(product: str, current_version: str, on_update_found=None):
 
 
 def _version_compare(a: str, b: str) -> int:
-    """比较两个 semver 版本号。a > b → 1, a == b → 0, a < b → -1。"""
+    """比较两个 semver 版本号。a > b → 1, a == b → 0, a < b → -1。
+    -dev/-alpha/-beta 后缀视为低于同版本号正式版。"""
     def _parse(v):
         v = v.strip().lstrip("v")
         parts = v.replace("-", ".").split(".")
         nums = []
+        has_suffix = False
         for p in parts:
             try:
                 nums.append(int(p))
             except ValueError:
-                nums.append(0)
+                has_suffix = True
+                break               # 后缀之后的非数字部分忽略
+        nums.append(-1 if has_suffix else float("inf"))
         return nums
 
     try:

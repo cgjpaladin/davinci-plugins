@@ -8,7 +8,7 @@ if [ -z "$HOST" ]; then echo "用法: check_logs.sh <hostname> [today]"; exit 1;
 
 TODAY=$(date +%Y-%m-%d)
 
-ssh -o ConnectTimeout=5 -o BatchMode=yes "$HOST" "bash -s" << 'HEREDOC' 2>/dev/null
+ssh -o ConnectTimeout=5 -o BatchMode=yes "$HOST" "bash -s" "$TODAY" "$MODE" << 'HEREDOC' 2>/dev/null
 TODAY=$1; MODE=$2
 echo "🔍 $HOSTNAME | $TODAY"
 
@@ -50,4 +50,3 @@ find "/Library/Logs/DiagnosticReports" -name "python*" -newer /tmp 2>/dev/null |
 done
 echo '✅ 完毕'
 HEREDOC
-" "$TODAY" "$MODE"
