@@ -21,6 +21,7 @@
 #   谢谢。
 # ═══════════════════════════════════════════════════════════════
 
+import datetime as _dt
 import hashlib
 import hmac
 import json
@@ -280,10 +281,11 @@ def init_trial() -> Tuple[bool, str]:
         "platform": "Darwin",
         "products": {},
         "is_trial": True,
+        "trial_start_date": _dt.date.today().toordinal(),
         "last_seen": now,
     }
     save_credential({"payload": payload, "signature": "local_trial"})
-    days = max(0, (trial_start + 30 * 86400 - now) // 86400)
+    days = max(0, 30 - (_dt.date.today() - _dt.date.fromordinal(payload["trial_start_date"])).days)
     return True, f"试用剩余 {days} 天"
 
 

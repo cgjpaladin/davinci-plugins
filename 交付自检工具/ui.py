@@ -2690,7 +2690,12 @@ def main():
                 p = cred.get("payload", {})
                 is_trial = p.get("is_trial", True)
                 if is_trial:
-                    d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
+                    tsd = p.get("trial_start_date")
+                    if tsd:
+                        from datetime import date as _dt_date
+                        d = max(0, 30 - (_dt_date.today() - _dt_date.fromordinal(tsd)).days)
+                    else:
+                        d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
                     text = f"试用剩余 {d} 天"
                     _ai_allowed = d > 0
                     if not _ai_allowed:
