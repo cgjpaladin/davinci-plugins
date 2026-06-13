@@ -249,7 +249,7 @@ def _post_to_backend(endpoint: str, data: dict, timeout: int = 10) -> Tuple[bool
 # ═══════════════════════════════════════════
 
 def init_trial() -> Tuple[bool, str]:
-    """首次试用初始化 — 服务端登记指纹，防无限白嫖。
+    """首次试用初始化 — 服务端记录原始试用时间，删文件不延。
 
     一台机器一辈子只试用一次。
     Returns:
@@ -258,21 +258,24 @@ def init_trial() -> Tuple[bool, str]:
     now = int(time.time())
     fp = get_machine_fingerprint()
 
-    # 服务端校验指纹是否已存在（断网降级：允许本地试用）
+    # 服务端返回原始试用起始时间（断网降级：使用本地时间）
+    trial_start = now
     if BACKEND_URL:
         ok, resp = _post_to_backend("/license", {
             "action": "init_trial",
             "machine_fingerprint": fp,
         })
-        if ok and resp.get("status") == "duplicate":
-            return False, "此设备已试用过，请联系购买"
+        if ok:
+            ts = resp.get("trial_start")
+            if ts:
+                trial_start = int(ts / 1000) if ts > 1e12 else int(ts)
 
     payload = {
         "activate_key": "",
         "machine_fingerprint": fp,
-        "issue_time": now,
-        "expire_time": now + 30 * 86400,
-        "offline_grant_end": now + 3 * 86400,
+        "issue_time": trial_start,
+        "expire_time": trial_start + 30 * 86400,
+        "offline_grant_end": trial_start + 3 * 86400,
         "nonce": os.urandom(8).hex(),
         "platform": "Darwin",
         "products": {},
@@ -280,7 +283,8 @@ def init_trial() -> Tuple[bool, str]:
         "last_seen": now,
     }
     save_credential({"payload": payload, "signature": "local_trial"})
-    return True, f"试用开始，剩余 30 天"
+    days = max(0, (trial_start + 30 * 86400 - now) // 86400)
+    return True, f"试用剩余 {days} 天"
 
 
 def _try_register_trial(fp: str) -> bool:

@@ -171,16 +171,20 @@ async function handleManage(data) {
   return { status: 'error', msg: `未知管理操作: ${action}` };
 }
 
-// 试用记录：服务端防无限白嫖
+// 试用记录：服务端记录原始试用时间，客户端据此算剩余天数
 async function handleInitTrial(data) {
   const fp = (data.machine_fingerprint || '').trim();
   if (!fp) return { status: 'error', msg: '参数不完整' };
 
   const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`, TRIAL_TABLE_ID);
-  if (records.length > 0) return { status: 'duplicate', msg: '此设备已试用过，请联系购买' };
+  if (records.length > 0) {
+    // 已登记 → 返回原始试用时间（客户端据此算剩余天数，删文件重装不会延）
+    return { status: 'ok', trial_start: records[0].fields['试用时间'] };
+  }
 
-  await addRecord({ 机器指纹: fp, 试用时间: Date.now() }, TRIAL_TABLE_ID);
-  return { status: 'ok', msg: '试用已登记' };
+  const now = Date.now();
+  await addRecord({ 机器指纹: fp, 试用时间: now }, TRIAL_TABLE_ID);
+  return { status: 'ok', trial_start: now };
 }
 
 // 启动时校验：激活码状态 + 指纹是否仍匹配
