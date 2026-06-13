@@ -30,7 +30,6 @@ import plistlib
 import ssl
 import stat
 import subprocess
-import sys
 import time
 import uuid
 import urllib.request
@@ -286,7 +285,6 @@ def init_trial() -> Tuple[bool, str]:
         "is_trial": True,
         "trial_start_date": trial_start_date,
         "last_seen": now,
-        "_diag_init": f"tsd={trial_start_date}",
     }
     save_credential({"payload": payload, "signature": "local_trial"})
     days = max(0, 30 - (_dt.date.today() - _dt.date.fromordinal(payload["trial_start_date"])).days)
@@ -323,11 +321,7 @@ def _sync_trial_start(payload: dict, fp: str) -> None:
                 if ordinal > _dt.date.today().toordinal():
                     return  # 未来日期，不理（管理员误操作防护）
                 if ordinal != payload.get("trial_start_date"):
-                    old = payload.get("trial_start_date")
                     payload["trial_start_date"] = ordinal
-                    payload["_diag_sync"] = f"{old}->{ordinal}"
-        else:
-            payload["_diag_sync"] = f"FC_fail:{resp.get('msg','?')}"
     except Exception:
         pass
 
