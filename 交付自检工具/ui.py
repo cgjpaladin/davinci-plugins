@@ -833,12 +833,12 @@ window_layout = [
             ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
                 ui.Label({"ID": TRIAL_LB, "Text": "",
                           "StyleSheet": "color:rgb(220,180,60);font-size:10px",
-                          "Weight": 0, "MinimumSize": [320, SIZE_LINE_H]}),
+                          "Weight": 1, "MinimumSize": [0, SIZE_LINE_H]}),
                 ui.HGap({"Weight": 1}),
                 ui.Button({"ID": BTN_UPDATE, "Text": "✓ 最新",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [94, SIZE_BTN_H]}),
-                ui.Button({"ID": BTN_ERR_SEND, "Text": "📋 导出排错包",
+                ui.Button({"ID": BTN_ERR_SEND, "Text": "📋 导出日志",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [SIZE_BTN_LG_W, SIZE_BTN_H]}),
             ]),
@@ -2232,12 +2232,12 @@ dlg.On[BTN_AI_TYPO].Clicked = lambda ev: _run_ai_typo()
 _UI_ERROR_COUNT = 0
 
 def _on_err_report(ev):
-    """导出排错包到本地"""
+    """导出日志到本地"""
     global _UI_ERROR_COUNT
     _action_log(f"📤 导出按钮被点击 (error_count={_UI_ERROR_COUNT})")
     if _BUSY:
         return
-    _lock_ui("导出排错包")
+    _lock_ui("导出日志")
     itm[BTN_ERR_SEND].Text = "⏳ 导出中..."
     _export_debug_package()
     _unlock_ui()
@@ -2250,15 +2250,15 @@ def _export_debug_package():
     try:
         r = subprocess.run(
             ["osascript", "-e",
-             'POSIX path of (choose folder with prompt "选择排错包导出位置")'],
+             'POSIX path of (choose folder with prompt "选择导出位置")'],
             capture_output=True, text=True, encoding="utf-8", timeout=60)
         dest = r.stdout.strip()
         if not dest or not os.path.isdir(dest):
-            itm[BTN_ERR_SEND].Text = "📋 导出排错包" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
+            itm[BTN_ERR_SEND].Text = "📋 导出日志" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
             return
     except Exception as e:
         _action_log(f"❌ 选目录失败: {e}")
-        itm[BTN_ERR_SEND].Text = "📋 导出排错包" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
+        itm[BTN_ERR_SEND].Text = "📋 导出日志" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
         return
     # ── 文件名 ──
     now = time.localtime()
@@ -2283,7 +2283,7 @@ def _export_debug_package():
                 log_files.append((full, f"logs/ui-{yesterday}.log"))
     # ── 系统信息 ──
     info_lines = [
-        f"交付自检工具排错包",
+        f"交付自检工具日志",
         f"版本: {version_string()}",
         f"macOS: {platform.mac_ver()[0]}",
         f"主机名: {socket.gethostname()}",
@@ -2341,14 +2341,14 @@ def _export_debug_package():
         itm[BTN_ERR_SEND].Text = "✅ 已导出"
     except Exception as e:
         _action_log(f"❌ 导出失败: {e}")
-        itm[BTN_ERR_SEND].Text = "📋 导出排错包" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
+        itm[BTN_ERR_SEND].Text = "📋 导出日志" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
 
 def _update_err_counter():
     """报错时更新按钮文字"""
     if _UI_ERROR_COUNT > 0:
         itm[BTN_ERR_SEND].Text = f"⚠️ {_UI_ERROR_COUNT} 个报错"
     else:
-        itm[BTN_ERR_SEND].Text = "📋 导出排错包"
+        itm[BTN_ERR_SEND].Text = "📋 导出日志"
 dlg.On[BTN_ERR_SEND].Clicked = _on_err_report
 
 def _browse_script(ev):
