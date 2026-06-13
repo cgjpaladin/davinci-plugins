@@ -1748,7 +1748,7 @@ def _run_ai_typo():
                     tc_str = smpte.gettc(entry_starts[idx])
                 icon = "⚠"
                 row = {"track": "ST1", "tc": tc_str,
-                       "msg": f"{icon} | {c['original']} → {c['correction']}（{c.get('reason', '')}）",
+                       "msg": f"{icon} | {c['original']} → {c['correction']}",
                        "reason": c.get('reason', '')}
                 all_rows.append(row)
                 ai_rows.append(row)
