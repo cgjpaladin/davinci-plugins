@@ -1028,41 +1028,8 @@ def _build_auth_section():
     ]
 
 
-# ── 消费后台校验结果（定义须在 _show_config_dialog 之前）──
-def _consume_license():
-    global _pending_license, _ai_allowed, _trial_expired, _cred
-    if not _pending_license:
-        return
-    try:
-        result = _pending_license.pop(0)
-        _type, ok, days, ai_ok, msg = result
-        _action_log(f"License(后台): type={_type} ok={ok} days={days} ai={ai_ok} msg={msg}")
-        if _type == "error":
-            return
-        if _type == "activated":
-            if not ok:
-                _ai_allowed = False; _trial_expired = True
-                itm[TRIAL_LB].Text = "试用剩余 0 天"
-                itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
-                itm[BTN_AI_TYPO].Enabled = False
-            return
-        _ai_allowed = ai_ok
-        if ai_ok:
-            itm[TRIAL_LB].Text = f"试用剩余 {days} 天"
-            itm[BTN_AI_TYPO].Text = "字幕检测"; itm[BTN_AI_TYPO].Enabled = True
-        else:
-            _trial_expired = True
-            itm[TRIAL_LB].Text = "试用剩余 0 天"
-            itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
-            itm[BTN_AI_TYPO].Enabled = False
-        if not ok:
-            itm[HINT_LB].Text = msg if msg else "授权校验失败"
-    except Exception:
-        pass
-
 def _show_config_dialog():
     """打开配置窗口"""
-    _consume_license()
     CONFIG_WIN_ID = "com.myjc.delivery_checker_config"
 
     config_disp = bmd.UIDispatcher(fu.UIManager)
@@ -1579,7 +1546,6 @@ def _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
 
 def _run_ai_typo():
     """一步到位：下载剧本 → 解析 → 集号匹配 → LLM 校对（含剧集一致性检测）。"""
-    _consume_license()
     global _checking
     if _BUSY or _checking:
         return
@@ -1868,7 +1834,6 @@ def _run_ai_typo():
 # ═══════════════════════════════════════════
 
 def _start_check():
-    _consume_license()
     global _checking, _start_time
     if _BUSY or _checking:
         return
@@ -2405,7 +2370,8 @@ def _do_update(ev):
     _items["up_title"]  = ui.Label({"ID": "up_title", "Text": f"交付自检工具 v{new_ver}",
                                     "StyleSheet": "font-size:17px;font-weight:bold;color:rgb(255,255,255)"})
     _items["up_body"]   = ui.TextEdit({"ID": "up_body", "ReadOnly": True, "Text": notes,
-                                    "StyleSheet": "min-height:300px;font-size:13px;color:rgb(200,200,200);background-color:rgb(35,35,35)"})
+                                    "StyleSheet": "min-height:300px;font-size:13px;color:rgb(200,200,200);background-color:rgb(30,30,30);"
+                                                  "border:1px solid rgb(50,50,50);border-radius:4px;padding:8px"})
     _items["up_status"] = ui.Label({"ID": "up_status", "Text": "",
                                     "StyleSheet": "font-size:13px;color:rgb(140,140,140)", "Weight": 0})
     _items["updateNotesCancel"] = ui.Button({"ID": "updateNotesCancel", "Text": "取消",
@@ -2729,6 +2695,13 @@ def main():
             pass  # 锁文件残留，清理后继续
     with open(_lock_file, "w", encoding="utf-8") as f:
         f.write(str(os.getpid()))
+    # ── 启动时灰按钮 + 联网校验（单线程，零竞态）──
+    itm[TRIAL_LB].Text = ""
+    itm[BTN_START].Enabled = False
+    itm[BTN_AI_TYPO].Enabled = False
+    itm[BTN_CONFIG].Enabled = False
+    itm[BTN_UPDATE].Enabled = False
+    itm[HINT_LB].Text = "⏳ 联网校验中…"
     dlg.Show()
     dlg.RecalcLayout()
     _init_connection()
@@ -2742,87 +2715,20 @@ def main():
             pass
     threading.Thread(target=_warm_osascript, daemon=True).start()
 
-    # 后台联网校验（不阻塞 UI，结果挂起等下次交互消费）
-    def _bg_license_check():
-        global _pending_license
-        try:
-            import time as _t
-            from shared.license import init_trial, verify_local, verify_activation, load_credential
-            cred = load_credential()
-            if cred:
-                p = cred.get("payload", {})
-                is_trial = p.get("is_trial", True)
-                if is_trial:
-                    ok, msg = verify_local()
-                    cred2 = load_credential()
-                    if cred2:
-                        p2 = cred2.get("payload", {})
-                        tsd = p2.get("trial_start_date")
-                        if tsd:
-                            from datetime import date as _dt_date
-                            d = max(0, 30 - (_dt_date.today() - _dt_date.fromordinal(tsd)).days)
-                        else:
-                            d = max(0, (p2.get("expire_time", 0) - int(_t.time())) // 86400)
-                        ai_ok = d > 0
-                    else:
-                        d = 0; ai_ok = False
-                    _pending_license.append(("trial", ok, d, ai_ok, msg))
-                else:
-                    v_ok, v_msg = verify_activation()
-                    _pending_license.append(("activated", v_ok, 0, v_ok, v_msg))
-            else:
-                ok, msg = init_trial()
-                cred2 = load_credential()
-                if ok and cred2:
-                    p2 = cred2.get("payload", {})
-                    tsd = p2.get("trial_start_date")
-                    if tsd:
-                        from datetime import date as _dt_date
-                        d = max(0, 30 - (_dt_date.today() - _dt_date.fromordinal(tsd)).days)
-                    else:
-                        d = 30
-                    ai_ok = d > 0
-                else:
-                    d = 0; ai_ok = False
-                _pending_license.append(("init_trial", ok, d, ai_ok, msg))
-        except Exception as e:
-            _pending_license.append(("error", False, 0, False, str(e)))
-    threading.Thread(target=_bg_license_check, daemon=True).start()
-
-    # 同步检查更新（短超时，失败不影响使用）
-    try:
-        from updater import check
-        from shared.update_config import TIMEOUT_VERSION_CHECK
-        _ver = version_string()
-        _result = check("delivery_checker", _ver, timeout=TIMEOUT_VERSION_CHECK)
-        global _UPDATE_INFO
-        _UPDATE_INFO = _result
-        if _result.get("update_available"):
-            _action_log(f"⬆ 发现新版本 v{_result['latest']} (当前 {_ver})")
-            itm[HINT_LB].Text = f"⬆ 新版本 v{_result['latest']} — 点击右侧按钮更新"
-            itm[BTN_UPDATE].Text = "⬆ 更新"
-            itm[BTN_UPDATE]["StyleSheet"] = "background-color:rgb(220,180,60);color:#1a1a1a;font-size:11px;font-weight:bold;border-radius:3px;padding:2px 8px"
-            if _result.get("force"):
-                itm[BTN_START].Enabled = False
-                itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
-                itm[HINT_LB].Text += "（必须更新）"
-        else:
-            itm[BTN_UPDATE].Text = "✓ 最新"
-    except Exception:
-        itm[BTN_UPDATE].Text = "✓ 最新"
-
-    # ══ License ══（仅个人版）
+    # ══ License ══（仅个人版，同步校验）
     global _ai_allowed
-    _ai_allowed = True  # 默认允许
+    _ai_allowed = True
     _trial_expired = False
     _cred = None
-    _pending_license = []  # 后台线程校验结果 [(ok, msg, is_trial, trial_days, ai_ok), ...]
     if IS_PERSONAL:
         try:
-            from shared.license import load_credential
+            from shared.license import init_trial, verify_local, verify_activation, load_credential
             cred = load_credential()
             _cred = cred
             if cred:
+                ok, msg = verify_local()
+                cred = load_credential()
+                _cred = cred
                 p = cred.get("payload", {})
                 is_trial = p.get("is_trial", True)
                 if is_trial:
@@ -2847,8 +2753,16 @@ def main():
                             _trial_expired = True
                 else:
                     text = "已激活 ✓"
+                    try:
+                        v_ok, v_msg = verify_activation()
+                        if not v_ok:
+                            _ai_allowed = False; _trial_expired = True
+                            text = "试用剩余 0 天"
+                            _action_log(f"License 吊销: {v_msg}")
+                    except Exception:
+                        pass
                 itm[TRIAL_LB].Text = text
-                _action_log(f"License(本地): {text}")
+                _action_log(f"License: {text}  ({'✅' if ok else '❌ '+msg})")
             else:
                 ok, msg = init_trial()
                 if ok:
@@ -2885,6 +2799,35 @@ def main():
                 itm[TRIAL_LB].Text = f"{itm[TRIAL_LB].Text}  |  ID: {fp_short}" if fp_short else itm[TRIAL_LB].Text
             if not _cred:
                 itm[HINT_LB].Text = ""
+
+    # ── 恢复按钮 ──
+    itm[BTN_START].Enabled = True
+    itm[BTN_CONFIG].Enabled = True
+    itm[BTN_UPDATE].Enabled = True
+    if itm[HINT_LB].Text.startswith("⏳"):
+        itm[HINT_LB].Text = ""
+
+    # 同步检查更新（短超时，失败不影响使用）
+    try:
+        from updater import check
+        from shared.update_config import TIMEOUT_VERSION_CHECK
+        _ver = version_string()
+        _result = check("delivery_checker", _ver, timeout=TIMEOUT_VERSION_CHECK)
+        global _UPDATE_INFO
+        _UPDATE_INFO = _result
+        if _result.get("update_available"):
+            _action_log(f"⬆ 发现新版本 v{_result['latest']} (当前 {_ver})")
+            itm[HINT_LB].Text = f"⬆ 新版本 v{_result['latest']} — 点击右侧按钮更新"
+            itm[BTN_UPDATE].Text = "⬆ 更新"
+            itm[BTN_UPDATE]["StyleSheet"] = "background-color:rgb(220,180,60);color:#1a1a1a;font-size:11px;font-weight:bold;border-radius:3px;padding:2px 8px"
+            if _result.get("force"):
+                itm[BTN_START].Enabled = False
+                itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
+                itm[HINT_LB].Text += "（必须更新）"
+        else:
+            itm[BTN_UPDATE].Text = "✓ 最新"
+    except Exception:
+        itm[BTN_UPDATE].Text = "✓ 最新"
 
     disp.RunLoop()
     dlg.Hide()
