@@ -987,8 +987,8 @@ def _build_auth_section():
             ui.LineEdit({**kw, "ID": "cfg_trial_code_3", "Text": "", "PlaceholderText": "XXXX"}),
         ]),
         ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
-            ui.Button({"ID": "cfg_activate_btn", "Text": "激活", "StyleSheet": BTN_PRIMARY, "Weight": 0, "FocusPolicy": "NoFocus"}),
-            ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用", "StyleSheet": BTN_STYLE, "Weight": 0, "FocusPolicy": "NoFocus"}),
+            ui.Button({"ID": "cfg_activate_btn", "Text": "激活", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
+            ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用", "StyleSheet": BTN_STYLE, "Weight": 0}),
         ]),
         _sep(),
     ]
@@ -1341,6 +1341,11 @@ def _show_config_dialog():
         try: config_dlg.On["cfg_activate_btn"].Clicked = _do_activate
         except Exception: pass
         try: config_dlg.On["cfg_deactivate_btn"].Clicked = _do_deactivate
+        except Exception: pass
+        # 焦点链：激活/停用后焦点回到第一格
+        try: cfg["cfg_activate_btn"].SetTabOrder(cfg["cfg_trial_code_1"])
+        except Exception: pass
+        try: cfg["cfg_deactivate_btn"].SetTabOrder(cfg["cfg_trial_code_1"])
         except Exception: pass
 
     # ── 编辑违禁词 ──
