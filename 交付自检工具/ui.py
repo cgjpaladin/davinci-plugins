@@ -1313,7 +1313,8 @@ def _show_config_dialog():
                     if d > 0:
                         itm[TRIAL_LB].Text = f"试用剩余 {d} 天"
                     else:
-                        itm[TRIAL_LB].Text = "试用剩余 0 天  |  请联系购买: 微信 paladinpp"
+                        fp_s = p.get("machine_fingerprint", "")[:8]
+                        itm[TRIAL_LB].Text = f"试用剩余 0 天  |  请联系购买: 微信 paladinpp  |  ID: {fp_s}"
                     cfg["cfg_auth_status"].Text = f"⏳ 试用剩余 {d} 天"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(200,180,60);font-size:12px"
                     cfg["cfg_trial_code_1"].Text = cfg["cfg_trial_code_2"].Text = cfg["cfg_trial_code_3"].Text = ""
