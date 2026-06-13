@@ -2687,6 +2687,8 @@ def main():
             _cred = cred
             if cred:
                 ok, msg = verify_local()
+                cred = load_credential()  # sync 后重读，确保同次启动可见
+                _cred = cred
                 p = cred.get("payload", {})
                 is_trial = p.get("is_trial", True)
                 if is_trial:
