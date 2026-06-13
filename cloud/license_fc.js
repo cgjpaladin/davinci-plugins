@@ -12,7 +12,7 @@ const FEISHU_APP_ID = process.env.FEISHU_APP_ID || '';
 const FEISHU_APP_SECRET = process.env.FEISHU_APP_SECRET || '';
 const BASE_TOKEN = process.env.BASE_TOKEN || 'BRfGbDgaJa6ZYCsViuOcau2PnSe';
 const TABLE_ID = process.env.TABLE_ID || 'tbla9FSVEuuiayQH';
-const TRIAL_TABLE_ID = process.env.TRIAL_TABLE_ID || 'tblPHNcMFL2jwjwD';
+const TRIAL_TABLE_ID = process.env.TRIAL_TABLE_ID || 'tblMAUMo8VQGPDZP';
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const HMAC_SECRET = (process.env.HMAC_SECRET || 'change_me').substring(0, 64);
 const OFFLINE_GRANT_DAYS = 30;
@@ -179,11 +179,11 @@ async function handleInitTrial(data) {
   const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`, TRIAL_TABLE_ID);
   if (records.length > 0) {
     // 已登记 → 返回原始试用时间（客户端据此算剩余天数，删文件重装不会延）
-    return { status: 'ok', trial_start: records[0].fields['试用时间'] };
+    return { status: 'ok', trial_start: records[0].fields['首次试用时间'] };
   }
 
   const now = Date.now();
-  await addRecord({ 机器指纹: fp, 试用时间: now }, TRIAL_TABLE_ID);
+  await addRecord({ 机器指纹: fp, 首次试用时间: now }, TRIAL_TABLE_ID);
   return { status: 'ok', trial_start: now };
 }
 
