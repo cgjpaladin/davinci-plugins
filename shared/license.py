@@ -30,6 +30,7 @@ import plistlib
 import ssl
 import stat
 import subprocess
+import sys
 import time
 import uuid
 import urllib.request
@@ -270,6 +271,8 @@ def init_trial() -> Tuple[bool, str]:
             ts = resp.get("trial_start")
             if ts:
                 trial_start = int(ts / 1000) if ts > 1e12 else int(ts)
+        else:
+            print(f"[License:init_trial] FC调用失败: {resp.get('msg', '未知错误')}", file=sys.stderr)
 
     payload = {
         "activate_key": "",
