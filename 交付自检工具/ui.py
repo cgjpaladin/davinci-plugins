@@ -1300,7 +1300,6 @@ def _show_config_dialog():
                     _keys = _load_api_keys()
                     if _keys.get("activation_code"): del _keys["activation_code"]; _save_api_keys(_keys)
                     itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"; itm[BTN_AI_TYPO].Enabled = False
-                    itm[TRIAL_LB].Text = "授权已停用"
                     c = load_credential()
                     p = c.get("payload", {}) if c else {}
                     tsd = p.get("trial_start_date")
@@ -1311,6 +1310,10 @@ def _show_config_dialog():
                         d = max(0, (p["expire_time"] - int(time.time())) // 86400)
                     else:
                         d = 30
+                    if d > 0:
+                        itm[TRIAL_LB].Text = f"试用剩余 {d} 天"
+                    else:
+                        itm[TRIAL_LB].Text = "试用剩余 0 天  |  请联系购买: 微信 paladinpp"
                     cfg["cfg_auth_status"].Text = f"⏳ 试用剩余 {d} 天"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(200,180,60);font-size:12px"
                     cfg["cfg_trial_code_1"].Text = cfg["cfg_trial_code_2"].Text = cfg["cfg_trial_code_3"].Text = ""
