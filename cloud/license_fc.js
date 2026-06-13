@@ -178,7 +178,20 @@ async function handleInitTrial(data) {
 
   const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`, TRIAL_TABLE_ID);
 
-  const msToOrdinal = (ms) => Math.floor((ms / 86400000) + 719163);
+  const msToOrdinal = (ms) => {
+    // Feishu 日期存 UTC ms，但表格显示+8时区。加 8 小时后转当地日期
+    const d = new Date(ms + 28800000);  // +8h
+    const y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
+    const months = [31,28,31,30,31,30,31,31,30,31,30,31];
+    let days = 0;
+    for (let yr = 1970; yr < y; yr++)
+      days += (yr%4===0&&yr%100!==0)||(yr%400===0) ? 366 : 365;
+    const leap = (y%4===0&&y%100!==0)||(y%400===0);
+    for (let i = 0; i < m; i++)
+      days += months[i] + (i===1&&leap ? 1 : 0);
+    days += day - 1;
+    return 719163 + days;
+  };
 
   if (records.length > 0) {
     return { status: 'ok', trial_date_ordinal: msToOrdinal(records[0].fields['首次试用时间']) };
