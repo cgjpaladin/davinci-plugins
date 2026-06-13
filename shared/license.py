@@ -306,6 +306,25 @@ def _try_register_trial(fp: str) -> bool:
         return False
 
 
+def _sync_trial_start(payload: dict, fp: str) -> None:
+    """从服务端拉取原始试用起始日期，更新本地 payload（管理员调表即时生效）。"""
+    if not BACKEND_URL:
+        return
+    try:
+        ok, resp = _post_to_backend("/license", {
+            "action": "init_trial",
+            "machine_fingerprint": fp,
+        })
+        if ok:
+            ts = resp.get("trial_start")
+            if ts:
+                ordinal = _dt.date.fromtimestamp(int(ts / 1000) if ts > 1e12 else int(ts)).toordinal()
+                if ordinal != payload.get("trial_start_date"):
+                    payload["trial_start_date"] = ordinal
+    except Exception:
+        pass
+
+
 def activate(activate_key: str) -> Tuple[bool, str]:
     """激活正式授权。
 
@@ -405,6 +424,10 @@ def verify_local() -> Tuple[bool, str]:
             last_seen = now  # 登记成功才写时间，失败保留 0 触发下次重试
     if last_seen and now < last_seen - 3600:  # 容忍 1 小时误差（跨时区/夏令时）
         return False, "系统时间异常"
+
+    # 试用用户：从服务端同步原始起始日期（管理员调表可即时生效）
+    if payload.get("is_trial") and stored_fp:
+        _sync_trial_start(payload, stored_fp)
 
     # 更新最后合法时间（登记成功/已登记才更新，旧版待补不写）
     if last_seen:
