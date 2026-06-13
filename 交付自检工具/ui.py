@@ -2693,7 +2693,8 @@ def main():
                     tsd = p.get("trial_start_date")
                     if tsd:
                         from datetime import date as _dt_date
-                        d = max(0, 30 - (_dt_date.today() - _dt_date.fromordinal(tsd)).days)
+                        elapsed = max(0, (_dt_date.today() - _dt_date.fromordinal(tsd)).days)
+                        d = max(0, 30 - elapsed)
                     else:
                         d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
                     text = f"试用剩余 {d} 天"

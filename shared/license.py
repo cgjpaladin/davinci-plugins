@@ -30,7 +30,6 @@ import plistlib
 import ssl
 import stat
 import subprocess
-import sys
 import time
 import uuid
 import urllib.request
@@ -271,8 +270,6 @@ def init_trial() -> Tuple[bool, str]:
             ts = resp.get("trial_start")
             if ts:
                 trial_start = int(ts / 1000) if ts > 1e12 else int(ts)
-        else:
-            print(f"[License:init_trial] FC调用失败: {resp.get('msg', '未知错误')}", file=sys.stderr)
 
     payload = {
         "activate_key": "",
@@ -321,11 +318,8 @@ def _sync_trial_start(payload: dict, fp: str) -> None:
                 ordinal = _dt.date.fromtimestamp(int(ts / 1000) if ts > 1e12 else int(ts)).toordinal()
                 if ordinal != payload.get("trial_start_date"):
                     payload["trial_start_date"] = ordinal
-                    print(f"[License:_sync] 日期更新: {ordinal}", file=sys.stderr)
-        else:
-            print(f"[License:_sync] FC失败: {resp.get('msg','未知')}", file=sys.stderr)
-    except Exception as e:
-        print(f"[License:_sync] 异常: {e}", file=sys.stderr)
+    except Exception:
+        pass
 
 
 def activate(activate_key: str) -> Tuple[bool, str]:
