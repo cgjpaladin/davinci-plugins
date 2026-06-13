@@ -2804,6 +2804,7 @@ def main():
     itm[BTN_START].Enabled = True
     itm[BTN_CONFIG].Enabled = True
     itm[BTN_UPDATE].Enabled = True
+    itm[BTN_AI_TYPO].Enabled = _ai_allowed
     if itm[HINT_LB].Text.startswith("⏳"):
         itm[HINT_LB].Text = ""
 
