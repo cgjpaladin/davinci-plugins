@@ -988,7 +988,6 @@ def _build_auth_section():
         ]),
         ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
             ui.Button({"ID": "cfg_activate_btn", "Text": "激活", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
-            ui.HGap({"Weight": 1}),
             ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用", "StyleSheet": BTN_STYLE, "Weight": 0}),
         ]),
         _sep(),
