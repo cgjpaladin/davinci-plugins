@@ -1028,6 +1028,38 @@ def _build_auth_section():
     ]
 
 
+# ── 消费后台校验结果（定义须在 _show_config_dialog 之前）──
+def _consume_license():
+    global _pending_license, _ai_allowed, _trial_expired, _cred
+    if not _pending_license:
+        return
+    try:
+        result = _pending_license.pop(0)
+        _type, ok, days, ai_ok, msg = result
+        _action_log(f"License(后台): type={_type} ok={ok} days={days} ai={ai_ok} msg={msg}")
+        if _type == "error":
+            return
+        if _type == "activated":
+            if not ok:
+                _ai_allowed = False; _trial_expired = True
+                itm[TRIAL_LB].Text = "试用剩余 0 天"
+                itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
+                itm[BTN_AI_TYPO].Enabled = False
+            return
+        _ai_allowed = ai_ok
+        if ai_ok:
+            itm[TRIAL_LB].Text = f"试用剩余 {days} 天"
+            itm[BTN_AI_TYPO].Text = "字幕检测"; itm[BTN_AI_TYPO].Enabled = True
+        else:
+            _trial_expired = True
+            itm[TRIAL_LB].Text = "试用剩余 0 天"
+            itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
+            itm[BTN_AI_TYPO].Enabled = False
+        if not ok:
+            itm[HINT_LB].Text = msg if msg else "授权校验失败"
+    except Exception:
+        pass
+
 def _show_config_dialog():
     """打开配置窗口"""
     _consume_license()
@@ -2756,39 +2788,6 @@ def main():
         except Exception as e:
             _pending_license.append(("error", False, 0, False, str(e)))
     threading.Thread(target=_bg_license_check, daemon=True).start()
-
-    # ── 消费后台校验结果（入口函数，各按钮进入时调用）──
-    def _consume_license():
-        global _pending_license, _ai_allowed, _trial_expired, _cred
-        if not _pending_license:
-            return
-        try:
-            result = _pending_license.pop(0)
-            _type, ok, days, ai_ok, msg = result
-            _action_log(f"License(后台): type={_type} ok={ok} days={days} ai={ai_ok} msg={msg}")
-            if _type == "error":
-                return
-            if _type == "activated":
-                if not ok:
-                    _ai_allowed = False; _trial_expired = True
-                    itm[TRIAL_LB].Text = "试用剩余 0 天"
-                    itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
-                    itm[BTN_AI_TYPO].Enabled = False
-                return
-            # trial / init_trial
-            _ai_allowed = ai_ok
-            if ai_ok:
-                itm[TRIAL_LB].Text = f"试用剩余 {days} 天"
-                itm[BTN_AI_TYPO].Text = "字幕检测"; itm[BTN_AI_TYPO].Enabled = True
-            else:
-                _trial_expired = True
-                itm[TRIAL_LB].Text = "试用剩余 0 天"
-                itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
-                itm[BTN_AI_TYPO].Enabled = False
-            if not ok:
-                itm[HINT_LB].Text = msg if msg else "授权校验失败"
-        except Exception:
-            pass
 
     # 同步检查更新（短超时，失败不影响使用）
     try:
