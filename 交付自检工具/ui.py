@@ -1256,7 +1256,7 @@ def _show_config_dialog():
                     if ts: _keys["trial_remain_secs"] = str(ts)
                     _save_api_keys(_keys)
                     itm[BTN_AI_TYPO].Text = "字幕检测"; itm[BTN_AI_TYPO].Enabled = True
-                    itm[TRIAL_LB].Text = "已激活 ✓"; itm[HINT_LB].Text = ""
+                    itm[TRIAL_LB].Text = "已激活 ✓"
                     cfg["cfg_auth_status"].Text = "✅ 已激活 · 永久授权"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(80,200,100);font-size:13px"
                     cfg["cfg_trial_code_1"].Text = cfg["cfg_trial_code_2"].Text = cfg["cfg_trial_code_3"].Text = "●●●●"
