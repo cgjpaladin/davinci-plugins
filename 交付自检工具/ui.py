@@ -1042,7 +1042,7 @@ def _show_config_dialog():
     config_dlg = config_disp.AddWindow({
         "WindowTitle": "交付自检工具 — 配置",
         "ID": CONFIG_WIN_ID,
-        "Geometry": [820, 120, 300, 620],
+        "Geometry": [820, 120, 360, 620],
         "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
     }, config_layout)
 
@@ -1309,6 +1309,8 @@ def _show_config_dialog():
                     if tsd:
                         from datetime import date as _dt
                         d = max(0, 30 - (_dt.today() - _dt.fromordinal(tsd)).days)
+                    elif p.get("expire_time"):
+                        d = max(0, (p["expire_time"] - int(time.time())) // 86400)
                     else:
                         d = 30
                     cfg["cfg_auth_status"].Text = f"⏳ 试用剩余 {d} 天"
@@ -1403,6 +1405,7 @@ def _show_config_dialog():
         _smb_paths_cache = []
 
     config_dlg.Show()
+    config_dlg.RecalcLayout()
     config_disp.RunLoop()
     config_dlg.Hide()
 
