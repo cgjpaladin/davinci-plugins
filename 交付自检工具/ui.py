@@ -798,6 +798,7 @@ window_layout = [
                 ]),
                 ui.Label({"ID": "lbl_ai_ep", "Text": "集号（如 08 或 07-09）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
+                ui.VGap(SPACE_SM),
                 ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
                     ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
                                 "Weight": 0,
@@ -808,7 +809,7 @@ window_layout = [
                 ]),
                 ui.Button({"ID": BTN_AI_TYPO, "Text": "字幕检测",
                               "StyleSheet": BTN_PRIMARY.replace("100", "80"),
-                              "Weight": 0, "MinimumSize": [108, SIZE_BTN_H]}),
+                              "Weight": 0, "MinimumSize": [108, 36]}),
             ]),
 
         ]),  # 结束上半区 HGroup
