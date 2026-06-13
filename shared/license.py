@@ -321,8 +321,11 @@ def _sync_trial_start(payload: dict, fp: str) -> None:
                 ordinal = _dt.date.fromtimestamp(int(ts / 1000) if ts > 1e12 else int(ts)).toordinal()
                 if ordinal != payload.get("trial_start_date"):
                     payload["trial_start_date"] = ordinal
-    except Exception:
-        pass
+                    print(f"[License:_sync] 日期更新: {ordinal}", file=sys.stderr)
+        else:
+            print(f"[License:_sync] FC失败: {resp.get('msg','未知')}", file=sys.stderr)
+    except Exception as e:
+        print(f"[License:_sync] 异常: {e}", file=sys.stderr)
 
 
 def activate(activate_key: str) -> Tuple[bool, str]:
