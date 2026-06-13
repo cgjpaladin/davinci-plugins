@@ -287,10 +287,9 @@ def init_trial() -> Tuple[bool, str]:
         "trial_start_date": trial_start_date,
         "last_seen": now,
     }
-    print(f"[DIAG] trial_start_date={trial_start_date} today={_dt.date.today().toordinal()} 30-({_dt.date.today().toordinal()}-{trial_start_date})={30 - (_dt.date.today().toordinal() - trial_start_date)}", file=sys.stderr)
     save_credential({"payload": payload, "signature": "local_trial"})
     days = max(0, 30 - (_dt.date.today() - _dt.date.fromordinal(payload["trial_start_date"])).days)
-    return True, f"试用剩余 {days} 天"
+    return True, f"试用剩余 {days} 天 [tsd={trial_start_date} today={_dt.date.today().toordinal()}]"
 
 
 def _try_register_trial(fp: str) -> bool:
@@ -325,9 +324,9 @@ def _sync_trial_start(payload: dict, fp: str) -> None:
                 if ordinal != payload.get("trial_start_date"):
                     old = payload.get("trial_start_date")
                     payload["trial_start_date"] = ordinal
-                    print(f"[DIAG] _sync: {old}->{ordinal} today={_dt.date.today().toordinal()}", file=sys.stderr)
+                    payload["_diag_sync"] = f"{old}->{ordinal}"
         else:
-            print(f"[DIAG] _sync FC fail: {resp.get('msg','?')}", file=sys.stderr)
+            payload["_diag_sync"] = f"FC_fail:{resp.get('msg','?')}"
     except Exception:
         pass
 
