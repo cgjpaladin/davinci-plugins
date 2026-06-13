@@ -211,7 +211,7 @@ def _post_to_backend(endpoint: str, data: dict, timeout: int = 10) -> Tuple[bool
 
     req_data = json.dumps(data).encode("utf-8")
     last_err = ""
-    for attempt in range(2):
+    for attempt in range(3):  # DaVinci 子进程首次 curl 偶有冷启动，3 次兜底
         try:
             r = subprocess.run(
                 ["curl", "-s", "--connect-timeout", str(timeout), "--max-time", str(timeout + 5),
