@@ -926,28 +926,6 @@ CONFIG_SECTIONS = [
     {"id": "censor_personal", "label": "个人词典", "type": "censor_personal"},
 ]
 
-# ── 各 type 的 UI 构建函数 → [widget, ...] ──
-def _build_activation_code():
-    if not os.environ.get("WORKBUDDY_PERSONAL"):
-        return [ui.Label({"ID": "cfg_activation_status", "Text": "", "Visible": False})]
-    # 已激活（非试用）：显示文本
-    from shared.license import load_credential
-    cred = load_credential()
-    is_activated = cred and not cred.get("payload", {}).get("is_trial", True)
-    if is_activated:
-        return [ui.Label({"ID": "cfg_activation_status", "Text": "✅ 已激活",
-                          "StyleSheet": "color:rgb(80,200,100);font-size:13px", "Weight": 0})]
-    # 未激活或试用中：三格输入
-    kw = {"MinimumSize": [54, 22], "Weight": 0, "MaxLength": 4}
-    seg1 = ui.LineEdit({**kw, "ID": "cfg_activation_1", "Text": "", "PlaceholderText": "XXXX"})
-    seg2 = ui.LineEdit({**kw, "ID": "cfg_activation_2", "Text": "", "PlaceholderText": "XXXX"})
-    seg3 = ui.LineEdit({**kw, "ID": "cfg_activation_3", "Text": "", "PlaceholderText": "XXXX"})
-    return [ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
-        seg1, ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
-        seg2, ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
-        seg3,
-    ]), ui.Label({"Text": "💬 联系购买: 微信 paladinpp",
-                  "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0})]
 
 def _build_api_key_input(sid, label):
     placeholder = {"deepseek_key": "sk-...", "feishu_app_id": "cli_...", "feishu_secret": "密钥"}.get(sid, "")
@@ -966,17 +944,6 @@ def _build_censor_personal():
                       "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0}),
         ]),
     ]
-
-def _build_deactivate():
-    from shared.license import load_credential
-    cred = load_credential()
-    is_activated = cred and not cred.get("payload", {}).get("is_trial", True)
-    btn = ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用并释放到其他机器",
-                     "StyleSheet": BTN_STYLE_SM, "Weight": 0})
-    if not is_activated:
-        btn["Enabled"] = False
-        btn["Text"] = "请先输入激活码"
-    return [btn]
 
 def _build_smb_paths():
     """服务器素材路径配置：ComboBox 选择 + 添加/删除按钮"""
@@ -1013,16 +980,16 @@ def _build_auth_section():
         ui.Label({"ID": "cfg_auth_status", "Text": "", "Weight": 0,
             "StyleSheet": "color:rgb(200,180,60);font-size:12px"}),
         ui.HGroup({"Spacing": 4, "ID": "cfg_trial_code_grp", "Weight": 0}, [
-            ui.LineEdit({**kw, "ID": "cfg_trial_code_1", "Text": "", "PlaceholderText": "XXXX", "EchoMode": "Password"}),
+            ui.LineEdit({**kw, "ID": "cfg_trial_code_1", "Text": "", "PlaceholderText": "XXXX"}),
             ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
-            ui.LineEdit({**kw, "ID": "cfg_trial_code_2", "Text": "", "PlaceholderText": "XXXX", "EchoMode": "Password"}),
+            ui.LineEdit({**kw, "ID": "cfg_trial_code_2", "Text": "", "PlaceholderText": "XXXX"}),
             ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
-            ui.LineEdit({**kw, "ID": "cfg_trial_code_3", "Text": "", "PlaceholderText": "XXXX", "EchoMode": "Password"}),
+            ui.LineEdit({**kw, "ID": "cfg_trial_code_3", "Text": "", "PlaceholderText": "XXXX"}),
         ]),
         ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
             ui.Button({"ID": "cfg_activate_btn", "Text": "激活", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
-            ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用", "StyleSheet": BTN_STYLE, "Weight": 0}),
             ui.HGap({"Weight": 1}),
+            ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用", "StyleSheet": BTN_STYLE, "Weight": 0}),
         ]),
         _sep(),
     ]
@@ -1096,8 +1063,8 @@ def _show_config_dialog():
                 cfg["cfg_trial_code_2"].Text = "●●●●"
                 cfg["cfg_trial_code_3"].Text = "●●●●"
                 cfg["cfg_trial_code_grp"]["Enabled"] = False
-                cfg["cfg_activate_btn"].Visible = False
-                cfg["cfg_deactivate_btn"].Visible = True
+                cfg["cfg_activate_btn"].Enabled = False
+                cfg["cfg_deactivate_btn"].Enabled = True
             else:
                 tsd = p.get("trial_start_date")
                 if tsd:
@@ -1110,8 +1077,8 @@ def _show_config_dialog():
                 cfg["cfg_trial_code_1"].Text = ""
                 cfg["cfg_trial_code_2"].Text = ""
                 cfg["cfg_trial_code_3"].Text = ""
-                cfg["cfg_activate_btn"].Visible = True
-                cfg["cfg_deactivate_btn"].Visible = False
+                cfg["cfg_activate_btn"].Enabled = True
+                cfg["cfg_deactivate_btn"].Enabled = False
         except Exception: pass
 
     # ── 预填（掩码显示，真值保留在 _api_values）──
@@ -1272,8 +1239,8 @@ def _show_config_dialog():
                 cfg["cfg_auth_status"].Text = "⏳ 正在连接服务器…"
                 cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,160,40);font-size:12px"
                 cfg["cfg_trial_code_grp"]["Enabled"] = False
-                cfg["cfg_activate_btn"].Visible = False
-                cfg["cfg_deactivate_btn"].Visible = False
+                cfg["cfg_activate_btn"].Enabled = False
+                cfg["cfg_deactivate_btn"].Enabled = False
                 from shared.license import activate, load_credential
                 c = load_credential()
                 ts = 0
@@ -1293,20 +1260,20 @@ def _show_config_dialog():
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(80,200,100);font-size:13px"
                     cfg["cfg_trial_code_1"].Text = cfg["cfg_trial_code_2"].Text = cfg["cfg_trial_code_3"].Text = "●●●●"
                     cfg["cfg_trial_code_grp"]["Enabled"] = False
-                    cfg["cfg_activate_btn"].Visible = False
-                    cfg["cfg_deactivate_btn"].Visible = True
+                    cfg["cfg_activate_btn"].Enabled = False
+                    cfg["cfg_deactivate_btn"].Enabled = True
                 else:
                     cfg["cfg_auth_status"].Text = f"⚠ {msg}"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
                     cfg["cfg_trial_code_grp"]["Enabled"] = True
-                    cfg["cfg_activate_btn"].Visible = True
-                    cfg["cfg_deactivate_btn"].Visible = False
+                    cfg["cfg_activate_btn"].Enabled = True
+                    cfg["cfg_deactivate_btn"].Enabled = False
             except Exception as e:
                 cfg["cfg_auth_status"].Text = f"⚠ 激活失败: {e}"
                 cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
                 cfg["cfg_trial_code_grp"]["Enabled"] = True
-                cfg["cfg_activate_btn"].Visible = True
-                cfg["cfg_deactivate_btn"].Visible = False
+                cfg["cfg_activate_btn"].Enabled = True
+                cfg["cfg_deactivate_btn"].Enabled = False
             finally:
                 _auth_busy = False
 
@@ -1317,8 +1284,8 @@ def _show_config_dialog():
             try:
                 cfg["cfg_auth_status"].Text = "⏳ 正在连接服务器…"
                 cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,160,40);font-size:12px"
-                cfg["cfg_deactivate_btn"].Visible = False
-                cfg["cfg_activate_btn"].Visible = False
+                cfg["cfg_deactivate_btn"].Enabled = False
+                cfg["cfg_activate_btn"].Enabled = False
                 from shared.license import deactivate, load_credential
                 ok, msg = deactivate()
                 _action_log(f"🔓 停用: {'✅' if ok else '❌'} {msg}")
@@ -1341,17 +1308,17 @@ def _show_config_dialog():
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(200,180,60);font-size:12px"
                     cfg["cfg_trial_code_1"].Text = cfg["cfg_trial_code_2"].Text = cfg["cfg_trial_code_3"].Text = ""
                     cfg["cfg_trial_code_grp"]["Enabled"] = True
-                    cfg["cfg_activate_btn"].Visible = True
-                    cfg["cfg_deactivate_btn"].Visible = False
+                    cfg["cfg_activate_btn"].Enabled = True
+                    cfg["cfg_deactivate_btn"].Enabled = False
                 else:
                     cfg["cfg_auth_status"].Text = f"⚠ {msg}"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
-                    cfg["cfg_deactivate_btn"].Visible = True
-                    cfg["cfg_activate_btn"].Visible = False
+                    cfg["cfg_deactivate_btn"].Enabled = True
+                    cfg["cfg_activate_btn"].Enabled = False
             except Exception as e:
                 cfg["cfg_auth_status"].Text = f"⚠ 停用失败: {e}"
                 cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
-                cfg["cfg_deactivate_btn"].Visible = True
+                cfg["cfg_deactivate_btn"].Enabled = True
             finally:
                 _auth_busy = False
 
