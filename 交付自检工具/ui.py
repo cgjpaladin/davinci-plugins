@@ -1210,7 +1210,7 @@ def _show_config_dialog():
                         if ok:
                             _keys = _load_api_keys(); _keys["activation_code"] = code
                             if _trial_save:
-                                _keys["trial_remain_secs"] = _trial_save
+                                _keys["trial_remain_secs"] = str(_trial_save)
                             _save_api_keys(_keys)
                             _ai_allowed = True
                             itm[BTN_AI_TYPO].Text = "字幕检测"
