@@ -1046,7 +1046,7 @@ def _show_config_dialog():
             # ── 按钮（底部居中）──
             ui.HGroup({"Spacing": SPACE_WIDE, "Weight": 0}, [
                 ui.HGap({"Weight": 1}),
-                ui.Button({"ID": "cfg_cancel", "Text": "取消",
+                ui.Button({"ID": "cfg_cancel", "Text": "关闭",
                            "StyleSheet": BTN_STYLE, "Weight": 0}),
                 ui.Button({"ID": "cfg_save", "Text": "保存",
                            "StyleSheet": BTN_PRIMARY, "Weight": 0}),
@@ -1151,6 +1151,7 @@ def _show_config_dialog():
 
     # ── 保存 ──
     _save_busy = False
+    _success_result = False
     def _save(ev):
         nonlocal _save_busy
         if _save_busy:
@@ -1163,6 +1164,7 @@ def _show_config_dialog():
 
     def _do_save(ev):
         global _censor_subs, _ai_allowed
+        nonlocal _success_result
         err = ""
         _activation_failed = False
         for section in _sections:
@@ -1217,6 +1219,17 @@ def _show_config_dialog():
                             itm[BTN_AI_TYPO].Enabled = True
                             itm[TRIAL_LB].Text = "已激活 ✓"
                             itm[HINT_LB].Text = ""
+                            # 展开结果页（不关窗）
+                            _success_result = True
+                            try:
+                                cfg["cfg_activation_1"].Visible = False
+                                cfg["cfg_activation_2"].Visible = False
+                                cfg["cfg_activation_3"].Visible = False
+                                cfg["cfg_save"].Visible = False
+                                cfg["cfg_deactivate_btn"].Visible = False
+                                cfg["cfg_hint"].Text = f"✅ 激活成功\n已绑定本机 | {code}\n永久有效"
+                                cfg["cfg_hint"]["StyleSheet"] = "color:rgb(30,160,80);font-size:14px;font-weight:bold"
+                            except Exception: pass
                         else:
                             _activation_failed = True
                             try: cfg["cfg_hint"].Text = f"⚠ {msg}"
@@ -1270,6 +1283,8 @@ def _show_config_dialog():
                     _action_log(f"⚠ 路径保存失败: {e}")
             elif t == "censor_personal":
                 pass
+        if _success_result:
+            return  # 结果已展示，留在配置页
         if err or _activation_failed:
             if err: _action_log(f"⚠ {err}")
             try:
@@ -1345,7 +1360,6 @@ def _show_config_dialog():
         if ok:
             global _ai_allowed
             _ai_allowed = False
-            # 删除存储的旧激活码，防止下一用户捡到
             _keys = _load_api_keys()
             if _keys.get("activation_code"):
                 del _keys["activation_code"]; _save_api_keys(_keys)
@@ -1353,9 +1367,20 @@ def _show_config_dialog():
             itm[BTN_AI_TYPO].Enabled = False
             itm[TRIAL_LB].Text = ""
             itm[HINT_LB].Text = "授权已停用"
-            config_dlg.Hide(); config_disp.ExitLoop()
+            # 展开结果页（不关窗）
+            try:
+                cfg["cfg_deactivate_btn"].Visible = False
+                cfg["cfg_save"].Visible = False
+                cfg["cfg_activation_1"].Visible = False
+                cfg["cfg_activation_2"].Visible = False
+                cfg["cfg_activation_3"].Visible = False
+                cfg["cfg_hint"].Text = "🔓 已停用\n激活码已释放，可在其他设备激活\n本机恢复试用模式"
+                cfg["cfg_hint"]["StyleSheet"] = "color:rgb(30,160,80);font-size:14px;font-weight:bold"
+            except Exception: pass
         else:
-            try: cfg["cfg_hint"].Text = f"⚠ {msg}"
+            try:
+                cfg["cfg_hint"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
+                cfg["cfg_hint"].Text = f"⚠ {msg}"
             except: pass
     try: config_dlg.On["cfg_deactivate_btn"].Clicked = _do_deactivate
     except Exception: pass  # noop: SMB用户无此按钮
