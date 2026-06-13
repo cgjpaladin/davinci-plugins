@@ -919,8 +919,6 @@ def _render_group(group_name, sections, tree, parent_group=""):
 # 调顺序：移动 dict 位置
 # 删项：删 dict + 删对应的 _build_xxx / _save_xxx
 CONFIG_SECTIONS = [
-    {"id": "activation_code", "label": "激活码（不区分大小写）", "type": "activation_code"},
-    {"id": "deactivate",      "label": "转移授权", "type": "deactivate"},
     {"id": "deepseek_key",   "label": "DeepSeek API Key", "type": "api_key"},
     {"id": "feishu_app_id",  "label": "飞书 App ID", "type": "api_key"},
     {"id": "feishu_secret",  "label": "飞书 App Secret", "type": "api_key"},
@@ -993,12 +991,57 @@ def _build_smb_paths():
     ]
 
 _SECTION_BUILDERS = {
-    "activation_code":  _build_activation_code,
-    "deactivate":       _build_deactivate,
     "api_key":          _build_api_key_input,
     "smb_paths":        _build_smb_paths,
     "censor_personal":  _build_censor_personal,
 }
+
+# ── 分隔符 ──
+def _sep():
+    return ui.Label({"Text": "─" * 48, "Weight": 0,
+        "StyleSheet": "color:rgb(80,80,80);font-size:10px"})
+
+def _sec(title):
+    return ui.Label({"Text": f"▸ {title}", "Weight": 0,
+        "StyleSheet": "color:rgb(180,180,180);font-size:13px;font-weight:bold"})
+
+def _build_auth_section():
+    """授权管理独立区：试用和已激活双份控件，初始根据 is_activated 切换显示"""
+    from shared.license import load_credential
+    cred = load_credential()
+    is_activated = cred and not cred.get("payload", {}).get("is_trial", True)
+    # ── 试用控件 ──
+    kw = {"MinimumSize": [54, 22], "Weight": 0, "MaxLength": 4}
+    widgets = [
+        _sec("授权管理"),
+        ui.Label({"ID": "cfg_trial_status", "Text": "⏳ 试用剩余 — 天", "Visible": False,
+            "StyleSheet": "color:rgb(200,180,60);font-size:12px", "Weight": 0}),
+        ui.Label({"ID": "cfg_auth_activated_label", "Text": "✅ 已激活 | 永久授权", "Visible": False,
+            "StyleSheet": "color:rgb(80,200,100);font-size:13px", "Weight": 0}),
+        ui.HGroup({"Spacing": 4, "Weight": 0, "Visible": False}, [
+            ui.LineEdit({**kw, "ID": "cfg_trial_code_1", "Text": "", "PlaceholderText": "XXXX"}),
+            ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
+            ui.LineEdit({**kw, "ID": "cfg_trial_code_2", "Text": "", "PlaceholderText": "XXXX"}),
+            ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
+            ui.LineEdit({**kw, "ID": "cfg_trial_code_3", "Text": "", "PlaceholderText": "XXXX"}),
+        ]),
+        ui.Button({"ID": "cfg_trial_activate_btn", "Text": "激活", "Visible": False,
+            "StyleSheet": BTN_PRIMARY, "Weight": 0}),
+        ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用并释放授权", "Visible": False,
+            "StyleSheet": BTN_STYLE, "Weight": 0}),
+        ui.Label({"ID": "cfg_auth_hint", "Text": "", "Weight": 0,
+            "StyleSheet": "color:rgb(220,80,60);font-size:12px"}),
+        _sep(),
+    ]
+    # 初始状态
+    if is_activated:
+        widgets[2]["Visible"] = True   # cfg_auth_activated_label
+        widgets[6]["Visible"] = True   # cfg_deactivate_btn
+    else:
+        widgets[1]["Visible"] = True   # cfg_trial_status
+        widgets[3]["Visible"] = True   # trial code group
+        widgets[4]["Visible"] = True   # cfg_trial_activate_btn
+    return widgets
 
 
 def _show_config_dialog():
@@ -1010,18 +1053,16 @@ def _show_config_dialog():
     # ── 从注册表生成布局（个人版过滤）──
     _is_personal = bool(os.environ.get("WORKBUDDY_PERSONAL"))
     _sections = CONFIG_SECTIONS if _is_personal else [s for s in CONFIG_SECTIONS if s["id"] in ("censor_personal", "smb_paths")]
-    # 节间间距（section 与 section 之间）
-    _SECTION_GAP = 8
     body_widgets = [
         ui.Label({"Text": "配置", "StyleSheet": "font-size:15px;font-weight:bold;color:rgb(220,220,220)",
                   "Weight": 0}),
     ]
+    # 授权区（仅个人版）
+    if _is_personal:
+        body_widgets.extend(_build_auth_section())
+    # CONFIG_SECTIONS 各区域
     for section in _sections:
-        sec_widgets = [ui.Label({
-            "Text": section["label"],
-            "StyleSheet": "font-size:13px;font-weight:bold;color:rgb(220,220,220)",
-            "Weight": 0,
-        })]
+        sec_widgets = [_sec(section["label"])]
         builder = _SECTION_BUILDERS.get(section["type"])
         if builder:
             if section["type"] == "api_key":
@@ -1029,20 +1070,16 @@ def _show_config_dialog():
             else:
                 sec_widgets.extend(builder())
         else:
-            sec_widgets.append(ui.Label({
-                "Text": f"(未知类型: {section['type']})",
-                "StyleSheet": STYLE_WARN, "Weight": 0,
-            }))
-        # 每节包成独立 VGroup，节内紧凑
+            sec_widgets.append(ui.Label({"Text": f"(未知类型: {section['type']})", "StyleSheet": STYLE_WARN, "Weight": 0}))
+        sec_widgets.append(_sep())
         body_widgets.append(ui.VGroup({"Spacing": SPACE_TIGHT, "Weight": 0}, sec_widgets))
 
     config_layout = [
         ui.VGroup({"Spacing": SPACE_NONE}, [
-            ui.VGroup({"Spacing": _SECTION_GAP, "Weight": 0}, body_widgets),
+            ui.VGroup({"Spacing": 0, "Weight": 0}, body_widgets),
             ui.VGap({"Weight": 1}),
-            ui.Label({"ID": "cfg_hint", "Text": "",
+            ui.Label({"ID": "cfg_hint", "Text": "", "Visible": False,
                       "StyleSheet": "color:rgb(220,80,60);font-size:12px", "Weight": 0}),
-
             # ── 按钮（底部居中）──
             ui.HGroup({"Spacing": SPACE_WIDE, "Weight": 0}, [
                 ui.HGap({"Weight": 1}),
@@ -1058,11 +1095,26 @@ def _show_config_dialog():
     config_dlg = config_disp.AddWindow({
         "WindowTitle": "交付自检工具 — 配置",
         "ID": CONFIG_WIN_ID,
-        "Geometry": [820, 120, 360, 500],
+        "Geometry": [820, 120, 360, 620],
         "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
     }, config_layout)
 
     cfg = config_dlg.GetItems()
+
+    # ── 授权区初始化（试用时填剩余天数，激活时按钮就绪）──
+    if _is_personal:
+        try:
+            from shared.license import load_credential
+            c = load_credential()
+            if c:
+                p = c.get("payload", {})
+                if p.get("is_trial", True):
+                    tsd = p.get("trial_start_date")
+                    if tsd:
+                        from datetime import date as _dt
+                        d = max(0, 30 - (_dt.today() - _dt.fromordinal(tsd)).days)
+                        cfg["cfg_trial_status"].Text = f"⏳ 试用剩余 {d} 天"
+        except Exception: pass
 
     # ── 预填（掩码显示，真值保留在 _api_values）──
     _keys = _load_api_keys()
@@ -1097,31 +1149,10 @@ def _show_config_dialog():
     def _mask(val):
         return val[:5] + "…" + val[-4:] if len(val) > 12 else val[:4] + "…" if len(val) > 8 else val
     try:
-        # 仅在已激活（非试用）时回填激活码；试用/未激活不预填，避免旧码残留
-        from shared.license import load_credential
-        c = load_credential()
-        if _keys.get("activation_code") and c and not c.get("payload", {}).get("is_trial", True):
-            parts = _keys["activation_code"].split("-")
-            if len(parts) == 3:
-                cfg["cfg_activation_1"].Text = _mask(parts[0])
-                cfg["cfg_activation_2"].Text = _mask(parts[1])
-                cfg["cfg_activation_3"].Text = _mask(parts[2])
         if _keys.get("deepseek_key"): cfg["cfg_deepseek_key"].Text = _mask(_keys["deepseek_key"])
         if _keys.get("feishu_app_id"): cfg["cfg_feishu_app_id"].Text = _keys["feishu_app_id"]
         if _keys.get("feishu_secret"): cfg["cfg_feishu_secret"].Text = _mask(_keys["feishu_secret"])
     except Exception: pass  # noop: 控件未创建/加载
-    # 未激活时停用按钮灰掉（试用中也不算已激活）
-    try:
-        from shared.license import load_credential
-        c = load_credential()
-        activated = c and not c.get("payload", {}).get("is_trial", True)
-        if not activated:
-            cfg["cfg_deactivate_btn"].Enabled = False
-            cfg["cfg_deactivate_btn"].Text = "请先输入激活码"
-        else:
-            cfg["cfg_deactivate_btn"].Enabled = True
-            cfg["cfg_deactivate_btn"].Text = "停用并释放到其他机器"
-    except: pass
     try:
         if _keys.get("deepseek_key"): cfg["cfg_deepseek_key"].Text = _keys["deepseek_key"]
         if _keys.get("feishu_app_id"): cfg["cfg_feishu_app_id"].Text = _keys["feishu_app_id"]
@@ -1151,7 +1182,6 @@ def _show_config_dialog():
 
     # ── 保存 ──
     _save_busy = False
-    _success_result = False
     def _save(ev):
         nonlocal _save_busy
         if _save_busy:
@@ -1164,84 +1194,11 @@ def _show_config_dialog():
 
     def _do_save(ev):
         global _censor_subs, _ai_allowed
-        nonlocal _success_result
         err = ""
-        _activation_failed = False
+        _validation_err = False
         for section in _sections:
             t = section["type"]
-            if t == "activation_code":
-                # 已激活码激活的跳过（is_trial=False），试用中有 is_trial=True 仍可输入激活码
-                try:
-                    from shared.license import load_credential
-                    c = load_credential()
-                    if c and not c.get("payload", {}).get("is_trial", True):
-                        continue
-                except Exception:
-                    pass
-                c1 = cfg["cfg_activation_1"].Text.strip().upper()
-                c2 = cfg["cfg_activation_2"].Text.strip().upper()
-                c3 = cfg["cfg_activation_3"].Text.strip().upper()
-                code = f"{c1}-{c2}-{c3}" if c1 and c2 and c3 else ""
-                if any((c1, c2, c3)):
-                    # 检查非法字符
-                    import re
-                    _bad = any(_p and not re.fullmatch(r'[A-Z0-9]{4}', _p) for _p in (c1, c2, c3))
-                    if _bad:
-                        _activation_failed = True
-                        try: cfg["cfg_hint"].Text = "⚠ 激活码仅支持字母和数字"
-                        except: pass
-                    elif not code:
-                        _activation_failed = True
-                        try: cfg["cfg_hint"].Text = "⚠ 请完整输入 12 位激活码（每格 4 位）"
-                        except: pass
-                if code and not _activation_failed:
-                    try:
-                        try:
-                            cfg["cfg_hint"].Text = "⏳ 正在连接服务器…"
-                            cfg["cfg_hint"]["StyleSheet"] = "color:rgb(220,160,40);font-size:12px"
-                        except: pass
-                        from shared.license import activate, load_credential
-                        # 激活前记住试用剩余天数（停用时恢复）
-                        _trial_save = 0
-                        c = load_credential()
-                        if c and c.get("payload", {}).get("is_trial"):
-                            remain = max(0, c["payload"].get("expire_time", 0) - int(time.time()))
-                            _trial_save = remain
-                        ok, msg = activate(code)
-                        _action_log(f"🔑 激活: {'✅' if ok else '❌'} {msg}")
-                        if ok:
-                            _keys = _load_api_keys(); _keys["activation_code"] = code
-                            if _trial_save:
-                                _keys["trial_remain_secs"] = _trial_save
-                            _save_api_keys(_keys)
-                            _ai_allowed = True
-                            itm[BTN_AI_TYPO].Text = "字幕检测"
-                            itm[BTN_AI_TYPO].Enabled = True
-                            itm[TRIAL_LB].Text = "已激活 ✓"
-                            itm[HINT_LB].Text = ""
-                            # 展开结果页（不关窗）
-                            _success_result = True
-                            try:
-                                cfg["cfg_activation_1"].Visible = False
-                                cfg["cfg_activation_2"].Visible = False
-                                cfg["cfg_activation_3"].Visible = False
-                                cfg["cfg_save"].Visible = False
-                                cfg["cfg_deactivate_btn"].Visible = False
-                                cfg["cfg_hint"].Text = f"✅ 激活成功\n已绑定本机 | {code}\n永久有效"
-                                cfg["cfg_hint"]["StyleSheet"] = "color:rgb(30,160,80);font-size:14px;font-weight:bold"
-                            except Exception: pass
-                        else:
-                            _activation_failed = True
-                            try: cfg["cfg_hint"].Text = f"⚠ {msg}"
-                            except: pass
-                    except Exception as e:
-                        err = f"激活失败: {e}"
-                else:
-                    # 全部清空 → 清除存储的旧码
-                    _keys = _load_api_keys()
-                    if _keys.get("activation_code"):
-                        del _keys["activation_code"]; _save_api_keys(_keys)
-            elif t == "api_key":
+            if t == "api_key":
                 sid = section["id"]
                 val = cfg[f"cfg_{sid}"].Text.strip()
                 if val:
@@ -1255,8 +1212,10 @@ def _show_config_dialog():
                         if sid in _hints:
                             prefix, min_len, hint = _hints[sid]
                             if (prefix and not val.startswith(prefix)) or len(val) < min_len:
-                                _activation_failed = True
-                                try: cfg["cfg_hint"].Text = f"⚠ {hint}"
+                                _validation_err = True
+                                try:
+                                    cfg["cfg_hint"].Visible = True
+                                    cfg["cfg_hint"].Text = f"⚠ {hint}"
                                 except: pass
                                 continue
                     try:
@@ -1269,8 +1228,6 @@ def _show_config_dialog():
                     except Exception as e:
                         err = f"保存失败: {e}"
                         _action_log(f"⚠ API Key 保存异常: {e}")
-            elif t == "deactivate":
-                pass  # 停用按钮独立处理
             elif t == "smb_paths":
                 try:
                     from shared.deploy_config import save_smb_paths
@@ -1283,16 +1240,118 @@ def _show_config_dialog():
                     _action_log(f"⚠ 路径保存失败: {e}")
             elif t == "censor_personal":
                 pass
-        if _success_result:
-            return  # 结果已展示，留在配置页
-        if err or _activation_failed:
+        if err or _validation_err:
             if err: _action_log(f"⚠ {err}")
             try:
+                cfg["cfg_hint"].Visible = True
                 cfg["cfg_hint"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
                 if err: cfg["cfg_hint"].Text = f"⚠ {err}"
             except: pass
             return  # 不关闭对话框，留在配置页让用户重试
         config_dlg.Hide(); config_disp.ExitLoop()
+
+    # ── 激活 / 停用（独立于配置保存）──
+    if _is_personal:
+        _auth_busy = False
+        def _do_activate(ev):
+            nonlocal _auth_busy
+            if _auth_busy: return
+            _auth_busy = True
+            try:
+                c1 = cfg["cfg_trial_code_1"].Text.strip().upper()
+                c2 = cfg["cfg_trial_code_2"].Text.strip().upper()
+                c3 = cfg["cfg_trial_code_3"].Text.strip().upper()
+                code = f"{c1}-{c2}-{c3}"
+                if not (c1 and c2 and c3):
+                    cfg["cfg_auth_hint"].Text = "⚠ 请输入完整激活码"
+                    cfg["cfg_auth_hint"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
+                    return
+                import re
+                if any(not re.fullmatch(r'[A-Z0-9]{4}', p) for p in (c1, c2, c3)):
+                    cfg["cfg_auth_hint"].Text = "⚠ 激活码仅支持字母和数字"
+                    cfg["cfg_auth_hint"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
+                    return
+                cfg["cfg_auth_hint"].Text = "⏳ 正在连接服务器…"
+                cfg["cfg_auth_hint"]["StyleSheet"] = "color:rgb(220,160,40);font-size:12px"
+                from shared.license import activate, load_credential
+                c = load_credential()
+                ts = 0
+                if c and c.get("payload", {}).get("is_trial"):
+                    ts = max(0, c["payload"].get("expire_time", 0) - int(time.time()))
+                ok, msg = activate(code)
+                _action_log(f"🔑 激活: {'✅' if ok else '❌'} {msg}")
+                if ok:
+                    global _ai_allowed
+                    _ai_allowed = True
+                    _keys = _load_api_keys(); _keys["activation_code"] = code
+                    if ts: _keys["trial_remain_secs"] = str(ts)
+                    _save_api_keys(_keys)
+                    itm[BTN_AI_TYPO].Text = "字幕检测"; itm[BTN_AI_TYPO].Enabled = True
+                    itm[TRIAL_LB].Text = "已激活 ✓"; itm[HINT_LB].Text = ""
+                    # 切换为已激活显示
+                    cfg["cfg_trial_status"].Visible = False
+                    cfg["cfg_trial_code_1"].Visible = False; cfg["cfg_trial_code_2"].Visible = False; cfg["cfg_trial_code_3"].Visible = False
+                    cfg["cfg_trial_activate_btn"].Visible = False
+                    cfg["cfg_auth_activated_label"].Visible = True
+                    cfg["cfg_deactivate_btn"].Visible = True; cfg["cfg_deactivate_btn"].Enabled = True
+                    cfg["cfg_deactivate_btn"].Text = "停用并释放授权"
+                    cfg["cfg_auth_hint"].Text = "✅ 激活成功 | 永久授权"
+                    cfg["cfg_auth_hint"]["StyleSheet"] = "color:rgb(30,160,80);font-size:13px;font-weight:bold"
+                else:
+                    cfg["cfg_auth_hint"].Text = f"⚠ {msg}"
+                    cfg["cfg_auth_hint"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
+            except Exception as e:
+                cfg["cfg_auth_hint"].Text = f"⚠ 激活失败: {e}"
+                cfg["cfg_auth_hint"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
+            finally:
+                _auth_busy = False
+
+        def _do_deactivate(ev):
+            nonlocal _auth_busy
+            if _auth_busy: return
+            _auth_busy = True
+            try:
+                cfg["cfg_auth_hint"].Text = "⏳ 正在连接服务器…"
+                cfg["cfg_auth_hint"]["StyleSheet"] = "color:rgb(220,160,40);font-size:12px"
+                from shared.license import deactivate, load_credential
+                ok, msg = deactivate()
+                _action_log(f"🔓 停用: {'✅' if ok else '❌'} {msg}")
+                if ok:
+                    global _ai_allowed
+                    _ai_allowed = False
+                    _keys = _load_api_keys()
+                    if _keys.get("activation_code"): del _keys["activation_code"]; _save_api_keys(_keys)
+                    itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"; itm[BTN_AI_TYPO].Enabled = False
+                    itm[TRIAL_LB].Text = ""; itm[HINT_LB].Text = "授权已停用"
+                    # 切换为试用显示
+                    c = load_credential()
+                    p = c.get("payload", {}) if c else {}
+                    tsd = p.get("trial_start_date")
+                    if tsd:
+                        from datetime import date as _dt
+                        d = max(0, 30 - (_dt.today() - _dt.fromordinal(tsd)).days)
+                        cfg["cfg_trial_status"].Text = f"⏳ 试用剩余 {d} 天"
+                    cfg["cfg_trial_status"].Visible = True
+                    cfg["cfg_trial_code_1"].Visible = True; cfg["cfg_trial_code_2"].Visible = True; cfg["cfg_trial_code_3"].Visible = True
+                    cfg["cfg_trial_activate_btn"].Visible = True
+                    cfg["cfg_auth_activated_label"].Visible = False
+                    cfg["cfg_deactivate_btn"].Visible = False
+                    cfg["cfg_trial_code_1"].Text = cfg["cfg_trial_code_2"].Text = cfg["cfg_trial_code_3"].Text = ""
+                    cfg["cfg_auth_hint"].Text = "🔓 已停用 | 激活码已释放"
+                    cfg["cfg_auth_hint"]["StyleSheet"] = "color:rgb(30,160,80);font-size:13px;font-weight:bold"
+                else:
+                    cfg["cfg_auth_hint"].Text = f"⚠ {msg}"
+                    cfg["cfg_auth_hint"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
+            except Exception as e:
+                cfg["cfg_auth_hint"].Text = f"⚠ 停用失败: {e}"
+                cfg["cfg_auth_hint"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
+            finally:
+                _auth_busy = False
+
+        try: config_dlg.On["cfg_trial_activate_btn"].Clicked = _do_activate
+        except Exception: pass
+        try: config_dlg.On["cfg_deactivate_btn"].Clicked = _do_deactivate
+        except Exception: pass
 
     # ── 编辑违禁词 ──
     censor_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
@@ -1347,43 +1406,6 @@ def _show_config_dialog():
     config_dlg.On["cfg_smb_del"].Clicked = _delete_smb_path
     config_dlg.On["cfg_save"].Clicked = _save
     config_dlg.On["cfg_cancel"].Clicked = lambda ev: config_disp.ExitLoop()
-
-    # ── 停用按钮 ──
-    def _do_deactivate(ev):
-        try:
-            cfg["cfg_hint"].Text = "⏳ 正在连接服务器…"
-            cfg["cfg_hint"]["StyleSheet"] = "color:rgb(220,160,40);font-size:12px"
-        except: pass
-        from shared.license import deactivate
-        ok, msg = deactivate()
-        _action_log(f"🔓 停用: {'✅' if ok else '❌'} {msg}")
-        if ok:
-            global _ai_allowed
-            _ai_allowed = False
-            _keys = _load_api_keys()
-            if _keys.get("activation_code"):
-                del _keys["activation_code"]; _save_api_keys(_keys)
-            itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
-            itm[BTN_AI_TYPO].Enabled = False
-            itm[TRIAL_LB].Text = ""
-            itm[HINT_LB].Text = "授权已停用"
-            # 展开结果页（不关窗）
-            try:
-                cfg["cfg_deactivate_btn"].Visible = False
-                cfg["cfg_save"].Visible = False
-                cfg["cfg_activation_1"].Visible = False
-                cfg["cfg_activation_2"].Visible = False
-                cfg["cfg_activation_3"].Visible = False
-                cfg["cfg_hint"].Text = "🔓 已停用\n激活码已释放，可在其他设备激活\n本机恢复试用模式"
-                cfg["cfg_hint"]["StyleSheet"] = "color:rgb(30,160,80);font-size:14px;font-weight:bold"
-            except Exception: pass
-        else:
-            try:
-                cfg["cfg_hint"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
-                cfg["cfg_hint"].Text = f"⚠ {msg}"
-            except: pass
-    try: config_dlg.On["cfg_deactivate_btn"].Clicked = _do_deactivate
-    except Exception: pass  # noop: SMB用户无此按钮
     config_dlg.On[CONFIG_WIN_ID].Close = lambda ev: config_disp.ExitLoop()
 
     _action_log("⚙ 打开配置窗口")
