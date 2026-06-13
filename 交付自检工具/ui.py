@@ -1300,7 +1300,7 @@ def _show_config_dialog():
                     _keys = _load_api_keys()
                     if _keys.get("activation_code"): del _keys["activation_code"]; _save_api_keys(_keys)
                     itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"; itm[BTN_AI_TYPO].Enabled = False
-                    itm[TRIAL_LB].Text = ""; itm[HINT_LB].Text = "授权已停用"
+                    itm[TRIAL_LB].Text = "授权已停用"
                     c = load_credential()
                     p = c.get("payload", {}) if c else {}
                     tsd = p.get("trial_start_date")
@@ -2673,12 +2673,12 @@ def main():
     with open(_lock_file, "w", encoding="utf-8") as f:
         f.write(str(os.getpid()))
     # ── 启动时灰按钮 + 联网校验（单线程，零竞态）──
-    itm[TRIAL_LB].Text = ""
+    itm[TRIAL_LB].Text = "⏳ 联网校验中…"
     itm[BTN_START].Enabled = False
     itm[BTN_AI_TYPO].Enabled = False
     itm[BTN_CONFIG].Enabled = False
     itm[BTN_UPDATE].Enabled = False
-    itm[HINT_LB].Text = "⏳ 联网校验中…"
+    itm[HINT_LB].Text = ""
     dlg.Show()
     dlg.RecalcLayout()
     _init_connection()
@@ -2782,8 +2782,8 @@ def main():
     itm[BTN_CONFIG].Enabled = True
     itm[BTN_UPDATE].Enabled = True
     itm[BTN_AI_TYPO].Enabled = _ai_allowed
-    if itm[HINT_LB].Text.startswith("⏳"):
-        itm[HINT_LB].Text = ""
+    if itm[TRIAL_LB].Text.startswith("⏳"):
+        itm[TRIAL_LB].Text = ""
 
     # 同步检查更新（短超时，失败不影响使用）
     try:
