@@ -322,8 +322,11 @@ def _sync_trial_start(payload: dict, fp: str) -> None:
                     return  # 未来日期，不理（管理员误操作防护）
                 if ordinal != payload.get("trial_start_date"):
                     payload["trial_start_date"] = ordinal
+        else:
+            # 同步失败：清本地凭据，下次走 init_trial 强制联网
+            payload["_force_sync"] = True
     except Exception:
-        pass
+        payload["_force_sync"] = True
 
 
 def activate(activate_key: str) -> Tuple[bool, str]:
@@ -429,6 +432,10 @@ def verify_local() -> Tuple[bool, str]:
     # 试用用户：从服务端同步原始起始日期（管理员调表可即时生效）
     if payload.get("is_trial") and stored_fp:
         _sync_trial_start(payload, stored_fp)
+        if payload.pop("_force_sync", False):
+            # 同步失败→清凭据，下次启动重走 init_trial 强制联网
+            try: os.remove(_CREDENTIAL_PATH)
+            except OSError: pass
 
     # 更新最后合法时间（登记成功/已登记才更新，旧版待补不写）
     if last_seen:
