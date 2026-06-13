@@ -974,7 +974,7 @@ def _sec(title):
 
 def _build_auth_section():
     """授权管理：三行固定布局。初始化由调用方在 GetItems 后完成。"""
-    kw = {"MinimumSize": [54, 22], "Weight": 0, "MaxLength": 4}
+    kw = {"MinimumSize": [54, 22], "Weight": 0, "MaxLength": 4, "FocusPolicy": "StrongFocus"}
     return [
         _sec("授权管理"),
         ui.Label({"ID": "cfg_auth_status", "Text": "", "Weight": 0,
@@ -1042,7 +1042,7 @@ def _show_config_dialog():
     config_dlg = config_disp.AddWindow({
         "WindowTitle": "交付自检工具 — 配置",
         "ID": CONFIG_WIN_ID,
-        "Geometry": [820, 120, 400, 620],
+        "Geometry": [820, 120, 300, 620],
         "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True},
     }, config_layout)
 
@@ -1279,6 +1279,8 @@ def _show_config_dialog():
                 _auth_busy = False
                 cfg["cfg_save"].Enabled = True
                 cfg["cfg_cancel"].Enabled = True
+                try: cfg["cfg_trial_code_1"].SetFocus("TabFocusReason")
+                except Exception: pass
 
         def _do_deactivate(ev):
             nonlocal _auth_busy
@@ -1328,6 +1330,8 @@ def _show_config_dialog():
                 _auth_busy = False
                 cfg["cfg_save"].Enabled = True
                 cfg["cfg_cancel"].Enabled = True
+                try: cfg["cfg_trial_code_1"].SetFocus("TabFocusReason")
+                except Exception: pass
 
         try: config_dlg.On["cfg_activate_btn"].Clicked = _do_activate
         except Exception: pass
