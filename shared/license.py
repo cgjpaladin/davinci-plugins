@@ -385,7 +385,14 @@ def verify_activation() -> Tuple[bool, str]:
         p["_verify_fail"] = fail_count
         save_credential({"payload": p, "signature": cred.get("signature", "")})
         if fail_count >= 5:
-            _revoke_credential(fp)  # 清凭据禁止离线无限续
+            now = int(time.time())
+            payload = {
+                "activate_key": "", "machine_fingerprint": fp,
+                "issue_time": now - 365 * 86400, "expire_time": now - 1,
+                "offline_grant_end": now - 1, "nonce": os.urandom(8).hex(),
+                "platform": "Darwin", "products": {}, "is_trial": True, "trial_used": True,
+            }
+            save_credential({"payload": payload, "signature": "revoked"})
             return False, "授权校验失败，请联系管理员"
         return True, ""  # 网络不通不锁，给宽限期
     if resp.get("status") == "revoked":
