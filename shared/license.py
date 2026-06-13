@@ -286,10 +286,11 @@ def init_trial() -> Tuple[bool, str]:
         "is_trial": True,
         "trial_start_date": trial_start_date,
         "last_seen": now,
+        "_diag_init": f"tsd={trial_start_date}",
     }
     save_credential({"payload": payload, "signature": "local_trial"})
     days = max(0, 30 - (_dt.date.today() - _dt.date.fromordinal(payload["trial_start_date"])).days)
-    return True, f"试用剩余 {days} 天 [tsd={trial_start_date} today={_dt.date.today().toordinal()}]"
+    return True, f"试用剩余 {days} 天"
 
 
 def _try_register_trial(fp: str) -> bool:
