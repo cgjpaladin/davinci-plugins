@@ -1342,7 +1342,13 @@ def _show_config_dialog():
         except Exception: pass
         try: config_dlg.On["cfg_deactivate_btn"].Clicked = _do_deactivate
         except Exception: pass
-        # 焦点链：激活/停用后焦点回到第一格
+        # 焦点链：三人组 1→2→3→激活→1 闭环，激活/停用→1
+        try: cfg["cfg_trial_code_1"].SetTabOrder(cfg["cfg_trial_code_2"])
+        except Exception: pass
+        try: cfg["cfg_trial_code_2"].SetTabOrder(cfg["cfg_trial_code_3"])
+        except Exception: pass
+        try: cfg["cfg_trial_code_3"].SetTabOrder(cfg["cfg_activate_btn"])
+        except Exception: pass
         try: cfg["cfg_activate_btn"].SetTabOrder(cfg["cfg_trial_code_1"])
         except Exception: pass
         try: cfg["cfg_deactivate_btn"].SetTabOrder(cfg["cfg_trial_code_1"])
