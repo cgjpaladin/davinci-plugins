@@ -259,17 +259,19 @@ def init_trial() -> Tuple[bool, str]:
     now = int(time.time())
     fp = get_machine_fingerprint()
 
-    # 服务端返回原始试用起始时间（断网降级：使用本地时间）
+    # 服务端返回原始试用起始日期（断网降级：使用本地时间）
     trial_start = now
+    trial_start_date = _dt.date.today().toordinal()
     if BACKEND_URL:
         ok, resp = _post_to_backend("/license", {
             "action": "init_trial",
             "machine_fingerprint": fp,
         })
         if ok:
-            ts = resp.get("trial_start")
-            if ts:
-                trial_start = int(ts / 1000) if ts > 1e12 else int(ts)
+            tsd = resp.get("trial_date_ordinal")
+            if tsd:
+                trial_start_date = int(tsd)
+                trial_start = int(_dt.datetime.fromordinal(trial_start_date).timestamp())
 
     payload = {
         "activate_key": "",
@@ -281,7 +283,7 @@ def init_trial() -> Tuple[bool, str]:
         "platform": "Darwin",
         "products": {},
         "is_trial": True,
-        "trial_start_date": _dt.date.fromtimestamp(trial_start).toordinal(),
+        "trial_start_date": trial_start_date,
         "last_seen": now,
     }
     save_credential({"payload": payload, "signature": "local_trial"})
@@ -313,9 +315,9 @@ def _sync_trial_start(payload: dict, fp: str) -> None:
             "machine_fingerprint": fp,
         })
         if ok:
-            ts = resp.get("trial_start")
-            if ts:
-                ordinal = _dt.date.fromtimestamp(int(ts / 1000) if ts > 1e12 else int(ts)).toordinal()
+            tsd = resp.get("trial_date_ordinal")
+            if tsd:
+                ordinal = int(tsd)
                 if ordinal > _dt.date.today().toordinal():
                     return  # 未来日期，不理（管理员误操作防护）
                 if ordinal != payload.get("trial_start_date"):

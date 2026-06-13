@@ -171,20 +171,22 @@ async function handleManage(data) {
   return { status: 'error', msg: `未知管理操作: ${action}` };
 }
 
-// 试用记录：服务端记录原始试用时间，客户端据此算剩余天数
+// 试用记录：服务端返回日期序数，消除时区歧义
 async function handleInitTrial(data) {
   const fp = (data.machine_fingerprint || '').trim();
   if (!fp) return { status: 'error', msg: '参数不完整' };
 
   const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`, TRIAL_TABLE_ID);
+
+  const msToOrdinal = (ms) => Math.floor((ms / 86400000) + 719163);
+
   if (records.length > 0) {
-    // 已登记 → 返回原始试用时间（客户端据此算剩余天数，删文件重装不会延）
-    return { status: 'ok', trial_start: records[0].fields['首次试用时间'] };
+    return { status: 'ok', trial_date_ordinal: msToOrdinal(records[0].fields['首次试用时间']) };
   }
 
   const now = Date.now();
   await addRecord({ 机器指纹: fp, 首次试用时间: now }, TRIAL_TABLE_ID);
-  return { status: 'ok', trial_start: now };
+  return { status: 'ok', trial_date_ordinal: msToOrdinal(now) };
 }
 
 // 启动时校验：激活码状态 + 指纹是否仍匹配
