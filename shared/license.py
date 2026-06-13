@@ -316,6 +316,8 @@ def _sync_trial_start(payload: dict, fp: str) -> None:
             ts = resp.get("trial_start")
             if ts:
                 ordinal = _dt.date.fromtimestamp(int(ts / 1000) if ts > 1e12 else int(ts)).toordinal()
+                if ordinal > _dt.date.today().toordinal():
+                    return  # 未来日期，不理（管理员误操作防护）
                 if ordinal != payload.get("trial_start_date"):
                     payload["trial_start_date"] = ordinal
     except Exception:

@@ -2693,14 +2693,22 @@ def main():
                     tsd = p.get("trial_start_date")
                     if tsd:
                         from datetime import date as _dt_date
-                        elapsed = max(0, (_dt_date.today() - _dt_date.fromordinal(tsd)).days)
-                        d = max(0, 30 - elapsed)
+                        elapsed = (_dt_date.today() - _dt_date.fromordinal(tsd)).days
+                        if elapsed < 0:
+                            text = "试用权限异常，请联系裁缝老师"
+                            _ai_allowed = False
+                        else:
+                            d = max(0, 30 - elapsed)
+                            text = f"试用剩余 {d} 天"
+                            _ai_allowed = d > 0
+                            if not _ai_allowed:
+                                _trial_expired = True
                     else:
                         d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                    text = f"试用剩余 {d} 天"
-                    _ai_allowed = d > 0
-                    if not _ai_allowed:
-                        _trial_expired = True
+                        text = f"试用剩余 {d} 天"
+                        _ai_allowed = d > 0
+                        if not _ai_allowed:
+                            _trial_expired = True
                 else:
                     text = "已激活 ✓"
                     # 启动时联网校验：防止盗用/误操作吊销
