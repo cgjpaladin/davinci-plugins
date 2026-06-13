@@ -489,8 +489,12 @@ def deactivate() -> Tuple[bool, str]:
         if _api_path.exists():
             keys = json.loads(_api_path.read_text(encoding="utf-8"))
             saved = keys.get("trial_remain_secs", 0)
-            if isinstance(saved, (int, float)) and saved > 0:
-                restored_expire = now + int(saved)
+            try:
+                saved = int(saved)
+            except (TypeError, ValueError):
+                saved = 0
+            if saved > 0:
+                restored_expire = now + saved
     except Exception:
         pass
     payload = {
