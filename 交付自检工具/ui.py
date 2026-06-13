@@ -2782,6 +2782,8 @@ def main():
     itm[BTN_CONFIG].Enabled = True
     itm[BTN_UPDATE].Enabled = True
     itm[BTN_AI_TYPO].Enabled = _ai_allowed
+    if not itm[HINT_LB].Text:
+        itm[HINT_LB].Text = "请点击「开始检查」"
     if itm[TRIAL_LB].Text.startswith("⏳"):
         itm[TRIAL_LB].Text = ""
 
