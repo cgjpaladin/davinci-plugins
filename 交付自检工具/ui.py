@@ -808,7 +808,7 @@ window_layout = [
                 ]),
                 ui.Button({"ID": BTN_AI_TYPO, "Text": "字幕检测",
                               "StyleSheet": BTN_PRIMARY.replace("100", "80"),
-                              "Weight": 0, "MinimumSize": [108, 36]}),
+                              "Weight": 0, "MinimumSize": [108, SIZE_BTN_H]}),
             ]),
 
         ]),  # 结束上半区 HGroup
@@ -986,6 +986,7 @@ def _build_auth_section():
             ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
             ui.LineEdit({**kw, "ID": "cfg_trial_code_3", "Text": "", "PlaceholderText": "XXXX"}),
         ]),
+        ui.VGap(SPACE_SM),
         ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
             ui.Button({"ID": "cfg_activate_btn", "Text": "激活", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
             ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用", "StyleSheet": BTN_STYLE, "Weight": 0}),
