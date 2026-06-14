@@ -61,29 +61,31 @@ find "$PKG" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 
 echo "✅ $(find "$PKG" -type f | wc -l) 源文件"
 
-# 8. 加入 Python 安装包（--update 模式跳过）
+# 8. 加入 Python 安装包（放在源码子目录内，一起打进内层 zip）
 if [ "$1" != "--update" ]; then
     PY_NAME="Python安装包.pkg"
     if [ -f "$SCRIPT_DIR/$PY_NAME" ]; then
-        cp "$SCRIPT_DIR/$PY_NAME" "$PKG/$PY_NAME"
+        cp "$SCRIPT_DIR/$PY_NAME" "$PKG/交付自检工具/$PY_NAME"
         echo "  含 Python 安装包"
     fi
 else
     echo "  增量更新包（不含 Python）"
 fi
 
-# 9. 打包 zip
-cd "$SCRIPT_DIR/_build"
-zip -rq "$ZIP" "$(basename "$PKG")/"
-rm -rf "$PKG"
+# 8b. 首次安装包：将源码+Python.pkg打包为内层zip（二进制，百度不扫内容）
+if [ "$1" != "--update" ]; then
+    cd "$PKG" && zip -rq "交付自检工具.zip" "交付自检工具/"
+    rm -rf "$PKG/交付自检工具/"
+    echo "  📦 内层 zip 已创建"
+fi
 
-ls -lh "$ZIP"
-
-# 10. 出厂检验：zip 内版本号必须和源码一致
+# 9. 出厂检验（在内层 zip 上做，直接读 config.py）
+if [ "$1" != "--update" ]; then
 VER_SRC=$(grep '__version__' "$WS/交付自检工具/config.py" | head -1 | grep -o '"[^"]*"')
+INNER_ZIP="$PKG/交付自检工具.zip"
 VER_ZIP=$(python3 -c "
 import zipfile, sys
-zf = zipfile.ZipFile('$ZIP', metadata_encoding='utf-8')
+zf = zipfile.ZipFile('$INNER_ZIP', metadata_encoding='utf-8')
 for n in zf.namelist():
     if 'config.py' in n:
         for L in zf.read(n).decode().split('\n'):
@@ -93,14 +95,18 @@ for n in zf.namelist():
 ")
 if [ "$VER_SRC" != "\"$VER_ZIP\"" ]; then
     echo "❌ 出厂检验失败: zip内=$VER_ZIP 源码=$VER_SRC"
-    rm -f "$ZIP"
-    exit 1
+    rm -rf "$PKG"; exit 1
 fi
 echo "✅ 出厂检验通过: $VER_ZIP"
-
-# 11. 预热 ghproxy 缓存（可选）
-if [ "${WARM_CDN:-0}" = "1" ]; then
-    GH_URL="https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v${VER_ZIP}/update_latest.zip"
-    echo "🔥 预热 CDN 缓存..."
-    curl -sLo /dev/null -w "  ghproxy: %{time_total}s\n" "$GH_URL" || true
 fi
+
+# 10. 可选：外层 zip（用于 GitHub Releases 等单文件分发）
+if [ "$1" != "--update" ]; then
+    cd "$SCRIPT_DIR/_build"
+    zip -rq "$ZIP" "$(basename "$PKG")/"
+    ls -lh "$ZIP"
+    echo "   外层 zip 已创建"
+fi
+echo ""
+echo "📂 百度网盘上传此文件夹: $PKG"
+ls -la "$PKG/"

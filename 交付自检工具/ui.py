@@ -997,9 +997,11 @@ def _build_auth_section():
 
 # ── 试用文本统一格式 ──
 def _format_trial(days: int, fp: str = "") -> str:
-    if days > 0:
+    if days > 10:
         return f"试用剩余 {days} 天"
     suffix = f"  |  请联系购买: 微信 paladinpp  |  ID: {fp}" if fp else "  |  请联系购买: 微信 paladinpp"
+    if days > 0:
+        return f"试用剩余 {days} 天{suffix}"
     return f"试用剩余 0 天{suffix}"
 
 
@@ -1080,7 +1082,7 @@ def _show_config_dialog():
                     d = max(0, 30 - (_dt.today() - _dt.fromordinal(tsd)).days)
                 else:
                     d = 30
-                cfg["cfg_auth_status"].Text = f"⏳ 试用剩余 {d} 天"
+                cfg["cfg_auth_status"].Text = f"⏳ 试用剩余 {d} 天  |  ¥99 永久授权"
                 cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(200,180,60);font-size:12px"
                 cfg["cfg_trial_code_1"].Text = ""
                 cfg["cfg_trial_code_2"].Text = ""

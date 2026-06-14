@@ -83,9 +83,10 @@ async function addRecord(fields, tableId) {
   return resp.data?.record;
 }
 
-async function updateRecord(recordId, fields) {
+async function updateRecord(recordId, fields, tableId) {
+  const tid = tableId || TABLE_ID;
   const resp = await feishuReq('PUT',
-    `bitable/v1/apps/${BASE_TOKEN}/tables/${TABLE_ID}/records/${recordId}`,
+    `bitable/v1/apps/${BASE_TOKEN}/tables/${tid}/records/${recordId}`,
     { fields });
   if (resp.code && resp.code !== 0) throw new Error(`Feishu updateRecord: ${resp.code} ${resp.msg}`);
   return resp.data?.record;
@@ -132,6 +133,14 @@ async function handleActivate(data) {
   if (verify[0] && verify[0].fields.机器指纹 !== fp) {
     return { status: 'error', msg: '激活码已被其他设备抢先使用' };
   }
+
+  // 记录转化：更新试用表激活时间（首次激活才写，停用-重激活不覆盖）
+  try {
+    const trialRecords = await listRecords(`CurrentValue.[机器指纹]="${fp}"`, TRIAL_TABLE_ID);
+    if (trialRecords.length > 0 && !trialRecords[0].fields['激活时间']) {
+      await updateRecord(trialRecords[0].record_id, { '激活时间': Date.now() }, TRIAL_TABLE_ID);
+    }
+  } catch(e) {}
 
   const payload = {
     activate_key: key, machine_fingerprint: fp, issue_time: now,
@@ -194,11 +203,22 @@ async function handleInitTrial(data) {
   };
 
   if (records.length > 0) {
+    // 心跳：更新版本、系统、最后活跃时间
+    const fields = { '最后活跃': Date.now() };
+    if (data.version) fields['插件版本'] = data.version;
+    if (data.os_version) fields['macOS版本'] = data.os_version;
+    try { await updateRecord(records[0].record_id, fields, TRIAL_TABLE_ID); } catch(e) {}
     return { status: 'ok', trial_date_ordinal: msToOrdinal(records[0].fields['首次试用时间']) };
   }
 
   const now = Date.now();
-  await addRecord({ 机器指纹: fp, 首次试用时间: now }, TRIAL_TABLE_ID);
+  await addRecord({
+    机器指纹: fp,
+    首次试用时间: now,
+    插件版本: data.version || '',
+    macOS版本: data.os_version || '',
+    最后活跃: now,
+  }, TRIAL_TABLE_ID);
   return { status: 'ok', trial_date_ordinal: msToOrdinal(now) };
 }
 
@@ -213,6 +233,17 @@ async function handleVerifyStatus(data) {
   if (!match) return { status: 'revoked', msg: '授权已失效' };
   if (match.fields.状态 !== '已激活') return { status: 'revoked', msg: '授权已失效' };
   if (match.fields.机器指纹 !== fp) return { status: 'revoked', msg: '授权已失效' };
+
+  // 心跳：更新试用表的版本、系统、最后活跃时间
+  try {
+    const trialRecords = await listRecords(`CurrentValue.[机器指纹]="${fp}"`, TRIAL_TABLE_ID);
+    if (trialRecords.length > 0) {
+      const fields = { '最后活跃': Date.now() };
+      if (data.version) fields['插件版本'] = data.version;
+      if (data.os_version) fields['macOS版本'] = data.os_version;
+      await updateRecord(trialRecords[0].record_id, fields, TRIAL_TABLE_ID);
+    }
+  } catch(e) {}
 
   const now = Math.floor(Date.now() / 1000);
   const payload = {

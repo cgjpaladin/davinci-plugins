@@ -72,6 +72,40 @@ _OLD_PATHS = [
     Path.home() / "Library" / "Preferences" / "com.blackmagicdesign.resolve" / "license.dat",
 ]
 
+# ═══════════════════════════════════════════
+# 匿名统计（永不抛异常，不影响主流程）
+# ═══════════════════════════════════════════
+
+def _get_stats() -> dict:
+    """采集版本号+系统信息，用于飞书统计。永不抛异常。"""
+    version = "unknown"
+    os_ver = "unknown"
+    # 读 config.py 拿 __version__（兼容开发版和个人版路径）
+    try:
+        _ws = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for _cfg in [os.path.join(_ws, 'config.py'),
+                     os.path.join(_ws, '交付自检工具', 'config.py')]:
+            if os.path.exists(_cfg):
+                with open(_cfg, encoding='utf-8') as _f:
+                    for _line in _f:
+                        if _line.startswith('__version__'):
+                            import re
+                            _m = re.search(r'"([^"]+)"', _line)
+                            if _m:
+                                version = _m.group(1)
+                            break
+                break
+    except Exception:
+        pass
+    # macOS 版本
+    try:
+        _r = subprocess.run(["sw_vers", "-productVersion"],
+                           capture_output=True, text=True, timeout=3)
+        os_ver = _r.stdout.strip()
+    except Exception:
+        pass
+    return {"version": version, "os_version": os_ver}
+
 
 # ═══════════════════════════════════════════
 # T1: 机器指纹
@@ -256,6 +290,7 @@ def init_trial() -> Tuple[bool, str]:
         ok, resp = _post_to_backend("/license", {
             "action": "init_trial",
             "machine_fingerprint": fp,
+            **_get_stats(),
         })
         if ok:
             tsd = resp.get("trial_date_ordinal")
@@ -289,6 +324,7 @@ def _try_register_trial(fp: str) -> bool:
         ok, resp = _post_to_backend("/license", {
             "action": "init_trial",
             "machine_fingerprint": fp,
+            **_get_stats(),
         })
         return ok and resp.get("status") == "ok"
     except Exception:
@@ -303,6 +339,7 @@ def _sync_trial_start(payload: dict, fp: str) -> None:
         ok, resp = _post_to_backend("/license", {
             "action": "init_trial",
             "machine_fingerprint": fp,
+            **_get_stats(),
         })
         if ok:
             tsd = resp.get("trial_date_ordinal")
@@ -368,6 +405,7 @@ def verify_activation() -> Tuple[bool, str]:
         "action": "verify_status",
         "activate_key": p.get("activate_key", ""),
         "machine_fingerprint": fp,
+        **_get_stats(),
     })
     if not ok:
         # FC 不通：距上次成功校验 > 30 天才视为吊销
