@@ -6,7 +6,7 @@
       "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.7/update_latest.zip"
     ],
     "sha256": "071a0b1bfa98e7d02112ba3f49f248a616df2ca6ee538d9ea73000b3fe380209",
-    "notes": "🐛 修复：个别设备授权异常的问题",
+    "notes": "🐛 修复：个别设备授权异常的问题\n🛡️ 修复：中文输入法下输入激活码或 API Key 可能闪退\n📦 安装流程更简洁\n🔄 更新检测更准确",
     "history": [
       {
         "version": "2.4.0",
@@ -30,7 +30,7 @@
       },
       {
         "version": "2.5.7",
-        "notes": "## v2.5.7\n\n🐛 修复：个别设备授权异常的问题"
+        "notes": "## v2.5.7\n\n🐛 修复：个别设备授权异常的问题\n🛡️ 修复：中文输入法下输入激活码或 API Key 可能闪退\n📦 安装流程更简洁\n🔄 更新检测更准确"
       }
     ]
   }
