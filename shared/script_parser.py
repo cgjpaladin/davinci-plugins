@@ -169,15 +169,21 @@ def _clean_pdf_text(lines: list[str]) -> list[str]:
     """去除 PDF 审阅标注噪音（Word 修订模式导出）。"""
     cleaned = []
     for line in lines:
-        # 跳过行内/行首的格式标记（可能在任意位置）
-        orig = line
-        line = re.sub(r'.*?设置格式\[[^]]+\][：:]?\s*', '', line)
-        line = re.sub(r'.*?删除\[[^]]+\][：:]?\s*', '', line)
-        line = re.sub(r'.*?批注\[[^]]+\][：:]?\s*', '', line)
+        # 包含设置格式/批注的行 → 整行丢弃（纯噪音）
+        if re.search(r'设置格式\[|批注\[', line):
+            continue
+        # 独立的删除行 → 整行丢弃
+        if re.match(r'^\s*删除\[[^]]+\]:', line):
+            continue
+        # 行内删除标记：移除从句及其标记，保留分隔符
+        line = re.sub(r'([，。；、！？：]|^)[^，。；、！？：]*?删除\[[^]]+\]:?\s*', r'\1', line)
         # 跳过纯格式指令行
         if re.match(r'^\s*(字体|行距|加粗|字号|颜色)[：:].*$', line):
             continue
         line = line.strip()
+        # 清理后只剩单字虚词 → 跳过（删除标记产生的残留）
+        if line and len(line) <= 2 and not any('\u4e00' <= c <= '\u9fff' and c not in '的了着过' for c in line):
+            continue
         if line:
             cleaned.append(line)
     return cleaned
