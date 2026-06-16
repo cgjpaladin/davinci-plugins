@@ -79,7 +79,7 @@
 - **本机开发**: `/Users/bryan/WorkBuddy/达芬奇插件工坊/{产品}/`
 - **Launcher（壳方案）**: `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit/达芬奇插件工坊/`（壳一次性部署，永不再改）
 - **路径铁律**: 所有部署路径使用系统级 `/Library/Application Support/`，不用用户级 `~/Library/`。系统级路径 Finder 可见，用户级不可见。个人版同样遵循此规则。
-- **零 Runtime pip**: 运行时只用标准库 + `fusionscript_loader.py`。构建时可用 pip 库生成数据（QR 矩阵/字典/配置等），输出为纯数据文件，不打入 .whl/.egg。达芬奇连接用 `fusionscript_loader.py`。
+- **打进去不装上去**: 运行时零安装——任何依赖以文件形式 vendoring 或数据嵌入。构建时 pip 随便用，用户更新包永远只是解压→覆盖，无 `pip install`
 
 ## 共享模块
 

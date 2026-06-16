@@ -20,7 +20,7 @@ model: inherit
 
 - **Mac mini M4**：16GB 统一内存，可本地跑轻量模型
 - **部署**：达芬奇插件环境，优先用外部 API（类似去字幕的 GhostCut/无痕模式）
-- **零 Runtime pip**：运行时零依赖。如需本地模型，走 vendoring 或外部进程。构建时 pip 生成数据 OK
+- **打进去不装上去**：模型/依赖以文件 vendoring，运行时零安装。构建时 pip 生成 OK
 - **Apple Silicon**：优先用 MPS/CoreML 加速，其次是 CPU
 
 ## 调研规范
