@@ -62,6 +62,9 @@ fi
 # Windows 安装脚本
 cp "$SCRIPT_DIR/Win安装.bat" "$PKG/Win安装.bat"
 
+# Agent 安装入口（agent 解压后第一眼看到）
+cp "$WS/AGENT.md" "$PKG/AGENT.md"
+
 # 7. 清理缓存 + 清除 quarantine 属性（防下载后双击被拒）
 find "$PKG" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 find "$PKG" -type f -exec xattr -c {} \; 2>/dev/null || true
