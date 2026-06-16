@@ -149,7 +149,7 @@ def main():
                         shutil.rmtree(target, ignore_errors=True)
                     shutil.copytree(src, target,
                         ignore=shutil.ignore_patterns("__pycache__", ".git",
-                            ".DS_Store", "AGENT.md"))
+                            ".DS_Store"))
                     # Remove files not needed at install target
                     for f in ("install_agent.py",):
                         fp = os.path.join(target, f)
@@ -176,7 +176,7 @@ def main():
                 shutil.rmtree(target, ignore_errors=True)
             shutil.copytree(src, target,
                 ignore=shutil.ignore_patterns("__pycache__", ".git",
-                    ".DS_Store", "AGENT.md"))
+                    ".DS_Store"))
             for f in ("install_agent.py",):
                 fp = os.path.join(target, f)
                 if os.path.exists(fp):
