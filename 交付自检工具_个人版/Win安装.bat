@@ -22,9 +22,7 @@ if "%PYTHON%"=="" (
 )
 
 set "TMPPY=%TEMP%\dv_install.py"
-findstr /v "^:::" "%~f0" > "%TMPPY%"
-"%PYTHON%" "%TMPPY%"
-del "%TMPPY%"
+"%PYTHON%" -c "import sys; src=open(sys.argv[1],'r',encoding='utf-8').read(); exec(src[src.index(':::')+3:])" "%~f0"
 exit /b
 
 :::# -*- coding: utf-8 -*-
