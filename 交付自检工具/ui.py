@@ -1007,9 +1007,6 @@ def _format_trial(days: int, fp: str = "") -> str:
 
 def _show_config_dialog():
     """打开配置窗口"""
-    import traceback
-    _frames = traceback.format_stack()[:-1]
-    _action_log(f"⚙ 打开配置窗口 (调用栈 {len(_frames)} 层)\n{''.join(_frames[-3:])}")
     global _config_open
     if _config_open:
         return
@@ -1464,9 +1461,7 @@ print(result[0])
     # ── 编辑违禁词 ──
     censor_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
     def _edit_censor(ev):
-        import subprocess, traceback
-        _frames = traceback.format_stack()[:-1]
-        _action_log(f"📂 _edit_censor 触发 (调用栈 {len(_frames)} 层)\n{''.join(_frames[-3:])}")
+        import subprocess
         from check_core import clear_censor_cache
         clear_censor_cache(censor_path)
         try:
