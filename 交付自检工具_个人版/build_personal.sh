@@ -6,7 +6,7 @@ WS="$(cd "$SCRIPT_DIR/.." && pwd)"
 # 从 config.py 读取版本号（唯一真相源）
 VER=$(python3 -c "exec(open('$WS/交付自检工具/config.py', encoding='utf-8').read()); print(__version__)")
 PKG="$SCRIPT_DIR/_build/交付自检工具_v${VER}"
-INNER_ZIP_NAME="请勿直接解压此文件.zip"
+INNER_ZIP_NAME="data.zip"
 # --all 模式：一次输出全量 + 增量两个包
 if [ "$1" = "--all" ]; then
     bash "$0" && bash "$0" --update
@@ -60,6 +60,7 @@ else
 fi
 # Windows 安装脚本
 cp "$SCRIPT_DIR/Win安装.bat" "$PKG/Win安装.bat"
+cp "$SCRIPT_DIR/install.py" "$PKG/install.py"
 
 # 7. 清理缓存 + 清除 quarantine 属性（防下载后双击被拒）
 find "$PKG" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
