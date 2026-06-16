@@ -29,6 +29,7 @@ import os
 import plistlib
 import stat
 import subprocess
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -126,71 +127,78 @@ def get_machine_fingerprint() -> str:
     """采集硬件特征，生成不可逆的 64 字符 SHA256 指纹。
 
     macOS: IOPlatformUUID + MAC + Volume UUID + CPU
-    Windows: WMIC 主板序列号 + MAC + CPU
+    Windows: WMIC 主板序列号 + 磁盘序列号 + MAC + CPU
     两次 SHA256 哈希 + 固定盐值，保证唯一且不可逆。
     """
     raw_parts = []
 
-    # 1. IOPlatformUUID（主板唯一标识）
-    try:
-        result = subprocess.run(
-            ["ioreg", "-a", "-rd1", "-c", "IOPlatformExpertDevice"],
-            capture_output=True, timeout=5
-        )
-        plist_data = plistlib.loads(result.stdout)
-        # -a 输出是数组 [{...}]，取第一个元素
-        ioreg_uuid = (plist_data[0] if isinstance(plist_data, list) and plist_data else plist_data).get("IOPlatformUUID", "")
-        raw_parts.append(ioreg_uuid)
-    except Exception:
-        raw_parts.append(os.urandom(16).hex())
-
-    # 2. MAC 地址
-    try:
-        raw_parts.append(str(uuid.getnode()))
-    except Exception:
-        raw_parts.append(str(uuid.getnode()))
-        # uuid.getnode 返回 0 时用随机值兜底
-        if raw_parts[-1] == "0":
-            raw_parts[-1] = os.urandom(16).hex()
-
-    # 3. Volume UUID
-    try:
-        result = subprocess.run(
-            ["diskutil", "info", "/"],
-            capture_output=True, text=True, timeout=5
-        )
-        for line in result.stdout.splitlines():
-            if "Volume UUID:" in line:
-                raw_parts.append(line.split(":", 1)[1].strip())
-                break
-        else:
+    if sys.platform == "darwin":
+        # ── macOS ──
+        try:
+            result = subprocess.run(
+                ["ioreg", "-a", "-rd1", "-c", "IOPlatformExpertDevice"],
+                capture_output=True, timeout=5)
+            plist_data = plistlib.loads(result.stdout)
+            ioreg_uuid = (plist_data[0] if isinstance(plist_data, list) and plist_data else plist_data).get("IOPlatformUUID", "")
+            raw_parts.append(ioreg_uuid)
+        except Exception:
             raw_parts.append(os.urandom(16).hex())
-    except Exception:
-        raw_parts.append(os.urandom(16).hex())
+        try:
+            result = subprocess.run(
+                ["diskutil", "info", "/"],
+                capture_output=True, text=True, timeout=5)
+            for line in result.stdout.splitlines():
+                if "Volume UUID:" in line:
+                    raw_parts.append(line.split(":", 1)[1].strip())
+                    break
+            else:
+                raw_parts.append(os.urandom(16).hex())
+        except Exception:
+            raw_parts.append(os.urandom(16).hex())
+        raw_parts.append(os.uname().machine)
 
-    # 4. CPU 架构
-    raw_parts.append(os.uname().machine)
-
-    # 5. Windows: 补充主板序列号（WMIC），macOS 无此步骤
-    if sys.platform == "win32":
+    elif sys.platform == "win32":
+        # ── Windows ──
+        # 主板序列号
         try:
             result = subprocess.run(
                 ["wmic", "baseboard", "get", "serialnumber"],
                 capture_output=True, text=True, timeout=5)
             lines = [l.strip() for l in result.stdout.splitlines() if l.strip() and l.strip() != "SerialNumber"]
-            if lines:
-                raw_parts.append(lines[0])
+            raw_parts.append(lines[0] if lines else os.urandom(16).hex())
         except Exception:
             raw_parts.append(os.urandom(16).hex())
+        # 系统盘序列号
+        try:
+            result = subprocess.run(
+                ["wmic", "diskdrive", "where", "MediaType='Fixed hard disk media'",
+                 "get", "SerialNumber"],
+                capture_output=True, text=True, timeout=5)
+            lines = [l.strip() for l in result.stdout.splitlines() if l.strip() and l.strip() != "SerialNumber"]
+            raw_parts.append(lines[0] if lines else os.urandom(16).hex())
+        except Exception:
+            raw_parts.append(os.urandom(16).hex())
+        # CPU
+        raw_parts.append(os.environ.get("PROCESSOR_ARCHITECTURE", "unknown"))
 
-    # 拼接 → 两次 SHA256
-    raw_str = "|".join(raw_parts)
-    primary = hashlib.sha256(raw_str.encode("utf-8")).hexdigest()
-    final = hashlib.sha256(
-        (primary + "DV_LICENSE_SALT_v1").encode("utf-8")
-    ).hexdigest()
-    return final
+    else:
+        pass
 
+    # MAC 地址（跨平台）
+    try:
+        raw_parts.append(str(uuid.getnode()))
+    except Exception:
+        raw_parts.append(str(uuid.getnode()))
+    if raw_parts and raw_parts[-1] == "0":
+        raw_parts[-1] = os.urandom(16).hex()
+
+    # 两次 SHA256 + 固定盐值
+    part_count = len(raw_parts)
+    raw_parts.append(str(part_count))
+    raw = "|".join(raw_parts)
+    h1 = hashlib.sha256(raw.encode()).hexdigest()
+    h2 = hashlib.sha256(("daVinciCheck" + h1 + str(part_count)).encode()).hexdigest()
+    return h2
 
 # ═══════════════════════════════════════════
 # T2: 凭证读写
