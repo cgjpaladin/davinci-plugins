@@ -1430,16 +1430,12 @@ print(result[0])
                 except Exception: pass
                 try:
                     cfg_info = _api_edit_config[sid]
-                    import subprocess
-                    r = subprocess.run(["osascript", "-e",
-                        f'text returned of (display dialog "{cfg_info["prompt"]}"'
-                        f' default answer "{_api_values.get(sid, "")}" with title "{cfg_info["title"]}"'
-                        f'{" with hidden answer " if cfg_info["is_secret"] else ""}'
-                        'buttons {"取消", "确定"} default button "确定")'],
-                        capture_output=True, text=True, timeout=60)
-                    if r.returncode != 0:
-                        return
-                    val = r.stdout.strip()
+                    from shared.tk_dialogs import input_text
+                    val = input_text(
+                        prompt=cfg_info["prompt"],
+                        title=cfg_info["title"],
+                        default=_api_values.get(sid, ""),
+                        is_secret=cfg_info["is_secret"])
                     if not val:
                         if sid in _api_values:
                             del _api_values[sid]
@@ -1497,13 +1493,10 @@ print(result[0])
         if _smb_add_busy: return
         _smb_add_busy = True
         cfg["cfg_smb_add"].Enabled = False
+        from shared.tk_dialogs import choose_folder
         import subprocess
         try:
-            result = subprocess.run([
-                "osascript", "-e",
-                'POSIX path of (choose folder with prompt "选择素材所在文件夹")'
-            ], capture_output=True, text=True, encoding="utf-8", timeout=60)
-            path = result.stdout.strip()
+            path = choose_folder("选择素材所在文件夹")
             if path and path not in _smb_paths_cache:
                 _smb_paths_cache.append(path)
                 _refresh_smb_paths_combo()
