@@ -199,8 +199,33 @@
 - 路径检测：无 gate 永远先跑；中英文 Type 兼容
 - 音量检测：API 限制，待达芬奇更新
 - **v2.5.7 重构**：`parse_script` 不再解析角色/分集，只返回 `{"lines": [...]}`；全量文本喂给 AI，AI 自行理解。支持 `.txt/.md/.docx/.doc/.pdf` 5 格式。集号手动输入已删除。
-- **v2.5.7 LineEdit 清零**：所有输入框替换为 Label + osascript/tkinter 弹窗，彻底消除 CJK IME → SIGSEGV 崩溃路径。
+- **v2.5.7 LineEdit 清零**：所有输入框替换为 Label + osascript/tkinter 弹窗，彻底消除 CJK IME → SIGSEGV 崩溃路径。主窗口 3 处 + 配置页 3 处。
 - **v2.5.7 文件守卫**：`>20MB` 拒绝，5 格式白名单拦截。
+- **v2.5.7 死代码清理**：`_extract_characters`/`_split_episodes`/`match_timeline`/`_CHINESE_NUM`/`_cn_to_int`/`_parse_episode_number` 全部删除（~300 行）。根因：剧本是喂给 AI 的，不需要正则解析。
+- **v2.5.7 按钮防连点**：8 按钮统一 `Enabled=False` + `finally` 恢复。配置窗口 `_config_open` 标志防重入。
+- **v2.5.7 授权声明**：三处同步（`license.py` 注释 / `README.md` / `先读我.txt`）。语气：公益初衷（帮同行少扣绩效少熬夜）+ 99 元回本 + 欢迎读代码学习 + 只求别破解。
+
+## 安装体系（2026-06-16 确立）
+
+### 四种分发方式
+
+| 方式 | 用户 | 入口 |
+|------|------|------|
+| Mac 手动 | 双击 Mac安装.command → 输密码 | zip 网盘 |
+| Win 手动 | 右键 Win安装.bat → 管理员 | zip 网盘 |
+| Agent + GitHub | 发 repo 链接 | git clone → `python install_agent.py` |
+| Agent + Zip | 拖 zip 给 agent | 解压 → 读 先读我.txt agent 区 → `python install_agent.py` |
+
+### install_agent.py 设计
+- JSON 行输出（每行一个对象），agent 逐行解析
+- `need_sudo`/`need_admin` 回调 → agent 向用户要密码 → `--continue` 断点续装
+- 状态文件 `~/.delivery_checker_install_state.json` 支持中断恢复
+- 全流程 agent 最多向用户要一次密码
+
+### 打包规范
+- 单 zip 全平台通用，data.zip 内含双平台 Python 安装器（95MB）
+- 先读我.txt 人类看上半、agent 看 `# AGENT SECTION` 下半
+- README.md 同时服务 GitHub 人类 + agent 浏览
 
 ## 参考
 

@@ -749,7 +749,7 @@ python3 tools/gen_key.py 1 --status unused # 1 个未使用
 3. 新机输入同码即激活
 
 ### 支付入口
-- 配置页激活码下方：「💬 联系购买: 微信 paladinpp」
+- 配置页激活码下方：「💬 联系购买: 微信 paladinpp / B站 电影裁缝Bryan」
 - 主窗口试用天数旁同样一行
 - 无自动化支付——全手动微信转账
 
