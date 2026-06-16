@@ -29,6 +29,16 @@ skills: davinci-resolve-scripting
 | 点了按钮没弹窗 | subprocess exit code != 0（NameError/tkinter 缺库/osascript 语法错） |
 | 弹窗取消后按钮灰色不复原 | 提前 return 没走 finally（启用前灰显 + finally 恢复是铁律） |
 
+## IME 崩溃诊断清单（2026-06-16 沉淀）
+
+当收到「闪退」报告时，按以下顺序排查：
+
+1. **远程查日志**：`ssh target "grep -c '启动' ~/Library/Application\ Support/交付自检/ops_logs/*.jsonl"` → 启动次数 > 关闭次数 = 异常退出
+2. **查代码**：本地 grep `ui.LineEdit` → 有命中 → LineEdit 是 IME 崩溃向量
+3. **验证远程代码**：`ssh target "grep -c 'ui.LineEdit' 插件路径/ui.py"` → 远程 != 本地 = 忘了推送
+4. **修复**：LineEdit → Label + osascript/tkinter 弹窗（参考 davinci-ui skill LineEdit→Label 模板）
+5. **审计**：grep 全项目确认零残留，推送所有机器逐台编译验证
+
 ## 崩溃日志分析（2026-06-16 沉淀）
 
 达芬奇子进程崩溃时日志在 `~/Library/Logs/DiagnosticReports/Python-*.ips`：

@@ -559,6 +559,8 @@ def on_click_clip(ev):
 | 34 | API key / secret 编辑 → Label + [编辑] 按钮 + osascript `display dialog`（`with hidden answer`） |
 | 35 | 弹窗按钮前先 `Enabled=False`，`finally` 恢复，防排队重复弹窗 |
 | 36 | osascript 弹窗换行用 `$'...\\n...'` 而非 `'...\\n...'`（单引号不转义） |
+| 37 | UIManager 无通用 ToolTip 属性 → 替代：①按钮文案自带说明 ②独立 Hint Label |
+| 38 | LineEdit→Label 替换模板：保持 ID 不变，`.Text` 读写兼容，编辑用 osascript 弹窗 |
 
 ### 新增 (v0.7.5 实战)
 | 32 | `ReplaceClipPreserveSubClip` 在 **MediaPoolItem** 上，非 TimelineItem |

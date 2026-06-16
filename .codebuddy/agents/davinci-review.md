@@ -33,6 +33,7 @@ model: inherit
 | R10 | ALL | 模块级新函数的所有全局符号必须在函数/模块级 import | `grep` 函数体内用的符号→追溯到文件顶部的 `import/from` |
 | R11 | CS | `ADAPTER_PRIORITY` 与 `ADAPTER_CONFIGS` key 空间不同 | `grep "ADAPTER_PRIORITY\|ADAPTER_CONFIGS" *.py` 确认无直接混用 |
 | R12 | ALL | `except:` → `except Exception` 或 `except OSError` | `grep "except:" *.py \| grep -v "Exception" \| grep -v "# noop"` |
+| R13 | ALL | `git diff --name-only HEAD~1` 列出的所有文件 = 审阅范围。不得只盯着改过的那一行。今天改了 ui.py 也查 shared/llm_typo_check.py | `git log --oneline --since="24 hours ago"` 确认范围 |
 
 🛑 **R 全部通过后暂停，展示结果，等裁缝老师确认再进入 S。**
 

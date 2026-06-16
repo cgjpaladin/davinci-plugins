@@ -225,7 +225,11 @@ FIELD_TO_COLUMN = {
 | 问题 | `原文——错误类型` | `f"{c['original']}——{c.get('reason', '')}"` |
 | 建议 | `应改为「正确字词」` | `f"应改为「{c['correction']}」"` |
 
-数据流：`script_parser.parse_script(src)` → `llm_typo_check.check_typos()` → DeepSeek V4 Pro → SHA256 缓存 → 渲染
+数据流：`parse_script(src)` → `{"lines": [...]}` → `check_typos()` → DeepSeek V4 Pro → 渲染
+
+> **v2.5.7 重构**：`parse_script` 不再做角色提取、分集分割。只做格式提取（`docx/doc/pdf/txt/md` → 纯文本行），全量文本直接喂给 AI，AI 自行理解角色名、性别、集号。集号手动输入功能已删除。
+>
+> **LLM 提示词要点**：system prompt 告诉 AI 自己从人物小传提取角色名和性别。user message 只含剧本全文 + 时间线名 + 字幕行。不传「集号」「--- 第N集 ---」标记。
 
 ---
 
