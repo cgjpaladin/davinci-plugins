@@ -1,7 +1,6 @@
 {
   "delivery_checker": {
     "version": "2.5.7",
-    "url": "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.5/update_latest.zip",
     "urls": [
       "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.7/update_latest.zip",
       "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.7/update_latest.zip"
@@ -35,11 +34,11 @@
       },
       {
         "version": "2.5.6",
-        "notes": "激活码系统全链路通"
+        "notes": "## v2.5.6\n\n激活码系统全链路通"
       },
       {
         "version": "2.5.7",
-        "notes": "修复指纹fallback碰撞风险"
+        "notes": "## v2.5.7\n\n修复指纹fallback碰撞风险"
       }
     ]
   }
