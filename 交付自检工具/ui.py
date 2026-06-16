@@ -1469,17 +1469,17 @@ print(result[0])
         _action_log(f"📂 _edit_censor 触发 (调用栈 {len(_frames)} 层)\n{''.join(_frames[-3:])}")
         from check_core import clear_censor_cache
         clear_censor_cache(censor_path)
-    try:
-        import subprocess
-        if _sys.platform == "darwin":
-            _action_log(f"📂 即将打开 Finder: {censor_path}")
-            subprocess.Popen(["open", "-R", censor_path])
-        else:
-            _action_log(f"📂 即将打开 Explorer: {censor_path}")
-            subprocess.Popen(["explorer", "/select,", censor_path])
-    except Exception:
-        itm[HINT_LB].Text = "右键「短剧违禁词表.csv」→ 打开方式 → WPS / Excel / Numbers"
-        _action_log("📝 Finder 已定位个人词典")
+        try:
+            import subprocess
+            if _sys.platform == "darwin":
+                _action_log(f"📂 即将打开 Finder: {censor_path}")
+                subprocess.Popen(["open", "-R", censor_path])
+            else:
+                _action_log(f"📂 即将打开 Explorer: {censor_path}")
+                subprocess.Popen(["explorer", "/select,", censor_path])
+        except Exception:
+            itm[HINT_LB].Text = "右键「短剧违禁词表.csv」→ 打开方式 → WPS / Excel / Numbers"
+            _action_log("📝 Finder 已定位个人词典")
 
     # ── SMB 路径编辑 ──（_smb_paths_cache 已在上方从 deploy.json 加载）
 
