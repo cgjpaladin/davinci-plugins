@@ -100,7 +100,7 @@
 5. **UI 控件 API**: `ui.Widget({"ID": "id", ...})`，不是 `("id", {...})`
 6. **事件绑定**: `win.On["ID"].Clicked`，不是 `win.On.ID.Clicked`
 7. **中文版兼容**: GetClipProperty('Type') 返回「时间线」而非「Timeline」
-8. **达芬奇内 HTTPS 调用禁止 urllib**。DaVinci 子进程 SSL 沙箱限制。全部使用 `subprocess.run(["curl", ...])`。
+8. **达芬奇内 HTTPS 调用禁止带证书验证的 urllib**。DaVinci 子进程 SSL 沙箱限制。两种合法方案：① `subprocess.run(["curl", ...])` ② `urllib + ssl._create_unverified_context()`（仅用于已信任目标如自家 FC）。
 9. **sync 后必须重读凭证**。`verify_local` 写盘后 UI 须再次 `load_credential()`。
 10. **日期计算只用序数减法**，不用 timestamp 整除 86400。
 11. **`save()` 入口强制 str(value)**。macOS keychain 只接受字符串。
@@ -198,6 +198,9 @@
 - AI 错别字：右侧独立面板，DeepSeek V4 Pro
 - 路径检测：无 gate 永远先跑；中英文 Type 兼容
 - 音量检测：API 限制，待达芬奇更新
+- **v2.5.7 重构**：`parse_script` 不再解析角色/分集，只返回 `{"lines": [...]}`；全量文本喂给 AI，AI 自行理解。支持 `.txt/.md/.docx/.doc/.pdf` 5 格式。集号手动输入已删除。
+- **v2.5.7 LineEdit 清零**：所有输入框替换为 Label + osascript/tkinter 弹窗，彻底消除 CJK IME → SIGSEGV 崩溃路径。
+- **v2.5.7 文件守卫**：`>20MB` 拒绝，5 格式白名单拦截。
 
 ## 参考
 

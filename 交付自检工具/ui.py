@@ -76,8 +76,6 @@ BTN_START = "btn_start"
 BTN_CONFIG = "btn_config"
 BTN_AI_TYPO = "btn_ai_typo"
 EDIT_SCRIPT_SRC = "edit_script_src"
-EDIT_SCRIPT_EP = "edit_script_ep"
-LBL_SCRIPT_STATUS = "lbl_script_status"
 BTN_TOGGLE_GROUP = "btn_toggle_group_"  # + group_name → "btn_toggle_group_工程"
 TREE_RESULT = "tree_result"
 GROUP_TREE = "group_tree"
@@ -574,6 +572,7 @@ _black_frame_sec = DEFAULT_BLACK_FRAME_SEC
 _censor_subs = {"base": True, "en": True, "bw": True, "bw_sms": True}
 _checking = False
 _BUSY = False
+_config_open = False  # 防配置窗口重复打开
 
 def _lock_ui(label: str):
     global _BUSY; _BUSY = True
@@ -786,32 +785,16 @@ window_layout = [
                 ui.Label({"ID": "lbl_ai_title", "Text": "字幕检测",
                           "StyleSheet": STYLE_HEADING,
                           "Weight": 0, "Alignment": {"AlignHCenter": True}}),
-                ui.Label({"ID": "lbl_ai_hint", "Text": "剧本（可选，填了启用 AI 校对）:",
-                          "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
+                ui.Label({"ID": EDIT_SCRIPT_SRC, "Text": "选填，提供剧本可启用 AI 错别字校对",
+                          "StyleSheet": "font-size:10px;color:#999", "Weight": 0}),
+                ui.VGap(SPACE_TIGHT),
                 ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
-                    ui.Label({"ID": EDIT_SCRIPT_SRC, "Text": "",
-                              "Weight": 1,
-                              "StyleSheet": "font-size:11px;color:#ccc;background-color:rgb(30,30,30);border:1px solid rgb(50,50,50);border-radius:3px;padding:2px 6px"}),
-                    ui.Button({"ID": "btn_paste_link", "Text": "🔗",
+                    ui.Button({"ID": "btn_browse_script", "Text": "📂 本地",
                                "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                               "MinimumSize": [SIZE_BTN_SM_W, SIZE_BTN_SM_W]}),
-                    ui.Button({"ID": "btn_browse_script", "Text": "📂",
+                               "MinimumSize": [64, SIZE_BTN_SM_W]}),
+                    ui.Button({"ID": "btn_paste_link", "Text": "🔗 飞书",
                                "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                               "MinimumSize": [SIZE_BTN_SM_W, SIZE_BTN_SM_W]}),
-                ]),
-                ui.Label({"ID": "lbl_ai_ep", "Text": "集号（如 08 或 07-09）:",
-                          "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
-                ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
-                    ui.Label({"ID": EDIT_SCRIPT_EP, "Text": "",
-                              "Weight": 0,
-                              "MinimumSize": [80, 22],
-                              "StyleSheet": "font-size:11px;color:#ccc;background-color:rgb(30,30,30);border:1px solid rgb(50,50,50);border-radius:3px;padding:2px 6px"}),
-                    ui.Button({"ID": "btn_edit_ep", "Text": "编辑",
-                               "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                               "MinimumSize": [SIZE_BTN_SM_W, SIZE_BTN_SM_W]}),
-                    ui.Label({"ID": LBL_SCRIPT_STATUS, "Text": "",
-                              "StyleSheet": "font-size:11px;color:#888",
-                              "Weight": 0}),
+                               "MinimumSize": [64, SIZE_BTN_SM_W]}),
                 ]),
                 ui.VGap(SPACE_SM),
                 ui.Button({"ID": BTN_AI_TYPO, "Text": "字幕检测",
@@ -876,7 +859,7 @@ itm = dlg.GetItems()
 # ═══════════════════════════════════════════
 itm[BTN_START].Enabled = False
 itm[BTN_AI_TYPO].Enabled = _ai_allowed
-itm[EDIT_SCRIPT_SRC].Text = ""
+itm[EDIT_SCRIPT_SRC].Text = "选填，提供剧本可启用 AI 错别字校对"
 
 # Tree 表头
 tree = itm[TREE_RESULT]
@@ -992,12 +975,15 @@ def _build_auth_section():
     """授权管理：Label 显示状态/激活码 + 激活/停用按钮。点击激活弹出系统输入框。"""
     return [
         _sec("授权管理"),
+        ui.VGap(SPACE_SM),
         ui.Label({"ID": "cfg_auth_status", "Text": "", "Weight": 0,
             "StyleSheet": "color:rgb(200,180,60);font-size:12px"}),
+        ui.VGap(SPACE_SM),
         ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
             ui.Button({"ID": "cfg_activate_btn", "Text": "激活", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
             ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用", "StyleSheet": BTN_STYLE, "Weight": 0}),
         ]),
+        ui.VGap(SPACE_SM),
         _sep(),
     ]
 
@@ -1013,6 +999,10 @@ def _format_trial(days: int, fp: str = "") -> str:
 
 def _show_config_dialog():
     """打开配置窗口"""
+    global _config_open
+    if _config_open:
+        return
+    _config_open = True
     CONFIG_WIN_ID = "com.myjc.delivery_checker_config"
 
     config_disp = bmd.UIDispatcher(fu.UIManager)
@@ -1538,6 +1528,7 @@ print(result[0])
     config_dlg.RecalcLayout()
     config_disp.RunLoop()
     config_dlg.Hide()
+    _config_open = False
 
 
 # ═══════════════════════════════════════════
@@ -1621,8 +1612,7 @@ def _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
             "provider": result.get("provider", "?"),
             "entry_count": len(entries),
             "script_source": script_src,
-            "character_count": len(parsed.get("characters", [])),
-            "episode_count": len(parsed.get("episodes", {})),
+            "line_count": len(all_lines),
         },
         "entries": [
             {"index": i, "start_frame": int(entry_starts[i]) if i < len(entry_starts) else 0,
@@ -1630,7 +1620,6 @@ def _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
             for i in range(len(entries))
         ],
         "prompt": {
-            "characters": parsed.get("characters", []),
             "script_preview": all_lines[:3] if all_lines else [],
             "script_line_count": len(all_lines),
         },
@@ -1681,7 +1670,7 @@ def _run_ai_typo():
 
     try:
         from llm_typo_check import check_typos
-        from script_parser import parse_script, match_timeline, set_log_callback
+        from script_parser import parse_script, set_log_callback
         set_log_callback(_action_log)
 
         # ═══ 门0: 有空字幕？ ═══
@@ -1744,24 +1733,26 @@ def _run_ai_typo():
                 _stop(f"检测失败: {e}")
             _checking = False; _unlock_ui(); return
 
-        itm[LBL_SCRIPT_STATUS].Text = ""
+        # 剧本文件校验：大小上限 + 格式白名单（飞书链接不在此校验）
+        if os.path.isfile(src):
+            fsize = os.path.getsize(src)
+            if fsize > 20 * 1024 * 1024:
+                return _stop(f"❌ 剧本文件过大 ({fsize//1024//1024}MB)")
+            lo = src.lower()
+            if not (lo.endswith((".docx", ".doc", ".pdf", ".txt", ".md"))):
+                return _stop("❌ 暂不支持此格式，请使用 .docx / .doc / .pdf / .txt / .md")
         try:
             parsed = parse_script(src)
-            _action_log(f"📖 剧本: {len(parsed.get('episodes',{}))} 集")
+            all_lines = parsed.get("lines", [])
+            _action_log(f"📖 剧本: {len(all_lines)} 行")
         except Exception as e:
             return _stop(f"❌ 剧本解析失败: {e}")
 
-        # ═══ 全文方案：所有集的台词一起传给 LLM，让 AI 自己做集号匹配 ═══
-        all_lines = []
-        for ep in sorted(parsed.get("episodes", {}).keys()):
-            all_lines.append(f"--- 第{ep}集 ---")
-            all_lines.extend(parsed["episodes"][ep])
-        itm[LBL_SCRIPT_STATUS].Text = ""
-        _action_log(f"📖 剧本: {len(parsed.get('episodes',{}))}集, {len(all_lines)}行（全文）")
+        _action_log(f"📖 剧本: {len(all_lines)} 行 → 喂给 AI")
         _ts_start = time.time()
         itm[BTN_START].Enabled = False; itm[BTN_AI_TYPO].Enabled = False
 
-        # ═══ LLM 校对（含剧集一致性 + 集号匹配） ═══
+        # ═══ LLM 校对 ═══
         itm[HINT_LB].Text = "AI 校对中..."
         _action_log(f"🤖 LLM 校对开始 ({len(entries)}字幕 vs {len(all_lines)}行剧本)")
 
@@ -1804,7 +1795,7 @@ def _run_ai_typo():
             sys_candidates = ""
 
         tl_name = timeline.GetName() or ""
-        ep_input = itm[EDIT_SCRIPT_EP].Text.strip()
+        ep_input = ""
         try:
             cpl = int(timeline.GetSetting().get("limitSubtitleCPL", 0))
         except Exception:
@@ -1856,7 +1847,7 @@ def _run_ai_typo():
         if result.get("same_show") is False:
             all_rows.insert(0, {"track": "ST1", "tc": "00:00:00:00",
                            "msg": "⚠ 字幕与剧本疑似不同剧集",
-                           "reason": "请检查剧本链接或手动输入正确集号"})
+                           "reason": "请检查剧本链接是否正确"})
             _action_log("⚠ LLM 判定字幕与剧本非同一部剧")
             itm[HINT_LB].Text = "⚠ 疑似不同剧集"
 
@@ -2760,7 +2751,9 @@ dlg.On[BTN_UPDATE].Clicked = _do_update
 # 剧本链接格式校验
 def _on_script_src_changed(_=None):
     src = itm[EDIT_SCRIPT_SRC].Text.strip()
-    ok = bool(src) and any(src.startswith(p) for p in (
+    if not src or src == "选填，提供剧本可启用 AI 错别字校对":
+        return
+    ok = any(src.startswith(p) for p in (
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
     if "feishu.cn" in src or "docs.qq.com" in src:
         ok = ok and len(src) > 30
@@ -2778,7 +2771,7 @@ def _paste_link(ev):
     try:
         import subprocess
         r = subprocess.run(["osascript", "-e",
-            'text returned of (display dialog "粘贴飞书链接或本地剧本路径"'
+            'text returned of (display dialog "粘贴飞书链接"'
             ' default answer "" with title "交付自检工具")'],
             capture_output=True, text=True, timeout=60)
         val = r.stdout.strip()
@@ -2790,29 +2783,7 @@ def _paste_link(ev):
         _link_busy = False
         itm["btn_paste_link"].Enabled = True
 
-# 集号编辑（osascript 弹窗，防 IME 崩溃）
-_ep_busy = False
-def _edit_ep(ev):
-    global _ep_busy
-    if _ep_busy: return
-    _ep_busy = True
-    itm["btn_edit_ep"].Enabled = False
-    try:
-        import subprocess
-        r = subprocess.run(["osascript", "-e",
-            'text returned of (display dialog "输入集号（如 08 或 07-09）"'
-            ' default answer "' + itm[EDIT_SCRIPT_EP].Text + '" with title "交付自检工具")'],
-            capture_output=True, text=True, timeout=60)
-        val = r.stdout.strip()
-        if val:
-            itm[EDIT_SCRIPT_EP].Text = val
-            _action_log(f"📝 集号: {val}")
-    finally:
-        _ep_busy = False
-        itm["btn_edit_ep"].Enabled = True
-
 dlg.On["btn_paste_link"].Clicked = _paste_link
-dlg.On["btn_edit_ep"].Clicked = _edit_ep
 
 # 分组开关事件
 def _make_group_toggle(group_name):
