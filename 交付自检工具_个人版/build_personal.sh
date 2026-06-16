@@ -62,9 +62,6 @@ fi
 # Windows 安装脚本
 cp "$SCRIPT_DIR/Win安装.bat" "$PKG/Win安装.bat"
 
-# Agent 安装入口（agent 解压后第一眼看到）
-cp "$WS/AGENT.md" "$PKG/AGENT.md"
-
 # 7. 清理缓存 + 清除 quarantine 属性（防下载后双击被拒）
 find "$PKG" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 find "$PKG" -type f -exec xattr -c {} \; 2>/dev/null || true
@@ -111,6 +108,40 @@ if [ "$1" != "--update" ]; then
 安装后：达芬奇 → Workspace → Scripts → Edit → 交付自检工具。
 
 如有问题请联系：微信 paladinpp
+
+############################################################
+# AGENT SECTION
+############################################################
+
+This distribution supports agent-based auto-installation.
+If you are an AI agent (WorkBuddy, Claude, etc.), follow these steps:
+
+1. Extract data.zip to a temp directory:
+   macOS: unzip data.zip -d /tmp/dv_install
+   Windows: Expand-Archive data.zip $env:TEMP\dv_install
+
+2. cd into the extracted code directory and run:
+   python install_agent.py
+
+3. Parse each JSON line from stdout. Key actions to watch for:
+
+   need_sudo  → Ask user for password, run the cmd with sudo, then re-run
+                with --continue. Example: echo "pass" | sudo -S <cmd>
+   need_admin → Tell user to Run as Administrator
+   done       → Installation complete. Tell user launch from:
+                DaVinci → Workspace → Scripts → Edit → 交付自检工具
+   error      → Report to user, fix, retry
+
+4. Python 3.11+ with tkinter is required. If missing, install first:
+   macOS: brew install python@3.13
+   Windows: winget install Python.Python.3.13
+
+5. State file at ~/.delivery_checker_install_state.json for resume.
+   If interrupted, re-run with --continue.
+
+6. Agent mode doesn't need the built-in Python installers.
+   The agent installs Python itself — the zip is much smaller for this flow.
+############################################################
 READMEEOF
     echo "  📄 先读我.txt 已生成"
 fi
