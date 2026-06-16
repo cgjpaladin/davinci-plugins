@@ -1,5 +1,5 @@
 #!/bin/bash
-# pre-commit.sh — 提交前检查（零 pip 依赖，纯 bash + Python 标准库）
+# pre-commit.sh — 提交前检查（打进去不装上去——禁止运行时 pip 导入）
 # 用法: bash tools/pre-commit.sh
 # 集成: push_all.sh 步骤1 自动调用，或 git pre-commit hook 自动触发
 set -e
@@ -81,7 +81,7 @@ fi
 [ $SYNTAX_FAIL -eq 0 ] && echo "  ✅ 语法无误"
 
 # ── 1. 禁止 pip 第三方包 ──
-echo "  🔍 检查: 零 pip 依赖..."
+echo "  🔍 检查: 打进去不装上去（禁止运行时 pip 导入）..."
 BANNED_IMPORTS=(
     "import requests"
     "from requests"
@@ -104,7 +104,7 @@ for pattern in "${BANNED_IMPORTS[@]}"; do
         PIP_FAIL=1
     fi
 done
-[ $PIP_FAIL -eq 0 ] && echo "  ✅ 零 pip 依赖"
+[ $PIP_FAIL -eq 0 ] && echo "  ✅ 打进去不装上去"
 [ $PIP_FAIL -ne 0 ] && FAIL=1
 
 # ── 2. 禁止 SMB 全盘扫描 ──
