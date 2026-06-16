@@ -1007,6 +1007,8 @@ def _format_trial(days: int, fp: str = "") -> str:
 
 def _show_config_dialog():
     """打开配置窗口"""
+    import traceback
+    _action_log(f"⚙ 打开配置窗口\n调用栈: {''.join(traceback.format_stack()[-4:-1])}")
     global _config_open
     if _config_open:
         return
@@ -1461,14 +1463,17 @@ print(result[0])
     # ── 编辑违禁词 ──
     censor_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
     def _edit_censor(ev):
-        import subprocess
+        import subprocess, traceback
+        _action_log(f"📂 _edit_censor 触发\n{traceback.format_stack()[-5].strip()}")
         from check_core import clear_censor_cache
         clear_censor_cache(censor_path)
     try:
         import subprocess
         if _sys.platform == "darwin":
+            _action_log(f"📂 即将打开 Finder: {censor_path}")
             subprocess.Popen(["open", "-R", censor_path])
         else:
+            _action_log(f"📂 即将打开 Explorer: {censor_path}")
             subprocess.Popen(["explorer", "/select,", censor_path])
     except Exception:
         itm[HINT_LB].Text = "右键「短剧违禁词表.csv」→ 打开方式 → WPS / Excel / Numbers"
@@ -2984,6 +2989,10 @@ def main():
                 itm[TRIAL_LB].Text = f"{itm[TRIAL_LB].Text}  |  ID: {fp_short}" if fp_short else itm[TRIAL_LB].Text
             if not _cred:
                 itm[HINT_LB].Text = ""
+    else:
+        # 公司版：无 License，清除 ⏳ 占位
+        itm[TRIAL_LB].Text = ""
+        _action_log("公司版，跳过 License 校验")
 
     # ── 恢复按钮 ──
     itm[BTN_START].Enabled = True
