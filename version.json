@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.7/update_latest.zip",
       "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.7/update_latest.zip"
     ],
-    "sha256": "fbfe1e6a96defe890a19185d8c27b115b6c22c641171b8a2b96e8f64515c8914",
+    "sha256": "b6179962714d56bbe0b444923880d227aba459c66606129277ce064c002cbd96",
     "notes": "修复指纹fallback碰撞风险",
     "history": [
       {
