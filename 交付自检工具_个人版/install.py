@@ -3,6 +3,7 @@
 由 Win安装.bat 调用，负责全部安装逻辑。
 """
 import os, sys, shutil, subprocess, zipfile, tempfile
+from datetime import datetime
 
 PRODUCT = "交付自检工具"
 DR_SCRIPTS = os.path.join(os.environ["PROGRAMDATA"],
@@ -15,8 +16,7 @@ DR_CONFIG = os.path.join(os.environ["APPDATA"],
 
 
 def log(msg):
-    ts = subprocess.check_output(["powershell", "Get-Date", "-Format", "yyyy-MM-dd HH:mm:ss"],
-                                 text=True).strip()
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     line = f"[{ts}] {msg}"
     print(line)
     try:
@@ -66,15 +66,21 @@ def enable_external_scripting():
     if not os.path.isfile(DR_CONFIG):
         log("DaVinci 尚未运行，跳过 External Scripting 设置")
         return
-    with open(DR_CONFIG, "r", encoding="utf-8") as f:
-        content = f.read()
+    # config.dat 可能是 ANSI(GBK) 或 UTF-8，尝试两种编码
+    for enc in ("utf-8", "gbk", "latin-1"):
+        try:
+            with open(DR_CONFIG, "r", encoding=enc) as f:
+                content = f.read()
+            break
+        except UnicodeDecodeError:
+            continue
     if "System.Scripting.Mode = 1" in content:
         log("External Scripting 已启用")
         return
     if "System.Scripting.Mode = 0" in content:
         content = content.replace("System.Scripting.Mode = 0",
                                   "System.Scripting.Mode = 1")
-        with open(DR_CONFIG, "w", encoding="utf-8") as f:
+        with open(DR_CONFIG, "w", encoding=enc) as f:
             f.write(content)
         log("External Scripting 已启用")
     else:
@@ -100,28 +106,38 @@ def install():
         sys.exit(1)
     log(f"Python: {python}")
 
-    # 3. data.zip
-    if not os.path.isfile(DATA_ZIP):
-        log(f"错误: 未找到 {DATA_ZIP}")
-        print(f"\n请确保 Win安装.bat 与 data.zip 在同一目录\n")
+    # 3. data.zip（兼容旧名 请勿直接解压此文件.zip）
+    zip_candidates = [DATA_ZIP, os.path.join(HERE, "请勿直接解压此文件.zip")]
+    actual_zip = None
+    for z in zip_candidates:
+        if os.path.isfile(z):
+            actual_zip = z
+            break
+    if not actual_zip:
+        log(f"错误: 未找到 data.zip")
+        files = os.listdir(HERE)
+        zips = [f for f in files if f.endswith('.zip')]
+        print(f"\n当前目录: {HERE}")
+        print(f"找到的 zip 文件: {zips}")
+        print("请确保 data.zip 与 Win安装.bat 在同一目录\n")
         input("按回车退出...")
         sys.exit(1)
 
     # 4. 备份旧版
     if os.path.isdir(TARGET):
-        from datetime import datetime
         backup = f"{TARGET}_backup_{datetime.now().strftime('%Y%m%d')}"
         log(f"备份旧版本 → {backup}")
         if os.path.exists(backup):
             shutil.rmtree(backup, ignore_errors=True)
         shutil.move(TARGET, backup)
 
-    # 5. 解压
+    # 5. 解压（data.zip 内有一层 交付自检工具/ 目录）
     log("解压中...")
-    os.makedirs(TARGET, exist_ok=True)
-    with zipfile.ZipFile(DATA_ZIP, "r") as zf:
-        zf.extractall(TARGET)
-    log(f"解压完成 → {TARGET}")
+    extract_to = os.path.dirname(TARGET)  # → Scripts/Edit/
+    os.makedirs(extract_to, exist_ok=True)
+    with zipfile.ZipFile(actual_zip, "r") as zf:
+        zf.extractall(extract_to)
+    log(f"解压完成 → {extract_to}")
 
     # 6. Launcher
     launcher = os.path.join(DR_SCRIPTS, "Edit", f"{PRODUCT}.bat")
@@ -143,7 +159,7 @@ def install():
 
     # 9. 完成
     log(f"=== {PRODUCT} 安装完成 ===")
-    print(f"\n✅ {PRODUCT} 安装完成！\n")
+    print(f"\n[OK] {PRODUCT} 安装完成！\n")
     print("启动: DaVinci Resolve → Workspace → Scripts → Edit → 交付自检工具")
     print(f"手动启动: {launcher}\n")
 
@@ -154,4 +170,7 @@ if __name__ == "__main__":
     except Exception as e:
         log(f"安装失败: {e}")
         print(f"\n安装失败: {e}\n")
-    input("\n按回车退出...")
+    try:
+        input("\n按回车退出...")
+    except (EOFError, OSError):
+        pass
