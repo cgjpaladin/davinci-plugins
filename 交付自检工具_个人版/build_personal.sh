@@ -69,10 +69,17 @@ echo "✅ $(find "$PKG" -type f | wc -l) 源文件"
 
 # 8. 加入 Python 安装包（放在源码子目录内，一起打进内层 zip）
 if [ "$1" != "--update" ]; then
-    PY_NAME="python-3.13.13-macos11.pkg"
-    if [ -f "$SCRIPT_DIR/$PY_NAME" ]; then
-        cp "$SCRIPT_DIR/$PY_NAME" "$PKG/交付自检工具/$PY_NAME"
-        echo "  含 Python 安装包"
+    # macOS
+    PY_MAC="python-3.13.13-macos11.pkg"
+    if [ -f "$SCRIPT_DIR/$PY_MAC" ]; then
+        cp "$SCRIPT_DIR/$PY_MAC" "$PKG/交付自检工具/$PY_MAC"
+        echo "  含 macOS Python 安装包"
+    fi
+    # Windows
+    PY_WIN="python-3.13.13-amd64.exe"
+    if [ -f "$SCRIPT_DIR/$PY_WIN" ]; then
+        cp "$SCRIPT_DIR/$PY_WIN" "$PKG/交付自检工具/$PY_WIN"
+        echo "  含 Windows Python 安装包"
     fi
 else
     echo "  增量更新包（不含 Python）"
