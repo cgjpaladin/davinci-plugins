@@ -58,6 +58,8 @@ if [ "$1" = "--update" ]; then
 else
     mv "$PKG/交付自检工具/install.command" "$PKG/Mac安装.command"
 fi
+# Windows 安装脚本
+cp "$SCRIPT_DIR/Win安装.bat" "$PKG/Win安装.bat"
 
 # 7. 清理缓存 + 清除 quarantine 属性（防下载后双击被拒）
 find "$PKG" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true

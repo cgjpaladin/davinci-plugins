@@ -55,10 +55,10 @@ if exist "%TARGET%" (
 )
 
 :: ── 解压安装 ──
-set "ZIP=%~dp0%PRODUCT%_personal.zip"
+set "ZIP=%~dp0请勿直接解压此文件.zip"
 if not exist "%ZIP%" (
-    echo ❌ 未找到安装包: %ZIP%
-    echo 请将 install.bat 与 %PRODUCT%_personal.zip 放在同一目录
+    echo ❌ 未找到安装包: 请勿直接解压此文件.zip
+    echo 请将 Win安装.bat 与「请勿直接解压此文件.zip」放在同一目录
     pause
     exit /b 1
 )
