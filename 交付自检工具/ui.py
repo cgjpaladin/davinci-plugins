@@ -2999,7 +2999,7 @@ def main():
     try:
         from updater import check
         from shared.update_config import TIMEOUT_VERSION_CHECK
-        _ver = version_string()
+        _ver = __version__  # 纯 semver，不带 -dev 后缀
         _result = check("delivery_checker", _ver, timeout=TIMEOUT_VERSION_CHECK)
         global _UPDATE_INFO
         _UPDATE_INFO = _result

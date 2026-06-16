@@ -487,6 +487,15 @@ publish_sync() {
         echo "   请先运行 ./channel.sh prod 切换到生产环境。"
         exit 1
     fi
+    # ═══ 自动恢复：同步结束/崩溃/Ctrl+C 后永远切回 dev ═══
+    _restore_sync_dev() {
+        echo ""
+        echo "🔄 自动切回开发环境…"
+        cd "$PRODUCT_DIR"
+        sed -i '' 's/^__channel__ = ".*"/__channel__ = "dev"/' config.py
+        python3 -c "import sys; sys.path.insert(0,'.'); from config import version_string; print(f'  版本: {version_string()}（开发环境已恢复）')"
+    }
+    trap _restore_sync_dev EXIT
 
     # ── 版本检查（比纯数字，忽略 -dev 通道）──
     SMB_RAW=$(python3 -c "import sys; sys.path.insert(0,'$SMB_DIR'); from config import __version__; print(__version__)" 2>/dev/null || echo "?")
