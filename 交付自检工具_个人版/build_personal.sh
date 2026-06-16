@@ -60,7 +60,6 @@ else
 fi
 # Windows 安装脚本
 cp "$SCRIPT_DIR/Win安装.bat" "$PKG/Win安装.bat"
-cp "$SCRIPT_DIR/install.py" "$PKG/install.py"
 
 # 7. 清理缓存 + 清除 quarantine 属性（防下载后双击被拒）
 find "$PKG" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
