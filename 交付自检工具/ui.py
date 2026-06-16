@@ -842,9 +842,9 @@ window_layout = [
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "Visible": False,
                            "MinimumSize": [70, SIZE_BTN_H]}),
-                ui.Button({"ID": BTN_MANUAL, "Text": "使用手册",
+                ui.Button({"ID": BTN_MANUAL, "Text": "📖 使用手册",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                           "MinimumSize": [SIZE_BTN_MD_W, SIZE_BTN_H]}),
+                           "MinimumSize": [SIZE_BTN_LG_W, SIZE_BTN_H]}),
                 ui.Button({"ID": BTN_ERR_SEND, "Text": "📋 导出日志",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [SIZE_BTN_LG_W, SIZE_BTN_H]}),
@@ -2491,23 +2491,28 @@ def _update_err_counter():
 dlg.On[BTN_ERR_SEND].Clicked = _on_err_report
 
 def _on_manual(ev):
-    """使用手册：在线→浏览器，离线→QR弹窗"""
+    """使用手册：先开浏览器，确认离线才弹 QR"""
     import socket, threading
-    # 真实连通性检测
+    from urllib.parse import urlparse
+
+    # 始终尝试打开浏览器（不判断是否成功）
+    try:
+        webbrowser.open(MANUAL_URL)
+    except Exception:
+        pass
+
+    # 真实测通目标域名，不是 Google DNS
     online = False
     try:
-        s = socket.create_connection(("8.8.8.8", 53), timeout=3)
+        host = urlparse(MANUAL_URL).hostname
+        s = socket.create_connection((host, 443), timeout=2)
         s.close()
         online = True
     except Exception:
         pass
 
     if online:
-        try:
-            webbrowser.open(MANUAL_URL)
-        except Exception:
-            pass
-        return
+        return  # 浏览器已经打开了
 
     # 离线：显示 QR 弹窗
     def _show_qr():
