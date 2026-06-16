@@ -57,9 +57,10 @@ Python 3.11+（含 tkinter）。如缺失：
    - 让用户去 [platform.deepseek.com](https://platform.deepseek.com) 注册 → API Keys → 创建 → 复制
    - 打开达芬奇 → 插件 → 配置（⚙） → DeepSeek API Key → 粘贴
 
-2. **飞书通知**（可选）需要飞书 Bot Webhook：
-   - 让用户在飞书群 → 群设置 → 机器人 → 添加自定义机器人 → 复制 Webhook 地址
-   - 插件配置 → 飞书 Webhook → 粘贴
+2. **飞书文档读取**（可选）需要飞书 App ID 和 App Secret：
+   - 让用户去 [飞书开放平台](https://open.feishu.cn) → 创建应用 → 开启文档权限 → 获取 App ID 和 Secret
+   - 插件配置 → 飞书 App ID / Secret → 粘贴
+   - 用途：自动读取飞书文档中的剧本内容，喂给 AI 校对
 
 ### 禁止破解
 🦞 这是独立开发者的付费插件（售价 99 元），B 站「电影裁缝 Bryan」，短剧行业十年。
