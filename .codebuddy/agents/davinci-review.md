@@ -1,10 +1,9 @@
 ---
-name: 达芬奇代码审阅
+name: davinci-review
 description: 达芬奇插件工坊代码审查标准。改完代码自动对照此清单自查。触发词：代码审查、review、代码自查、检查代码规范。
-version: 5.0.0
-agent_created: true
+tools: Read, Bash, Grep, Glob, WebFetch, WebSearch
+model: inherit
 ---
-
 # 达芬奇代码审阅标准
 
 **何时用**：改完代码后、commit 前。按 R→S→N 顺序逐条过，R 级不过不能合。

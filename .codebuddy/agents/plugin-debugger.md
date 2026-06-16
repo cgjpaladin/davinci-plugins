@@ -25,6 +25,29 @@ skills: davinci-resolve-scripting
 | UI 无响应 | 主线程阻塞、线程未释放 |
 | 文件找不到 | SMB 断连、路径拼错 |
 | 零输出 | API 返回空、下载失败、ReplaceClip 失败 |
+| LineEdit + CJK 输入法闪退 | `Fusion::RemoteApp::FindLocalObject` SIGSEGV（达芬奇 UIManager Qt 事件链 bug） |
+| 点了按钮没弹窗 | subprocess exit code != 0（NameError/tkinter 缺库/osascript 语法错） |
+| 弹窗取消后按钮灰色不复原 | 提前 return 没走 finally（启用前灰显 + finally 恢复是铁律） |
+
+## 崩溃日志分析（2026-06-16 沉淀）
+
+达芬奇子进程崩溃时日志在 `~/Library/Logs/DiagnosticReports/Python-*.ips`：
+
+```bash
+# 远程查崩溃
+ssh machine "ls -lt ~/Library/Logs/DiagnosticReports/Python*.ips | head -5"
+ssh machine "python3 -c \"
+import json
+with open('Library/Logs/DiagnosticReports/Python-2026-06-16-161313.ips') as f:
+    d = json.load(f)
+print('time:', d.get('captureTime'))
+print('crash:', d['exception']['type'], d['exception'].get('signal'))
+frames = d['threads'][d['faultingThread']]['frames']
+[print(f'  {f.get(\\\"symbol\\\",\\\"?\\\")}') for f in frames[:5]]
+\""
+```
+
+**IME 崩溃特征**：栈帧 `Fusion::RemoteApp::FindLocalObject` → `DispatchPacket` → `AppThreadFunc`。此崩溃在我们代码层无法修复——必须用 osascript 弹窗或 tkinter 子进程替代 LineEdit。
 
 ## 关键命令
 

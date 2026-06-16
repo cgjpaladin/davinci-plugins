@@ -5,7 +5,7 @@ import os, sys
 ENV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 
 # 确保 WB_LICENSE_URL 存在
-LICENSE_URL = "https://license-yqvhkhvhgf.cn-hangzhou.fcapp.run"
+LICENSE_URL = "https://license-node-mtqaghwijy.cn-hangzhou.fcapp.run"
 
 try:
     with open(ENV_PATH, "r", encoding="utf-8") as f:

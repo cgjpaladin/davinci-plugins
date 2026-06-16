@@ -207,6 +207,7 @@ async function handleInitTrial(data) {
     const fields = { '最后活跃': Date.now() };
     if (data.version) fields['插件版本'] = data.version;
     if (data.os_version) fields['macOS版本'] = data.os_version;
+    if (data.resolve_version) fields['达芬奇版本'] = data.resolve_version;
     try { await updateRecord(records[0].record_id, fields, TRIAL_TABLE_ID); } catch(e) {}
     return { status: 'ok', trial_date_ordinal: msToOrdinal(records[0].fields['首次试用时间']) };
   }
@@ -217,6 +218,7 @@ async function handleInitTrial(data) {
     首次试用时间: now,
     插件版本: data.version || '',
     macOS版本: data.os_version || '',
+    达芬奇版本: data.resolve_version || '',
     最后活跃: now,
   }, TRIAL_TABLE_ID);
   return { status: 'ok', trial_date_ordinal: msToOrdinal(now) };
@@ -241,6 +243,7 @@ async function handleVerifyStatus(data) {
       const fields = { '最后活跃': Date.now() };
       if (data.version) fields['插件版本'] = data.version;
       if (data.os_version) fields['macOS版本'] = data.os_version;
+      if (data.resolve_version) fields['达芬奇版本'] = data.resolve_version;
       await updateRecord(trialRecords[0].record_id, fields, TRIAL_TABLE_ID);
     }
   } catch(e) {}

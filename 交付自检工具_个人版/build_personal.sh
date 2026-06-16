@@ -3,8 +3,10 @@
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WS="$(cd "$SCRIPT_DIR/.." && pwd)"
-PKG="$SCRIPT_DIR/_build/交付自检工具_个人版"
-ZIP="$SCRIPT_DIR/_build/交付自检工具_个人版.zip"
+# 从 config.py 读取版本号（唯一真相源）
+VER=$(python3 -c "exec(open('$WS/交付自检工具/config.py', encoding='utf-8').read()); print(__version__)")
+PKG="$SCRIPT_DIR/_build/交付自检工具_v${VER}"
+INNER_ZIP_NAME="请勿直接解压此文件.zip"
 # --all 模式：一次输出全量 + 增量两个包
 if [ "$1" = "--all" ]; then
     bash "$0" && bash "$0" --update
@@ -14,11 +16,12 @@ fi
 # 增量更新包用 ASCII 根目录名避免 zip 乱码
 if [ "$1" = "--update" ]; then
     PKG="$SCRIPT_DIR/_build/davinci_plugin_update"
-    ZIP="$SCRIPT_DIR/_build/交付自检工具_更新包.zip"
+    ZIP="$SCRIPT_DIR/_build/update_latest.zip"
 fi
-PY_PKG="$HOME/Desktop/交付自检工具_个人版/Python安装包.pkg"
+INNER_ZIP="$PKG/$INNER_ZIP_NAME"
 
 echo "═══ 构建个人版安装包 ═══"
+echo "📦 版本: v$VER"
 
 # 1. 清理
 rm -rf "$PKG" "$ZIP"
@@ -53,17 +56,18 @@ chmod +x "$PKG/交付自检工具/install.command"
 if [ "$1" = "--update" ]; then
     mv "$PKG/交付自检工具/install.command" "$PKG/install_update.command"
 else
-    mv "$PKG/交付自检工具/install.command" "$PKG/安装.command"
+    mv "$PKG/交付自检工具/install.command" "$PKG/Mac安装.command"
 fi
 
-# 7. 清理缓存
+# 7. 清理缓存 + 清除 quarantine 属性（防下载后双击被拒）
 find "$PKG" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+find "$PKG" -type f -exec xattr -c {} \; 2>/dev/null || true
 
 echo "✅ $(find "$PKG" -type f | wc -l) 源文件"
 
 # 8. 加入 Python 安装包（放在源码子目录内，一起打进内层 zip）
 if [ "$1" != "--update" ]; then
-    PY_NAME="Python安装包.pkg"
+    PY_NAME="python-3.13.13-macos11.pkg"
     if [ -f "$SCRIPT_DIR/$PY_NAME" ]; then
         cp "$SCRIPT_DIR/$PY_NAME" "$PKG/交付自检工具/$PY_NAME"
         echo "  含 Python 安装包"
@@ -74,15 +78,40 @@ fi
 
 # 8b. 首次安装包：将源码+Python.pkg打包为内层zip（二进制，百度不扫内容）
 if [ "$1" != "--update" ]; then
-    cd "$PKG" && zip -rq "交付自检工具.zip" "交付自检工具/"
+    cd "$PKG" && zip -rq "$INNER_ZIP_NAME" "交付自检工具/"
     rm -rf "$PKG/交付自检工具/"
     echo "  📦 内层 zip 已创建"
+
+    # 生成 README.txt（防 .command 权限丢失的指引）
+    cat > "$PKG/先读我.txt" << 'READMEEOF'
+═══════════════════════════
+  交付自检工具 — 安装说明
+═══════════════════════════
+
+1. 双击「Mac安装.command」开始安装
+   → 按提示输入开机密码（仅本次使用）
+
+2. 如果双击没有反应或提示无法打开：
+   打开「系统设置」→「隐私与安全性」
+   向下滚动到「安全性」部分
+   找到关于「Mac安装.command」的提示
+   点击「仍要打开」
+   → 然后再双击 Mac安装.command
+
+3. 如果提示「没有正确的访问权限」：
+   右键点击「Mac安装.command」→「打开方式」→「终端」
+
+4. 安装完成后：
+   打开达芬奇 → 工作区 → 脚本 → 交付自检工具
+
+如有问题请联系：微信 paladinpp
+READMEEOF
+    echo "  📄 先读我.txt 已生成"
 fi
 
 # 9. 出厂检验（在内层 zip 上做，直接读 config.py）
 if [ "$1" != "--update" ]; then
 VER_SRC=$(grep '__version__' "$WS/交付自检工具/config.py" | head -1 | grep -o '"[^"]*"')
-INNER_ZIP="$PKG/交付自检工具.zip"
 VER_ZIP=$(python3 -c "
 import zipfile, sys
 zf = zipfile.ZipFile('$INNER_ZIP', metadata_encoding='utf-8')
@@ -100,13 +129,14 @@ fi
 echo "✅ 出厂检验通过: $VER_ZIP"
 fi
 
-# 10. 可选：外层 zip（用于 GitHub Releases 等单文件分发）
-if [ "$1" != "--update" ]; then
-    cd "$SCRIPT_DIR/_build"
-    zip -rq "$ZIP" "$(basename "$PKG")/"
+# --update 模式：打包为 update_latest.zip（ASCII 名，gh 不乱码）
+if [ "$1" = "--update" ]; then
+    cd "$SCRIPT_DIR/_build" && zip -rq "$ZIP" "$(basename "$PKG")/"
     ls -lh "$ZIP"
-    echo "   外层 zip 已创建"
+else
+    # 首次安装：打包为分发 zip（百度网盘上传这一个文件）
+    OUTER_ZIP="$SCRIPT_DIR/_build/交付自检工具_v${VER}.zip"
+    cd "$SCRIPT_DIR/_build" && zip -rq "$OUTER_ZIP" "$(basename "$PKG")/"
+    ls -lh "$OUTER_ZIP"
+    echo "📂 百度网盘上传此 zip 即可"
 fi
-echo ""
-echo "📂 百度网盘上传此文件夹: $PKG"
-ls -la "$PKG/"

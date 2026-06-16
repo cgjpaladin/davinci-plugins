@@ -2,20 +2,34 @@
 clear
 
 # ═══════════════════════════════════════
-# 安装日志
+# 日志（仅写文件，用户看不到）
 # ═══════════════════════════════════════
-LOG="$HOME/.workbuddy/logs/交付自检工具/install_$(hostname)_$(date +%Y-%m-%d).log"
-mkdir -p "$(dirname "$LOG")"
-exec 2>&1 | tee "$LOG"
-echo "══════ 交付自检工具 安装日志 $(date '+%Y-%m-%d %H:%M:%S') ══════"
-echo ""
+LOG_DIR="$HOME/Library/Logs/小裁缝工具"
+mkdir -p "$LOG_DIR"
+LOG="$LOG_DIR/install_$(date +%Y%m%d_%H%M%S).log"
+exec 3>&1 >"$LOG" 2>&1
+# 自此：echo → 日志 | echo ... >&3 → 终端
 
-# ── --update 静默模式：跳过 Python/凭证，直接覆盖安装 ──
+echo "══════ 安装日志 $(date '+%Y-%m-%d %H:%M:%S') ══════"
+echo "👤 $(whoami) @ $(hostname) | macOS $(sw_vers -productVersion 2>/dev/null || echo ?)"
+
 IS_UPDATE=0
 if [ "$1" = "--update" ]; then
     IS_UPDATE=1
-    echo "🔄 静默更新模式"
+    echo "🔄 更新模式"
 fi
+
+# ═══════════════════════════════════════
+# 欢迎（终端可见）
+# ═══════════════════════════════════════
+echo >&3
+echo "========================================" >&3
+echo "  交付自检工具" >&3
+echo "  针对短剧/影视成片的自动化质检插件" >&3
+echo "  作者：电影裁缝 Bryan（微信 paladinpp）" >&3
+echo "========================================" >&3
+echo >&3
+echo "  ⏳ 正在检测…" >&3
 
 # ═══════════════════════════════════════
 # 路径
@@ -23,215 +37,175 @@ fi
 INSTALL_DIR="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/交付自检工具"
 FUSION_SCRIPTS="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ZIP_SRC="$SCRIPT_DIR/交付自检工具.zip"
+ZIP_SRC="$SCRIPT_DIR/请勿直接解压此文件.zip"
 SOURCE="$SCRIPT_DIR/交付自检工具"
-# --update 模式：找 install.command 同级目录下的「交付自检工具」子目录
 if [ $IS_UPDATE -eq 1 ]; then
-    # 尝试标准路径
     if [ -d "$SCRIPT_DIR/交付自检工具" ]; then
         SOURCE="$SCRIPT_DIR/交付自检工具"
     else
-        # zip 解压后中文目录名可能乱码，扫描找含 install.command 同级的源码目录
         for d in "$SCRIPT_DIR"/*/; do
             if [ -d "${d}shared" ] && [ -f "${d}ui.py" ]; then
-                SOURCE="${d%/}"
-                break
+                SOURCE="${d%/}"; break
             fi
         done
     fi
 fi
-
 echo "📁 安装源: $([ $IS_UPDATE -eq 1 ] && echo "$SOURCE" || echo "$ZIP_SRC")"
 echo "📁 安装目标: $INSTALL_DIR"
-echo "📁 壳位置: $FUSION_SCRIPTS/交付自检工具.py"
-echo "👤 当前用户: $(whoami)"
-echo "💻 主机名: $(hostname)"
-echo "🍎 macOS: $(sw_vers -productVersion 2>/dev/null || echo unknown)"
-echo ""
 
 # ═══════════════════════════════════════
-# 1. 解压完整性
+# 1. 文件完整性
 # ═══════════════════════════════════════
-echo "→ [1/6] 检查安装文件..."
 if [ $IS_UPDATE -eq 0 ]; then
     if [ ! -f "$ZIP_SRC" ]; then
-        echo "❌ 找不到 $ZIP_SRC"
-        osascript -e 'display dialog "找不到安装文件「交付自检工具.zip」。\n\n请确保安装.command和交付自检工具.zip在同一文件夹内。\n如果从百度网盘下载，请下载整个文件夹，不要只下载单个文件。" buttons {"好的"} default button 1 with icon stop'
+        osascript -e $'display dialog "找不到安装文件「请勿直接解压此文件.zip」。\n\n请确保Mac安装.command和它位于同一文件夹内。" buttons {"好的"} default button 1 with icon stop'
         exit 1
     fi
-    ZIP_SIZE=$(stat -f%z "$ZIP_SRC" 2>/dev/null || echo 0)
-    echo "   ✅ zip 文件: $((ZIP_SIZE / 1048576))MB"
 else
     if [ ! -d "$SOURCE" ]; then
-        echo "❌ 找不到 $SOURCE"
-        osascript -e 'display dialog "找不到安装文件。\n\n请重新下载更新包。" buttons {"好的"} default button 1 with icon stop'
+        osascript -e $'display dialog "找不到安装源文件。\n\n请重新下载更新包。" buttons {"好的"} default button 1 with icon stop'
         exit 1
     fi
-    FILE_COUNT=$(find "$SOURCE" -type f | wc -l | tr -d ' ')
-    echo "   ✅ 找到 $FILE_COUNT 个文件"
 fi
-echo ""
 
-# ═══════════════════════════════════════
-# 1.5. 达芬奇检测（仅首次安装）
-# ═══════════════════════════════════════
+# 1.5 达芬奇检测
 RESOLVE_SUPPORT="/Library/Application Support/Blackmagic Design/DaVinci Resolve"
 if [ $IS_UPDATE -eq 0 ] && [ ! -d "$RESOLVE_SUPPORT" ]; then
-    echo "⚠ 未检测到达芬奇 Resolve"
-    echo "   $RESOLVE_SUPPORT"
-    echo "   请先安装并至少运行一次达芬奇，再安装本插件。"
-    osascript -e 'display dialog "未检测到达芬奇 Resolve。\n\n请先安装达芬奇并至少打开一次，再运行本安装脚本。\n\n达芬奇首次启动会自动创建所需目录。" buttons {"好的"} default button 1 with icon caution'
+    osascript -e $'display dialog "未检测到达芬奇 Resolve。\n\n请先安装达芬奇并至少打开一次，再运行本安装脚本。" buttons {"好的"} default button 1 with icon caution'
     exit 1
 fi
 
+# ═══════════════════════════════════════
+# 2. Python 检测
+# ═══════════════════════════════════════
 PYTHON=""
 NEED_PYTHON=0
-
 if [ $IS_UPDATE -eq 0 ]; then
-
-# ═══════════════════════════════════════
-# 2. Python 检测+安装
-# ═══════════════════════════════════════
-echo "→ [2/6] 检测 Python..."
-PYTHON=""
-FRAMEWORK_OK=""
-HAS_CLT=0
-xcode-select -p &>/dev/null && HAS_CLT=1
-
-# 只查 Framework Python — /usr/bin/python3 是 Xcode CLT stub，无 CLT 时触碰会弹安装窗口
-for p in /Library/Frameworks/Python.framework/Versions/3.*/bin/python3 /opt/homebrew/bin/python3; do
-    echo "   检查: $p"
-    if [ -x "$p" ]; then
-        VER=$("$p" --version 2>&1)
-        echo "     → $VER (Framework ✅)"
-        PYTHON="$p"
-        FRAMEWORK_OK="yes"
-        break
-    fi
-done
-
-if [ -z "$FRAMEWORK_OK" ] && [ "$HAS_CLT" -eq 1 ] && [ -x "/usr/bin/python3" ]; then
-    echo "   检查: /usr/bin/python3"
-    echo "     → $(/usr/bin/python3 --version 2>&1) ⚠ 非 Framework，达芬奇不识别"
-fi
-
-if [ -z "$PYTHON" ] || [ -z "$FRAMEWORK_OK" ]; then
-    if [ -n "$PYTHON" ] && [ -z "$FRAMEWORK_OK" ]; then
-        echo "   ⚠ 当前 Python 是 Xcode CLT 版本，达芬奇不识别，将在安装时自动处理"
-    else
-        echo "   ⚠ 未找到 Python，将在安装时自动安装"
-    fi
-    NEED_PYTHON=1
-else
-    echo "   ✅ Python: $($PYTHON --version 2>&1)"
-fi
-echo ""
-
-# ═══════════════════════════════════════
-# 3. 已安装检测
-# ═══════════════════════════════════════
-echo "→ [3/6] 检查已有安装..."
-if [ -d "$INSTALL_DIR" ]; then
-    echo "   发现已有安装"
-    RESPONSE=$(osascript -e 'button returned of (display dialog "已安装过。\n\n请选择：" buttons {"覆盖安装", "取消"} default button "取消" with icon caution)' 2>/dev/null || echo "取消")
-    echo "   用户选择: $RESPONSE"
-    case "$RESPONSE" in
-        "覆盖安装")
-            echo "   将执行覆盖安装..."
-            ;;
-        "取消")
-            echo "   用户取消"
-            exit 0
-            ;;
-    esac
-else
-    echo "   首次安装"
-fi
-echo ""
-
-
-else
-    # --update 模式：快速检测 Framework Python
-    echo "→ 检测 Python..."
     for p in /Library/Frameworks/Python.framework/Versions/3.*/bin/python3 /opt/homebrew/bin/python3; do
-        if [ -x "$p" ]; then
-            PYTHON="$p"; echo "   ✅ $($PYTHON --version 2>&1)"; break
-        fi
+        if [ -x "$p" ]; then PYTHON="$p"; echo "✅ Python: $($PYTHON --version 2>&1)"; break; fi
     done
-    if [ -z "$PYTHON" ]; then
-        echo "   ❌ 未找到 Framework Python，更新无法继续"
-        exit 1
+    if [ -z "$PYTHON" ]; then NEED_PYTHON=1; echo "⚠ 未找到 Python"; fi
+else
+    for p in /Library/Frameworks/Python.framework/Versions/3.*/bin/python3 /opt/homebrew/bin/python3; do
+        if [ -x "$p" ]; then PYTHON="$p"; break; fi
+    done
+    if [ -z "$PYTHON" ]; then echo "❌ 未找到 Python"; exit 1; fi
+fi
+
+# ═══════════════════════════════════════
+# 3. 已有安装检测
+# ═══════════════════════════════════════
+if [ $IS_UPDATE -eq 0 ] && [ -d "$INSTALL_DIR" ]; then
+    INSTALLED_VER="?"
+    if [ -f "$INSTALL_DIR/config.py" ]; then
+        INSTALLED_VER=$(grep '__version__' "$INSTALL_DIR/config.py" | head -1 | grep -o '"[^"]*"' | tr -d '"')
+    fi
+    NEW_VER="?"
+    if [ -f "$ZIP_SRC" ]; then
+        NEW_VER=$(unzip -p "$ZIP_SRC" "*/config.py" 2>/dev/null | grep '__version__' | head -1 | grep -o '"[^"]*"' | tr -d '"')
+    fi
+    echo "已安装: v${INSTALLED_VER} | 安装包: v${NEW_VER}"
+
+    if [ "$INSTALLED_VER" = "$NEW_VER" ] && [ "$INSTALLED_VER" != "?" ]; then
+        RESPONSE=$(osascript -e "button returned of (display dialog \"已安装相同版本（v${INSTALLED_VER}）。\n\n如果插件出现问题，可以选择重新安装。\" buttons {\"取消\", \"重新安装\"} default button \"取消\")" 2>/dev/null || echo "取消")
+        if [ "$RESPONSE" != "重新安装" ]; then echo "用户取消"; exit 0; fi
+    fi
+
+    if [ "$NEW_VER" != "?" ] && [ "$INSTALLED_VER" != "?" ]; then
+        LOWER=$(python3 -c "
+a=tuple(int(x) for x in '$INSTALLED_VER'.split('.'))
+b=tuple(int(x) for x in '$NEW_VER'.split('.'))
+print('1' if a > b else '0')
+" 2>/dev/null || echo 0)
+        if [ "$LOWER" = "1" ]; then
+            RESPONSE=$(osascript -e "button returned of (display dialog \"当前版本 v${INSTALLED_VER}，安装包版本 v${NEW_VER}。\n\n安装后将降级到旧版本。确认继续？\" buttons {\"取消\", \"降级安装\"} default button \"取消\" with icon caution)" 2>/dev/null || echo "取消")
+            if [ "$RESPONSE" != "降级安装" ]; then echo "用户取消降级"; exit 0; fi
+        else
+            RESPONSE=$(osascript -e "button returned of (display dialog \"当前版本 v${INSTALLED_VER} → v${NEW_VER}\n\n选择「覆盖安装」将保留您的配置和词典。\" buttons {\"取消\", \"覆盖安装\"} default button \"覆盖安装\")" 2>/dev/null || echo "取消")
+            if [ "$RESPONSE" != "覆盖安装" ]; then echo "用户取消"; exit 0; fi
+        fi
+    else
+        RESPONSE=$(osascript -e $'button returned of (display dialog "检测到已有安装。\n\n选择「覆盖安装」将保留您的配置和词典。" buttons {"取消", "覆盖安装"} default button "覆盖安装")' 2>/dev/null || echo "取消")
+        if [ "$RESPONSE" != "覆盖安装" ]; then echo "用户取消"; exit 0; fi
     fi
 fi
 
 # ═══════════════════════════════════════
-# 4. 中转文件
+# 4. 解压准备
 # ═══════════════════════════════════════
-echo "→ [4/6] 准备安装..."
 rm -rf /tmp/_deli_src /tmp/_deli_python.pkg /tmp/_deli_temp 2>/dev/null
 if [ $IS_UPDATE -eq 0 ]; then
-    # 首次安装：解压内层 zip
     mkdir -p /tmp/_deli_temp
     if ! unzip -q "$ZIP_SRC" -d /tmp/_deli_temp 2>/dev/null; then
-        echo "   ❌ zip 文件损坏，请重新下载"
-        rm -rf /tmp/_deli_temp
-        osascript -e 'display dialog "安装包已损坏。\n\n请重新下载。" buttons {"好的"} default button 1 with icon stop'
-        exit 1
+        osascript -e $'display dialog "安装包已损坏。\n\n请重新下载。" buttons {"好的"} default button 1 with icon stop'
+        rm -rf /tmp/_deli_temp; exit 1
     fi
-    # 重组：源码 → /tmp/_deli_src，Python.pkg 移出 → /tmp/_deli_python.pkg
     if [ -d "/tmp/_deli_temp/交付自检工具" ]; then
         mv /tmp/_deli_temp/交付自检工具 /tmp/_deli_src
     else
-        echo "   ❌ zip 结构异常，缺少交付自检工具/ 目录"
-        rm -rf /tmp/_deli_temp
-        osascript -e 'display dialog "安装包结构异常。\n\n请重新下载。" buttons {"好的"} default button 1 with icon stop'
-        exit 1
+        osascript -e $'display dialog "安装包结构异常。\n\n请重新下载。" buttons {"好的"} default button 1 with icon stop'
+        rm -rf /tmp/_deli_temp; exit 1
     fi
-    mv /tmp/_deli_src/Python安装包.pkg /tmp/_deli_python.pkg 2>/dev/null || true
+    for f in /tmp/_deli_src/python-*-macos11.pkg; do
+        [ -f "$f" ] && mv "$f" /tmp/_deli_python.pkg && break
+    done
     rm -rf /tmp/_deli_temp
-    echo "   ✅ zip 已解压: $(find /tmp/_deli_src -type f | wc -l | tr -d ' ') files"
-    if [ $NEED_PYTHON -eq 1 ] && [ ! -f "/tmp/_deli_python.pkg" ]; then
-        echo "   ⚠ 未找到 Python安装包.pkg，将跳过自动安装"
-    fi
+    echo "解压: $(find /tmp/_deli_src -type f | wc -l | tr -d ' ') files"
 else
-    # --update 模式：直接复制源码目录
     if ! cp -r "$SOURCE" /tmp/_deli_src 2>/dev/null; then
-        echo "   ❌ 复制到 /tmp 失败"
-        osascript -e 'display dialog "准备安装失败。\n请检查磁盘空间或关闭其他程序后重试。" buttons {"好的"} default button 1 with icon stop'
+        osascript -e $'display dialog "准备安装失败。\n请检查磁盘空间后重试。" buttons {"好的"} default button 1 with icon stop'
         exit 1
     fi
-    echo "   ✅ 源文件已复制到 /tmp/_deli_src ($(find /tmp/_deli_src -type f | wc -l | tr -d ' ') files)"
 fi
-echo ""
 
 # ═══════════════════════════════════════
-# 5. 管理员安装
+# 5. 检测 External Scripting + 摘要（终端可见）
 # ═══════════════════════════════════════
-echo "→ [5/6] 安装到系统目录..."
-echo ""
-echo "   此工具需安装到达芬奇系统插件目录。"
-echo "   macOS 会弹出窗口要求输入开机密码——这是正常的系统权限确认。"
-echo "   密码仅用于本次安装，不会被记录或传输。"
-echo ""
-echo "→ [5/6] 安装到系统目录（请在弹出的窗口中输入密码）..."
+DR_RESOLVE_RUNNING=0
+pgrep -q "Resolve" 2>/dev/null && DR_RESOLVE_RUNNING=1
+echo "达芬奇运行中: $([ $DR_RESOLVE_RUNNING -eq 1 ] && echo 是 || echo 否)"
 
+DR_CONFIG="$HOME/Library/Preferences/Blackmagic Design/DaVinci Resolve/config.dat"
+DR_SCRIPTING_NEEDS_FIX=0
+if [ -f "$DR_CONFIG" ] && grep -q "System.Scripting.Mode = 0" "$DR_CONFIG" 2>/dev/null; then
+    DR_SCRIPTING_NEEDS_FIX=1
+fi
 
+# 终端摘要
+echo >&3
+echo "  将进行以下操作：" >&3
+echo "    📂 安装插件" >&3
+if [ $NEED_PYTHON -eq 1 ]; then
+    echo "    🐍 安装 Python 3.13" >&3
+fi
+if [ $DR_SCRIPTING_NEEDS_FIX -eq 1 ]; then
+    echo "    🔧 启用达芬奇外部脚本权限" >&3
+fi
+if [ $DR_RESOLVE_RUNNING -eq 1 ]; then
+    echo "    ⚠ 达芬奇正在运行，安装后需重启" >&3
+fi
+echo >&3
+echo "  请在弹出的密码框中输入开机密码，确认以上操作。" >&3
+echo >&3
+
+# ═══════════════════════════════════════
+# 5b. 执行安装
+# ═══════════════════════════════════════
 INSTALL_LOG="/tmp/_deli_install.log"
+
 if [ $IS_UPDATE -eq 1 ]; then
-    # --update 模式：已在外层 root 下，直接安装
-    echo "   以 root 身份直接安装..."
-    echo "  → mkdir" && mkdir -p "$FUSION_SCRIPTS" &&
-    echo "  → backup .env" && [ ! -f "$INSTALL_DIR/.env" ] || (cp "$INSTALL_DIR/.env" /tmp/_deli_env_bak || { echo "  ❌ 备份 .env 失败，中止更新"; exit 1; }) &&
-    echo "  → backup dicts" && (rm -rf /tmp/_deli_dicts_bak; if [ -d "$INSTALL_DIR/dicts" ]; then cp -r "$INSTALL_DIR/dicts/" /tmp/_deli_dicts_bak/; fi) &&
-    echo "  → cp new to staging" && rm -rf "$INSTALL_DIR.new" && cp -r /tmp/_deli_src "$INSTALL_DIR.new" &&
-    echo "  → rm old" && rm -rf "$INSTALL_DIR" &&
-    echo "  → mv staging" && mv "$INSTALL_DIR.new" "$INSTALL_DIR" &&
-    echo "  → restore dicts" && if [ -d /tmp/_deli_dicts_bak ]; then cp /tmp/_deli_dicts_bak/* "$INSTALL_DIR/dicts/" 2>/dev/null; rm -rf /tmp/_deli_dicts_bak; fi &&
-    echo "  → deploy shell" && cp "$INSTALL_DIR/shell_personal.py" "$FUSION_SCRIPTS/交付自检工具.py" && chmod 755 "$FUSION_SCRIPTS/交付自检工具.py" &&
-    echo "  → chown" && chown -R $USER "$INSTALL_DIR" &&
-    echo "  → clean pyc" && find "$INSTALL_DIR" -name '__pycache__' -exec rm -rf {} + 2>/dev/null; true &&
-    echo "  → restore/init .env" && if [ -f /tmp/_deli_env_bak ]; then cp /tmp/_deli_env_bak "$INSTALL_DIR/.env"; rm -f /tmp/_deli_env_bak; else cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"; fi &&
-    echo "  → write license config" && "$PYTHON" "$INSTALL_DIR/shared/_write_env.py" && echo "  ✅ 安装完成"
+    echo "→ mkdir" && mkdir -p "$FUSION_SCRIPTS" &&
+    echo "→ backup .env" && [ ! -f "$INSTALL_DIR/.env" ] || (cp "$INSTALL_DIR/.env" /tmp/_deli_env_bak || { echo "❌ 备份 .env 失败"; exit 1; }) &&
+    echo "→ backup dicts" && (rm -rf /tmp/_deli_dicts_bak; if [ -d "$INSTALL_DIR/dicts" ]; then cp -r "$INSTALL_DIR/dicts/" /tmp/_deli_dicts_bak/; fi) &&
+    echo "→ cp new" && rm -rf "$INSTALL_DIR.new" && cp -r /tmp/_deli_src "$INSTALL_DIR.new" &&
+    echo "→ rm old" && rm -rf "$INSTALL_DIR" &&
+    echo "→ mv staging" && mv "$INSTALL_DIR.new" "$INSTALL_DIR" &&
+    echo "→ restore dicts" && if [ -d /tmp/_deli_dicts_bak ]; then cp /tmp/_deli_dicts_bak/* "$INSTALL_DIR/dicts/" 2>/dev/null; rm -rf /tmp/_deli_dicts_bak; fi &&
+    echo "→ deploy shell" && cp "$INSTALL_DIR/shell_personal.py" "$FUSION_SCRIPTS/交付自检工具.py" && chmod 755 "$FUSION_SCRIPTS/交付自检工具.py" &&
+    echo "→ chown" && chown -R $USER "$INSTALL_DIR" &&
+    echo "→ clean pyc" && find "$INSTALL_DIR" -name '__pycache__' -exec rm -rf {} + 2>/dev/null; true &&
+    echo "→ restore .env" && if [ -f /tmp/_deli_env_bak ]; then cp /tmp/_deli_env_bak "$INSTALL_DIR/.env"; rm -f /tmp/_deli_env_bak; else cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"; fi &&
+    echo "→ write license" && "$PYTHON" "$INSTALL_DIR/shared/_write_env.py" && echo "✅ 安装完成"
     _UPDATE_OK=1
 elif osascript <<EOF 2>"$INSTALL_LOG"
 do shell script "
@@ -241,7 +215,7 @@ do shell script "
     echo '  → python install' >> '$INSTALL_LOG' &&
     if [ -f /tmp/_deli_python.pkg ]; then
         installer -pkg /tmp/_deli_python.pkg -target / >> '$INSTALL_LOG' 2>&1 || {
-            echo '  ❌ Python 安装失败，请查看日志' && exit 1
+            echo '  ❌ Python 安装失败' && exit 1
         }
     fi &&
 
@@ -256,10 +230,9 @@ do shell script "
 
     echo '  → chown' >> '$INSTALL_LOG' &&
     chown -R $USER '$INSTALL_DIR' &&
-    echo '  → ensure script dir perms' >> '$INSTALL_LOG' &&
     chmod 755 '$FUSION_SCRIPTS' 2>/dev/null || true &&
 
-    echo '  → restore/init .env' >> '$INSTALL_LOG' &&
+    echo '  → restore .env' >> '$INSTALL_LOG' &&
     if [ -f /tmp/_deli_env_bak ]; then
         cp /tmp/_deli_env_bak '$INSTALL_DIR/.env' && rm -f /tmp/_deli_env_bak
     else
@@ -271,117 +244,90 @@ do shell script "
 " with administrator privileges
 EOF
 then
-    echo "   ✅ 系统安装完成"
+    echo "✅ 系统安装完成"
 else
     rm -rf /tmp/_deli_src /tmp/_deli_python.pkg /tmp/_deli_temp 2>/dev/null
-    echo "   ❌ 安装失败"
-    echo "   错误日志:"
-    tail -5 "$INSTALL_LOG" 2>/dev/null
-    osascript -e "display dialog \"安装失败。\n\n请检查：密码是否正确、磁盘是否已满。\n\n详情见: $INSTALL_LOG\" buttons {\"好的\"} default button 1 with icon stop"
+    if grep -q "User canceled\|用户取消\|error.*-128" "$INSTALL_LOG" 2>/dev/null; then
+        echo "用户取消密码输入"
+        echo "  已取消" >&3
+    else
+        echo "❌ 安装失败 ($(tail -3 "$INSTALL_LOG" 2>/dev/null))"
+        osascript -e "display dialog \"安装失败。\n\n请检查密码是否正确、磁盘是否已满。\n\n详情见: $INSTALL_LOG\" buttons {\"好的\"} default button 1 with icon stop"
+    fi
     exit 1
 fi
 if [ "${_UPDATE_OK:-0}" -eq 1 ]; then
     rm -rf /tmp/_deli_src /tmp/_deli_python.pkg /tmp/_deli_temp 2>/dev/null
-    echo "   ✅ 静默安装完成"
 fi
-echo ""
+
+# ═══════════════════════════════════════
+# 5c. External Scripting 变更
+# ═══════════════════════════════════════
+DR_SCRIPTING_CHANGED=0
+if [ $DR_SCRIPTING_NEEDS_FIX -eq 1 ]; then
+    if [ $DR_RESOLVE_RUNNING -eq 1 ]; then
+        DR_SCRIPTING_CHANGED=1
+    else
+        sed -i '' 's/System.Scripting.Mode = 0/System.Scripting.Mode = 1/' "$DR_CONFIG"
+        DR_SCRIPTING_CHANGED=1
+        echo "✅ External Scripting 已启用"
+    fi
+fi
 
 # ═══════════════════════════════════════
 # 6. 验证
 # ═══════════════════════════════════════
-echo "→ [6/6] 验证安装..."
-
 PASS=1
+[ -f "$FUSION_SCRIPTS/交付自检工具.py" ] || { echo "❌ 壳缺失"; PASS=0; }
+[ -f "$INSTALL_DIR/ui.py" ] || { echo "❌ ui.py 缺失"; PASS=0; }
+echo "shared: $(find "$INSTALL_DIR/shared" -name "*.py" -maxdepth 1 2>/dev/null | wc -l | tr -d ' ') modules"
+[ -f "$INSTALL_DIR/.env" ] || echo "⚠ .env 缺失"
 
-# 壳
-if [ -f "$FUSION_SCRIPTS/交付自检工具.py" ]; then
-    SHELL_PERM=$(stat -f "%p" "$FUSION_SCRIPTS/交付自检工具.py")
-    if [ "$SHELL_PERM" = "100755" ] || [ "$SHELL_PERM" = "40755" ]; then
-        echo "   ✅ 壳: $FUSION_SCRIPTS/交付自检工具.py (perms=$SHELL_PERM)"
-    else
-        echo "   ⚠ 壳权限: $SHELL_PERM (期望 755)"
-    fi
-else
-    echo "   ❌ 壳缺失!"
-    PASS=0
-fi
-
-# ui.py
-if [ -f "$INSTALL_DIR/ui.py" ]; then
-    echo "   ✅ 核心: $INSTALL_DIR/ui.py"
-else
-    echo "   ❌ 核心缺失!"
-    PASS=0
-fi
-
-# shared modules
-SHARED_COUNT=$(find "$INSTALL_DIR/shared" -name "*.py" -maxdepth 1 2>/dev/null | wc -l | tr -d ' ')
-echo "   ✅ shared 模块: $SHARED_COUNT 个"
-
-# .env
-if [ -f "$INSTALL_DIR/.env" ]; then
-    echo "   ✅ .env 配置文件"
-else
-    echo "   ⚠ .env 缺失 (已自动创建 .env.example)"
-fi
-
-# Python modules sanity check
-echo ""
-# 如果步骤5自动安装了Python，重新检测
 if [ $NEED_PYTHON -eq 1 ] || [ -z "$PYTHON" ]; then
-    echo "   🔍 重新检测 Python..."
     for p in /Library/Frameworks/Python.framework/Versions/3.*/bin/python3 /opt/homebrew/bin/python3; do
-        if [ -x "$p" ]; then
-            PYTHON="$p"; echo "     ✅ $($PYTHON --version 2>&1)"; break
-        fi
+        if [ -x "$p" ]; then PYTHON="$p"; break; fi
     done
-    if [ -z "$PYTHON" ]; then
-        echo "   ❌ 仍未找到 Python。请从 python.org 下载安装 Python 3.13+"
-        PASS=0
-    fi
+    [ -n "$PYTHON" ] || { echo "❌ Python 未安装"; PASS=0; }
 fi
 if [ -n "$PYTHON" ]; then
-echo "   🔍 Python 导入检测..."
-$PYTHON -c "
+    $PYTHON -c "
 import sys
 sys.path.insert(0, '$INSTALL_DIR')
 sys.path.insert(0, '$INSTALL_DIR/shared')
-try:
-    import config
-    print(f'     ✅ config.py (IS_PERSONAL={config.IS_PERSONAL})')
-    import check_core
-    print(f'     ✅ check_core.py')
-    import ui
-    print(f'     ✅ ui.py (v{config.version_string()})')
-except Exception as e:
-    print(f'     ❌ 导入失败: {e}')
-    sys.exit(1)
-" 2>&1
-
-if [ $? -eq 0 ]; then
-    echo "   ✅ Python 模块全部可导入"
-else
-    echo "   ⚠ 模块导入有问题，请查看上方日志"
+import config; import check_core; import ui
+print(f'验证通过 v{config.version_string()}')
+" 2>&1 || { echo "❌ 导入失败"; PASS=0; }
 fi
-else
-    echo "   ⚠ 跳过 Python 导入检测（Python 未安装）"
-fi
-
-echo ""
 
 # ═══════════════════════════════════════
-# 结果
+# 结果（终端可见）
 # ═══════════════════════════════════════
 if [ $PASS -eq 1 ]; then
-    echo "══════ 安装完成 ✅ ══════"
-    echo ""
-    echo "日志: $LOG"
-    echo "安装目录: $INSTALL_DIR"
-    echo ""
-    osascript -e 'display dialog "✅ 安装完成！\n\n使用方法：\n  打开达芬奇 → Workspace → Scripts → 交付自检工具" buttons {"好的"} default button "好的" with icon note'
+    echo "✅ 安装完成"
+    echo >&3
+    echo "  ✅ 安装完成" >&3
+    echo >&3
+    if [ $DR_SCRIPTING_CHANGED -eq 1 ] && [ $DR_RESOLVE_RUNNING -eq 1 ]; then
+        echo "  使用方法：达芬奇 → 工作区 → 脚本 → 交付自检工具" >&3
+        echo >&3
+        echo "  ⚠ 达芬奇正在运行，请手动启用外部脚本权限并重启：" >&3
+        echo "    达芬奇 → 偏好设置 → 系统 → 外部脚本使用 → 本地" >&3
+        osascript -e $'display dialog "✅ 安装完成！\n\n使用方法：\n  工作区 → 脚本 → 交付自检工具\n\n⚠ 达芬奇正在运行，请手动启用外部脚本权限：\n  达芬奇 → 偏好设置 → 系统 → 外部脚本使用 → 本地\n\n然后重启达芬奇。" buttons {"好的"} default button "好的" with icon caution'
+    elif [ $DR_RESOLVE_RUNNING -eq 1 ]; then
+        echo "  使用方法：达芬奇 → 工作区 → 脚本 → 交付自检工具" >&3
+        echo >&3
+        echo "  ⚠ 达芬奇正在运行，请重启后使用" >&3
+        osascript -e $'display dialog "✅ 安装完成！\n\n使用方法：\n  工作区 → 脚本 → 交付自检工具\n\n⚠ 达芬奇正在运行，请重启后使用。" buttons {"好的"} default button "好的" with icon note'
+    else
+        echo "  使用方法：达芬奇 → 工作区 → 脚本 → 交付自检工具" >&3
+        osascript -e $'display dialog "✅ 安装完成！\n\n使用方法：\n  工作区 → 脚本 → 交付自检工具" buttons {"好的"} default button "好的" with icon note'
+    fi
 else
-    echo "══════ 安装异常 ❌ ══════"
+    echo "❌ 验证失败"
+    echo >&3
+    echo "  ❌ 安装未通过验证" >&3
+    echo "  请截图终端窗口内容，联系微信 paladinpp" >&3
     rm -rf /tmp/_deli_src /tmp/_deli_python.pkg /tmp/_deli_temp 2>/dev/null
-    osascript -e 'display dialog "安装验证失败。\n请截图安装日志后联系支持。" buttons {"好的"} default button 1 with icon stop'
+    osascript -e $'display dialog "安装验证未通过。\n请截图终端窗口内容联系微信 paladinpp" buttons {"好的"} default button 1 with icon stop'
     exit 1
 fi

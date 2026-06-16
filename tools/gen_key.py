@@ -5,7 +5,7 @@
 import secrets, json, sys, os
 from urllib.request import Request, urlopen
 
-FC = "https://license-yqvhkhvhgf.cn-hangzhou.fcapp.run"
+FC = "https://license-node-mtqaghwijy.cn-hangzhou.fcapp.run"
 ADMIN = os.environ.get("WB_LICENSE_ADMIN", "8a9b1ab04303ecd32115cb3eae39b62c")
 
 def gen_one():

@@ -789,9 +789,12 @@ window_layout = [
                 ui.Label({"ID": "lbl_ai_hint", "Text": "剧本（可选，填了启用 AI 校对）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
-                    ui.LineEdit({"ID": EDIT_SCRIPT_SRC, "Text": "",
-                                "Weight": 1,
-                                "PlaceholderText": "粘贴飞书链接或本地剧本路径"}),
+                    ui.Label({"ID": EDIT_SCRIPT_SRC, "Text": "",
+                              "Weight": 1,
+                              "StyleSheet": "font-size:11px;color:#ccc;background-color:rgb(30,30,30);border:1px solid rgb(50,50,50);border-radius:3px;padding:2px 6px"}),
+                    ui.Button({"ID": "btn_paste_link", "Text": "🔗",
+                               "StyleSheet": BTN_STYLE_SM, "Weight": 0,
+                               "MinimumSize": [SIZE_BTN_SM_W, SIZE_BTN_SM_W]}),
                     ui.Button({"ID": "btn_browse_script", "Text": "📂",
                                "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                                "MinimumSize": [SIZE_BTN_SM_W, SIZE_BTN_SM_W]}),
@@ -799,9 +802,13 @@ window_layout = [
                 ui.Label({"ID": "lbl_ai_ep", "Text": "集号（如 08 或 07-09）:",
                           "StyleSheet": "font-size:11px;color:#888", "Weight": 0}),
                 ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
-                    ui.LineEdit({"ID": EDIT_SCRIPT_EP, "Text": "",
-                                "Weight": 0,
-                                "MinimumSize": [110, 0]}),
+                    ui.Label({"ID": EDIT_SCRIPT_EP, "Text": "",
+                              "Weight": 0,
+                              "MinimumSize": [80, 22],
+                              "StyleSheet": "font-size:11px;color:#ccc;background-color:rgb(30,30,30);border:1px solid rgb(50,50,50);border-radius:3px;padding:2px 6px"}),
+                    ui.Button({"ID": "btn_edit_ep", "Text": "编辑",
+                               "StyleSheet": BTN_STYLE_SM, "Weight": 0,
+                               "MinimumSize": [SIZE_BTN_SM_W, SIZE_BTN_SM_W]}),
                     ui.Label({"ID": LBL_SCRIPT_STATUS, "Text": "",
                               "StyleSheet": "font-size:11px;color:#888",
                               "Weight": 0}),
@@ -929,15 +936,22 @@ CONFIG_SECTIONS = [
 
 
 def _build_api_key_input(sid, label):
-    placeholder = {"deepseek_key": "sk-...", "feishu_app_id": "cli_...", "feishu_secret": "密钥"}.get(sid, "")
+    """Label 显示当前值 + 编辑按钮（弹系统输入框防 IME 崩溃）"""
     is_secret = "secret" in sid or "key" in sid
-    kw = {"ID": f"cfg_{sid}", "Text": "", "PlaceholderText": placeholder,
-          "MinimumSize": [200, 22], "Weight": 0}
-    if is_secret: kw["EchoMode"] = "Password"
-    return [ui.LineEdit(kw)]
+    lbl_id = f"cfg_{sid}_lbl"
+    btn_id = f"cfg_{sid}_btn"
+    return [
+        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
+            ui.Label({"ID": lbl_id, "Text": "",
+                "StyleSheet": "font-size:11px;color:rgb(160,160,160)", "Weight": 1,
+                "MinimumSize": [150, 22], "WordWrap": False}),
+            ui.Button({"ID": btn_id, "Text": "编辑", "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
+        ]),
+    ]
 
 def _build_censor_personal():
     return [
+        ui.VGap(SPACE_TIGHT),
         ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
             ui.Button({"ID": "cfg_edit_censor", "Text": "在 Finder 中定位",
                        "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
@@ -950,6 +964,7 @@ def _build_smb_paths():
     """服务器素材路径配置：ComboBox 选择 + 添加/删除按钮"""
     return [
         ui.ComboBox({"ID": "cfg_smb_paths_combo", "Text": ""}),
+        ui.VGap(SPACE_SM),
         ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
             ui.Button({"ID": "cfg_smb_add", "Text": "+ 添加路径",
                        "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
@@ -974,20 +989,11 @@ def _sec(title):
         "StyleSheet": "color:rgb(180,180,180);font-size:13px;font-weight:bold"})
 
 def _build_auth_section():
-    """授权管理：三行固定布局。初始化由调用方在 GetItems 后完成。"""
-    kw = {"MinimumSize": [54, 22], "Weight": 0, "MaxLength": 4}
+    """授权管理：Label 显示状态/激活码 + 激活/停用按钮。点击激活弹出系统输入框。"""
     return [
         _sec("授权管理"),
         ui.Label({"ID": "cfg_auth_status", "Text": "", "Weight": 0,
             "StyleSheet": "color:rgb(200,180,60);font-size:12px"}),
-        ui.HGroup({"Spacing": 4, "ID": "cfg_trial_code_grp", "Weight": 0}, [
-            ui.LineEdit({**kw, "ID": "cfg_trial_code_1", "Text": "", "PlaceholderText": "XXXX"}),
-            ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
-            ui.LineEdit({**kw, "ID": "cfg_trial_code_2", "Text": "", "PlaceholderText": "XXXX"}),
-            ui.Label({"Text": "-", "StyleSheet": "font-size:16px;color:rgb(160,160,160)", "Weight": 0}),
-            ui.LineEdit({**kw, "ID": "cfg_trial_code_3", "Text": "", "PlaceholderText": "XXXX"}),
-        ]),
-        ui.VGap(SPACE_SM),
         ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
             ui.Button({"ID": "cfg_activate_btn", "Text": "激活", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
             ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用", "StyleSheet": BTN_STYLE, "Weight": 0}),
@@ -1069,10 +1075,6 @@ def _show_config_dialog():
             if is_activated:
                 cfg["cfg_auth_status"].Text = "✅ 已激活 · 永久授权"
                 cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(80,200,100);font-size:13px"
-                cfg["cfg_trial_code_1"].Text = "●●●●"
-                cfg["cfg_trial_code_2"].Text = "●●●●"
-                cfg["cfg_trial_code_3"].Text = "●●●●"
-                cfg["cfg_trial_code_grp"]["Enabled"] = False
                 cfg["cfg_activate_btn"].Enabled = False
                 cfg["cfg_deactivate_btn"].Enabled = True
             else:
@@ -1084,9 +1086,6 @@ def _show_config_dialog():
                     d = 30
                 cfg["cfg_auth_status"].Text = f"⏳ 试用剩余 {d} 天  |  ¥99 永久授权"
                 cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(200,180,60);font-size:12px"
-                cfg["cfg_trial_code_1"].Text = ""
-                cfg["cfg_trial_code_2"].Text = ""
-                cfg["cfg_trial_code_3"].Text = ""
                 cfg["cfg_activate_btn"].Enabled = True
                 cfg["cfg_deactivate_btn"].Enabled = False
         except Exception: pass
@@ -1124,15 +1123,10 @@ def _show_config_dialog():
     def _mask(val):
         return val[:5] + "…" + val[-4:] if len(val) > 12 else val[:4] + "…" if len(val) > 8 else val
     try:
-        if _keys.get("deepseek_key"): cfg["cfg_deepseek_key"].Text = _mask(_keys["deepseek_key"])
-        if _keys.get("feishu_app_id"): cfg["cfg_feishu_app_id"].Text = _keys["feishu_app_id"]
-        if _keys.get("feishu_secret"): cfg["cfg_feishu_secret"].Text = _mask(_keys["feishu_secret"])
-    except Exception: pass  # noop: 控件未创建/加载
-    try:
-        if _keys.get("deepseek_key"): cfg["cfg_deepseek_key"].Text = _keys["deepseek_key"]
-        if _keys.get("feishu_app_id"): cfg["cfg_feishu_app_id"].Text = _keys["feishu_app_id"]
-        if _keys.get("feishu_secret"): cfg["cfg_feishu_secret"].Text = _keys["feishu_secret"]
-    except Exception: pass  # noop: 控件未创建
+        if _keys.get("deepseek_key"): cfg["cfg_deepseek_key_lbl"].Text = _mask(_keys["deepseek_key"])
+        if _keys.get("feishu_app_id"): cfg["cfg_feishu_app_id_lbl"].Text = _keys["feishu_app_id"]
+        if _keys.get("feishu_secret"): cfg["cfg_feishu_secret_lbl"].Text = _mask(_keys["feishu_secret"])
+    except Exception: pass
 
     # ── 轨道数量（LineEdit 直输）──
     try:
@@ -1162,10 +1156,14 @@ def _show_config_dialog():
         if _save_busy:
             return
         _save_busy = True
+        cfg["cfg_save"].Enabled = False
+        cfg["cfg_cancel"].Enabled = False
         try:
             _do_save(ev)
         finally:
             _save_busy = False
+            cfg["cfg_save"].Enabled = True
+            cfg["cfg_cancel"].Enabled = True
 
     def _do_save(ev):
         global _censor_subs, _ai_allowed
@@ -1175,7 +1173,7 @@ def _show_config_dialog():
             t = section["type"]
             if t == "api_key":
                 sid = section["id"]
-                val = cfg[f"cfg_{sid}"].Text.strip()
+                val = _api_values.get(sid, "")  # 从内存取值，非 UI 控件
                 if val:
                     # 掩码（含"…"）→ 跳过校验，保留旧值
                     if "…" not in val:
@@ -1232,23 +1230,96 @@ def _show_config_dialog():
             nonlocal _auth_busy
             if _auth_busy: return
             _auth_busy = True
+            cfg["cfg_activate_btn"].Enabled = False
             try:
-                c1 = cfg["cfg_trial_code_1"].Text.strip().upper()
-                c2 = cfg["cfg_trial_code_2"].Text.strip().upper()
-                c3 = cfg["cfg_trial_code_3"].Text.strip().upper()
-                code = f"{c1}-{c2}-{c3}"
-                if not (c1 and c2 and c3):
-                    cfg["cfg_auth_status"].Text = "⚠ 请输入完整激活码"
+                import subprocess, re, os
+                # tkinter 三框激活码弹窗（独立子进程，Popen 不阻塞 DaVinci UI）
+                r = subprocess.Popen([sys.executable, "-c", r'''
+import tkinter as tk, sys, os
+# 把窗口置顶并确保在前台
+os.system("""/usr/bin/osascript -e 'tell application "System Events" to set frontmost of process "Python" to true' 2>/dev/null &""")
+root = tk.Tk()
+root.withdraw()  # 先隐藏，避免左上角闪现
+root.title("交付自检工具 · 激活")
+root.resizable(False, False)
+root.attributes("-topmost", True)
+root.lift()
+root.focus_force()
+
+tk.Label(root, text="请输入激活码", font=("", 12)).pack(pady=(15, 5))
+
+frame = tk.Frame(root)
+frame.pack(pady=5)
+entries = []
+svars = []
+
+def _validate(new):
+    return new == "" or (len(new) <= 4 and all(c.isascii() and c.isalnum() for c in new))
+
+def _on_change(idx):
+    val = ''.join(c for c in svars[idx].get() if c.isascii() and c.isalnum()).upper()
+    svars[idx].set(val)
+    if len(val) == 4 and idx < 2:
+        entries[idx + 1].focus_set()
+    elif len(val) == 0 and idx > 0:
+        entries[idx - 1].focus_set()
+        entries[idx - 1].icursor("end")
+
+for i in range(3):
+    sv = tk.StringVar()
+    sv.trace_add("write", lambda *a, idx=i: _on_change(idx))
+    svars.append(sv)
+    e = tk.Entry(frame, width=6, font=("Menlo", 16), justify="center",
+                 textvariable=sv, validate="key",
+                 validatecommand=(root.register(_validate), "%P"))
+    e.pack(side="left", padx=2)
+    entries.append(e)
+    if i < 2:
+        tk.Label(frame, text="—", font=("", 14), fg="#888").pack(side="left")
+
+btn_frame = tk.Frame(root)
+btn_frame.pack(pady=(15, 10))
+result = [""]
+err_lbl = tk.Label(root, text="", fg="#d04040", font=("", 11))
+err_lbl.pack()
+
+def _ok():
+    parts = [sv.get().strip().upper() for sv in svars]
+    if len(parts[0]) == 4 and len(parts[1]) == 4 and len(parts[2]) == 4:
+        result[0] = f"{parts[0]}-{parts[1]}-{parts[2]}"
+        root.destroy()
+    else:
+        err_lbl.config(text="⚠ 请输入完整 12 位")
+
+tk.Button(btn_frame, text="取消", width=8, command=root.destroy).pack(side="left", padx=5)
+tk.Button(btn_frame, text="激活", width=8, command=_ok).pack(side="left", padx=5)
+# 居中
+root.update_idletasks()
+w, h = root.winfo_width(), root.winfo_height()
+sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
+root.geometry(f"+{int((sw-w)/2)}+{int((sh-h)/2)}")
+root.deiconify()  # 中心就位后再显示
+entries[0].focus_set()
+root.mainloop()
+print(result[0])
+'''], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                try:
+                    stdout, stderr = r.communicate(timeout=120)
+                except subprocess.TimeoutExpired:
+                    r.kill()
+                    cfg["cfg_activate_btn"].Enabled = True; _auth_busy = False; return
+                if r.returncode != 0:
+                    _action_log(f"🪟 激活弹窗: 子进程错误 ret={r.returncode} err={stderr[:200]}")
+                    cfg["cfg_activate_btn"].Enabled = True; _auth_busy = False; return
+                code = stdout.strip()
+                if not code:
+                    cfg["cfg_activate_btn"].Enabled = True; _auth_busy = False; return
+                if not re.fullmatch(r'[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}', code):
+                    cfg["cfg_auth_status"].Text = "⚠ 激活码格式错误"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
-                    return
-                import re
-                if any(not re.fullmatch(r'[A-Z0-9]{4}', p) for p in (c1, c2, c3)):
-                    cfg["cfg_auth_status"].Text = "⚠ 激活码仅支持字母和数字"
-                    cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
-                    return
+                    cfg["cfg_activate_btn"].Enabled = True; _auth_busy = False; return
                 cfg["cfg_auth_status"].Text = "⏳ 正在连接服务器…"
                 cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,160,40);font-size:12px"
-                cfg["cfg_trial_code_grp"]["Enabled"] = False
                 cfg["cfg_activate_btn"].Enabled = False
                 cfg["cfg_deactivate_btn"].Enabled = False
                 cfg["cfg_save"].Enabled = False
@@ -1270,20 +1341,16 @@ def _show_config_dialog():
                     itm[TRIAL_LB].Text = "已激活 ✓"
                     cfg["cfg_auth_status"].Text = "✅ 已激活 · 永久授权"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(80,200,100);font-size:13px"
-                    cfg["cfg_trial_code_1"].Text = cfg["cfg_trial_code_2"].Text = cfg["cfg_trial_code_3"].Text = "●●●●"
-                    cfg["cfg_trial_code_grp"]["Enabled"] = False
                     cfg["cfg_activate_btn"].Enabled = False
                     cfg["cfg_deactivate_btn"].Enabled = True
                 else:
                     cfg["cfg_auth_status"].Text = f"⚠ {msg}"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
-                    cfg["cfg_trial_code_grp"]["Enabled"] = True
                     cfg["cfg_activate_btn"].Enabled = True
                     cfg["cfg_deactivate_btn"].Enabled = False
             except Exception as e:
                 cfg["cfg_auth_status"].Text = f"⚠ 激活失败: {e}"
                 cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
-                cfg["cfg_trial_code_grp"]["Enabled"] = True
                 cfg["cfg_activate_btn"].Enabled = True
                 cfg["cfg_deactivate_btn"].Enabled = False
             finally:
@@ -1324,8 +1391,6 @@ def _show_config_dialog():
                     itm[TRIAL_LB].Text = _format_trial(d, p.get("machine_fingerprint", "")[:8])
                     cfg["cfg_auth_status"].Text = f"⏳ 试用剩余 {d} 天"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(200,180,60);font-size:12px"
-                    cfg["cfg_trial_code_1"].Text = cfg["cfg_trial_code_2"].Text = cfg["cfg_trial_code_3"].Text = ""
-                    cfg["cfg_trial_code_grp"]["Enabled"] = True
                     cfg["cfg_activate_btn"].Enabled = True
                     cfg["cfg_deactivate_btn"].Enabled = False
                 else:
@@ -1346,6 +1411,57 @@ def _show_config_dialog():
         except Exception: pass
         try: config_dlg.On["cfg_deactivate_btn"].Clicked = _do_deactivate
         except Exception: pass
+
+        # ── API Key 编辑按钮 → 系统弹窗（防 UIManager IME 崩溃）──
+        _api_edit_config = {
+            "deepseek_key": {"title": "交付自检工具 · DeepSeek API Key", "prompt": "请输入 DeepSeek API Key（以 sk- 开头）", "is_secret": True},
+            "feishu_app_id": {"title": "交付自检工具 · 飞书 App ID", "prompt": "请输入飞书 App ID（以 cli_ 开头）", "is_secret": False},
+            "feishu_secret": {"title": "交付自检工具 · 飞书 App Secret", "prompt": "请输入飞书 App Secret", "is_secret": True},
+        }
+        _api_edit_busy = set()
+        def _make_api_edit_handler(sid):
+            def _handler(ev):
+                nonlocal _api_values, _api_edit_busy
+                if sid in _api_edit_busy:
+                    return
+                _api_edit_busy.add(sid)
+                btn_id = f"cfg_{sid}_btn"
+                try:
+                    cfg[btn_id].Enabled = False
+                except Exception: pass
+                try:
+                    cfg_info = _api_edit_config[sid]
+                    import subprocess
+                    r = subprocess.run(["osascript", "-e",
+                        f'text returned of (display dialog "{cfg_info["prompt"]}"'
+                        f' default answer "{_api_values.get(sid, "")}" with title "{cfg_info["title"]}"'
+                        f'{" with hidden answer " if cfg_info["is_secret"] else ""}'
+                        'buttons {"取消", "确定"} default button "确定")'],
+                        capture_output=True, text=True, timeout=60)
+                    if r.returncode != 0:
+                        return
+                    val = r.stdout.strip()
+                    if not val:
+                        if sid in _api_values:
+                            del _api_values[sid]
+                        cfg[f"cfg_{sid}_lbl"].Text = ""
+                    else:
+                        _api_values[sid] = val
+                        lbl_id = f"cfg_{sid}_lbl"
+                        masked = val[:5] + "…" + val[-4:] if len(val) > 12 else val
+                        cfg[lbl_id].Text = masked
+                    _action_log(f"🔑 {cfg_info['prompt'].split('（')[0].strip()} 已编辑")
+                finally:
+                    _api_edit_busy.discard(sid)
+                    try:
+                        cfg[btn_id].Enabled = True
+                    except Exception: pass
+            return _handler
+
+        for sid in ["deepseek_key", "feishu_app_id", "feishu_secret"]:
+            try:
+                config_dlg.On[f"cfg_{sid}_btn"].Clicked = _make_api_edit_handler(sid)
+            except Exception: pass
 
     # ── 编辑违禁词 ──
     censor_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
@@ -1370,8 +1486,12 @@ def _show_config_dialog():
         else:
             c.Text = "（未配置，路径检测将跳过）"
 
+    _smb_add_busy = False
     def _add_smb_path(ev):
-        nonlocal _smb_paths_cache
+        nonlocal _smb_paths_cache, _smb_add_busy
+        if _smb_add_busy: return
+        _smb_add_busy = True
+        cfg["cfg_smb_add"].Enabled = False
         import subprocess
         try:
             result = subprocess.run([
@@ -1385,6 +1505,9 @@ def _show_config_dialog():
                 _action_log(f"📂 添加路径: {path}")
         except Exception as e:
             _action_log(f"⚠ 文件夹选择失败: {e}")
+        finally:
+            _smb_add_busy = False
+            cfg["cfg_smb_add"].Enabled = True
 
     def _delete_smb_path(ev):
         nonlocal _smb_paths_cache
@@ -2355,11 +2478,17 @@ def _update_err_counter():
         itm[BTN_ERR_SEND].Text = "📋 导出日志"
 dlg.On[BTN_ERR_SEND].Clicked = _on_err_report
 
+_browse_busy = False
+
 def _browse_script(ev):
     """弹出文件选择器，将路径填入剧本链接输入框"""
+    global _browse_busy
+    if _browse_busy: return
+    _browse_busy = True
+    itm["btn_browse_script"].Enabled = False
     import subprocess
-    itm[HINT_LB].Text = "正在打开文件选择器..."
     try:
+        itm[HINT_LB].Text = "正在打开文件选择器..."
         result = subprocess.run([
             "osascript", "-e",
             'POSIX path of (choose file of type {"public.text","public.data","com.adobe.pdf"} '
@@ -2368,6 +2497,7 @@ def _browse_script(ev):
         path = result.stdout.strip()
         if path:
             itm[EDIT_SCRIPT_SRC].Text = path
+            _on_script_src_changed()
             _action_log(f"📂 选择剧本: {path}")
             itm[HINT_LB].Text = f"已选择: {os.path.basename(path)}"
         else:
@@ -2378,6 +2508,9 @@ def _browse_script(ev):
     except Exception as e:
         _action_log(f"⚠ 文件选择失败: {e}")
         itm[HINT_LB].Text = "文件选择失败"
+    finally:
+        _browse_busy = False
+        itm["btn_browse_script"].Enabled = True
 dlg.On["btn_browse_script"].Clicked = _browse_script
 
 # 一键更新
@@ -2392,18 +2525,22 @@ def _do_update(ev):
 
     notes = _UPDATE_INFO.get("notes", "") or "暂无更新说明"
     new_ver = _UPDATE_INFO.get("latest", "?")
-    CX, CY, CW, CH = 560, 240, 520, 520
+    try: from config import __version__ as _cur_ver
+    except Exception: _cur_ver = "?"
+    notes = f"当前版本 {_cur_ver} → {new_ver}\n\n{notes}"
+    CX, CY, CW, CH = 180, 120, 440, 380
     update_disp = bmd.UIDispatcher(fu.UIManager)
     _items = {}
 
-    _items["up_icon"]   = ui.Label({"ID": "up_icon", "Text": "🎉", "StyleSheet": "font-size:24px", "Weight": 0})
-    _items["up_title"]  = ui.Label({"ID": "up_title", "Text": f"交付自检工具 v{new_ver}",
-                                    "StyleSheet": "font-size:17px;font-weight:bold;color:rgb(255,255,255)"})
+    _items["up_icon"]   = ui.Label({"ID": "up_icon", "Text": "🎉", "StyleSheet": "font-size:22px", "Weight": 0})
+    _items["up_title"]  = ui.Label({"ID": "up_title", "Text": f"新版本 v{new_ver}",
+                                    "StyleSheet": "font-size:16px;font-weight:bold;color:rgb(255,255,255)", "Weight": 0})
     _items["up_body"]   = ui.TextEdit({"ID": "up_body", "ReadOnly": True, "Text": notes,
-                                    "StyleSheet": "min-height:300px;font-size:13px;color:rgb(200,200,200);background-color:rgb(30,30,30);"
+                                    "Weight": 1,
+                                    "StyleSheet": "font-size:13px;color:rgb(200,200,200);background-color:rgb(30,30,30);"
                                                   "border:1px solid rgb(50,50,50);border-radius:4px;padding:8px"})
     _items["up_status"] = ui.Label({"ID": "up_status", "Text": "",
-                                    "StyleSheet": "font-size:13px;color:rgb(140,140,140)", "Weight": 0})
+                                    "StyleSheet": "font-size:12px;color:rgb(140,140,140)", "Weight": 0})
     _items["updateNotesCancel"] = ui.Button({"ID": "updateNotesCancel", "Text": "取消",
                                     "StyleSheet": BTN_STYLE_SM, "Weight": 0, "MinimumSize": [80, SIZE_BTN_H]})
     _items["updateNotesGo"]     = ui.Button({"ID": "updateNotesGo", "Text": "立即更新",
@@ -2411,11 +2548,11 @@ def _do_update(ev):
                                     "Weight": 0, "MinimumSize": [88, SIZE_BTN_H]})
 
     dlg = update_disp.AddWindow(
-        {"WindowTitle": f"新版本 v{new_ver}", "ID": "updateNotesDlg",
+        {"WindowTitle": "更新", "ID": "updateNotesDlg",
          "Geometry": [CX, CY, CW, CH], "WindowFlags": {"Window": True, "WindowStaysOnTopHint": True}},
-        [ui.VGroup({"Spacing": 10},
+        [ui.VGroup({"Spacing": 8},
          [ui.HGroup({"Spacing": 8, "Weight": 0}, [_items["up_icon"], _items["up_title"]]),
-          _items["up_body"], ui.VGap({"Weight": 1}), _items["up_status"],
+          _items["up_body"], _items["up_status"],
           ui.HGroup({"Spacing": 14, "Weight": 0},
            [ui.HGap({"Weight": 1}), _items["updateNotesCancel"], _items["updateNotesGo"]])])])
     dlg.Show()
@@ -2620,8 +2757,8 @@ def _do_update_sync(progress_callback=None):
             import shutil; shutil.rmtree(_tmp_dir, ignore_errors=True)
 dlg.On[BTN_UPDATE].Clicked = _do_update
 
-# 剧本链接格式校验 + 按钮状态
-def _on_script_src_changed(ev):
+# 剧本链接格式校验
+def _on_script_src_changed(_=None):
     src = itm[EDIT_SCRIPT_SRC].Text.strip()
     ok = bool(src) and any(src.startswith(p) for p in (
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
@@ -2630,7 +2767,52 @@ def _on_script_src_changed(ev):
     itm[BTN_AI_TYPO].Enabled = not _checking and _ai_allowed
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
-dlg.On[EDIT_SCRIPT_SRC].TextChanged = _on_script_src_changed
+
+# 🔗 粘贴链接（osascript 弹窗，防 IME 崩溃）
+_link_busy = False
+def _paste_link(ev):
+    global _link_busy
+    if _link_busy: return
+    _link_busy = True
+    itm["btn_paste_link"].Enabled = False
+    try:
+        import subprocess
+        r = subprocess.run(["osascript", "-e",
+            'text returned of (display dialog "粘贴飞书链接或本地剧本路径"'
+            ' default answer "" with title "交付自检工具")'],
+            capture_output=True, text=True, timeout=60)
+        val = r.stdout.strip()
+        if val:
+            itm[EDIT_SCRIPT_SRC].Text = val
+            _on_script_src_changed()
+            _action_log(f"🔗 粘贴链接: {val[:60]}...")
+    finally:
+        _link_busy = False
+        itm["btn_paste_link"].Enabled = True
+
+# 集号编辑（osascript 弹窗，防 IME 崩溃）
+_ep_busy = False
+def _edit_ep(ev):
+    global _ep_busy
+    if _ep_busy: return
+    _ep_busy = True
+    itm["btn_edit_ep"].Enabled = False
+    try:
+        import subprocess
+        r = subprocess.run(["osascript", "-e",
+            'text returned of (display dialog "输入集号（如 08 或 07-09）"'
+            ' default answer "' + itm[EDIT_SCRIPT_EP].Text + '" with title "交付自检工具")'],
+            capture_output=True, text=True, timeout=60)
+        val = r.stdout.strip()
+        if val:
+            itm[EDIT_SCRIPT_EP].Text = val
+            _action_log(f"📝 集号: {val}")
+    finally:
+        _ep_busy = False
+        itm["btn_edit_ep"].Enabled = True
+
+dlg.On["btn_paste_link"].Clicked = _paste_link
+dlg.On["btn_edit_ep"].Clicked = _edit_ep
 
 # 分组开关事件
 def _make_group_toggle(group_name):

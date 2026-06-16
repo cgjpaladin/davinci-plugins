@@ -3,7 +3,7 @@
 > 我是小裁缝的**插件分身**。
 > 管 AI 去字幕/交付自检、灰度发布部署。❌ 不管 Mac mini 运维、SMB 存储。
 
-> v3.0 | 2026-06-10 | License v3 重构（纯本地试用/吊销校验/停用恢复）
+> v3.1 | 2026-06-16 | 安装脚本重写+IME弹窗替代+FC URL修复+License重构
 > 2026-06-12 | SMB 全量同步 + 个人版残留清理
 
 ## 跨项目引用
@@ -21,7 +21,7 @@
 | 产品 | 版本 | 状态 |
 |------|------|------|
 | AI去字幕 | v1.11.3 | ✅ |
-| 交付自检 | v2.5.5 | ✅ |
+| 交付自检 | v2.5.7 | ✅ |
 | 批量命名工具 | v3.6 | ✅ 表格版，8字段(Ep/Sc/Gr/Tk/desc/method/author/v/status)，导表+硬编码消除+审查模式+DMG分发 |
 | 批量命名工具_创壹特供版 | v1.1 | ✅ 表格版，9字段(EP/SC/SH/TK/desc/type/author/V/status)，导表+死代码清理 |
 | AI换口型 | — | 待开发 |
@@ -84,7 +84,7 @@
 | 模块 | 用途 |
 |------|------|
 | `shared/script_parser.py` | 剧本解析 → 人物+分集台词 |
-| `shared/llm_providers.py` | 多供应商 LLM + 自动降级 |
+| `shared/llm_providers.py` | LLM 供应商接口（当前仅 DeepSeek V4 Pro） |
 | `shared/llm_typo_check.py` | 错别字校对 + SHA256 缓存 |
 | `shared/pypdf/` | 纯标准库 PDF 提取 |
 | `shared/dftt_timecode/` | DFTT Timecode（零依赖） |
@@ -109,11 +109,14 @@
 14. **金区(TRIAL_LB)=授权、灰区(HINT_LB)=指引，永不越界**。
 15. **UIManager 非默认事件必须 `Events:{Name:True}` 启用**。鬼猫猫文档确认仅 Clicked/Close 默认启用；FocusIn/KeyPress/SliderMoved 等必须控件定义时声明。——2026-06-13
 16. **`SetFocus()` 需要 `Events:{FocusIn:True}` 前置**。待验证。——2026-06-13
+17. **涉密/激活码输入禁止用 LineEdit**。LineEdit + CJK 输入法 → `Fusion::RemoteApp::FindLocalObject` SIGSEGV 闪退（2026-06-16 实测）。替代：osascript `display dialog`（单行）或 tkinter 子进程（多框）。——2026-06-13
+18. **弹窗按钮必须防连点**。`subprocess.run` 阻塞期间 UIManager 事件排队 → N 次点击 = N 个弹窗。标准解法：`Enabled=False` 在 `try` 前 + `finally` 统一恢复。——2026-06-13
 
-## UIManager 已知限制（2026-06-13 更新）
+## UIManager 已知限制（2026-06-16 更新）
 
 | 限制 | 影响 | 替代方案 |
 |------|------|---------|
+| LineEdit + CJK 输入法 | macOS 26+ DR 20.3.2 SIGSEGV 闪退 | osascript `display dialog` 或 tkinter 子进程 |
 | 无通用 ScrollArea | VGroup/HGroup 内容超出截断 | Tree 有滚动 (VerticalScrollMode + ScrollToItem) |
 | Tree TextColor/BackgroundColor | v20.3.2 不渲染，API 存在 | 纯文字分隔替代 |
 | Tree 无 SetItemText/SetItemChecked | 只能纯展示，不能交互勾选 | TreeItem 有 CheckState[0]（需验证） |
@@ -122,6 +125,7 @@
 | 无 Timer / Idle 回调 | 不能启动后延迟执行 | 所有初始化在 `disp.RunLoop()` 前同步完成 |
 | `Visible=False` 释放布局空间 | 隐藏后后续控件挤占空位 | 用 `Enabled=False` 替代，保持占位 |
 | 非默认事件不触发 | Clicked/Close 之外需 `Events:{Name:True}` 显式启用 | 鬼猫猫文档 2026-06-13 确认 |
+| subprocess 阻塞 + Clicked 排队 | 弹窗按钮连点出多个窗口 | `Enabled=False` 在 try 前 + finally 恢复 |
 
 ## UI 设计规范
 
@@ -191,7 +195,7 @@
 - CHECKS 注册表驱动，更新到 22 项（v2.0.18）
 - 门机制：并行四扇，严格/宽松两种模式
 - 分级：warn 仅 5 类（夹帧/直通/异体字/系统词典/尾板），其余 fail
-- AI 错别字：右侧独立面板，DeepSeek→千问 自动降级
+- AI 错别字：右侧独立面板，DeepSeek V4 Pro
 - 路径检测：无 gate 永远先跑；中英文 Type 兼容
 - 音量检测：API 限制，待达芬奇更新
 
@@ -340,14 +344,52 @@ gen_key → 待售。Admin 手动改待激活。激活 → 已激活 + 带第一
 - **用户输错码不记入错误计数器**：`_activation_failed` 机制。
 - **黄字 = 许可证售卖**，**白字 = 功能指引**。
 - **服务端直出人性化消息**，客户端零翻译。
-- **每格必须 4 位 `[A-Z0-9]{4}`**，输入校验防汉字/符号。
+- **tkinter 子进程三框弹窗（2026-06-16 替代 LineEdit）**：防 IME 崩溃，`isascii()` 双重校验。
 
-#### 云函数
-- `license-node` FC：JS 路由 `activate|deactivate|verify_status|manage`
-- `license.py`：`init_trial|activate|verify_activation|verify_local|deactivate`
+#### 云函数（阿里云 FC）
+
+| 项目 | 值 |
+|------|-----|
+| 函数名 | `license-node` |
+| 服务 | `license-node-mtqaghwijy.cn-hangzhou` |
+| 正确 URL | `https://license-node-mtqaghwijy.cn-hangzhou.fcapp.run` |
+| 运行时 | Node.js |
+| 路由 | `POST /license {"action":"activate|deactivate|verify_status|init_trial|manage"}` |
+| 部署方式 | `aliyun fc PUT /2023-03-30/functions/license-node` + base64 zip |
+| FC 代码 | `cloud/license_fc.js` |
+
+**环境变量**（在阿里云控制台 FC 函数配置中设置）：
+- `FEISHU_APP_ID` / `FEISHU_APP_SECRET` — 飞书应用凭证
+- `BASE_TOKEN` — 飞书多维表格 token（`BRfGbDgaJa6ZYCsViuOcau2PnSe`）
+- `TRIAL_TABLE_ID` — 试用指纹表（`tblMAUMo8VQGPDZP`）
+- `ACTIVATE_TABLE_ID` — 激活码表（`tbla9FSVEuuiayQH`）
+- `APPROVE_TABLE_ID` — 审批表
+
+**两个 Base 表**：
+| 表 | 用途 | 字段 |
+|----|------|------|
+| 试用指纹表 | 记录每台机器首次试用 | 机器指纹、插件版本、macOS版本、达芬奇版本、首次试用时间、最后活跃 |
+| 激活码表 | 管理激活码生命周期 | 激活码、状态、绑定指纹、激活时间、停用时间 |
+
+**故障排查**：
+```bash
+# 测试 FC 连通性
+curl -s -X POST 'https://license-node-mtqaghwijy.cn-hangzhou.fcapp.run/license' \
+  -H 'Content-Type: application/json' \
+  -d '{"action":"init_trial","machine_fingerprint":"test"}'
+
+# 查看 FC 函数状态
+aliyun fc GET /2023-03-30/functions/license-node
+
+# 客户端验证（远程机器）
+ssh machine "grep WB_LICENSE_URL '...交付自检工具/.env'"
+ssh machine "cat ~/.config/dv_license/license.dat | python3 -c '...'"
+```
+
+**踩坑**：`_write_env.py` 和 `license.py` 默认值曾指向不同的 FC URL（2026-06-16 统一为 `license-node-mtqaghwijy`）。
 
 #### 激活码格式
-不分大小写，支持数字/字母/任意组合。gen_key 生成 `XXXX-XXXX-XXXX`（便于肉眼读）。管理后台可手填。
+不分大小写，支持数字/字母/任意组合。gen_key 生成 `XXXX-XXXX-XXXX`。管理后台可手填。
 
 ### PYTHONUTF8=1 + -B
 
@@ -380,4 +422,30 @@ gen_key → 待售。Admin 手动改待激活。激活 → 已激活 + 带第一
 ## 配置页 SMB 路径编辑（2026-06-07）
 
 - ComboBox 选择路径 + 删除按钮（`− 删除路径`）+ 文件夹选择器添加
+
+## 个人版安装分发（2026-06-16）
+
+### 构建产物
+- 百度网盘上传单个 `.zip`（非文件夹）——Archive Utility 解压保留 `+x` 权限
+- 文件名 `交付自检工具_v{VER}.zip`，版本号从 `config.py` 自动读取
+- 内层 zip 固定名 `请勿直接解压此文件.zip`
+- Python.pkg 保持官方原名 `python-3.13.13-macos11.pkg`
+- `.command` 文件改名 `Mac安装.command`
+
+### 更新包
+- `--update` 模式产出 `update_latest.zip`（ASCII 名，GitHub Release 中文文件名会乱码成 `_`）
+- 构建时 SHA 校验已移除——zip 时间戳非确定性，每次构建 SHA 不同
+
+### 安装脚本关键决策
+- `exec 3>&1 >"$LOG" 2>&1` 输出分流：fd 1→日志，fd 3→终端
+- 安装前摘要：列出所有变更→用户确认→输入密码→执行（不先斩后奏）
+- 密码取消静默退出（`grep "User canceled"` 检测）
+- osascript 弹窗换行用 `$'...\n...'` 而非 `'...\n...'`
+- External Scripting 自动启用：`sed` 改 `config.dat` 中 `System.Scripting.Mode`
+
+### 版本号
+- 唯一真相源：`config.py: __version__`
+- 构建脚本 + 文件夹/zip 名自动读取
+- `version.json` 需手动同步 version + urls + sha256 + history
+- 更新公告唯一来源：`CHANGELOG.md`（AI 不自己写）
 - ComboBox API：`CurrentText`（非 `Text`）取值，`Clear()`+`AddItem()` 刷新

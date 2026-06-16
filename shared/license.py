@@ -104,7 +104,18 @@ def _get_stats() -> dict:
         os_ver = _r.stdout.strip()
     except Exception:
         pass
-    return {"version": version, "os_version": os_ver}
+    # DaVinci Resolve 版本
+    resolve_ver = "unknown"
+    try:
+        _r = subprocess.run(
+            ["defaults", "read",
+             "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Info.plist",
+             "CFBundleShortVersionString"],
+            capture_output=True, text=True, timeout=3)
+        resolve_ver = _r.stdout.strip()
+    except Exception:
+        pass
+    return {"version": version, "os_version": os_ver, "resolve_version": resolve_ver}
 
 
 # ═══════════════════════════════════════════
