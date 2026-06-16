@@ -19,7 +19,7 @@ model: inherit
 ## 适配器开发规范
 
 1. **统一接口**：所有适配器实现 `process(task) → result` + `process_batch(tasks) → results`
-2. **零 pip**：只用 Python 标准库
+2. **零 Runtime pip**：运行时只用标准库。构建时 pip 生成数据 OK
 3. **自动降级**：主API不可用 → 备选API → 明确报错
 4. **成本预估**：每次处理前估算费用、检查余额
 5. **批量优先**：API 支持并行就实现 process_batch

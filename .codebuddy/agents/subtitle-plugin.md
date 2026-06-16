@@ -109,7 +109,7 @@ SUBTITLE_FORCE=1 → 强制重新处理
 
 ## 依赖
 
-- 零 pip：Python 标准库 + 达芬奇自带模块
+- 零 Runtime pip：运行时只依赖标准库 + 达芬奇。构建时 pip 生成数据 OK
 - 零 ffprobe：用 `mp.GetClipProperty("Frames")/FPS` 算时长
 - SMB 部署，本地 5 行壳
 

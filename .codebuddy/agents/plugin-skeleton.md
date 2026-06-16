@@ -174,4 +174,4 @@ _env["WORKBUDDY_PERSONAL"] = "1"      # 个人版才设
 subprocess.Popen([_PYTHON, "-B", _UI_SCRIPT], env=_env)
 # -B: 不生成 .pyc，杜绝 root 权限死锁和缓存脏读
 ```
-- 代码质量：pre-commit.sh 自动化检查（语法/零pip/密钥泄露）
+- 代码质量：pre-commit.sh 自动化检查（语法/零 Runtime pip/密钥泄露）

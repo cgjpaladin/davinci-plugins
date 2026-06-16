@@ -37,5 +37,5 @@ adapters/        → 外部 API 适配器
 2. **共享层不改 UI**：core/logger/ops_logger 不 touch Resolve 状态
 3. **改完跑 dry-run**：0 成本验证全链路
 4. **双路径同步**：CLI 和 UI 入口行为一致
-5. **零 pip**：只用标准库
+5. **零 Runtime pip**：运行时只用标准库。构建时可用 pip 生成数据，输出纯数据
 6. **SMB 部署**：代码放 /Volumes/MYJC/06_Software/达芬奇脚本/

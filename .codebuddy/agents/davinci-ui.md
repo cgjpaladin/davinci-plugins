@@ -541,7 +541,7 @@ def on_click_clip(ev):
 
 ### 🔵 P4 — 架构
 | 24 | core.py 纯函数，不能 import logger |
-| 25 | 零 pip——只用标准库 |
+| 25 | 零 Runtime pip——运行时只用标准库，构建时 pip 生成数据 OK |
 | 26 | Dry-run 0 元验证 |
 | 27 | 所有 .py UTF-8 编码 |
 

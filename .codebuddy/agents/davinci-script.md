@@ -110,7 +110,7 @@ run_check(dry_run=True, clips=clips)
 
 - **Python**：3.10+，壳自动发现最新框架版（跳过达芬奇自带的）
 - **Resolve**：Studio 20.3.2 build 9
-- **零 pip**：只用标准库
+- **零 Runtime pip**：运行时只用标准库。构建时可用 pip（生成矩阵/字典），输出纯数据
 
 ## shared/ 核心模块（32 个，按场景取用）
 
