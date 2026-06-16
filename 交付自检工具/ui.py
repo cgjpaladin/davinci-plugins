@@ -2518,10 +2518,12 @@ def _on_manual(ev):
 
         cell = 8; pad = 20; cw = size * cell + pad * 2
         root.geometry(f"{cw + 40}x{cw + 120}")
+        _font_title = ("", 18, "bold")
+        _font_text = ("", 12)
 
-        tk.Label(root, text="📖 使用手册", font=("", 18, "bold"), bg="white").pack(pady=(18, 0))
+        tk.Label(root, text="📖 使用手册", font=_font_title, bg="white", fg="#111").pack(pady=(18, 0))
         tk.Label(root, text="已检测到离线环境，自动展示二维码",
-                font=("", 12), bg="white", fg="#666").pack(pady=(6, 0))
+                font=_font_text, bg="white", fg="#666").pack(pady=(6, 0))
 
         c = tk.Canvas(root, width=cw, height=cw, highlightthickness=0, bg="white")
         c.pack(pady=(14, 18))
