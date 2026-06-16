@@ -763,15 +763,12 @@ window_layout = [
 
                 ui.HGap({"Weight": 0, "MinimumSize": [10, 0]}),
 
-                # 开始检查 + 配置 + 手册
+                # 开始检查 + 配置
                 ui.VGroup({"Spacing": SPACE_SM, "Weight": 0}, [
                     ui.Button({"ID": BTN_START, "Text": "开始检查",
                                "StyleSheet": BTN_PRIMARY, "Weight": 0,
                                "MinimumSize": [SIZE_BTN_XL_W, SIZE_BTN_XL_H]}),
                     ui.Button({"ID": BTN_CONFIG, "Text": "配置",
-                               "StyleSheet": BTN_STYLE, "Weight": 0,
-                               "MinimumSize": [SIZE_BTN_XL_W, SIZE_BTN_H]}),
-                    ui.Button({"ID": BTN_MANUAL, "Text": "使用手册",
                                "StyleSheet": BTN_STYLE, "Weight": 0,
                                "MinimumSize": [SIZE_BTN_XL_W, SIZE_BTN_H]}),
                 ]),
@@ -841,9 +838,13 @@ window_layout = [
                           "StyleSheet": "color:rgb(220,180,60);font-size:10px",
                           "Weight": 1, "MinimumSize": [0, SIZE_LINE_H]}),
                 ui.HGap({"Weight": 1}),
-                ui.Button({"ID": BTN_UPDATE, "Text": "✓ 最新",
+                ui.Button({"ID": BTN_UPDATE, "Text": "",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                           "MinimumSize": [94, SIZE_BTN_H]}),
+                           "Visible": False,
+                           "MinimumSize": [70, SIZE_BTN_H]}),
+                ui.Button({"ID": BTN_MANUAL, "Text": "使用手册",
+                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
+                           "MinimumSize": [SIZE_BTN_MD_W, SIZE_BTN_H]}),
                 ui.Button({"ID": BTN_ERR_SEND, "Text": "📋 导出日志",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [SIZE_BTN_LG_W, SIZE_BTN_H]}),
@@ -2491,12 +2492,22 @@ dlg.On[BTN_ERR_SEND].Clicked = _on_err_report
 
 def _on_manual(ev):
     """使用手册：在线→浏览器，离线→QR弹窗"""
-    import threading
+    import socket, threading
+    # 真实连通性检测
+    online = False
     try:
-        webbrowser.open(MANUAL_URL)
-        return  # 在线，只弹浏览器
+        s = socket.create_connection(("8.8.8.8", 53), timeout=3)
+        s.close()
+        online = True
     except Exception:
         pass
+
+    if online:
+        try:
+            webbrowser.open(MANUAL_URL)
+        except Exception:
+            pass
+        return
 
     # 离线：显示 QR 弹窗
     def _show_qr():
@@ -3069,16 +3080,16 @@ def main():
         if _result.get("update_available"):
             _action_log(f"⬆ 发现新版本 v{_result['latest']} (当前 {_ver})")
             itm[HINT_LB].Text = f"⬆ 新版本 v{_result['latest']} — 点击右侧按钮更新"
+            itm[BTN_UPDATE].Visible = True
             itm[BTN_UPDATE].Text = "⬆ 更新"
             itm[BTN_UPDATE]["StyleSheet"] = "background-color:rgb(220,180,60);color:#1a1a1a;font-size:11px;font-weight:bold;border-radius:3px;padding:2px 8px"
             if _result.get("force"):
                 itm[BTN_START].Enabled = False
                 itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
                 itm[HINT_LB].Text += "（必须更新）"
-        else:
-            itm[BTN_UPDATE].Text = "✓ 最新"
+        # else: button stays invisible (no "✓ 最新")
     except Exception:
-        itm[BTN_UPDATE].Text = "✓ 最新"
+        pass  # 网络不通或不支持更新检查——保持隐藏
 
     disp.RunLoop()
     dlg.Hide()
