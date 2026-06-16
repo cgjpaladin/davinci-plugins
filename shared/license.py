@@ -123,9 +123,10 @@ def _get_stats() -> dict:
 # ═══════════════════════════════════════════
 
 def get_machine_fingerprint() -> str:
-    """采集 macOS 硬件特征，生成不可逆的 64 字符 SHA256 指纹。
+    """采集硬件特征，生成不可逆的 64 字符 SHA256 指纹。
 
-    采集特征：IOPlatformUUID + MAC 地址 + Volume UUID + CPU 架构。
+    macOS: IOPlatformUUID + MAC + Volume UUID + CPU
+    Windows: WMIC 主板序列号 + MAC + CPU
     两次 SHA256 哈希 + 固定盐值，保证唯一且不可逆。
     """
     raw_parts = []
@@ -170,6 +171,18 @@ def get_machine_fingerprint() -> str:
     # 4. CPU 架构
     raw_parts.append(os.uname().machine)
 
+    # 5. Windows: 补充主板序列号（WMIC），macOS 无此步骤
+    if sys.platform == "win32":
+        try:
+            result = subprocess.run(
+                ["wmic", "baseboard", "get", "serialnumber"],
+                capture_output=True, text=True, timeout=5)
+            lines = [l.strip() for l in result.stdout.splitlines() if l.strip() and l.strip() != "SerialNumber"]
+            if lines:
+                raw_parts.append(lines[0])
+        except Exception:
+            raw_parts.append(os.urandom(16).hex())
+
     # 拼接 → 两次 SHA256
     raw_str = "|".join(raw_parts)
     primary = hashlib.sha256(raw_str.encode("utf-8")).hexdigest()
@@ -186,8 +199,9 @@ def get_machine_fingerprint() -> str:
 def _protect_file(path: Path):
     """设置文件为系统隐藏 + 仅当前用户可读写"""
     path.chmod(stat.S_IRUSR | stat.S_IWUSR)
-    # macOS: chflags hidden
-    os.chflags(path, stat.UF_HIDDEN)
+    # macOS: chflags hidden; Windows: no equivalent in stdlib, skip
+    if sys.platform == "darwin":
+        os.chflags(path, stat.UF_HIDDEN)
 
 
 def save_credential(data: dict) -> None:
@@ -316,7 +330,7 @@ def init_trial() -> Tuple[bool, str]:
         "expire_time": trial_start + 30 * 86400 + 1,
         "offline_grant_end": now + 3 * 86400,
         "nonce": os.urandom(8).hex(),
-        "platform": "Darwin",
+        "platform": sys.platform,
         "products": {},
         "is_trial": True,
         "trial_start_date": trial_start_date,
@@ -430,7 +444,7 @@ def verify_activation() -> Tuple[bool, str]:
                 "activate_key": "", "machine_fingerprint": fp,
                 "issue_time": now - 365 * 86400, "expire_time": now - 1,
                 "offline_grant_end": now - 1, "nonce": os.urandom(8).hex(),
-                "platform": "Darwin", "products": {}, "is_trial": True, "trial_used": True,
+                "platform": sys.platform, "products": {}, "is_trial": True, "trial_used": True,
             }
             save_credential({"payload": payload, "signature": "revoked"})
             return False, "授权校验失败，请联系管理员"
@@ -442,7 +456,7 @@ def verify_activation() -> Tuple[bool, str]:
             "activate_key": "", "machine_fingerprint": fp,
             "issue_time": now - 365 * 86400, "expire_time": now - 1,
             "offline_grant_end": now - 1, "nonce": os.urandom(8).hex(),
-            "platform": "Darwin", "products": {}, "is_trial": True, "trial_used": True,
+            "platform": sys.platform, "products": {}, "is_trial": True, "trial_used": True,
         }
         save_credential({"payload": payload, "signature": "revoked"})
         return False, resp.get("msg", "授权已失效")
@@ -553,7 +567,7 @@ def deactivate() -> Tuple[bool, str]:
         "expire_time": restored_expire,
         "offline_grant_end": max(restored_expire + 3 * 86400, now + 3 * 86400),
         "nonce": os.urandom(8).hex(),
-        "platform": "Darwin",
+        "platform": sys.platform,
         "products": {},
         "is_trial": True,
         "trial_used": True,

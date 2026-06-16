@@ -24,9 +24,13 @@ set "PYTHON="
 for %%p in (
     "%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
     "%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+    "%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
     "C:\Python313\python.exe"
     "C:\Python312\python.exe"
-    "C:\Program Files\Python313\python.exe"
+    "C:\Python311\python.exe"
+    "%ProgramFiles%\Python313\python.exe"
+    "%ProgramFiles%\Python312\python.exe"
+    "%ProgramFiles%\Python311\python.exe"
 ) do (
     if exist %%p if "!PYTHON!"=="" set "PYTHON=%%p"
 )
@@ -46,7 +50,8 @@ echo 📂 目标: %TARGET% >> "%LOGFILE%"
 :: ── 备份旧版本 ──
 if exist "%TARGET%" (
     echo 📋 备份旧版本... >> "%LOGFILE%"
-    move "%TARGET%" "%TARGET%_backup_%date:~0,4%%date:~5,2%%date:~8,2%" >nul 2>&1
+    for /f %%i in ('powershell -Command "Get-Date -Format yyyyMMdd"') do set "TODAY=%%i"
+    move "%TARGET%" "%TARGET%_backup_%TODAY%" >nul 2>&1
 )
 
 :: ── 解压安装 ──
