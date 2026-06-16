@@ -36,7 +36,7 @@ sed -i '' 's/^__channel__ = ".*"/__channel__ = ""/' "$PKG/交付自检工具/con
 python3 -c "import sys; sys.path.insert(0,'$PKG/交付自检工具'); from config import version_string; print(f'  ✅ 个人版: {version_string()}')"
 
 # 3. shared 模块（全套）
-cp "$WS/shared"/{deploy_config,fusionscript_loader,log_writer,camera_detect,script_parser,llm_typo_check,llm_providers,timecode,mappings,launcher_router,subtitle_state,macos_utils,updater,update_config,license,_write_env,secure_store,platform,tk_dialogs}.py "$PKG/交付自检工具/shared/"
+cp "$WS/shared"/{deploy_config,fusionscript_loader,log_writer,camera_detect,script_parser,llm_typo_check,llm_providers,timecode,mappings,launcher_router,subtitle_state,macos_utils,updater,update_config,license,_write_env,secure_store,cross_platform,tk_dialogs}.py "$PKG/交付自检工具/shared/"
 cp "$WS/shared/ui/theme.py" "$PKG/交付自检工具/shared/ui/"
 
 # 4. pypdf（纯 Python PDF 提取）

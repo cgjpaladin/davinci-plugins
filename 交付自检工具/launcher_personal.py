@@ -12,7 +12,7 @@ _SHARED = os.path.join(_HERE, 'shared')
 if os.path.isdir(_SHARED):
     sys.path.insert(0, _SHARED)
 
-from platform import find_python, app_data_dir
+from cross_platform import find_python, app_data_dir
 
 _PYTHON = find_python()
 if not _PYTHON:

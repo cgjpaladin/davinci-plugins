@@ -2,7 +2,7 @@
 """跨平台抽象层 — 统一 macOS / Windows 路径和系统命令差异。
 
 用法:
-    from platform import is_windows, is_macos, app_data_dir, python_candidates,
+    from cross_platform import is_windows, is_macos, app_data_dir, python_candidates,
                            open_in_explorer, dr_scripts_dir, smb_root
 """
 
