@@ -61,6 +61,17 @@ else
 fi
 # Windows 安装脚本
 cp "$SCRIPT_DIR/Win安装.bat" "$PKG/Win安装.bat"
+# 自动更新 bat 中的版本号（从 config.py 读取）
+python3 -c "
+import re, sys; sys.path.insert(0,'$WS/交付自检工具')
+from config import __version__
+with open('$PKG/Win安装.bat','rb') as f: d=f.read()
+old=re.search(rb'v\d+\.\d+\.\d+',d).group()
+new=f'v{__version__}'.encode()
+print(f'  bat: {old.decode()} → {new.decode()}')
+d=d.replace(old,new)
+with open('$PKG/Win安装.bat','wb') as f: f.write(d)
+"
 
 # 7. 清理缓存 + 清除 quarantine 属性（防下载后双击被拒）
 find "$PKG" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
