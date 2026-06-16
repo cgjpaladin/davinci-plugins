@@ -4,7 +4,7 @@
 """
 
 __version__ = "2.5.8"
-__channel__ = ""
+__channel__ = "dev"
 
 def version_string():
     return f"{__version__}{'-' + __channel__ if __channel__ else ''}"
@@ -13,6 +13,9 @@ def version_string():
 # ── 模式标记（个人版 vs 公司版）──
 import os
 IS_PERSONAL = bool(os.environ.get("WORKBUDDY_PERSONAL"))
+
+# ── 使用手册链接 ──
+MANUAL_URL = "https://jcnjno6i0upk.feishu.cn/docx/T5D1dqybTo7IZ4xWvhfc9EZan2g"
 """个人版模式：轨数/轨名/Fairlight/命名 全部跳过，门强制宽松。"""
 
 # ── 默认阈值 ──

@@ -12,6 +12,7 @@ import subprocess
 import time
 import traceback
 import json
+import webbrowser
 
 # 达芬奇官方API目录（macOS 需要手动设置）
 import sys as _sys
@@ -52,6 +53,7 @@ from config import (
     DEFAULT_AUDIO_TRACKS,
     AUDIO_TRACK_PRESET,
     IS_PERSONAL,
+    MANUAL_URL,
 )
 from check_core import (check_track_structure, check_subtitle_clamping, check_disabled_items,
                           check_black_frames, check_audio_mono, check_timeline_settings,
@@ -92,6 +94,7 @@ HINT_LB = "hint_lb"
 TRIAL_LB = "trial_lb"
 ERR_LB = "err_lb"
 BTN_ERR_SEND = "btn_err_send"
+BTN_MANUAL = "btn_manual"
 
 # License 状态（main() 中设置，_unlock_ui 等位置需要读取）
 _ai_allowed = True
@@ -834,6 +837,9 @@ window_layout = [
                           "StyleSheet": "color:rgb(220,180,60);font-size:10px",
                           "Weight": 1, "MinimumSize": [0, SIZE_LINE_H]}),
                 ui.HGap({"Weight": 1}),
+                ui.Button({"ID": BTN_MANUAL, "Text": "📖 手册",
+                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
+                           "MinimumSize": [SIZE_BTN_MD_W, SIZE_BTN_H]}),
                 ui.Button({"ID": BTN_UPDATE, "Text": "✓ 最新",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [94, SIZE_BTN_H]}),
@@ -2482,6 +2488,75 @@ def _update_err_counter():
         itm[BTN_ERR_SEND].Text = "📋 导出日志"
 dlg.On[BTN_ERR_SEND].Clicked = _on_err_report
 
+def _on_manual(ev):
+    """打开使用手册：浏览器优先，离线→QR弹窗"""
+    import tkinter as tk
+    import threading
+    try:
+        webbrowser.open(MANUAL_URL)
+    except Exception:
+        pass
+
+    # 在线和离线共用同一个 QR 弹窗
+    def _show_qr():
+        try:
+            from shared._qr import generate
+            matrix, size = generate(MANUAL_URL.encode())
+        except Exception:
+            return  # 静默失败，浏览器已打开
+
+        root = tk.Tk()
+        root.title("使用手册")
+        root.resizable(False, False)
+        try:
+            root.attributes("-topmost", True)
+        except Exception:
+            pass
+
+        # 上方：链接文字 + 复制按钮
+        top = tk.Frame(root)
+        top.pack(pady=(12, 8), padx=12)
+        tk.Label(top, text="手机扫码或点击下方按钮查看使用手册",
+                font=("", 13)).pack()
+        url_frame = tk.Frame(top)
+        url_frame.pack(pady=(6, 0))
+        tk.Label(url_frame, text=MANUAL_URL, fg="#2563eb",
+                font=("", 11)).pack(side="left")
+        def _copy():
+            root.clipboard_clear()
+            root.clipboard_append(MANUAL_URL)
+        tk.Button(url_frame, text="复制", command=_copy, font=("", 10)).pack(side="left", padx=(8, 0))
+
+        # 中间：QR 码
+        cell = 4  # 每模块像素
+        pad = 16
+        canvas_w = size * cell + pad * 2
+        c = tk.Canvas(root, width=canvas_w, height=canvas_w, highlightthickness=0)
+        c.pack(pady=(8, 0))
+        c.create_rectangle(0, 0, canvas_w, canvas_w, fill="white", outline="")
+        for r in range(size):
+            for col in range(size):
+                if matrix[r][col]:
+                    x = pad + col * cell
+                    y = pad + r * cell
+                    c.create_rectangle(x, y, x + cell, y + cell, fill="black", outline="")
+
+        # 下方：按钮
+        btns = tk.Frame(root)
+        btns.pack(pady=(8, 12))
+        def _open_browser():
+            try: webbrowser.open(MANUAL_URL)
+            except: pass
+        tk.Button(btns, text="🔗 在浏览器中打开", command=_open_browser,
+                 font=("", 11)).pack(side="left", padx=(0, 8))
+        tk.Button(btns, text="视频教程", command=lambda: webbrowser.open(
+            "https://space.bilibili.com/52177921"),
+                 font=("", 11)).pack(side="left")
+
+        root.mainloop()
+
+    threading.Thread(target=_show_qr, daemon=True).start()
+
 _browse_busy = False
 
 def _browse_script(ev):
@@ -2754,6 +2829,7 @@ def _do_update_sync(progress_callback=None):
         if _tmp_dir:
             import shutil; shutil.rmtree(_tmp_dir, ignore_errors=True)
 dlg.On[BTN_UPDATE].Clicked = _do_update
+dlg.On[BTN_MANUAL].Clicked = _on_manual
 
 # 剧本链接格式校验
 def _on_script_src_changed(_=None):
