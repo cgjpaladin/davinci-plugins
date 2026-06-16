@@ -13,9 +13,17 @@ import time
 import traceback
 import json
 
-# 达芬奇官方API目录（系统级，保留）
-os.environ["RESOLVE_SCRIPT_API"] = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting"
-os.environ["RESOLVE_SCRIPT_LIB"] = "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so"
+# 达芬奇官方API目录（macOS 需要手动设置）
+import sys as _sys
+if _sys.platform == "darwin":
+    os.environ["RESOLVE_SCRIPT_API"] = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting"
+    os.environ["RESOLVE_SCRIPT_LIB"] = "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so"
+
+# 跨平台数据目录
+if _sys.platform == "darwin":
+    _DATA_DIR = os.path.expanduser("~/Library/Application Support/交付自检")
+else:
+    _DATA_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "交付自检")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
@@ -603,7 +611,7 @@ def _save_api_keys(keys):
             save(k, v)
 
 def _api_keys_path():  # 保留兼容旧调用
-    return os.path.join(os.path.expanduser("~/Library/Application Support/交付自检"), "api_keys.json")
+    return os.path.join(_DATA_DIR, "api_keys.json")
 
 def _save_config_to_file():
     """保存当前配置到本地 JSON 文件"""
@@ -644,7 +652,7 @@ def _load_config_from_file():
 from log_writer import get_logger
 _log = get_logger("交付自检工具")
 _HOSTNAME = socket.gethostname()
-_CONFIG_DIR = os.path.expanduser("~/Library/Application Support/交付自检")
+_CONFIG_DIR = _DATA_DIR
 _CONFIG_FILE = os.path.join(_CONFIG_DIR, "config.json")
 
 def _ts():
@@ -1226,8 +1234,9 @@ def _show_config_dialog():
                 # tkinter 三框激活码弹窗（独立子进程，Popen 不阻塞 DaVinci UI）
                 r = subprocess.Popen([sys.executable, "-c", r'''
 import tkinter as tk, sys, os
-# 把窗口置顶并确保在前台
-os.system("""/usr/bin/osascript -e 'tell application "System Events" to set frontmost of process "Python" to true' 2>/dev/null &""")
+# macOS: bring tkinter to front; Windows: no-op（Win32 默认前台）
+if sys.platform == "darwin":
+    os.system("""/usr/bin/osascript -e 'tell application "System Events" to set frontmost of process "Python" to true' 2>/dev/null &""")
 root = tk.Tk()
 root.withdraw()  # 先隐藏，避免左上角闪现
 root.title("交付自检工具 · 激活")
@@ -1459,7 +1468,13 @@ print(result[0])
         import subprocess
         from check_core import clear_censor_cache
         clear_censor_cache(censor_path)
-        subprocess.Popen(["open", "-R", censor_path])
+    try:
+        import subprocess
+        if _sys.platform == "darwin":
+            subprocess.Popen(["open", "-R", censor_path])
+        else:
+            subprocess.Popen(["explorer", "/select,", censor_path])
+    except Exception:
         itm[HINT_LB].Text = "右键「短剧违禁词表.csv」→ 打开方式 → WPS / Excel / Numbers"
         _action_log("📝 Finder 已定位个人词典")
 
@@ -1593,7 +1608,7 @@ def _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
     safe_proj = "".join(c if c.isalnum() or c in "_-." else "_" for c in proj_name)[:80]
     safe_tl = "".join(c if c.isalnum() or c in "_-." else "_" for c in tl_name)[:60]
 
-    base = os.path.expanduser("~/Library/Application Support/交付自检/typo_sessions")
+    base = os.path.join(_DATA_DIR, "typo_sessions")
     session_dir = os.path.join(base, safe_proj, safe_tl)
     os.makedirs(session_dir, exist_ok=True)
 
@@ -2385,7 +2400,7 @@ def _export_debug_package():
     zip_name = f"delivery-checker-debug-{now.tm_mon:02d}{now.tm_mday:02d}-{now.tm_hour:02d}{now.tm_min:02d}-{fp}.zip"
     zip_path = os.path.join(dest, zip_name)
     # ── 收集日志 ──
-    logs_dir = os.path.expanduser("~/.workbuddy/logs/交付自检工具")
+    logs_dir = os.path.join(_DATA_DIR, "logs")
     today = time.strftime("%Y-%m-%d")
     yesterday = time.strftime("%Y-%m-%d", time.localtime(time.time() - 86400))
     log_files = []
@@ -2453,7 +2468,10 @@ def _export_debug_package():
             zf.writestr("info.txt", "\n".join(info_lines).encode("utf-8"))
             zf.writestr("state.txt", "\n".join(state_lines).encode("utf-8"))
         # Finder 弹出
-        subprocess.run(["open", "-R", zip_path], check=False)
+        if _sys.platform == "darwin":
+            subprocess.run(["open", "-R", zip_path], check=False)
+        else:
+            subprocess.run(["explorer", "/select,", zip_path], check=False)
         _action_log(f"✅ 排错包已导出: {zip_name}")
         _UI_ERROR_COUNT = 0
         itm[BTN_ERR_SEND].Text = "✅ 已导出"
@@ -2477,15 +2495,12 @@ def _browse_script(ev):
     if _browse_busy: return
     _browse_busy = True
     itm["btn_browse_script"].Enabled = False
-    import subprocess
+    from shared.tk_dialogs import choose_file
     try:
         itm[HINT_LB].Text = "正在打开文件选择器..."
-        result = subprocess.run([
-            "osascript", "-e",
-            'POSIX path of (choose file of type {"public.text","public.data","com.adobe.pdf"} '
-            'with prompt "选择剧本文件（txt/pdf/docx）")'
-        ], capture_output=True, text=True, encoding="utf-8", timeout=120)
-        path = result.stdout.strip()
+        path = choose_file("选择剧本文件",
+            [("剧本文件", ".txt .pdf .docx .doc .md"),
+             ("全部文件", "*.*")])
         if path:
             itm[EDIT_SCRIPT_SRC].Text = path
             _on_script_src_changed()
@@ -2493,9 +2508,6 @@ def _browse_script(ev):
             itm[HINT_LB].Text = f"已选择: {os.path.basename(path)}"
         else:
             itm[HINT_LB].Text = "请点击「开始检查」"
-    except subprocess.TimeoutExpired:
-        _action_log("⚠ 文件选择超时")
-        itm[HINT_LB].Text = "文件选择超时，请重试"
     except Exception as e:
         _action_log(f"⚠ 文件选择失败: {e}")
         itm[HINT_LB].Text = "文件选择失败"
@@ -2761,20 +2773,16 @@ def _on_script_src_changed(_=None):
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
 
-# 🔗 粘贴链接（osascript 弹窗，防 IME 崩溃）
+# 🔗 粘贴链接（tkinter 弹窗，跨平台统一）
 _link_busy = False
 def _paste_link(ev):
     global _link_busy
     if _link_busy: return
     _link_busy = True
     itm["btn_paste_link"].Enabled = False
+    from shared.tk_dialogs import input_text
     try:
-        import subprocess
-        r = subprocess.run(["osascript", "-e",
-            'text returned of (display dialog "粘贴飞书链接"'
-            ' default answer "" with title "交付自检工具")'],
-            capture_output=True, text=True, timeout=60)
-        val = r.stdout.strip()
+        val = input_text("粘贴飞书链接", title="交付自检工具")
         if val:
             itm[EDIT_SCRIPT_SRC].Text = val
             _on_script_src_changed()
@@ -2889,14 +2897,15 @@ def main():
     dlg.RecalcLayout()
     _init_connection()
 
-    # 预热 osascript（新 Mac 首次调用需初始化 AppleScript 引擎，耗时数秒）
-    import threading
-    def _warm_osascript():
-        try:
-            subprocess.run(["osascript", "-e", ""], timeout=10, capture_output=True)
-        except Exception:
-            pass
-    threading.Thread(target=_warm_osascript, daemon=True).start()
+    # 预热 osascript（macOS 首次调用需初始化 AppleScript 引擎，Windows 跳过）
+    if _sys.platform == "darwin":
+        import threading
+        def _warm_osascript():
+            try:
+                subprocess.run(["osascript", "-e", ""], timeout=10, capture_output=True)
+            except Exception:
+                pass
+        threading.Thread(target=_warm_osascript, daemon=True).start()
 
     # ══ License ══（仅个人版，同步校验）
     global _ai_allowed

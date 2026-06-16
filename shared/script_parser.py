@@ -35,7 +35,10 @@ from urllib.error import URLError
 
 _SSL_CTX = ssl._create_unverified_context()
 
-CACHE_DIR = os.path.expanduser("~/Library/Application Support/交付自检/script_cache")
+if sys.platform == "darwin":
+    CACHE_DIR = os.path.expanduser("~/Library/Application Support/交付自检/script_cache")
+else:
+    CACHE_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "交付自检", "script_cache")
 # Feishu API endpoints (tenant token based)
 _FEISHU_AUTH = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
 _FEISHU_FILES = "https://open.feishu.cn/open-apis/drive/v1/files"

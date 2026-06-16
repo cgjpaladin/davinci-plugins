@@ -1,20 +1,7 @@
 #!/usr/bin/env python3
-# launcher_personal.py — 个人版启动器（不依赖 SMB / deploy_config）
-import subprocess, os, sys, shutil
+# launcher_personal.py — 个人版启动器（跨平台，不依赖 SMB / deploy_config）
+import subprocess, os, sys
 
-_PYTHON = None
-for _py in [
-    "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
-    "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
-    "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3",
-    "/opt/homebrew/bin/python3",
-    "/usr/local/bin/python3",
-]:
-    if os.path.exists(_py):
-        _PYTHON = _py
-        break
-if not _PYTHON:
-    _PYTHON = shutil.which("python3") or "/usr/bin/python3"
 try:
     _HERE = os.path.dirname(os.path.abspath(__file__))
 except NameError:
@@ -25,9 +12,16 @@ _SHARED = os.path.join(_HERE, 'shared')
 if os.path.isdir(_SHARED):
     sys.path.insert(0, _SHARED)
 
+from platform import find_python, app_data_dir
+
+_PYTHON = find_python()
+if not _PYTHON:
+    raise RuntimeError("未找到可用的 Python 解释器。请安装 Python 3.11+ 并确保在 PATH 中。")
+
 from log_writer import get_logger
 _log = get_logger("交付自检工具")
 _log.launcher(f"个人版启动 ui: {os.path.join(_HERE, 'ui.py')}")
+_log.launcher(f"Python: {_PYTHON}")
 
 _env = os.environ.copy()
 _env["PYTHONIOENCODING"] = "utf-8"

@@ -5,9 +5,13 @@
 import json, os, stat, subprocess, sys
 
 _SERVICE  = "达芬奇插件工坊/交付自检工具"
+_IS_MACOS = sys.platform == "darwin"
+
 # api_keys.json 路径（多产品共享一套 Keychain，文件仅兜底用）
-_LEGACY  = os.path.join(os.path.expanduser("~/Library/Application Support/交付自检"),
-                         "api_keys.json")
+if _IS_MACOS:
+    _LEGACY = os.path.join(os.path.expanduser("~/Library/Application Support/交付自检"), "api_keys.json")
+else:
+    _LEGACY = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "交付自检", "api_keys.json")
 
 # ── macOS Keychain ────────────────────────────────────────────
 def _macos_keychain_save(account: str, password: str):
@@ -65,7 +69,6 @@ def _file_delete(key: str):
         pass
 
 # ── 公共接口 ──────────────────────────────────────────────────
-_IS_MACOS = sys.platform == "darwin"
 
 def save(name: str, value: str):
     """保存一个凭证。macOS → Keychain；其他 → chmod 600 文件。"""
