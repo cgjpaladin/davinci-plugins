@@ -2505,46 +2505,32 @@ def _on_manual(ev):
             from shared._qr import generate
             matrix, size = generate(MANUAL_URL.encode())
         except Exception:
-            return  # QR 生成失败，静默
+            return
 
         root = tk.Tk()
         root.title("使用手册")
         root.resizable(False, False)
+        root.configure(bg="white")
         try:
             root.attributes("-topmost", True)
         except Exception:
             pass
 
-        tk.Label(root, text="📖 使用手册", font=("", 16, "bold")).pack(pady=(14, 0))
-        tk.Label(root, text="手机扫码或点击下方按钮查看（需联网）", font=("", 11)).pack(pady=(4, 0))
+        cell = 8; pad = 20; cw = size * cell + pad * 2
+        root.geometry(f"{cw + 40}x{cw + 120}")
 
-        uf = tk.Frame(root)
-        uf.pack(pady=(6, 0))
-        tk.Label(uf, text=MANUAL_URL, fg="#2563eb", font=("", 10)).pack(side="left")
-        def _copy():
-            root.clipboard_clear()
-            root.clipboard_append(MANUAL_URL)
-        tk.Button(uf, text="复制", command=_copy, font=("", 9)).pack(side="left", padx=(6, 0))
+        tk.Label(root, text="📖 使用手册", font=("", 18, "bold"), bg="white").pack(pady=(18, 0))
+        tk.Label(root, text="已检测到离线环境，自动展示二维码",
+                font=("", 12), bg="white", fg="#666").pack(pady=(6, 0))
 
-        cell = 3
-        pad = 16
-        cw = size * cell + pad * 2
-        c = tk.Canvas(root, width=cw, height=cw, highlightthickness=0)
-        c.pack(pady=(8, 0))
-        c.create_rectangle(0, 0, cw, cw, fill="white", outline="")
+        c = tk.Canvas(root, width=cw, height=cw, highlightthickness=0, bg="white")
+        c.pack(pady=(14, 18))
+        c.create_rectangle(0, 0, cw, cw, fill="white", outline="#ddd")
         for r in range(size):
             for col in range(size):
                 if matrix[r][col]:
                     x = pad + col * cell; y = pad + r * cell
                     c.create_rectangle(x, y, x + cell, y + cell, fill="black", outline="")
-
-        bf = tk.Frame(root)
-        bf.pack(pady=(8, 14))
-        tk.Button(bf, text="🔗 在浏览器中打开", command=lambda: webbrowser.open(MANUAL_URL),
-                 font=("", 11)).pack(side="left", padx=(0, 8))
-        tk.Button(bf, text="📺 视频教程",
-                 command=lambda: webbrowser.open("https://space.bilibili.com/52177921"),
-                 font=("", 11)).pack(side="left")
 
         root.mainloop()
 
