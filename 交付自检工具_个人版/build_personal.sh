@@ -97,9 +97,7 @@ if [ "$1" != "--update" ]; then
 
 【Windows】
 1. 右键「Win安装.bat」→「以管理员身份运行」
-2. 安装后：达芬奇 → Workspace → Scripts → Edit → 交付自检工具
-3. 首次使用需在达芬奇中启用 External Scripting：
-   Preferences → System → External Scripting → Local
+2. 首次运行 DaVinci 后，再运行一次安装脚本以自动启用 External Scripting
 
 如有问题请联系：微信 paladinpp
 READMEEOF

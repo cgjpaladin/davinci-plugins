@@ -79,6 +79,23 @@ echo "%PYTHON%" "%TARGET%\launcher_personal.py"
 ) > "%SCRIPT_DIR%\Edit\交付自检工具.bat"
 echo ✅ Launcher: %SCRIPT_DIR%\Edit\交付自检工具.bat >> "%LOGFILE%"
 
+:: ── External Scripting ──
+set "DR_CONFIG=%APPDATA%\Blackmagic Design\DaVinci Resolve\Preferences\config.dat"
+if exist "%DR_CONFIG%" (
+    findstr /c:"System.Scripting.Mode = 0" "%DR_CONFIG%" >nul 2>&1
+    if !errorlevel! equ 0 (
+        powershell -Command "(Get-Content '%DR_CONFIG%') -replace 'System.Scripting.Mode = 0', 'System.Scripting.Mode = 1' | Set-Content '%DR_CONFIG%'" >> "%LOGFILE%" 2>&1
+        echo ✅ External Scripting 已启用 >> "%LOGFILE%"
+    ) else (
+        findstr /c:"System.Scripting.Mode = 1" "%DR_CONFIG%" >nul 2>&1
+        if !errorlevel! equ 0 (
+            echo ✅ External Scripting 已启用 >> "%LOGFILE%"
+        ) else (
+            echo ⚠ DaVinci 未运行过，跳过 External Scripting >> "%LOGFILE%"
+        )
+    )
+)
+
 :: ── 验证 ──
 "%PYTHON%" -c "import tkinter" >nul 2>&1
 if %errorlevel% neq 0 (
