@@ -119,18 +119,6 @@ def open_in_explorer(path: str):
         subprocess.Popen(["explorer", "/select,", path])
 
 
-def alert_dialog(title: str, message: str):
-    """系统级弹窗（macOS osascript / Windows msg）。不阻塞调用方。"""
-    if _IS_MACOS:
-        subprocess.Popen(["osascript", "-e",
-            f'display dialog "{message}" with title "{title}" '
-            f'buttons {{"确定"}} default button "确定"'])
-    elif _IS_WINDOWS:
-        # msg 是 cmd 内置命令，需通过 cmd /c 启动
-        subprocess.Popen(["cmd", "/c", "msg", os.environ.get("USERNAME", "%USERNAME%"),
-                         message])
-
-
 # ═══ SMB 路径 — 仅公司版用 ═══
 
 def smb_root() -> str:
@@ -167,18 +155,3 @@ def is_smb_mounted() -> bool:
             return True
         return False
     return False
-
-
-def smb_path_to_local(smb_url: str) -> str:
-    """smb://server/share/path → 平台本地路径。"""
-    if _IS_MACOS:
-        if smb_url.startswith("smb://"):
-            return "/Volumes/" + smb_url.split("smb://", 1)[1].split("/", 1)[1]
-        return smb_url
-    if _IS_WINDOWS:
-        if smb_url.startswith("smb://"):
-            parts = smb_url.replace("smb://", "").split("/", 1)
-            if len(parts) == 2:
-                return f"\\\\{parts[0]}\\{parts[1].replace('/', '\\')}"
-        return smb_url
-    return smb_url
