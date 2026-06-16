@@ -55,6 +55,8 @@
 - **环境隔离**：`__channel__ = "dev"` = 本地开发，`""` = 生产。repo 默认 dev。
 - **切换工具**：`交付自检工具/channel.sh dev|prod`，写后校验确认生效。
 - **bump 入口**：`publish.sh VERSION_BUMP=patch|minor|major`。
+- **dev 绝不碰 SMB**：`publish_push_all()` + `publish_sync()` 两处硬拦截 `__channel__` 非空即拒绝。sync.sh 新加 trap EXIT 自动切回 dev。2026-06-17 发现 SMB 历史残留 `channel=dev`，修复后全量验证通过。
+- **SMB 修改后验证**：每次修改 SMB 文件后必须检查 `__channel__ = ""`、`IS_PERSONAL = False`、同事机器可读。
 
 ### 四层硬拦截（dev 代码永不碰到产线）
 | 操作 | 拦截位置 | 行为 |
