@@ -26,7 +26,7 @@ echo >&3
 echo "========================================" >&3
 echo "  交付自检工具" >&3
 echo "  针对短剧/影视成片的自动化质检插件" >&3
-echo "  作者：电影裁缝 Bryan（微信 paladinpp）" >&3
+echo "  作者：电影裁缝 Bryan（微信 paladinpp / B站 电影裁缝Bryan）" >&3
 echo "========================================" >&3
 echo >&3
 echo "  ⏳ 正在检测…" >&3
@@ -326,8 +326,8 @@ else
     echo "❌ 验证失败"
     echo >&3
     echo "  ❌ 安装未通过验证" >&3
-    echo "  请截图终端窗口内容，联系微信 paladinpp" >&3
+    echo "  请截图终端窗口内容，联系微信 paladinpp / B站 电影裁缝Bryan" >&3
     rm -rf /tmp/_deli_src /tmp/_deli_python.pkg /tmp/_deli_temp 2>/dev/null
-    osascript -e $'display dialog "安装验证未通过。\n请截图终端窗口内容联系微信 paladinpp" buttons {"好的"} default button 1 with icon stop'
+    osascript -e $'display dialog "安装验证未通过。\n请截图终端窗口内容联系微信 paladinpp / B站 电影裁缝Bryan" buttons {"好的"} default button 1 with icon stop'
     exit 1
 fi

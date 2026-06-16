@@ -107,7 +107,7 @@ if [ "$1" != "--update" ]; then
 右键「Win安装.bat」→「以管理员身份运行」。
 安装后：达芬奇 → Workspace → Scripts → Edit → 交付自检工具。
 
-如有问题请联系：微信 paladinpp
+如有问题请联系：微信 paladinpp / B站 电影裁缝Bryan
 
 ############################################################
 # AGENT SECTION

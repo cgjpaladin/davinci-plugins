@@ -999,7 +999,7 @@ def _build_auth_section():
 def _format_trial(days: int, fp: str = "") -> str:
     if days > 10:
         return f"试用剩余 {days} 天"
-    suffix = f"  |  请联系购买: 微信 paladinpp  |  ID: {fp}" if fp else "  |  请联系购买: 微信 paladinpp"
+    suffix = f"  |  请联系购买: 微信 paladinpp / B站 电影裁缝Bryan  |  ID: {fp}" if fp else "  |  请联系购买: 微信 paladinpp / B站 电影裁缝Bryan"
     if days > 0:
         return f"试用剩余 {days} 天{suffix}"
     return f"试用剩余 0 天{suffix}"
