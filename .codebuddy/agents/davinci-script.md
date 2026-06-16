@@ -212,6 +212,17 @@ Scripts/
 
 部署新机时需确认此项为 Local 或 Network，否则 external script 无响应。
 
+### HTTPS 调用限制
+
+达芬奇 Python 子进程有 SSL 证书沙箱限制，直接 `urllib.request.urlopen(url)` 可能失败。两种合法方案：
+
+| 方案 | 适用 |
+|------|------|
+| `subprocess.run(["curl", "-s", url])` | 通用，DaVinci 外部进程不受沙箱限制 |
+| `urllib + ssl._create_unverified_context()` | 仅用于已信任目标（如自家 FC 函数），跳过证书验证 |
+
+⚠️ 不要混用——同一文件内不要同时存在 curl 和 urllib，保持一致。
+
 ## Console 交互调试
 
 Fusion 页面下，**Workspace → Console** 打开控制台：
