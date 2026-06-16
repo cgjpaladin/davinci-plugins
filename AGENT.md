@@ -1,7 +1,13 @@
 # Agent Install Guide
 
-1. `git clone` this repo to a temp directory, `cd` into it
-2. Ensure Python 3.11+ (with tkinter) is available. Install if not:
+Two entry points, same script:
+
+- **GitHub**: `git clone` this repo to a temp directory, `cd` into it
+- **Zip**: user drags `交付自检工具_v2.5.7.zip` → unzip outer zip → extract `data.zip` to a temp dir → `cd 交付自检工具 && python install_agent.py`
+
+Then:
+
+1. Ensure Python 3.11+ (with tkinter) is available. Install if not:
    - macOS: `brew install python@3.13`
    - Windows: `winget install Python.Python.3.13` or download from python.org
 3. Run: `python install_agent.py`
