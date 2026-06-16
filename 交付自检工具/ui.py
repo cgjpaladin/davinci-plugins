@@ -2491,17 +2491,11 @@ def _update_err_counter():
 dlg.On[BTN_ERR_SEND].Clicked = _on_err_report
 
 def _on_manual(ev):
-    """使用手册：先开浏览器，确认离线才弹 QR"""
+    """使用手册：检测连通性，在线→浏览器，离线→QR"""
     import socket, threading
     from urllib.parse import urlparse
 
-    # 始终尝试打开浏览器（不判断是否成功）
-    try:
-        webbrowser.open(MANUAL_URL)
-    except Exception:
-        pass
-
-    # 真实测通目标域名，不是 Google DNS
+    # 先测通目标域名，再决定走哪条路径
     online = False
     try:
         host = urlparse(MANUAL_URL).hostname
@@ -2512,7 +2506,11 @@ def _on_manual(ev):
         pass
 
     if online:
-        return  # 浏览器已经打开了
+        try:
+            webbrowser.open(MANUAL_URL)
+        except Exception:
+            pass
+        return
 
     # 离线：显示 QR 弹窗
     def _show_qr():
