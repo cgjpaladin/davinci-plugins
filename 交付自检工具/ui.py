@@ -588,12 +588,13 @@ _config_open = False  # 防配置窗口重复打开
 def _lock_ui(label: str):
     global _BUSY; _BUSY = True
     itm[BTN_START].Enabled = False; itm[BTN_UPDATE].Enabled = False
-    itm[BTN_ERR_SEND].Enabled = False
+    itm[BTN_ERR_SEND].Enabled = False; itm[BTN_MANUAL].Enabled = False
 
 def _unlock_ui():
     global _BUSY; _BUSY = False
     itm[BTN_START].Enabled = True; itm[BTN_START].Text = "开始检查"
     itm[BTN_UPDATE].Enabled = True; itm[BTN_ERR_SEND].Enabled = True
+    itm[BTN_MANUAL].Enabled = True
     if _ai_allowed: itm[BTN_AI_TYPO].Enabled = True
 
 # ── 凭证持久化（macOS Keychain，零明文落盘）──
@@ -762,12 +763,15 @@ window_layout = [
 
                 ui.HGap({"Weight": 0, "MinimumSize": [10, 0]}),
 
-                # 开始检查 + 配置
+                # 开始检查 + 配置 + 手册
                 ui.VGroup({"Spacing": SPACE_SM, "Weight": 0}, [
                     ui.Button({"ID": BTN_START, "Text": "开始检查",
                                "StyleSheet": BTN_PRIMARY, "Weight": 0,
                                "MinimumSize": [SIZE_BTN_XL_W, SIZE_BTN_XL_H]}),
                     ui.Button({"ID": BTN_CONFIG, "Text": "配置",
+                               "StyleSheet": BTN_STYLE, "Weight": 0,
+                               "MinimumSize": [SIZE_BTN_XL_W, SIZE_BTN_H]}),
+                    ui.Button({"ID": BTN_MANUAL, "Text": "使用手册",
                                "StyleSheet": BTN_STYLE, "Weight": 0,
                                "MinimumSize": [SIZE_BTN_XL_W, SIZE_BTN_H]}),
                 ]),
@@ -837,9 +841,6 @@ window_layout = [
                           "StyleSheet": "color:rgb(220,180,60);font-size:10px",
                           "Weight": 1, "MinimumSize": [0, SIZE_LINE_H]}),
                 ui.HGap({"Weight": 1}),
-                ui.Button({"ID": BTN_MANUAL, "Text": "📖 手册",
-                           "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                           "MinimumSize": [SIZE_BTN_MD_W, SIZE_BTN_H]}),
                 ui.Button({"ID": BTN_UPDATE, "Text": "✓ 最新",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
                            "MinimumSize": [94, SIZE_BTN_H]}),
@@ -2489,21 +2490,22 @@ def _update_err_counter():
 dlg.On[BTN_ERR_SEND].Clicked = _on_err_report
 
 def _on_manual(ev):
-    """打开使用手册：浏览器优先，离线→QR弹窗"""
-    import tkinter as tk
+    """使用手册：在线→浏览器，离线→QR弹窗"""
     import threading
     try:
         webbrowser.open(MANUAL_URL)
+        return  # 在线，只弹浏览器
     except Exception:
         pass
 
-    # 在线和离线共用同一个 QR 弹窗
+    # 离线：显示 QR 弹窗
     def _show_qr():
+        import tkinter as tk
         try:
             from shared._qr import generate
             matrix, size = generate(MANUAL_URL.encode())
         except Exception:
-            return  # 静默失败，浏览器已打开
+            return  # QR 生成失败，静默
 
         root = tk.Tk()
         root.title("使用手册")
@@ -2513,44 +2515,35 @@ def _on_manual(ev):
         except Exception:
             pass
 
-        # 上方：链接文字 + 复制按钮
-        top = tk.Frame(root)
-        top.pack(pady=(12, 8), padx=12)
-        tk.Label(top, text="手机扫码或点击下方按钮查看使用手册",
-                font=("", 13)).pack()
-        url_frame = tk.Frame(top)
-        url_frame.pack(pady=(6, 0))
-        tk.Label(url_frame, text=MANUAL_URL, fg="#2563eb",
-                font=("", 11)).pack(side="left")
+        tk.Label(root, text="📖 使用手册", font=("", 16, "bold")).pack(pady=(14, 0))
+        tk.Label(root, text="手机扫码或点击下方按钮查看（需联网）", font=("", 11)).pack(pady=(4, 0))
+
+        uf = tk.Frame(root)
+        uf.pack(pady=(6, 0))
+        tk.Label(uf, text=MANUAL_URL, fg="#2563eb", font=("", 10)).pack(side="left")
         def _copy():
             root.clipboard_clear()
             root.clipboard_append(MANUAL_URL)
-        tk.Button(url_frame, text="复制", command=_copy, font=("", 10)).pack(side="left", padx=(8, 0))
+        tk.Button(uf, text="复制", command=_copy, font=("", 9)).pack(side="left", padx=(6, 0))
 
-        # 中间：QR 码
-        cell = 4  # 每模块像素
+        cell = 3
         pad = 16
-        canvas_w = size * cell + pad * 2
-        c = tk.Canvas(root, width=canvas_w, height=canvas_w, highlightthickness=0)
+        cw = size * cell + pad * 2
+        c = tk.Canvas(root, width=cw, height=cw, highlightthickness=0)
         c.pack(pady=(8, 0))
-        c.create_rectangle(0, 0, canvas_w, canvas_w, fill="white", outline="")
+        c.create_rectangle(0, 0, cw, cw, fill="white", outline="")
         for r in range(size):
             for col in range(size):
                 if matrix[r][col]:
-                    x = pad + col * cell
-                    y = pad + r * cell
+                    x = pad + col * cell; y = pad + r * cell
                     c.create_rectangle(x, y, x + cell, y + cell, fill="black", outline="")
 
-        # 下方：按钮
-        btns = tk.Frame(root)
-        btns.pack(pady=(8, 12))
-        def _open_browser():
-            try: webbrowser.open(MANUAL_URL)
-            except: pass
-        tk.Button(btns, text="🔗 在浏览器中打开", command=_open_browser,
+        bf = tk.Frame(root)
+        bf.pack(pady=(8, 14))
+        tk.Button(bf, text="🔗 在浏览器中打开", command=lambda: webbrowser.open(MANUAL_URL),
                  font=("", 11)).pack(side="left", padx=(0, 8))
-        tk.Button(btns, text="视频教程", command=lambda: webbrowser.open(
-            "https://space.bilibili.com/52177921"),
+        tk.Button(bf, text="📺 视频教程",
+                 command=lambda: webbrowser.open("https://space.bilibili.com/52177921"),
                  font=("", 11)).pack(side="left")
 
         root.mainloop()
