@@ -76,29 +76,30 @@ def _ensure_cache():
 # ── 文档提取 ──
 
 def _extract_text_from_docx(path: str) -> list[str]:
-    """从 .docx 提取纯文本行。"""
+    """从 .docx 提取纯文本行。纯标准库 zipfile + xml.etree，零依赖，跨平台。"""
+    ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
     lines = []
     with zipfile.ZipFile(path) as z:
-        with z.open("word/document.xml") as f:
-            tree = ET.parse(f)
-    for p in tree.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p"):
-        line = "".join(t.text or "" for t in p.iter(
-            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t"))
-        stripped = line.strip()
+        root = ET.fromstring(z.read("word/document.xml"))
+    for p in root.iter(f"{{{ns}}}p"):
+        text = "".join(t.text or "" for t in p.iter(f"{{{ns}}}t"))
+        stripped = text.strip()
         if stripped:
             lines.append(stripped)
     return lines
 
 def _extract_text_from_doc(doc_path: str) -> list[str]:
-    """.doc → textutil 转换 → 提取文本。macOS 自带，零安装。"""
+    """.doc → textutil 直转 .txt（比转 .docx 再提取多保留 172 字符）。macOS 自带。"""
     out = tempfile.mkdtemp()
     try:
-        docx_out = os.path.join(out, "converted.docx")
+        txt_out = os.path.join(out, "converted.txt")
         subprocess.run(
-            ["/usr/bin/textutil", "-convert", "docx", "-output", docx_out, doc_path],
+            ["/usr/bin/textutil", "-convert", "txt", "-output", txt_out, doc_path],
             timeout=60, check=True, capture_output=True)
-        _log(f"📄 DOC(textutil): → {os.path.getsize(docx_out)//1024}KB")
-        return _extract_text_from_docx(docx_out)
+        with open(txt_out, encoding="utf-8", errors="replace") as f:
+            text = f.read()
+        _log(f"📄 DOC(textutil→txt): {len(text)//1024}KB")
+        return [l.strip() for l in text.splitlines() if l.strip()]
     except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         pass
     finally:
@@ -108,7 +109,6 @@ def _extract_text_from_doc(doc_path: str) -> list[str]:
             os.rmdir(out)
         except OSError:
             pass
-    # fallback: try python-docx or antiword
     raise RuntimeError(f"无法解析 .doc: {doc_path}，请转为 .docx 后重试")
 
 def _extract_text_from_pdf(path: str) -> list[str]:
@@ -166,14 +166,17 @@ def _extract_text_from_pdf(path: str) -> list[str]:
     raise RuntimeError(f"PDF 提取失败: {path}，请安装 poppler (brew install poppler) 或转为 .docx")
 
 def _clean_pdf_text(lines: list[str]) -> list[str]:
-    """去除 PDF 审阅标注噪音。"""
+    """去除 PDF 审阅标注噪音（Word 修订模式导出）。"""
     cleaned = []
     for line in lines:
-        # 跳过纯标注行
-        if re.match(r'^(设置格式|删除|加粗|批注)\[', line):
+        # 跳过行内/行首的格式标记（可能在任意位置）
+        orig = line
+        line = re.sub(r'.*?设置格式\[[^]]+\][：:]?\s*', '', line)
+        line = re.sub(r'.*?删除\[[^]]+\][：:]?\s*', '', line)
+        line = re.sub(r'.*?批注\[[^]]+\][：:]?\s*', '', line)
+        # 跳过纯格式指令行
+        if re.match(r'^\s*(字体|行距|加粗|字号|颜色)[：:].*$', line):
             continue
-        # 去除行内标注标记
-        line = re.sub(r'(设置格式|删除|批注)\[[^]]+\][：:]?\s*', '', line)
         line = line.strip()
         if line:
             cleaned.append(line)
