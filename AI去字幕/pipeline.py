@@ -205,8 +205,8 @@ class SubtitlePipeline(BasePipeline):
         )
         elapsed = time.time() - t0
 
-        # 适配器处理完成
-        self.log.info(f"全部完成，耗时 {elapsed:.0f} 秒")
+        # API 处理阶段完成（可能有失败的，由后续 log.fail 和 completion_summary 汇总）
+        self.log.info(f"API 处理完成，耗时 {elapsed:.0f} 秒")
 
         # 构造结果，task_id 只进后端
         results = []
