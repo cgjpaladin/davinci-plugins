@@ -2849,13 +2849,16 @@ def _on_script_src_changed(_=None):
                     if name:
                         itm[EDIT_SCRIPT_SRC].Text = name
                         itm[HINT_LB].Text = f"已选择: {name}"
+                        _action_log(f"📖 飞书文档: {name}")
                     else:
                         kind = "文档" if normalized.startswith("feishu_docx:") else "文件"
                         itm[EDIT_SCRIPT_SRC].Text = f"飞书{kind}（名称获取失败）"
                         itm[HINT_LB].Text = f"已选择飞书{kind}（请检查网络）"
-                except Exception:
+                        _action_log(f"⚠ 飞书{kind}名称获取失败: {normalized}")
+                except Exception as e:
                     itm[EDIT_SCRIPT_SRC].Text = "飞书文档（名称获取失败）"
                     itm[HINT_LB].Text = "已选择飞书文档（请检查网络）"
+                    _action_log(f"⚠ 飞书名称异步获取异常: {e}")
             threading.Thread(target=_fetch_name, daemon=True).start()
     itm[BTN_AI_TYPO].Enabled = not _checking and _ai_allowed
     if not ok and src:

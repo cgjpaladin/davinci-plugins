@@ -34,6 +34,7 @@ def input_text(prompt: str, title: str = "交付自检工具",
         root = tk.Tk()
         root.title({repr(title)})
         root.resizable(False, False)
+        root.attributes('-topmost', True)
         tk.Label(root, text={repr(prompt)}, pady=6).pack()
         entry = tk.Entry(root, width=50, {show})
         entry.pack(padx=10, pady=4)
@@ -67,8 +68,8 @@ def choose_file(prompt: str = "选择文件",
         import tkinter as tk
         from tkinter import filedialog
         root = tk.Tk()
-        root.withdraw()
         root.attributes('-topmost', True)
+        root.focus_force()
         path = filedialog.askopenfilename(
             title={repr(prompt)}, filetypes=[{ft_code}])
         root.destroy()

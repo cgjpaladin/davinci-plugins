@@ -484,9 +484,8 @@ def process(*_):
             _flag_engine_error(eng, other)
 
     except Exception as e:
-        ui.log_fail(f"{e}")
-        _event_log(f"处理异常: {e}")
-        traceback.print_exc()
+        ui.log_fail(f"处理异常: {e}")
+        _event_log(f"处理异常: {e}\n{traceback.format_exc()}")
     finally:
         _state["stop"] = False
         _state["processing"] = False
