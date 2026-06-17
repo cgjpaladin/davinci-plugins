@@ -271,16 +271,34 @@ def _feishu_doc_meta(token: str) -> str | None:
         pass
     return None
 
-def _feishu_file_meta(token: str) -> str | None:
-    """获取飞书文件的 modified_time（轻量调用，不下载）。
-    返回 modified_time 字符串，不可访问返回 None。"""
+def _feishu_file_meta(token: str) -> dict | None:
+    """获取飞书文件元数据（轻量调用，不下载）。
+    返回 {"name": ..., "modified_time": ...}，不可访问返回 None。"""
     resp = _feishu_api(f"{_FEISHU_FILES}/{token}")
     if not resp:
         return None
     try:
         data = json.loads(resp)
         if data.get("code") == 0:
-            return data.get("data", {}).get("modified_time", "")
+            return data.get("data", {})
+    except Exception:
+        pass
+    return None
+
+def _feishu_display_name(normalized: str) -> str | None:
+    """获取飞书链接的显示名称。失败返回 None。"""
+    try:
+        if normalized.startswith("feishu_file:"):
+            token = normalized.split(":", 1)[1]
+            meta = _feishu_file_meta(token)
+            return meta.get("name") if meta else None
+        elif normalized.startswith("feishu_docx:"):
+            token = normalized.split(":", 1)[1]
+            resp = _feishu_api(f"https://open.feishu.cn/open-apis/docx/v1/documents/{token}")
+            if resp:
+                data = json.loads(resp)
+                if data.get("code") == 0:
+                    return data.get("data", {}).get("document", {}).get("title")
     except Exception:
         pass
     return None

@@ -2838,6 +2838,17 @@ def _on_script_src_changed(_=None):
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
     if "feishu.cn" in src or "docs.qq.com" in src:
         ok = ok and len(src) > 30
+        # 异步获取飞书文档名（不阻塞 UI）
+        import threading
+        def _fetch_name():
+            from script_parser import _feishu_display_name
+            try:
+                name = _feishu_display_name(src)
+                if name:
+                    itm[EDIT_SCRIPT_SRC].Text = name
+            except Exception:
+                pass
+        threading.Thread(target=_fetch_name, daemon=True).start()
     itm[BTN_AI_TYPO].Enabled = not _checking and _ai_allowed
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
