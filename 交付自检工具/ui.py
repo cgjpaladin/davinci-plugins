@@ -2833,33 +2833,22 @@ def _on_script_src_changed(_=None):
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
     if "feishu.cn" in src or "docs.qq.com" in src:
         ok = ok and len(src) > 30
-        # 仅飞书链接异步获取名称（腾讯文档暂无 API）
+        # 根据链接类型立即显示有意义的名称（不调 API，DaVinci 子进程无飞书认证）
         if "feishu.cn" in src:
-            import threading
-            def _fetch_name():
-                _action_log(f"🔄 开始异步获取飞书名...")
-                from script_parser import _feishu_display_name, _normalize_feishu_url
-                try:
-                    normalized = _normalize_feishu_url(src)
-                    _action_log(f"🔍 飞书 normalized: {normalized[:50]}")
-                    name = _feishu_display_name(normalized)
-                    if name:
-                        itm[EDIT_SCRIPT_SRC].Text = name
-                        itm[HINT_LB].Text = f"已选择: {name}"
-                        _action_log(f"📖 飞书文档: {name}")
-                    else:
-                        kind = "文档" if normalized.startswith("feishu_docx:") else "文件"
-                        itm[EDIT_SCRIPT_SRC].Text = f"飞书{kind}（名称获取失败）"
-                        itm[HINT_LB].Text = f"已选择飞书{kind}（请检查网络）"
-                        _action_log(f"⚠ 飞书{kind}名称获取失败: {normalized}")
-                except Exception as e:
-                    itm[EDIT_SCRIPT_SRC].Text = "飞书文档（名称获取失败）"
-                    itm[HINT_LB].Text = "已选择飞书文档（请检查网络）"
-                    _action_log(f"⚠ 飞书名称异步获取异常: {type(e).__name__}: {e}")
+            from script_parser import _normalize_feishu_url
             try:
-                threading.Thread(target=_fetch_name, daemon=True).start()
-            except Exception as e:
-                _action_log(f"⚠ 飞书名线程启动失败: {e}")
+                normalized = _normalize_feishu_url(src)
+                if normalized.startswith("feishu_docx:"):
+                    itm[EDIT_SCRIPT_SRC].Text = "飞书文档"
+                elif normalized.startswith("feishu_file:"):
+                    itm[EDIT_SCRIPT_SRC].Text = "飞书文件"
+                elif normalized.startswith("feishu_folder:"):
+                    itm[EDIT_SCRIPT_SRC].Text = "飞书文件夹"
+                else:
+                    itm[EDIT_SCRIPT_SRC].Text = "飞书链接"
+                itm[HINT_LB].Text = f"已选择飞书链接"
+            except Exception:
+                pass
     itm[BTN_AI_TYPO].Enabled = not _checking and _ai_allowed
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
