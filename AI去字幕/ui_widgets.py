@@ -582,6 +582,8 @@ def confirm_project(*_):
         warn("路径无效，请手动选择")
         return
     _log_action("确认项目路径")
+    if _state.get("project_root") and _state["project_root"] != path:
+        _state["clips_scanned"] = False   # 换项目了，旧扫描无效
     _state["project_root"] = path
     _log_ops.ops({"event": "project_root", "path": path})  # 诊断用：记录项目 SMB 路径
     state_init(path)
@@ -589,7 +591,7 @@ def confirm_project(*_):
     itm[COLOR_CB].Enabled = True
     itm[BTN_SCAN].Enabled = True
     itm[BTN_UNDO].Enabled = True
-    itm[BTN_START].Enabled = False
+    itm[BTN_START].Enabled = _state.get("clips_scanned", False)
     itm[BTN_CONFIRM].Enabled = False
     itm[BTN_CONFIRM].Text = "已确认"
     itm[BTN_PICK].Text = "更改路径"
@@ -608,6 +610,8 @@ def pick_project(*_):
         from macos_utils import pick_folder
         path = pick_folder(prompt, default_dir)
         if path:
+            if _state.get("project_root") and _state["project_root"] != path:
+                _state["clips_scanned"] = False   # 换项目了，旧扫描无效
             _state["project_root"] = path
             _log_ops.ops({"event": "project_root", "path": path})
             _set_proj(path)

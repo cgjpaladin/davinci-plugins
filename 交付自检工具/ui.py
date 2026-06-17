@@ -2848,8 +2848,14 @@ def _on_script_src_changed(_=None):
                 if name:
                     itm[EDIT_SCRIPT_SRC].Text = name
                     itm[HINT_LB].Text = f"已选择: {name}"
+                else:
+                    # API 失败：根据类型显示有意义的占位
+                    kind = "文档" if normalized.startswith("feishu_docx:") else "文件"
+                    itm[EDIT_SCRIPT_SRC].Text = f"飞书{kind}（名称获取失败）"
+                    itm[HINT_LB].Text = f"已选择飞书{kind}（请检查网络）"
             except Exception:
-                pass
+                itm[EDIT_SCRIPT_SRC].Text = "飞书文档（名称获取失败）"
+                itm[HINT_LB].Text = "已选择飞书文档（请检查网络）"
         threading.Thread(target=_fetch_name, daemon=True).start()
     itm[BTN_AI_TYPO].Enabled = not _checking and _ai_allowed
     if not ok and src:
@@ -2867,7 +2873,8 @@ def _paste_link(ev):
         val = input_text("粘贴飞书链接", title="交付自检工具")
         if val:
             _SCRIPT_SRC_PATH = val
-            itm[EDIT_SCRIPT_SRC].Text = val
+            itm[EDIT_SCRIPT_SRC].Text = "获取名称中…"
+            itm[HINT_LB].Text = "已识别飞书链接"
             _on_script_src_changed()
             _action_log(f"🔗 粘贴链接: {val[:60]}...")
     finally:
