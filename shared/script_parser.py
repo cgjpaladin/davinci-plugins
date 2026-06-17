@@ -290,14 +290,14 @@ def _feishu_display_name(normalized: str) -> str | None:
     try:
         if normalized.startswith("feishu_file:"):
             token = normalized.split(":", 1)[1]
-            # 试用 bot token
-            meta = _feishu_file_meta(token)
-            if meta and meta.get("name"):
-                return meta["name"]
-            # 回退 lark-cli user token（bot 可能缺少 drive:metadata scope）
+            # 先试 Range GET（content-disposition 头，~0.3s）
             name = _feishu_file_name_user(token)
             if name:
                 return name
+            # 回退 meta API（需要 drive:metadata scope）
+            meta = _feishu_file_meta(token)
+            if meta and meta.get("name"):
+                return meta["name"]
         elif normalized.startswith("feishu_docx:"):
             token = normalized.split(":", 1)[1]
             resp = _feishu_api(f"/open-apis/wiki/v2/spaces/get_node?token={token}")
@@ -316,16 +316,17 @@ def _feishu_display_name(normalized: str) -> str | None:
     return None
 
 def _feishu_file_name_user(token: str) -> str | None:
-    """从下载 API 响应头获取文件名（轻量请求，不读 body）。"""
+    """从下载 API 响应头获取文件名（Range 仅请求 1 字节，极快）。"""
     from urllib.request import Request
     import re
     try:
         req = Request(f"{_FEISHU_FILES}/{token}/download")
+        req.add_header("Range", "bytes=0-0")
         token_str = _get_tenant_token()
         if not token_str:
             return None
         req.add_header("Authorization", f"Bearer {token_str}")
-        with urlopen(req, timeout=5, context=_SSL_CTX) as resp:
+        with urlopen(req, timeout=2, context=_SSL_CTX) as resp:
             cd = resp.getheader("Content-Disposition", "")
             m = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";\s]+)"?', cd)
             if m:
