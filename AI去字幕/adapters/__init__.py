@@ -252,4 +252,4 @@ def create_preferred_adapter(exclude: str = ""):
                 return a
         except Exception:
             continue
-    return create_wuhenai_adapter()  # 兜底
+    return None  # 兜底已移除：不返回已被排除的适配器，防递归死循环

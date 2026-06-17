@@ -496,6 +496,10 @@ class BasePipeline(ABC):
         self._adapter = None
         from adapters import create_preferred_adapter
         self._adapter = create_preferred_adapter(exclude=current_key)
+        if self._adapter is None:
+            self.log.fail("所有引擎均不可用，请稍后重试")
+            return []  # 空列表让 run() 的 if not results: return 优雅退出
+
         self._wire_adapter_logger(self._adapter)
 
         return self._submit(tasks, batch)

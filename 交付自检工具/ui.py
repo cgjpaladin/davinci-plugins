@@ -1710,7 +1710,7 @@ def _run_ai_typo():
 
         # ═══ 门1: 下载+解析剧本 ═══
         src = itm[EDIT_SCRIPT_SRC].Text.strip()
-        if not src:
+        if not src or src == "选填，提供剧本可启用 AI 错别字校对":
             itm[HINT_LB].Text = "字幕系统检测中..."
             itm[HINT_LB]["StyleSheet"] = f"{STYLE_HINT};"
             try:
