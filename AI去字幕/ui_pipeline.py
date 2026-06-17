@@ -364,7 +364,7 @@ def process(*_):
     """
     _state["stop"] = False
     _state["processing"] = True
-    _set_btn(scan=False, start=False, pick=False, stop=True, warn=True)
+    _set_btn(scan=False, start=False, pick=False, stop=True, undo=False, color=False, warn=True)
 
     clips = _state["clips"]
     pr = _state["project_root"]
@@ -490,9 +490,8 @@ def process(*_):
     finally:
         _state["stop"] = False
         _state["processing"] = False
-        itm[COLOR_CB].Enabled = True
         itm[BTN_UNDO].Enabled = True
-        _set_btn(scan=True, pick=True, stop=False, warn=False)
+        _set_btn(stop=False, warn=False)
         itm[BTN_START].Enabled = False
         itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
         try: itm[ST_LB].Text = ""

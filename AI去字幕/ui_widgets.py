@@ -346,7 +346,7 @@ _sys.stderr = _UIStderr()
 
 # ── 子线程 → 主线程 UI 状态桥 ──
 _ui_lock = threading.Lock()
-_ui_pending = {"status": "", "progress": -1.0, "phase": "", "btn_scan": None, "btn_start": None, "btn_pick": None, "btn_stop": None, "warn": None}
+_ui_pending = {"status": "", "progress": -1.0, "phase": "", "btn_scan": None, "btn_start": None, "btn_pick": None, "btn_stop": None, "btn_undo": None, "btn_color": None, "warn": None}
 
 # ── 时间估算常量（实测数据 2026-05-08）──
 # 公式：sum(片段秒数)×2.3 + 60 秒（含上传+API+下载固定开销）
@@ -447,13 +447,15 @@ def _clear_engine_error():
 def _log_action(action: str):
     """记录用户操作到日志"""
     _log_file(f"[操作] {action}")
-def _set_btn(scan=None, start=None, pick=None, stop=None, warn=None):
+def _set_btn(scan=None, start=None, pick=None, stop=None, undo=None, color=None, warn=None):
     """设置按钮状态（主线程直写 + 子线程挂起）"""
     try:
         if scan is not None: itm[BTN_SCAN].Enabled = scan
         if start is not None: itm[BTN_START].Enabled = start
         if pick is not None: itm[BTN_PICK].Enabled = pick
         if stop is not None: itm[BTN_STOP].Enabled = stop
+        if undo is not None: itm[BTN_UNDO].Enabled = undo
+        if color is not None: itm[COLOR_CB].Enabled = color
         if warn is not None: itm["warn_lb"].Visible = warn
     except Exception: _event_log("[ui_widgets] _set_btn 失败")
     with _ui_lock:
@@ -461,6 +463,8 @@ def _set_btn(scan=None, start=None, pick=None, stop=None, warn=None):
         if start is not None: _ui_pending["btn_start"] = start
         if pick is not None: _ui_pending["btn_pick"] = pick
         if stop is not None: _ui_pending["btn_stop"] = stop
+        if undo is not None: _ui_pending["btn_undo"] = undo
+        if color is not None: _ui_pending["btn_color"] = color
         if warn is not None: _ui_pending["warn"] = warn
 
 def _apply_ui_state():
@@ -472,12 +476,14 @@ def _apply_ui_state():
             ph = _ui_pending.get("phase", "")
             bs = _ui_pending["btn_scan"]; b1 = _ui_pending["btn_start"]
             bp = _ui_pending["btn_pick"]; b2 = _ui_pending["btn_stop"]
-            wl = _ui_pending["warn"]
+            bu = _ui_pending.get("btn_undo"); bc = _ui_pending.get("btn_color"); wl = _ui_pending["warn"]
         if ph: itm[ST_LB].Text = ph  # 备用写 ST_LB
         if bs is not None: itm[BTN_SCAN].Enabled = bs
         if b1 is not None: itm[BTN_START].Enabled = b1
         if bp is not None: itm[BTN_PICK].Enabled = bp
         if b2 is not None: itm[BTN_STOP].Enabled = b2
+        if bu is not None: itm[BTN_UNDO].Enabled = bu
+        if bc is not None: itm[COLOR_CB].Enabled = bc
         if wl is not None: itm["warn_lb"].Visible = wl
         if pg >= 0: _pg(pg)
     except Exception: _event_log("[ui_widgets] _apply_ui_state 失败")

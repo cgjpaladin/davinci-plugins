@@ -90,7 +90,8 @@ def start_process(*_):
     _state["processing"] = True
     _state["stop"] = False
 
-    _set_btn(scan=False, start=False, pick=False, stop=True, warn=True)
+    _set_btn(scan=False, start=False, pick=False, stop=True, undo=False, color=False, warn=True)
+
     _st("准备中...")
     _pg(0)
 
@@ -107,7 +108,7 @@ def start_process(*_):
 
     _state["processing"] = False
     _set_btn(scan=True, start=_state.get("clips_scanned", False) and bool(_state.get("project_root")),
-             pick=True, stop=False, warn=False)
+             pick=True, stop=False, undo=True, color=True, warn=False)
     itm[PROJ_LB].Text = "② 请选择筛选条件并扫描当前选区"
 
     # 处理完成通知

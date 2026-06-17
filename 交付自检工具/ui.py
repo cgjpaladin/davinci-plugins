@@ -2847,6 +2847,7 @@ def _on_script_src_changed(_=None):
                 name = _feishu_display_name(normalized)
                 if name:
                     itm[EDIT_SCRIPT_SRC].Text = name
+                    itm[HINT_LB].Text = f"已选择: {name}"
             except Exception:
                 pass
         threading.Thread(target=_fetch_name, daemon=True).start()
