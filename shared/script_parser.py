@@ -285,16 +285,36 @@ def _feishu_file_meta(token: str) -> dict | None:
         pass
     return None
 
+def _run_with_timeout(fn, *args, timeout: float = 3.0):
+    """在线程中运行 fn，超时则返回 None。"""
+    import threading
+    result = [None]
+    exc = [None]
+    def _runner():
+        try:
+            result[0] = fn(*args)
+        except Exception as e:
+            exc[0] = e
+    t = threading.Thread(target=_runner, daemon=True)
+    t.start()
+    t.join(timeout=timeout)
+    if t.is_alive():
+        _log(f"⏰ _feishu_display_name 超时 ({timeout}s)")
+        return None
+    return result[0]
+
 def _feishu_display_name(normalized: str) -> str | None:
     """获取飞书链接的显示名称。失败返回 None。"""
+    return _run_with_timeout(_feishu_display_name_sync, normalized, timeout=3.0)
+
+def _feishu_display_name_sync(normalized: str) -> str | None:
+    """同步获取飞书链接的显示名称。"""
     try:
         if normalized.startswith("feishu_file:"):
             token = normalized.split(":", 1)[1]
-            # 先试 Range GET（content-disposition 头，~0.3s）
             name = _feishu_file_name_user(token)
             if name:
                 return name
-            # 回退 meta API（需要 drive:metadata scope）
             meta = _feishu_file_meta(token)
             if meta and meta.get("name"):
                 return meta["name"]
