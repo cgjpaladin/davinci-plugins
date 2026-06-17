@@ -2835,7 +2835,7 @@ def _on_script_src_changed(_=None):
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
     if "feishu.cn" in src or "docs.qq.com" in src:
         ok = ok and len(src) > 30
-        # 飞书链接：显示类型名（API 在达芬奇子进程不稳定）
+        # 飞书链接：先显示类型名，异步获取实际标题
         if "feishu.cn" in src or "docs.qq.com" in src:
             ok = ok and len(src) > 30
             if "feishu.cn" in src:
@@ -2846,7 +2846,19 @@ def _on_script_src_changed(_=None):
                        "飞书文件夹" if normalized.startswith("feishu_folder:") else \
                        "飞书链接"
                 itm[EDIT_SCRIPT_SRC].Text = disp
-                itm[HINT_LB].Text = f"已选择{disp}"
+                itm[HINT_LB].Text = f"已选择: {disp}"
+                # 异步获取真实标题（~0.6s，成功则替换）
+                import threading
+                def _fetch_title():
+                    from script_parser import _feishu_display_name
+                    try:
+                        name = _feishu_display_name(normalized)
+                        if name:
+                            itm[EDIT_SCRIPT_SRC].Text = name
+                            itm[HINT_LB].Text = f"已选择: {name}"
+                    except Exception:
+                        pass
+                threading.Thread(target=_fetch_title, daemon=True).start()
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
 

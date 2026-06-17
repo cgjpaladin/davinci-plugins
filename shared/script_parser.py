@@ -294,6 +294,14 @@ def _feishu_display_name(normalized: str) -> str | None:
             return meta.get("name") if meta else None
         elif normalized.startswith("feishu_docx:"):
             token = normalized.split(":", 1)[1]
+            # 先试 wiki node API
+            resp = _feishu_api(f"/open-apis/wiki/v2/spaces/get_node?token={token}")
+            if resp:
+                data = json.loads(resp)
+                if data.get("code") == 0:
+                    title = data.get("data", {}).get("node", {}).get("title")
+                    if title: return title
+            # 回退 docx document API
             resp = _feishu_api(f"https://open.feishu.cn/open-apis/docx/v1/documents/{token}")
             if resp:
                 data = json.loads(resp)
@@ -302,6 +310,20 @@ def _feishu_display_name(normalized: str) -> str | None:
     except Exception:
         pass
     return None
+
+def _get_feishu_title(normalized: str) -> str | None:
+    """公开接口：获取飞书文档/文件的实际标题。线程安全，3 秒内返回或 None。"""
+    import threading
+    result = [None]
+    def _fetch():
+        try:
+            result[0] = _feishu_display_name(normalized)
+        except Exception:
+            pass
+    t = threading.Thread(target=_fetch, daemon=True)
+    t.start()
+    t.join(timeout=3)
+    return result[0]
 
 def _download_feishu_file(token: str) -> str:
     """下载飞书文件，返回本地路径。
