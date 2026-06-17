@@ -2841,9 +2841,10 @@ def _on_script_src_changed(_=None):
         # 异步获取飞书文档名（不阻塞 UI）
         import threading
         def _fetch_name():
-            from script_parser import _feishu_display_name
+            from script_parser import _feishu_display_name, _normalize_feishu_url
             try:
-                name = _feishu_display_name(src)
+                normalized = _normalize_feishu_url(src)
+                name = _feishu_display_name(normalized)
                 if name:
                     itm[EDIT_SCRIPT_SRC].Text = name
             except Exception:
