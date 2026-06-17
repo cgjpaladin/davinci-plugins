@@ -2837,9 +2837,11 @@ def _on_script_src_changed(_=None):
         if "feishu.cn" in src:
             import threading
             def _fetch_name():
+                _action_log(f"🔄 开始异步获取飞书名...")
                 from script_parser import _feishu_display_name, _normalize_feishu_url
                 try:
                     normalized = _normalize_feishu_url(src)
+                    _action_log(f"🔍 飞书 normalized: {normalized[:50]}")
                     name = _feishu_display_name(normalized)
                     if name:
                         itm[EDIT_SCRIPT_SRC].Text = name
@@ -2853,8 +2855,11 @@ def _on_script_src_changed(_=None):
                 except Exception as e:
                     itm[EDIT_SCRIPT_SRC].Text = "飞书文档（名称获取失败）"
                     itm[HINT_LB].Text = "已选择飞书文档（请检查网络）"
-                    _action_log(f"⚠ 飞书名称异步获取异常: {e}")
-            threading.Thread(target=_fetch_name, daemon=True).start()
+                    _action_log(f"⚠ 飞书名称异步获取异常: {type(e).__name__}: {e}")
+            try:
+                threading.Thread(target=_fetch_name, daemon=True).start()
+            except Exception as e:
+                _action_log(f"⚠ 飞书名线程启动失败: {e}")
     itm[BTN_AI_TYPO].Enabled = not _checking and _ai_allowed
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
