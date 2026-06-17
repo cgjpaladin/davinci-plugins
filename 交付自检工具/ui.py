@@ -2850,14 +2850,17 @@ def _on_script_src_changed(_=None):
                 # 异步获取真实标题（~0.6s，成功则替换）
                 import threading
                 def _fetch_title():
-                    from script_parser import _feishu_display_name
                     try:
+                        from script_parser import _feishu_display_name
                         name = _feishu_display_name(normalized)
                         if name:
                             itm[EDIT_SCRIPT_SRC].Text = name
                             itm[HINT_LB].Text = f"已选择: {name}"
-                    except Exception:
-                        pass
+                            _action_log(f"📖 飞书标题: {name}")
+                        else:
+                            _action_log(f"⚠ 飞书标题获取失败: {normalized}")
+                    except Exception as e:
+                        _action_log(f"⚠ 飞书标题异步异常: {type(e).__name__}: {e}")
                 threading.Thread(target=_fetch_title, daemon=True).start()
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
