@@ -68,8 +68,9 @@ def choose_file(prompt: str = "选择文件",
         import tkinter as tk
         from tkinter import filedialog
         root = tk.Tk()
+        root.withdraw()
         root.attributes('-topmost', True)
-        root.focus_force()
+        root.update()
         path = filedialog.askopenfilename(
             title={repr(prompt)}, filetypes=[{ft_code}])
         root.destroy()
@@ -87,6 +88,7 @@ def choose_folder(prompt: str = "选择文件夹") -> str:
         root = tk.Tk()
         root.withdraw()
         root.attributes('-topmost', True)
+        root.update()
         path = filedialog.askdirectory(title={repr(prompt)})
         root.destroy()
         if path:
