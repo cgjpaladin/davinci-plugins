@@ -1505,10 +1505,8 @@ print(result[0])
         if _smb_add_busy: return
         _smb_add_busy = True
         cfg["cfg_smb_add"].Enabled = False
-        from shared.tk_dialogs import choose_folder
-        import subprocess
         try:
-            path = choose_folder("选择素材所在文件夹")
+            path = fu.RequestDir()
             if path and path not in _smb_paths_cache:
                 _smb_paths_cache.append(path)
                 _refresh_smb_paths_combo()
@@ -2557,17 +2555,14 @@ def _on_manual(ev):
 _browse_busy = False
 
 def _browse_script(ev):
-    """弹出文件选择器，将路径填入剧本链接输入框"""
+    """Fusion 原生文件选择器（零子进程、零 Dock 图标）"""
     global _browse_busy, _SCRIPT_SRC_PATH
     if _browse_busy: return
     _browse_busy = True
     itm["btn_browse_script"].Enabled = False
-    from shared.tk_dialogs import choose_file
     try:
         itm[HINT_LB].Text = "正在打开文件选择器..."
-        path = choose_file("选择剧本文件",
-            [("剧本文件", ".txt .pdf .docx .doc .md"),
-             ("全部文件", "*.*")])
+        path = fu.RequestFile()
         if path:
             _SCRIPT_SRC_PATH = path
             itm[EDIT_SCRIPT_SRC].Text = os.path.basename(path)
