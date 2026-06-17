@@ -86,6 +86,7 @@ BTN_START = "btn_start"
 BTN_CONFIG = "btn_config"
 BTN_AI_TYPO = "btn_ai_typo"
 EDIT_SCRIPT_SRC = "edit_script_src"
+_SCRIPT_SRC_PATH = ""  # 真实路径（UI 只显示文件名）
 BTN_TOGGLE_GROUP = "btn_toggle_group_"  # + group_name → "btn_toggle_group_工程"
 TREE_RESULT = "tree_result"
 GROUP_TREE = "group_tree"
@@ -876,6 +877,7 @@ itm = dlg.GetItems()
 itm[BTN_START].Enabled = False
 itm[BTN_AI_TYPO].Enabled = _ai_allowed
 itm[EDIT_SCRIPT_SRC].Text = "选填，提供剧本可启用 AI 错别字校对"
+_SCRIPT_SRC_PATH = ""
 
 # Tree 表头
 tree = itm[TREE_RESULT]
@@ -1709,7 +1711,7 @@ def _run_ai_typo():
         _action_log(f"📝 字幕: {len(entries)} 条")
 
         # ═══ 门1: 下载+解析剧本 ═══
-        src = itm[EDIT_SCRIPT_SRC].Text.strip()
+        src = _SCRIPT_SRC_PATH or itm[EDIT_SCRIPT_SRC].Text.strip()
         if not src or src == "选填，提供剧本可启用 AI 错别字校对":
             itm[HINT_LB].Text = "字幕系统检测中..."
             itm[HINT_LB]["StyleSheet"] = f"{STYLE_HINT};"
@@ -1839,7 +1841,7 @@ def _run_ai_typo():
 
         # ═══ 存档：完整保存本次校对的输入+输出（复盘用）═══
         _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
-                           itm[EDIT_SCRIPT_SRC].Text.strip(), result,
+                           _SCRIPT_SRC_PATH or itm[EDIT_SCRIPT_SRC].Text.strip(), result,
                            project=resolve.GetProjectManager().GetCurrentProject())
 
         _action_log("🎨 开始渲染结果...")
@@ -2556,7 +2558,7 @@ _browse_busy = False
 
 def _browse_script(ev):
     """弹出文件选择器，将路径填入剧本链接输入框"""
-    global _browse_busy
+    global _browse_busy, _SCRIPT_SRC_PATH
     if _browse_busy: return
     _browse_busy = True
     itm["btn_browse_script"].Enabled = False
@@ -2567,7 +2569,8 @@ def _browse_script(ev):
             [("剧本文件", ".txt .pdf .docx .doc .md"),
              ("全部文件", "*.*")])
         if path:
-            itm[EDIT_SCRIPT_SRC].Text = path
+            _SCRIPT_SRC_PATH = path
+            itm[EDIT_SCRIPT_SRC].Text = os.path.basename(path)
             _on_script_src_changed()
             _action_log(f"📂 选择剧本: {path}")
             itm[HINT_LB].Text = f"已选择: {os.path.basename(path)}"
@@ -2828,7 +2831,7 @@ dlg.On[BTN_MANUAL].Clicked = _on_manual
 
 # 剧本链接格式校验
 def _on_script_src_changed(_=None):
-    src = itm[EDIT_SCRIPT_SRC].Text.strip()
+    src = _SCRIPT_SRC_PATH or itm[EDIT_SCRIPT_SRC].Text.strip()
     if not src or src == "选填，提供剧本可启用 AI 错别字校对":
         return
     ok = any(src.startswith(p) for p in (
@@ -2842,7 +2845,7 @@ def _on_script_src_changed(_=None):
 # 🔗 粘贴链接（tkinter 弹窗，跨平台统一）
 _link_busy = False
 def _paste_link(ev):
-    global _link_busy
+    global _link_busy, _SCRIPT_SRC_PATH
     if _link_busy: return
     _link_busy = True
     itm["btn_paste_link"].Enabled = False
@@ -2850,6 +2853,7 @@ def _paste_link(ev):
     try:
         val = input_text("粘贴飞书链接", title="交付自检工具")
         if val:
+            _SCRIPT_SRC_PATH = val
             itm[EDIT_SCRIPT_SRC].Text = val
             _on_script_src_changed()
             _action_log(f"🔗 粘贴链接: {val[:60]}...")

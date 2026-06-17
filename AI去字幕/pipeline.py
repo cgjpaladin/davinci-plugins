@@ -85,7 +85,8 @@ class SubtitlePipeline(BasePipeline):
                 self._adapter = create_ghostcut_adapter()
             else:
                 self._adapter = create_preferred_adapter()
-            _log_ops.ops({"event": "engine_selected", "engine": self.manual_engine, "adapter": self._adapter.__class__.__name__})
+            _log_ops.ops({"event": "engine_selected", "engine": self.manual_engine,
+                          "adapter": self._adapter.__class__.__name__ if self._adapter else "None"})
         return self._adapter
 
     def _retry_with_fallback(self, tasks, batch):

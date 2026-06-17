@@ -402,6 +402,10 @@ def process(*_):
 
             # ── 前置探活：API + OSS ──
             probe = create_preferred_adapter()
+            if probe is None:
+                ui.log_fail("❌ 所有引擎均不可用，请稍后重试")
+                ui.set_status("预检失败")
+                return []
             api_ok = probe.check_health()
             oss_ok = probe.check_oss() if hasattr(probe, 'check_oss') else True
             if not api_ok or not oss_ok:
