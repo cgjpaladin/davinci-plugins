@@ -2833,28 +2833,18 @@ def _on_script_src_changed(_=None):
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
     if "feishu.cn" in src or "docs.qq.com" in src:
         ok = ok and len(src) > 30
-        # 同步获取飞书文档名（API 约 0.6s，有密钥）
-        if "feishu.cn" in src:
-            from script_parser import _feishu_display_name, _normalize_feishu_url
-            try:
+        # 飞书链接：显示类型名（API 在达芬奇子进程不稳定）
+        if "feishu.cn" in src or "docs.qq.com" in src:
+            ok = ok and len(src) > 30
+            if "feishu.cn" in src:
+                from script_parser import _normalize_feishu_url
                 normalized = _normalize_feishu_url(src)
-                import threading
-                def _fetch():
-                    try:
-                        name = _feishu_display_name(normalized)
-                        if name:
-                            itm[EDIT_SCRIPT_SRC].Text = name
-                            itm[HINT_LB].Text = f"已选择: {name}"
-                        else:
-                            kind = "文档" if normalized.startswith("feishu_docx:") else "文件"
-                            itm[EDIT_SCRIPT_SRC].Text = f"飞书{kind}"
-                            itm[HINT_LB].Text = f"已选择飞书{kind}"
-                    except Exception:
-                        pass
-                threading.Thread(target=_fetch, daemon=True).start()
-            except Exception:
-                pass
-    itm[BTN_AI_TYPO].Enabled = not _checking and _ai_allowed
+                disp = "飞书文档" if normalized.startswith("feishu_docx:") else \
+                       "飞书文件" if normalized.startswith("feishu_file:") else \
+                       "飞书文件夹" if normalized.startswith("feishu_folder:") else \
+                       "飞书链接"
+                itm[EDIT_SCRIPT_SRC].Text = disp
+                itm[HINT_LB].Text = f"已选择{disp}"
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
 
@@ -2870,11 +2860,6 @@ def _paste_link(ev):
         val = input_text("粘贴飞书链接", title="交付自检工具")
         if val:
             _SCRIPT_SRC_PATH = val
-            if "feishu.cn" in val:
-                itm[EDIT_SCRIPT_SRC].Text = "获取名称中…"
-                itm[HINT_LB].Text = "已识别飞书链接"
-            else:
-                itm[EDIT_SCRIPT_SRC].Text = val
             _on_script_src_changed()
             _action_log(f"🔗 粘贴链接: {val[:60]}...")
     finally:
