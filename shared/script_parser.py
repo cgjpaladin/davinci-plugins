@@ -347,11 +347,27 @@ def _export_feishu_docx(token: str) -> str:
     """导出飞书原生文档为 .docx，返回本地路径。
     缓存复用：检查文档 revision_id，未变则直接返回缓存。"""
     _ensure_cache()
-    cache_path = os.path.join(CACHE_DIR, f"docx_{token}.docx")
+    
+    # wiki 节点 → 先解析为实际文档 token
+    doc_token = token
+    doc_title = None
+    resp = _feishu_api(f"/open-apis/wiki/v2/spaces/get_node?token={token}")
+    if resp:
+        try:
+            data = json.loads(resp)
+            if data.get("code") == 0:
+                node = data.get("data", {}).get("node", {})
+                if node.get("obj_type") == "docx":
+                    doc_token = node.get("obj_token", token)
+                    doc_title = node.get("title")
+        except Exception:
+            pass
+
+    cache_path = os.path.join(CACHE_DIR, f"docx_{doc_token}.docx")
     meta_path = cache_path + ".rev"
 
     if os.path.exists(cache_path):
-        rev = _feishu_doc_meta(token)
+        rev = _feishu_doc_meta(doc_token)
         if rev:
             if os.path.exists(meta_path):
                 with open(meta_path, encoding="utf-8") as f:
@@ -369,9 +385,25 @@ def _export_feishu_docx(token: str) -> str:
             _log("⚠ 飞书文档元数据查询失败，使用旧缓存")
             return cache_path
 
-    resp = _feishu_api(f"{_FEISHU_EXPORT}/{token}?file_extension=docx")
+    resp = _feishu_api(f"{_FEISHU_EXPORT}/{doc_token}?file_extension=docx")
     if not resp:
-        raise RuntimeError(f"飞书文档导出失败: {token}")
+        # export API 不可用（权限不足或无 drive:export scope）→ 用 raw_content
+        raw = _feishu_api(f"https://open.feishu.cn/open-apis/docx/v1/documents/{doc_token}/raw_content")
+        if not raw:
+            raise RuntimeError(f"飞书文档导出失败: {doc_token}")
+        try:
+            data = json.loads(raw)
+            content = data.get("data", {}).get("content", "")
+        except json.JSONDecodeError:
+            raise RuntimeError(f"飞书 raw_content 响应异常: {raw[:200]}")
+        if content:
+            import tempfile
+            fd, path = tempfile.mkstemp(suffix=".txt", prefix="feishu_")
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(content)
+            _log(f"📄 飞书 raw_content: {len(content)} 字符")
+            return path
+        raise RuntimeError(f"飞书文档内容为空: {doc_token}")
     try:
         data = json.loads(resp)
         ticket = data.get("data", {}).get("ticket")
@@ -463,7 +495,7 @@ def parse_script(source: str, filename_keyword: str = "") -> dict:
         raise RuntimeError("文件夹中未找到支持的文档格式 (.docx/.doc/.pdf)")
     elif source.startswith("feishu_docx:"):
         token = source.split(":", 1)[1]
-        return _parse_docx_file(_export_feishu_docx(token))
+        return _parse_docx_file_with_fallback(_export_feishu_docx(token))
     elif source.startswith("feishu_file:"):
         token = source.split(":", 1)[1]
         docx = _download_feishu_file(token)
