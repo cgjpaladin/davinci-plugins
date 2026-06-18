@@ -99,7 +99,7 @@ def _single(asr_lines, context_lines, offset=0, timeline_name="", episode="", sy
             "    • 他好大的胆子 → 她好大的胆子（根据上下文指姜念念，姜念念是女主）\n"),
         4: ("4. 英文缩写 →「英文缩写」。例：NBA→美国职业篮球联赛、ICU→重症监护室\n"
             "    • 韩经理觉得OK → 不改（OK 已融入日常汉语）\n"),
-        5: ("5. 标点缺失或多余 →「标点缺失」\n"
+        5: ("5. 标点或空格缺失 →「标点/空格缺失」\n"
             "    • 《》用于书籍、影视作品名、项目名（如《修罗血玉》）\n"
             "    • 「」用于引述话语、特定命名、口号：\n"
             "      那块牌匾上写着妙手回春 → 那块牌匾上写着「妙手回春」（牌匾刻字）\n"
@@ -171,8 +171,8 @@ def _single(asr_lines, context_lines, offset=0, timeline_name="", episode="", sy
         2: '  {"index": 55, "original": "他轻而易举的救了她", "correction": "他轻而易举地救了她", "reason": "的得地"},\n',
         3: '  {"index": 28, "original": "他是我的妻子", "correction": "她是我的妻子", "reason": "性别错配"},\n',
         4: '  {"index": 12, "original": "他是NBA球员", "correction": "他是美国职业篮球联赛球员", "reason": "英文缩写"},\n',
-        5: '  {"index": 36, "original": "修罗血玉是本好书", "correction": "《修罗血玉》是本好书", "reason": "标点缺失"},\n'
-           '  {"index": 45, "original": "你干什么？", "correction": "你干什么", "reason": "标点缺失"},\n',
+        5: '  {"index": 36, "original": "修罗血玉是本好书", "correction": "《修罗血玉》是本好书", "reason": "标点/空格缺失"},\n'
+           '  {"index": 45, "original": "你干什么？", "correction": "你干什么", "reason": "标点/空格缺失"},\n',
         6: '  {"index": 42, "original": "我来自北京", "correction": "应替换为架空地名", "reason": "真实地名"},\n',
         7: '  {"index": 14, "original": "他要五仟万", "correction": "他要五千万", "reason": "错别字"},\n',
         8: '  {"index": 1, "original": "习近平", "correction": "请结合剧情自行判断", "reason": "违禁词"},\n'
@@ -203,7 +203,7 @@ def _single(asr_lines, context_lines, offset=0, timeline_name="", episode="", sy
 
     # ── reason 列表（按规则过滤）──
     _reason_names = {1:"角色名称错误",2:"的得地",3:"性别错配",4:"英文缩写",
-                     5:"标点缺失",6:"真实地名",7:"错别字",8:"违禁词",9:"断句"}
+                     5:"标点/空格缺失",6:"真实地名",7:"错别字",8:"违禁词",9:"断句"}
     reason_line = ("- reason: 一个或多个，用逗号分隔。可选值：" + " / ".join(
             _reason_names[r] for r in rules_subset if r in _reason_names) + "\n")
 
