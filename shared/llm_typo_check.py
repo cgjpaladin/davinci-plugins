@@ -241,9 +241,14 @@ def _single(asr_lines, context_lines, offset=0, timeline_name="", episode="", sy
             "- original: 完整字幕文本（整句）\n"
             "- correction: 修正后的完整字幕文本（整句）\n"
             + reason_line +
-            "- same_show: 必须输出。人名重叠、情节关联=true。\n"
-            "             完全找不到、情节无关=false。不确定→true\n"
-            "             ⚠ 即使 same_show=false，仍须逐字校对字幕错别字，不可跳过。same_show 仅作参考标志。\n\n"
+            "- same_show: 必须输出。\n"
+            "  ① 在剧本和字幕中分别找到至少 1 个共同人物名 → true\n"
+            "  ② 剧本不是人物故事（技术文档/表格/笔记/代码等）→ false\n"
+            "  ③ 不确定或条件不足 → false。宁可漏判不可误判。\n"
+            "  ⚠ 即使 same_show=false，仍须逐字校对字幕错别字，不可跳过。same_show 仅作参考标志。\n\n"
+
+
+
             "## 输出格式\n\n"
             '{"same_show": true, "corrections": [\n'
             + examples_section +
