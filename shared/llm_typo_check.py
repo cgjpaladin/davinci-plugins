@@ -242,7 +242,8 @@ def _single(asr_lines, context_lines, offset=0, timeline_name="", episode="", sy
             "- correction: 修正后的完整字幕文本（整句）\n"
             + reason_line +
             "- same_show: 必须输出。人名重叠、情节关联=true。\n"
-            "             完全找不到、情节无关=false。不确定→true\n\n"
+            "             完全找不到、情节无关=false。不确定→true\n"
+            "             ⚠ 即使 same_show=false，仍须逐字校对字幕错别字，不可跳过。same_show 仅作参考标志。\n\n"
             "## 输出格式\n\n"
             '{"same_show": true, "corrections": [\n'
             + examples_section +

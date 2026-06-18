@@ -1861,15 +1861,12 @@ def _run_ai_typo():
             direct_rows.append(row)
         _action_log(f"🎨 direct={len(direct_rows)}")
 
-        # 传错剧本：警告插入 direct_rows 确保渲染
+        # 传错剧本：红字警告区提示
         if result.get("same_show") is False:
-            warn_row = {"track": "ST1", "tc": "00:00:00:00",
-                       "msg": "⚠ 字幕与剧本疑似不同剧集",
-                       "reason": "请检查剧本链接是否正确"}
-            direct_rows.append(warn_row)
-            all_rows.insert(0, warn_row)
+            itm["lbl_gate_warn"].Text = "⚠ 字幕与剧本疑似不同剧集，请检查剧本链接是否正确"
+            itm["lbl_gate_warn"].Visible = True
             _action_log("⚠ LLM 判定字幕与剧本非同一部剧")
-            itm[HINT_LB].Text = "⚠ 疑似不同剧集"
+            itm[HINT_LB].Text = "⚠ 疑似不同剧集，请检查剧本链接"
 
         # AI 有结果才追加 corrections
         _action_log(f"🎨 corrections={len(corrections)}")
