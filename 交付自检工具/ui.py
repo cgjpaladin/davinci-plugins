@@ -590,12 +590,18 @@ def _lock_ui(label: str):
     global _BUSY; _BUSY = True
     itm[BTN_START].Enabled = False; itm[BTN_UPDATE].Enabled = False
     itm[BTN_ERR_SEND].Enabled = False; itm[BTN_MANUAL].Enabled = False
+    itm[BTN_CONFIG].Enabled = False
+    itm["btn_browse_script"].Enabled = False
+    itm["btn_paste_link"].Enabled = False
 
 def _unlock_ui():
     global _BUSY; _BUSY = False
     itm[BTN_START].Enabled = True; itm[BTN_START].Text = "开始检查"
     itm[BTN_UPDATE].Enabled = True; itm[BTN_ERR_SEND].Enabled = True
     itm[BTN_MANUAL].Enabled = True
+    itm[BTN_CONFIG].Enabled = True
+    itm["btn_browse_script"].Enabled = True
+    itm["btn_paste_link"].Enabled = True
     if _ai_allowed: itm[BTN_AI_TYPO].Enabled = True
 
 # ── 凭证持久化（macOS Keychain，零明文落盘）──
