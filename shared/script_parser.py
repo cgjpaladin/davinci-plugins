@@ -285,90 +285,10 @@ def _feishu_file_meta(token: str) -> dict | None:
         pass
     return None
 
-def _run_with_timeout(fn, *args, timeout: float = 3.0):
-    """在线程中运行 fn，超时则返回 None。"""
-    import threading
-    result = [None]
-    exc = [None]
-    def _runner():
-        try:
-            result[0] = fn(*args)
-        except Exception as e:
-            exc[0] = e
-    t = threading.Thread(target=_runner, daemon=True)
-    t.start()
-    t.join(timeout=timeout)
-    if t.is_alive():
-        _log(f"⏰ _feishu_display_name 超时 ({timeout}s)")
-        return None
-    return result[0]
-
 def _feishu_display_name(normalized: str) -> str | None:
-    """获取飞书链接的显示名称。失败返回 None。"""
-    return _run_with_timeout(_feishu_display_name_sync, normalized, timeout=3.0)
-
-def _feishu_display_name_sync(normalized: str) -> str | None:
-    """同步获取飞书链接的显示名称。"""
-    try:
-        if normalized.startswith("feishu_file:"):
-            token = normalized.split(":", 1)[1]
-            name = _feishu_file_name_user(token)
-            if name:
-                return name
-            meta = _feishu_file_meta(token)
-            if meta and meta.get("name"):
-                return meta["name"]
-        elif normalized.startswith("feishu_docx:"):
-            token = normalized.split(":", 1)[1]
-            resp = _feishu_api(f"/open-apis/wiki/v2/spaces/get_node?token={token}")
-            if resp:
-                data = json.loads(resp)
-                if data.get("code") == 0:
-                    title = data.get("data", {}).get("node", {}).get("title")
-                    if title: return title
-            resp = _feishu_api(f"https://open.feishu.cn/open-apis/docx/v1/documents/{token}")
-            if resp:
-                data = json.loads(resp)
-                if data.get("code") == 0:
-                    return data.get("data", {}).get("document", {}).get("title")
-    except Exception:
-        pass
-    return None
-
-def _feishu_file_name_user(token: str) -> str | None:
-    """从下载 API 响应头获取文件名（Range 仅请求 1 字节，极快）。"""
-    from urllib.request import Request
-    import re
-    try:
-        req = Request(f"{_FEISHU_FILES}/{token}/download")
-        req.add_header("Range", "bytes=0-0")
-        token_str = _get_tenant_token()
-        if not token_str:
-            return None
-        req.add_header("Authorization", f"Bearer {token_str}")
-        with urlopen(req, timeout=2, context=_SSL_CTX) as resp:
-            cd = resp.getheader("Content-Disposition", "")
-            m = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";\s]+)"?', cd)
-            if m:
-                from urllib.parse import unquote
-                return unquote(m.group(1))
-    except Exception:
-        pass
-    return None
-
-def _get_feishu_title(normalized: str) -> str | None:
-    """公开接口：获取飞书文档/文件的实际标题。线程安全，3 秒内返回或 None。"""
-    import threading
-    result = [None]
-    def _fetch():
-        try:
-            result[0] = _feishu_display_name(normalized)
-        except Exception:
-            pass
-    t = threading.Thread(target=_fetch, daemon=True)
-    t.start()
-    t.join(timeout=3)
-    return result[0]
+    """获取飞书链接的显示名称。DaVinci 子进程网络不稳定，不调 API，
+    统一返回类型名用于 UI 显示，实际解析时自有 API 调用。"""
+    return None  # UI 层根据 normalized 前缀自行推断类型
 
 def _download_feishu_file(token: str) -> str:
     """下载飞书文件，返回本地路径。

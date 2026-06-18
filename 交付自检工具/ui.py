@@ -2835,7 +2835,7 @@ def _on_script_src_changed(_=None):
         "https://", "http://", "/Volumes/", "smb://", "~/", "/"))
     if "feishu.cn" in src or "docs.qq.com" in src:
         ok = ok and len(src) > 30
-        # 飞书链接：先显示类型名，异步获取实际标题
+        # 飞书/腾讯文档: 格式校验 + 显示名称
         if "feishu.cn" in src or "docs.qq.com" in src:
             ok = ok and len(src) > 30
             if "feishu.cn" in src:
@@ -2847,29 +2847,6 @@ def _on_script_src_changed(_=None):
                        "飞书链接"
                 itm[EDIT_SCRIPT_SRC].Text = disp
                 itm[HINT_LB].Text = f"已选择: {disp}"
-                # 异步获取真实标题
-                _action_log(f"🔄 开始异步标题获取: {normalized[:40]}")
-                import threading
-                def _fetch_title():
-                    try:
-                        _action_log(f"🔵 线程内: 开始导入 _feishu_display_name")
-                        from script_parser import _feishu_display_name
-                        _action_log(f"🔵 线程内: 导入成功，开始调 API")
-                        name = _feishu_display_name(normalized)
-                        _action_log(f"🔵 线程内: API 返回 name={name}")
-                        if name:
-                            itm[EDIT_SCRIPT_SRC].Text = name
-                            itm[HINT_LB].Text = f"已选择: {name}"
-                            _action_log(f"📖 飞书标题: {name}")
-                        else:
-                            _action_log(f"⚠ 飞书标题获取失败: {normalized}")
-                    except Exception as e:
-                        _action_log(f"⚠ 飞书标题异步异常: {type(e).__name__}: {e}")
-                try:
-                    threading.Thread(target=_fetch_title, daemon=True).start()
-                    _action_log(f"🔵 线程已启动")
-                except Exception as e:
-                    _action_log(f"⚠ 线程启动失败: {e}")
     if not ok and src:
         _action_log(f"⚠ 剧本链接格式异常: {src[:60]}...")
 
