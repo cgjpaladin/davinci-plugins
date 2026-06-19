@@ -18,7 +18,7 @@ dev → bump版本 → channel prod → build_local → push SMB → 个人版�
 | channel | `./channel.sh prod` | dev→生产，否则 SMB 推送硬拦截 |
 | build_local | `bash build_local.sh` | 本地验证 + launcher 部署 |
 | push SMB | `GRAY_CHOICE=1 CONFIRM_PUSH=yes ./push_all.sh` | 推全公司 |
-| 个人版全量 | `./build_personal.sh` | 产出 `交付自检工具_vX.Y.Z.zip`→桌面→裁缝老师传网盘 |
+| 个人版全量 | `./build_personal.sh` | 干净重建 → 产出 95MB ZIP 放桌面。裁缝老师手动上传到飞书文档附件。禁止 AI 代传。 |
 | 个人版增量 | `./build_personal.sh --update` | 产出 `update_latest.zip`→git push→jsDelivr CDN |
 | 飞书文档 | `lark-cli docs +media-insert` | 全量 ZIP 附件 + 产品介绍，唯一公共入口 |
 
@@ -31,7 +31,7 @@ dev → bump版本 → channel prod → build_local → push SMB → 个人版�
 5. **🚫 更新公告唯一来源：`交付自检工具/CHANGELOG.md`。**
    bump 版本后检查此文件是否有新版本条目。没有 → 不能发布，提示裁缝老师去写。有 → 从中读取内容写入 `version.json` 的 history。AI 永不自己写公告。
 6. **⏸️ 公告内容必须和裁缝老师确认后再落地。** CHANGELOG.md → version.json → commit push 三步，中间必须有确认点。
-7. **产品入口 = 飞书文档**（`T5D1d...an2g`）。发布时上传全量 ZIP 附件 + 更新文档内容。GitHub Pages 已删除。
+7. **产品入口 = 飞书文档**（`T5D1d...an2g`）。裁缝老师手动上传全量 ZIP 附件 + 更新文档内容。AI 不碰文档上传。GitHub Pages 已删除。
 8. 百度网盘对 `.exe`/`.bat`/`.pkg` 零容忍 → 全量包放飞书文档附件，不走网盘。
 
 ## 分发避坑
