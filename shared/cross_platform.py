@@ -32,6 +32,7 @@ def python_candidates() -> list[str]:
             "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
             "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
             "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3",
             "/opt/homebrew/bin/python3",
             "/usr/local/bin/python3",
         ]

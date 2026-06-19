@@ -53,6 +53,7 @@ def _find_python():
             "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
             "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
             "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3",
+            "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3",
             "/opt/homebrew/bin/python3",
             "/usr/local/bin/python3",
         ]
@@ -126,8 +127,10 @@ def main():
         py = _find_python()
         if not py:
             _say({"action": "error",
-                  "reason": "Python 3.11+ with tkinter not found",
-                  "hint": "Install Python 3.13 from python.org (check tcl/tk)"})
+                  "reason": "Python 3.10+ with tkinter not found",
+                  "hint_mac": "brew install python-tk@3.13",
+                  "hint_win": "winget install Python.Python.3.13",
+                  "hint_url": "https://python.org/downloads/"})
             return
         state["python"] = py
         _save_state(state)
