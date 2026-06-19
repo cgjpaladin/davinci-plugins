@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""腾讯云 SCF License 后端 — 纯 Python 标准库。
+"""License 后端 — Python 标准库（未部署，仅作参考）。
+
+当前在线后端是 cloud/license_fc.js（阿里云 FC + 飞书 Base）。
+此文件 SQLite 方案从未上线。
 
 处理动作：
   init_trial  → 初始化试用（首次）
