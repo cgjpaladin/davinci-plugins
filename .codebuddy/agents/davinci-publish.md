@@ -9,16 +9,18 @@ model: inherit
 ## 发布全链路
 
 ```
-dev → bump版本 → build_local → sync SMB → 灰度 → 全量
+dev → bump版本 → channel prod → build_local → push SMB → 个人版构建 → 产品页更新
 ```
 
 | 阶段 | 工具 | 说明 |
 |------|------|------|
-| bump版本 | `VERSION_BUMP=patch/minor/major` | push_all.sh 自动传递 |
-| build_local | `bash build_local.sh` | 本地验证，不同步 SMB |
-| sync SMB | push_all.sh 内置 | 自动去 channel → 推 SMB |
-| 灰度 | `gray.sh add <MID>` | 单机测试 |
-| 全量 | `gray.sh promote` | 灰度 → 覆盖稳定版 |
+| bump版本 | `VERSION_BUMP=patch` | push_all.sh 自动传递 |
+| channel | `./channel.sh prod` | dev→生产，否则 SMB 推送硬拦截 |
+| build_local | `bash build_local.sh` | 本地验证 + launcher 部署 |
+| push SMB | `GRAY_CHOICE=1 CONFIRM_PUSH=yes ./push_all.sh` | 推全公司 |
+| 个人版全量 | `./build_personal.sh` | 产出 `交付自检工具_vX.Y.Z.zip`→桌面→裁缝老师传网盘 |
+| 个人版增量 | `./build_personal.sh --update` | 产出 `update_latest.zip`→git push→jsDelivr CDN |
+| 产品页 | 编辑 `docs/delivery/index.html` | 更新网盘链接+大小+提取码 |
 
 ## ⚠️ 发布铁律
 
@@ -28,6 +30,10 @@ dev → bump版本 → build_local → sync SMB → 灰度 → 全量
 4. **⏸️ promote 前展示灰度机器的验证结果 → 等裁缝老师说「全量」**。promote 不可逆。
 5. **🚫 更新公告唯一来源：`交付自检工具/CHANGELOG.md`。**
    bump 版本后检查此文件是否有新版本条目。没有 → 不能发布，提示裁缝老师去写。有 → 从中读取内容写入 `version.json` 的 history。AI 永不自己写公告。
+6. **⏸️ 公告内容必须和裁缝老师确认后再落地。** CHANGELOG.md → version.json → commit push 三步，中间必须有确认点。
+7. **⏸️ 产品页（`docs/delivery/index.html`）更新后提醒裁缝老师检查线上。** GitHub Pages 自动部署，git push 即上线。
+8. 全量包放桌面（`~/Desktop/交付自检工具_vX.Y.Z.zip`），裁缝老师传百度网盘。增量包 push 到 git repo（jsDelivr CDN）。
+9. 百度网盘 zip 含 Windows `.exe` 必命中毒检 → build 时去掉 Win python installer。
 
 ## 分发避坑
 

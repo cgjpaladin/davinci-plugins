@@ -28,6 +28,8 @@ skills: davinci-resolve-scripting
 | LineEdit + CJK 输入法闪退 | `Fusion::RemoteApp::FindLocalObject` SIGSEGV（达芬奇 UIManager Qt 事件链 bug） |
 | 点了按钮没弹窗 | subprocess exit code != 0（NameError/tkinter 缺库/osascript 语法错） |
 | 弹窗取消后按钮灰色不复原 | 提前 return 没走 finally（启用前灰显 + finally 恢复是铁律） |
+| urllib 在 DaVinci 子进程无限挂 | timeout 参数被忽略，线程/子进程超时均无效。改 subprocess 调 curl 或主 shell 线程 |
+| tkinter 子进程弹 Dock 图标 | macOS 任何启动 GUI 的进程占据 Dock。文件选择改用 `fu.RequestFile()` |
 
 ## IME 崩溃诊断清单（2026-06-16 沉淀）
 

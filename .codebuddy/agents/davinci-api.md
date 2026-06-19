@@ -314,3 +314,10 @@ widget_obj.Enabled = False # widget_obj 是蓝图 dict，改不动 UI
 - 事件绑定：`dlg.On["widget_id"].Clicked = handler`
 - `nonlocal` 只用于外层变量重新绑定，读取无需
 - 禁止 `kill`/`pkill`：会触发 Fairlight SIGABRT 崩溃
+
+### 文件/目录选择
+```python
+# Fusion 原生，零子进程，零 Dock 图标
+fu.RequestFile()       # 文件选择
+fu.RequestDir()        # 目录选择
+```

@@ -7,7 +7,7 @@ model: inherit
 # 交付自检工具开发
 
 > 基于真实代码：`ui.py`（~2700行）+ `check_core.py`（1845行）+ `config.py` + `launcher.py`
-> v2.5.7 | 最后更新：2026-06-16
+> v2.5.9 | 最后更新：2026-06-20
 
 ---
 
@@ -789,3 +789,6 @@ python3 tools/gen_key.py 1 --status unused # 1 个未使用
 | `_write_env.py` URL ≠ `license.py` 默认值 | 新用户请求发到错的 FC | 全项目 grep 统一（2026-06-16 从 `license-yqvhkhvhgf` → `license-node-mtqaghwijy`） |
 | GitHub Release 中文文件名 | 资产名截成 `_` | 更新包固定 ASCII 名 `update_latest.zip` |
 | 百度网盘下文件夹 | Unix +x 权限丢失 | zip 分发（Archive Utility 保留权限） |
+| `_lock_ui` 按钮不全 | 校对时仍可点配置/本地/飞书 | `_lock_ui` 必须禁 BTN_CONFIG + btn_browse_script + btn_paste_link |
+| same_show=False 不显示 | Tree 渲染只用 direct_rows + ai_rows | 警告设 `lbl_gate_warn.Text+Visible=True`，不插 Tree |
+| 飞书标题异步 API 永远挂 | DaVinci 子进程 urlopen 无限 hang | 砍掉异步，同步显示类型名；解析时自有 API 调 |

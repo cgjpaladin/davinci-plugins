@@ -333,11 +333,17 @@ disp.RunLoop()  # 阻塞直到 ExitLoop()
 popup.Hide()
 ```
 
-## 目录选择对话框
+## 文件/目录选择对话框
 
 ```python
-selected = fusion.RequestDir()  # 原生目录选择器
+# 文件选择 — Fusion 原生，零子进程，零 Dock 图标
+path = fu.RequestFile()
+
+# 目录选择
+path = fu.RequestDir()
 ```
+
+> 优先用这两个，不用 tkinter 子进程。macOS 上 tkinter 子进程会在 Dock 产生独立图标。
 
 ## UI 设计原则
 
