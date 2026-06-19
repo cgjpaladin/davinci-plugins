@@ -1,12 +1,12 @@
 {
   "delivery_checker": {
-    "version": "2.5.7",
+    "version": "2.5.9",
     "urls": [
-      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.7/update_latest.zip",
-      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v2.5.7/update_latest.zip"
+      "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/update_latest.zip",
+      "https://ghproxy.net/https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/update_latest.zip"
     ],
-    "sha256": "071a0b1bfa98e7d02112ba3f49f248a616df2ca6ee538d9ea73000b3fe380209",
-    "notes": "🐛 修复：个别设备授权异常的问题\n🛡️ 修复：中文输入法下输入激活码或 API Key 可能闪退\n📦 安装流程更简洁\n🔄 更新检测更准确",
+    "sha256": "b856b05a82f48f0e503ac692ff0cc0667fa026bbc87e527eebb67cd44ddec6e6",
+    "notes": "🔗 飞书 Wiki 链接一键导入剧本\n🤖 AI 校对更可靠：不同剧集照样检测错别字\n🛡️ 校对时配置、选文件按钮自动锁定，防误触\n✏️ AI 新增「标点或空格缺失」检测",
     "history": [
       {
         "version": "2.4.0",
@@ -31,6 +31,14 @@
       {
         "version": "2.5.7",
         "notes": "## v2.5.7\n\n🐛 修复：个别设备授权异常的问题\n🛡️ 修复：中文输入法下输入激活码或 API Key 可能闪退\n📦 安装流程更简洁\n🔄 更新检测更准确"
+      },
+      {
+        "version": "2.5.8",
+        "notes": "## v2.5.8\n\n🪟 Windows 安装一键完成，稳定可靠\n📦 安装包自带 Python，无需手动安装"
+      },
+      {
+        "version": "2.5.9",
+        "notes": "## v2.5.9\n\n🔗 飞书 Wiki 链接一键导入剧本\n🤖 AI 校对更可靠：不同剧集照样检测错别字\n🛡️ 校对时配置、选文件按钮自动锁定，防误触\n✏️ AI 新增「标点或空格缺失」检测"
       }
     ]
   }
