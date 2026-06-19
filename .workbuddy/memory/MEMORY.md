@@ -21,7 +21,7 @@
 | 产品 | 版本 | 状态 |
 |------|------|------|
 | AI去字幕 | v1.11.3 | ✅ |
-| 交付自检 | v2.5.7 | ✅ |
+| 交付自检 | v2.5.9 | ✅ 飞书Wiki+文件选择原生化+same_show硬化 |
 | 批量命名工具 | v3.6 | ✅ 表格版，8字段(Ep/Sc/Gr/Tk/desc/method/author/v/status)，导表+硬编码消除+审查模式+DMG分发 |
 | 批量命名工具_创壹特供版 | v1.1 | ✅ 表格版，9字段(EP/SC/SH/TK/desc/type/author/V/status)，导表+死代码清理 |
 | AI换口型 | — | 待开发 |
@@ -81,6 +81,16 @@
 - **路径铁律**: 所有部署路径使用系统级 `/Library/Application Support/`，不用用户级 `~/Library/`。系统级路径 Finder 可见，用户级不可见。个人版同样遵循此规则。
 - **打进去不装上去**: 运行时零安装——任何依赖以文件形式 vendoring 或数据嵌入。构建时 pip 随便用，用户更新包永远只是解压→覆盖，无 `pip install`
 
+## 分发体系（2026-06-20 重构）
+
+| 渠道 | 内容 | 用途 |
+|------|------|------|
+| 飞书文档 `T5D1d...an2g` | 产品介绍 + 95MB ZIP 附件 | 唯一入口，人工下载 |
+| GitHub `update_latest.zip` | 543KB 增量包 | 插件内「检查更新」自动拉 |
+| SMB | `交付自检工具/` + `shared/` | 公司 20 台自动同步 |
+| GitHub Pages | ❌ 已删除 | 飞书文档替代 |
+| 百度网盘 | ❌ 已放弃 | 可执行文件百审不过 |
+
 ## 共享模块
 
 | 模块 | 用途 |
@@ -128,6 +138,8 @@
 | `Visible=False` 释放布局空间 | 隐藏后后续控件挤占空位 | 用 `Enabled=False` 替代，保持占位 |
 | 非默认事件不触发 | Clicked/Close 之外需 `Events:{Name:True}` 显式启用 | 鬼猫猫文档 2026-06-13 确认 |
 | subprocess 阻塞 + Clicked 排队 | 弹窗按钮连点出多个窗口 | `Enabled=False` 在 try 前 + finally 恢复 |
+| urlopen 在子进程无限挂 | timeout 参数被忽略，线程/子进程超时均无效 | 文件选择→fu.RequestFile/Dir；网络调用→主shell线程/curl subprocess |
+| tkinter 子进程生 Docker 图标 | macOS 独立 Python 进程占据 Dock | 文件/文件夹选择→fu.RequestFile/Dir（Fusion 原生）
 
 ## UI 设计规范
 
