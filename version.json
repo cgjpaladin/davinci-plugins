@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/update_latest.zip"
     ],
     "sha256": "b856b05a82f48f0e503ac692ff0cc0667fa026bbc87e527eebb67cd44ddec6e6",
-    "notes": "🔗 飞书 Wiki 链接直接导入剧本\n🤖 不同剧集也能校对字幕，不怕传错剧本\n🛡️ 校对中锁定按钮：防误触、防崩溃\n✏️ AI 新增「标点或空格缺失」检测",
+    "notes": "🔗 飞书 Wiki 链接直接导入剧本\n🤖 不同剧集也能校对字幕，不怕传错剧本\n🛡️ 校对中锁定按钮：防误触、防崩溃",
     "history": [
       {
         "version": "2.4.0",
@@ -34,11 +34,11 @@
       },
       {
         "version": "2.5.8",
-        "notes": "## v2.5.8\n\n🪟 Windows 安装一键完成\n📦 安装包自带 Python，省去手动下载"
+        "notes": "## v2.5.8\n\n📦 安装包自带 Python，省去手动下载"
       },
       {
         "version": "2.5.9",
-        "notes": "## v2.5.9\n\n🔗 飞书 Wiki 链接直接导入剧本\n🤖 不同剧集也能校对字幕，不怕传错剧本\n🛡️ 校对中锁定按钮：防误触、防崩溃\n✏️ AI 新增「标点或空格缺失」检测"
+        "notes": "## v2.5.9\n\n🔗 飞书 Wiki 链接直接导入剧本\n🤖 不同剧集也能校对字幕，不怕传错剧本\n🛡️ 校对中锁定按钮：防误触、防崩溃"
       }
     ]
   }
