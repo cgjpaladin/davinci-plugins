@@ -108,7 +108,7 @@ function makeToken(payload) {
 // 激活：仅接受「待激活」状态的码
 async function handleActivate(data) {
   const key = (data.activate_key || '').trim().toUpperCase();
-  const fp = data.machine_fingerprint || '';
+  const fp = (data.machine_fingerprint || '').trim();
   if (!key || !fp) return { status: 'error', msg: '参数不完整' };
 
   const records = await listRecords(`CurrentValue.[激活码]="${key}"`);
@@ -140,7 +140,7 @@ async function handleActivate(data) {
     if (trialRecords.length > 0 && !trialRecords[0].fields['激活时间']) {
       await updateRecord(trialRecords[0].record_id, { '激活时间': Date.now() }, TRIAL_TABLE_ID);
     }
-  } catch(e) {}
+  } catch(e) { console.error('trial activate update failed:', e.message); }
 
   const payload = {
     activate_key: key, machine_fingerprint: fp, issue_time: now,
