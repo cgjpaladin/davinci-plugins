@@ -7,16 +7,21 @@ WS="$(cd "$SCRIPT_DIR/.." && pwd)"
 VER=$(python3 -c "exec(open('$WS/交付自检工具/config.py', encoding='utf-8').read()); print(__version__)")
 PKG="$SCRIPT_DIR/_build/交付自检工具_v${VER}"
 INNER_ZIP_NAME="data.zip"
-# --all 模式：一次输出全量 + 增量两个包
+# --all 模式：一次输出全量 + 增量 + agent 三个包
 if [ "$1" = "--all" ]; then
-    bash "$0" && bash "$0" --update
-    echo "═══ 全量包 + 增量包 完成 ═══"
+    bash "$0" && bash "$0" --update && bash "$0" --agent
+    echo "═══ 全量包 + 增量包 + Agent包 完成 ═══"
     exit 0
 fi
 # 增量更新包用 ASCII 根目录名避免 zip 乱码
 if [ "$1" = "--update" ]; then
     PKG="$SCRIPT_DIR/_build/davinci_plugin_update"
     ZIP="$SCRIPT_DIR/_build/update_latest.zip"
+fi
+# Agent 安装包：纯代码，零可执行文件（走 jsDelivr CDN）
+if [ "$1" = "--agent" ]; then
+    PKG="$SCRIPT_DIR/_build/davinci_agent_install"
+    ZIP="$SCRIPT_DIR/_build/agent_install.zip"
 fi
 INNER_ZIP="$PKG/$INNER_ZIP_NAME"
 
@@ -52,7 +57,8 @@ if ls "$WS/交付自检工具/dicts"/*.{txt,csv} 1>/dev/null 2>&1; then
     cp "$WS/交付自检工具/dicts"/*.{txt,csv} "$PKG/交付自检工具/dicts/" || { echo "❌ 字典拷贝失败"; exit 1; }
 fi
 
-# 6. 安装脚本（--update 模式只用 ASCII 名避免乱码）
+# 6. 安装脚本（Agent 模式跳过）
+if [ "$1" != "--agent" ]; then
 chmod +x "$PKG/交付自检工具/install.command"
 if [ "$1" = "--update" ]; then
     mv "$PKG/交付自检工具/install.command" "$PKG/install_update.command"
@@ -72,6 +78,12 @@ print(f'  bat: {old.decode()} → {new.decode()}')
 d=d.replace(old,new)
 with open('$PKG/Win安装.bat','wb') as f: f.write(d)
 "
+else
+# Agent 模式：去掉 install.command（用户不碰终端）
+rm -f "$PKG/交付自检工具/install.command"
+rm -f "$PKG/交付自检工具/shell_personal.py"
+# 保留 install_agent.py 在源码根目录
+fi
 
 # 7. 清理缓存 + 清除 quarantine 属性（防下载后双击被拒）
 find "$PKG" -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
@@ -79,8 +91,10 @@ find "$PKG" -type f -exec xattr -c {} \; 2>/dev/null || true
 
 echo "✅ $(find "$PKG" -type f | wc -l) 源文件"
 
-# 8. 加入 Python 安装包（放在源码子目录内，一起打进内层 zip）
-if [ "$1" != "--update" ]; then
+# 8. 加入 Python 安装包（Agent 模式跳过）
+if [ "$1" = "--agent" ]; then
+    echo "  Agent 安装包（纯代码，零可执行文件）"
+elif [ "$1" != "--update" ]; then
     # macOS
     PY_MAC="python-3.13.13-macos11.pkg"
     if [ -f "$SCRIPT_DIR/$PY_MAC" ]; then
@@ -97,8 +111,52 @@ else
     echo "  增量更新包（不含 Python）"
 fi
 
-# 8b. 首次安装包：将源码+Python.pkg打包为内层zip（二进制，百度不扫内容）
-if [ "$1" != "--update" ]; then
+# 8b. 打包（Agent 模式：直接 zip 源码目录，不打内层 data.zip）
+if [ "$1" = "--agent" ]; then
+    # Agent 安装指引
+    cat > "$PKG/交付自检工具/AGENT_INSTALL.md" << 'AGENTEOF'
+# 交付自检工具 — Agent 安装指引
+
+## 你的任务
+
+用户的 AI 助手，帮用户安装这个 DaVinci Resolve 插件。
+
+## 安装步骤
+
+1. 解压这个 zip 到临时目录
+2. cd 到 `交付自检工具/` 目录
+3. 运行 `python install_agent.py`
+4. 逐行解析 stdout 的 JSON，按指令操作
+
+## JSON 协议
+
+| 字段 | 含义 | 你的动作 |
+|------|------|---------|
+| `need_sudo` | macOS 需要管理员密码 | 问用户要密码，`echo "密码" \| sudo -S <cmd>` |
+| `need_admin` | Windows 需管理员 | 让用户右键"以管理员身份运行" |
+| `installing_python` | 正在装 Python | 等待 ~30s |
+| `env_init` | 首次配置 | 引导用户设 API Key |
+| `done` | 完成 | 告知用户：达芬奇 → 工作区 → 脚本 → 交付自检工具 |
+| `error` | 出错 | 报告用户，修复，重试 |
+
+## Python 要求
+
+- 最低 Python 3.10（需要 `str | None` 类型语法）
+- 必须含 tkinter（macOS: `brew install python-tk@3.13`）
+- 找不到时 install_agent.py 会从 zip 内提取 .pkg 自动安装
+
+## 安装后配置
+
+引导用户在插件里点 ⚙ 配置：
+- DeepSeek API Key：platform.deepseek.com → API Keys
+- 飞书 App ID/Secret（可选）：open.feishu.cn → 创建应用
+
+## 断点续装
+
+状态文件 `~/.delivery_checker_install_state.json`，中断后加 `--continue` 继续。
+AGENTEOF
+    echo "  📄 AGENT_INSTALL.md 已生成"
+elif [ "$1" != "--update" ]; then
     cd "$PKG" && zip -rq "$INNER_ZIP_NAME" "交付自检工具/"
     rm -rf "$PKG/交付自检工具/"
     echo "  📦 内层 zip 已创建"
@@ -170,8 +228,11 @@ READMEEOF
     echo "  📄 先读我.txt 已生成"
 fi
 
-# 9. 出厂检验（在内层 zip 上做，直接读 config.py）
-if [ "$1" != "--update" ]; then
+# 9. 出厂检验（Agent 模式直接读 config.py）
+if [ "$1" = "--agent" ]; then
+    AGENT_VER=$(python3 -c "exec(open('$PKG/交付自检工具/config.py', encoding='utf-8').read()); print(__version__)")
+    echo "✅ Agent 包版本: $AGENT_VER"
+elif [ "$1" != "--update" ]; then
 VER_SRC=$(grep '__version__' "$WS/交付自检工具/config.py" | head -1 | grep -o '"[^"]*"')
 VER_ZIP=$(python3 -c "
 import zipfile, sys
@@ -190,12 +251,17 @@ fi
 echo "✅ 出厂检验通过: $VER_ZIP"
 fi
 
+# Agent 模式：直接打包源码目录为 agent_install.zip（GitHub + jsDelivr CDN）
+if [ "$1" = "--agent" ]; then
+    cd "$SCRIPT_DIR/_build" && zip -rq "$ZIP" "$(basename "$PKG")/"
+    ls -lh "$ZIP"
+    echo "📂 git push 后通过 jsDelivr CDN 分发"
 # --update 模式：打包为 update_latest.zip（ASCII 名，gh 不乱码）
-if [ "$1" = "--update" ]; then
+elif [ "$1" = "--update" ]; then
     cd "$SCRIPT_DIR/_build" && zip -rq "$ZIP" "$(basename "$PKG")/"
     ls -lh "$ZIP"
 else
-    # 首次安装：打包为分发 zip（百度网盘上传这一个文件）
+    # 首次安装：打包为分发 zip
     OUTER_ZIP="$SCRIPT_DIR/_build/交付自检工具_v${VER}.zip"
     cd "$SCRIPT_DIR/_build" && zip -rq "$OUTER_ZIP" "$(basename "$PKG")/"
     ls -lh "$OUTER_ZIP"
