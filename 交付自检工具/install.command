@@ -37,7 +37,7 @@ echo "  ⏳ 正在检测…" >&3
 INSTALL_DIR="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/交付自检工具"
 FUSION_SCRIPTS="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Edit"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ZIP_SRC="$SCRIPT_DIR/请勿直接解压此文件.zip"
+ZIP_SRC="$SCRIPT_DIR/data.zip"
 SOURCE="$SCRIPT_DIR/交付自检工具"
 if [ $IS_UPDATE -eq 1 ]; then
     if [ -d "$SCRIPT_DIR/交付自检工具" ]; then
@@ -58,7 +58,7 @@ echo "📁 安装目标: $INSTALL_DIR"
 # ═══════════════════════════════════════
 if [ $IS_UPDATE -eq 0 ]; then
     if [ ! -f "$ZIP_SRC" ]; then
-        osascript -e $'display dialog "找不到安装文件「请勿直接解压此文件.zip」。\n\n请确保Mac安装.command和它位于同一文件夹内。" buttons {"好的"} default button 1 with icon stop'
+        osascript -e $'display dialog "找不到安装文件「data.zip」。\n\n请确保Mac安装.command和它位于同一文件夹内。" buttons {"好的"} default button 1 with icon stop'
         exit 1
     fi
 else
