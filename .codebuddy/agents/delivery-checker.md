@@ -776,6 +776,12 @@ python3 tools/gen_key.py 1 --status unused # 1 个未使用
 - raw version.json（优先，含完整 history）→ jsdelivr CDN → ghproxy → GitHub Releases API（兜底）
 - release body = 用户看到的更新公告
 
+### 黑边检测算法（v2.5.9+）
+- 对每个视频片段：收集所有上层（启用+Opacity=100%）片段覆盖区间
+- `_exposed_ranges()`：合并重叠覆盖区间 → 从片段区间减去 → 得到实际暴露帧范围
+- 每个暴露子区间独立报时间码，而非片段头
+- 无任何阈值或容错——哪怕 1 帧暴露也报
+
 60 处 UI 控件全部引用这些常量，不再散落魔法数字。
 
 ## 已知踩坑（2026-06-16 更新）
