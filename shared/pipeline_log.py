@@ -74,11 +74,9 @@ class StepLogger:
 
     def fail(self, msg: str):
         self.ui.log_fail(msg)
-        print(msg, file=sys.stderr)
 
     def warn(self, msg: str):
         self.ui.log_warn(msg)
-        print(msg, file=sys.stderr)
 
     # ── 专用格式 ──
 

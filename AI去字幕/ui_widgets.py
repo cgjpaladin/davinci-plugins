@@ -14,6 +14,9 @@ import math
 import traceback
 import queue
 
+# 保存真实 stderr，在任何 stderr 重定向之前
+_real_stderr = sys.stderr
+
 os.environ["RESOLVE_SCRIPT_API"] = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting"
 os.environ["RESOLVE_SCRIPT_LIB"] = "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so"
 
@@ -223,25 +226,9 @@ _last_ui_msg = ""       # 重复折叠：上一条UI显示内容
 _last_ui_count = 0      # 重复折叠：连续相同次数
 _dup_flush_needed = False
 
-def _ui_write_direct(msg: str):
-    """主线程直写 TextEdit + 文件持久化；子线程只入队。
-    UI 显示时连续相同消息折叠为 ×N，但文件日志和 stderr 保留全量。"""
+def _write_to_te(msg: str):
+    """写 TextEdit + 重复折叠（UI 显示专用，不写文件）。主线程调用。"""
     global _log_line_count, _last_ui_msg, _last_ui_count, _dup_flush_needed
-    
-    # ── 文件持久化 + stderr（全量，不折叠）──
-    _stderr_msg = msg
-    try:
-        _log.ui(msg)
-    except Exception:
-        pass
-    if any(k in _stderr_msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
-        print(_stderr_msg, file=sys.stderr)
-    
-    # ── UI 显示（重复折叠）──
-    on_main = threading.current_thread() is _main_thread
-    if not on_main:
-        _log_queue.put(msg)
-        return
     
     if msg == _last_ui_msg:
         _last_ui_count += 1
@@ -273,6 +260,29 @@ def _ui_write_direct(msg: str):
         pass
 
 
+def _ui_write_direct(msg: str):
+    """写文件 + stderr + 入队/直写 UI（自动区分线程）。
+    子线程消息入队，主线程 `_flush_log` 统一刷出，所有路径共享同一套折叠逻辑。"""
+    global _log_line_count
+    
+    # ── 文件持久化 + stderr（全量，不折叠）──
+    _stderr_msg = msg
+    try:
+        _log.ui(msg)
+    except Exception:
+        pass
+    if any(k in _stderr_msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
+        _real_stderr.write(_stderr_msg + "\n"); _real_stderr.flush()
+    
+    # ── UI 显示 ──
+    on_main = threading.current_thread() is _main_thread
+    if not on_main:
+        _log_queue.put(msg)
+        return
+    
+    _write_to_te(msg)
+
+
 def _flush_dup_count():
     """输出被折叠的重复消息计数"""
     global _dup_flush_needed, _last_ui_count, _last_ui_msg
@@ -299,7 +309,7 @@ def _event_log(msg: str):
     except Exception:
         pass
     if any(k in msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
-        print(msg, file=sys.stderr)
+        _real_stderr.write(msg + "\n"); _real_stderr.flush()
 
 def _check_smb():
     """全局 SMB 健康检查 + 自动重挂。返回 True=在线"""
@@ -320,14 +330,12 @@ def _check_smb():
     return False
 
 def _flush_log():
-    """主线程调用：批量刷日志到 TextEdit"""
+    """主线程调用：批量刷日志到 TextEdit，通过 _write_to_te 统一折叠"""
     try:
-        te = itm[LOG_LB]
         while not _log_queue.empty():
             msg = _log_queue.get_nowait()
-            te.Append(msg + "\n")
-    except Exception:  # SMB 初始化失败不阻塞 UI
-        # UI 未就绪时静默（初始化时序），真实错误由 _event_log 覆盖
+            _write_to_te(msg)
+    except Exception:
         pass
 
 # 注入日志器（所有 info/warn/fail/ok 都走 _ui_write → 入队）

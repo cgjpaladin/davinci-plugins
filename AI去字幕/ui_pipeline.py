@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 from config import (
     DEBUG, get_output_dir, get_log_dir, __version__,
     SMB_SCRIPTS, SMB_AI_PROJECT, PRODUCT_NAME,
+    ADAPTER_CONFIGS,
 )
 from subtitle_state import init as state_init, acquire_lock, release_lock, is_locked as state_is_locked
 import ledger

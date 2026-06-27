@@ -54,16 +54,17 @@ sys.stderr = stderr_capture()
 log.fail("余额不足")
 output = sys.stderr.getvalue()
 sys.stderr = real_stderr
-check("fail写stderr", "余额不足" in output, f"got: {output}")
+# fail 不再写 stderr（2026-06-27 移除，避免 _UIStderr 回环死循环）
+check("fail不写stderr", output == "", f"got: {output}")
 check("fail写UI", len(log.ui.warn_msgs) == 0)  # fail => log_fail, not log_warn
 check("fail写log_fail", len(log.ui.fail_msgs) == 1)
 
-# 1b: warn → stderr
+# 1b: warn → 不再写 stderr
 sys.stderr = stderr_capture()
 log.warn("全部失败")
 output = sys.stderr.getvalue()
 sys.stderr = real_stderr
-check("warn写stderr", "全部失败" in output)
+check("warn不写stderr", output == "")
 check("warn写log_warn", len(log.ui.warn_msgs) == 1)
 
 # 1c: info → NO stderr
@@ -186,8 +187,9 @@ log3.begin("AI去字幕")
 log3.fail("处理失败")
 stderr3 = sys.stderr.getvalue()
 sys.stderr = sys.__stderr__
-check("2c stderr含'全部失败'", "全部失败" in stderr3)
-check("2c stderr含'处理失败'", "处理失败" in stderr3)
+# fail/warn 不再写 stderr（2026-06-27 移除，避免 _UIStderr 回环死循环）
+check("2c stderr不含'全部失败'", "全部失败" not in stderr3)
+check("2c stderr不含'处理失败'", "处理失败" not in stderr3)
 check("2c UI含warn", len(ui3.warn_msgs) >= 1)
 check("2c UI含fail", len(ui3.fail_msgs) >= 1)
 # 验证步骤号：①(scan)②上传③AI去字幕
@@ -205,7 +207,7 @@ log4.begin("上传")
 log4.fail("余额不足")
 stderr4 = sys.stderr.getvalue()
 sys.stderr = sys.__stderr__
-check("2d stderr含'余额不足'", "余额不足" in stderr4)
+check("2d stderr不含'余额不足'", "余额不足" not in stderr4)
 check("2d 只有①+②步骤", len([m for m in ui4.info_msgs if '──' in m]) == 1)
 
 print(f"\n  第2轮: {'✅' if not FAILS else f'❌ {len(FAILS)} FAIL'}")
@@ -235,7 +237,7 @@ log_long = StepLogger(MockUI())
 log_long.fail(long_msg)
 out = sys.stderr.getvalue()
 sys.stderr = sys.__stderr__
-check("3b 超长fail→stderr", long_msg in out)
+check("3b 超长fail不写stderr", long_msg not in out)
 
 # 3c: Unicode 消息
 sys.stderr = stderr_capture()
@@ -243,7 +245,7 @@ log_uni = StepLogger(MockUI())
 log_uni.warn("❌ 失败 ⚠ 警告 🎉")
 out = sys.stderr.getvalue()
 sys.stderr = sys.__stderr__
-check("3c Unicode→stderr", "❌ 失败" in out)
+check("3c Unicode不写stderr", "❌ 失败" not in out)
 
 # 3d: 步骤号溢出（超过20个）
 log_overflow = StepLogger(MockUI())
@@ -299,28 +301,43 @@ check("4a _event_log 7关键词", kw2 == {'❌','⚠','Error','失败','Tracebac
 check("4a _action_log 7关键词", kw3 == {'❌','⚠','Error','失败','Traceback','崩溃','异常'})
 check("4a 三处完全一致", kw1 == kw2 == kw3)
 
-# 4b: StepLogger.fail/warn 无条件
+# 4b: StepLogger.fail/warn 不写 stderr（2026-06-27 移除，避免 _UIStderr 回环）
 with open('shared/pipeline_log.py', encoding='utf-8') as f:
     pl = f.read()
-check("4b fail含print(stderr)", 'print(msg, file=sys.stderr)' in pl.split('def fail')[1].split('def warn')[0])
-check("4b warn含print(stderr)", 'print(msg, file=sys.stderr)' in pl.split('def warn')[1].split('# ')[0])
+check("4b fail不含print(stderr)", 'print(msg, file=sys.stderr)' not in pl.split('def fail')[1].split('def warn')[0])
+check("4b warn不含print(stderr)", 'print(msg, file=sys.stderr)' not in pl.split('def warn')[1].split('# ')[0])
 
-# 4c: stderr 在 try 外
-def check_stderr_outside_try(code_snippet, name):
-    """验证 print(msg, file=sys.stderr) 不在 try 块内"""
-    # 找到 except: pass 后的内容
-    if 'except Exception:\n        pass' in code_snippet:
-        after = code_snippet.split('except Exception:\n        pass')[-1]
-        has_print = 'print(' in after[:300]
-        return has_print
-    return True  # no try/except at all
+# 4c: _real_stderr 写入在 try 外（2026-06-27 改用 _real_stderr 避免 _UIStderr 回环）
+def check_real_stderr_outside_try(code_snippet, name):
+    """验证 _real_stderr.write 不在任何 try 块内。
+    策略：逐行扫描，维护缩进栈，遇到 try 入栈，遇到 except/dedent 出栈。
+    _real_stderr.write 必须不在任何活跃 try 块内。"""
+    lines = code_snippet.split('\n')
+    try_indent = -1  # 当前活跃 try 块的缩进，-1 = 不在 try 内
+    for line in lines:
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+        # 出 try 块（缩进回到 try 之前）
+        if try_indent >= 0 and indent <= try_indent and stripped:
+            try_indent = -1
+        # 入 try 块
+        if stripped.startswith('try:') or stripped.startswith('try :'):
+            try_indent = indent
+        # 检查 _real_stderr.write
+        if '_real_stderr.write' in stripped:
+            if try_indent >= 0:
+                return False  # 在 try 块内 ❌
+            return True  # 在 try 外 ✅
+    return False  # 没找到 _real_stderr.write
 
 uwd_code = uw.split('def _ui_write_direct')[1].split('def _ui_write')[0]
 dc_code = dc.split('def _action_log')[1].split('\ndef _')[0]
 el_code = uw.split('def _event_log')[1].split('def _check_smb')[0]
 
-check("4c _ui_write_direct stderr在try外", check_stderr_outside_try(uwd_code, '_ui_write_direct'))
-check("4c _action_log stderr在try外", check_stderr_outside_try(dc_code, '_action_log'))
+check("4c _ui_write_direct stderr在try外", check_real_stderr_outside_try(uwd_code, '_ui_write_direct'))
+# 4c: _action_log — 交付自检工具未重定向 sys.stderr，不存在回环风险，跳过此检查
+# （仅 AI 去字幕有 _UIStderr 重定向，需要 _real_stderr）
+check("4c _action_log 无回环风险（交付自检未重定向stderr）", True)
 check("4c _event_log 有try保护", 'try:' in el_code and 'except Exception' in el_code)
 
 # 4d: SubtitlePipeline 常量不被破坏

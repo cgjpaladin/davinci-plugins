@@ -123,6 +123,7 @@
 16. **`SetFocus()` 需要 `Events:{FocusIn:True}` 前置**。待验证。——2026-06-13
 17. **涉密/激活码输入禁止用 LineEdit**。LineEdit + CJK 输入法 → `Fusion::RemoteApp::FindLocalObject` SIGSEGV 闪退（2026-06-16 实测）。替代：osascript `display dialog`（单行）或 tkinter 子进程（多框）。——2026-06-13
 18. **弹窗按钮必须防连点**。`subprocess.run` 阻塞期间 UIManager 事件排队 → N 次点击 = N 个弹窗。标准解法：`Enabled=False` 在 `try` 前 + `finally` 统一恢复。——2026-06-13
+19. **`sys.stderr` 重定向前必保存 `_real_stderr`**。所有内部写 stderr 处用 `_real_stderr.write()`，禁止 `print(..., file=sys.stderr)`。`_UIStderr.write` → `_ui_write` → `_ui_write_direct` → `print(file=sys.stderr)` → 回环 → 无限递归 → RecursionError 杀线程。——2026-06-27 紧急排障修复
 
 ## UIManager 已知限制（2026-06-16 更新）
 
@@ -491,3 +492,32 @@ ssh machine "cat ~/.config/dv_license/license.dat | python3 -c '...'"
 - `version.json` 需手动同步 version + urls + sha256 + history
 - 更新公告唯一来源：`CHANGELOG.md`（AI 不自己写）
 - ComboBox API：`CurrentText`（非 `Text`）取值，`Clear()`+`AddItem()` 刷新
+
+## 编码铁律（从 SOUL 下沉）
+
+### 代码编辑
+- 批替后 diff 验证每条改动，优先精确字符串替换不用 replace_all
+- 禁止用正则批量编辑生产代码，删代码逐函数手动 Edit
+- 跨平台适配后验证缩进，不只看逻辑，逐行确认
+- 修完一处 bug → grep 全项目同款 → 一并修
+
+### 调试与问题排查
+- 先证代码无 bug 再归罪外部，审查调用链而非假设网络/服务器问题
+- 模块级缓存每次操作前主动清（`_clear_*()`），不推断"上次清过了"
+- 不在日志里猜 bug，`grep error` 的结论被用户确认前 = 幻觉
+
+### UI 开发（tkinter）
+- 改 UI/交互后审阅完整调用链——往前找三行谁设的值、往后看三步谁消费
+- 防抖是补丁不是根治，`setTimeout` 只掩盖现象，找数据层面的根因
+
+### 产品开发
+- 新产品先讨论→画图→写代码，跳过前两步 = 白写
+- 安装/配置类脚本先展示完整变更列表再等确认，密码 = 确认
+
+### 部署与配置
+- 部署后不验证 = 没部署，每次 push/scp 后跑自动化检查
+- 同一资源只能有一个 URL/路径入口，新入口必须 grep 消除重复
+
+### 算法与库
+- QR/条形码/加密等不手写，用成熟库生成后嵌入常量
+- `webbrowser.open()` 不判连通性，`socket.create_connection` 先测端口再决定

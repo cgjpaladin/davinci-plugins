@@ -1541,7 +1541,8 @@ def _collect_clip_files(timeline, io_range=None):
                     pass
             key = (f"V{vi}", name)
             if key not in info:
-                info[key] = {"start": start, "mp": mp, "path": path, "track": f"V{vi}", "mp_type": mp_type}
+                props = _get_cached(it, "props", {})
+                info[key] = {"start": start, "mp": mp, "path": path, "track": f"V{vi}", "mp_type": mp_type, "props": props}
     for ai in range(1, timeline.GetTrackCount("audio") + 1):
         for it in _get_items(timeline, "audio", ai):
             if not _in_io_range(it, io_range):
@@ -1622,17 +1623,26 @@ def check_offline_clips(timeline, fps=25.0, io_range=None, debug_log=None) -> li
       - 源文件丢失：mp 存在，但 File Path 为空（文件被移动/删除/改名）
     """
     _MEDIA_EXT = {".mp4", ".mxf", ".mov", ".avi", ".r3d", ".braw",
-        ".mts", ".m2t", ".mpg", ".mpeg", ".m4v", ".mkv",
-        ".wmv", ".flv", ".webm", ".ts", ".3gp",
+        ".mts", ".m2t", ".m2ts", ".mpg", ".mpeg", ".m4v", ".mkv",
+        ".wmv", ".flv", ".webm", ".ts", ".3gp", ".vob",
         ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp",
         ".dpx", ".exr", ".psd", ".tga", ".targa",
-        ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2"}
+        ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2",
+        ".heic", ".heif", ".avif", ".webp", ".crm", ".ari"}
     issues = []
     seen_mp = set()
     for (track, name), info in _collect_clip_files(timeline, io_range).items():
         mp = info["mp"]
         if mp is None:
-            # 无 MP → 按扩展名判脱机（转场/文本/调整片段无扩展名，跳过）
+            # 无 MediaPoolItem → 多级判脱机
+            # L1: 空 Property → 转场（交叉叠化等），跳过
+            props = info.get("props", {})
+            if not props:
+                continue
+            # L2: 无 Distortion 键 → 生成器/文字（Text+/纯色等），跳过
+            if "Distortion" not in props:
+                continue
+            # L3: 有 Distortion 但无 mp → 按扩展名判脱机
             lo = name.lower()
             if not any(lo.endswith(ext) for ext in _MEDIA_EXT):
                 continue
