@@ -1108,6 +1108,37 @@ def check_tailboard(timeline, fps=25.0, io_range=None) -> list:
     ]
 
 
+def _exposed_ranges(clip_start, clip_end, cover_intervals):
+    """计算片段被覆盖后实际暴露的帧范围。
+
+    Args:
+        clip_start, clip_end: 片段原始帧范围 [start, end)
+        cover_intervals: 上层有效覆盖的帧区间列表 [(start, end), ...]
+    Returns:
+        list of (start, end) 暴露帧范围
+    """
+    if not cover_intervals:
+        return [(clip_start, clip_end)]
+    # 排序并合并重叠覆盖区间
+    sorted_iv = sorted(cover_intervals, key=lambda x: x[0])
+    merged = [list(sorted_iv[0])]
+    for iv_s, iv_e in sorted_iv[1:]:
+        if iv_s <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], iv_e)
+        else:
+            merged.append([iv_s, iv_e])
+    # 减去覆盖区间，得到暴露区间
+    exposed = []
+    cur = clip_start
+    for ms, me in merged:
+        if ms > cur:
+            exposed.append((cur, ms))
+        cur = max(cur, me)
+    if cur < clip_end:
+        exposed.append((cur, clip_end))
+    return exposed
+
+
 def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_log=None) -> list:
     """检测视频轨可见片段的黑边：缩放不足、位移、旋转导致的未覆盖区域。"""
     import math
@@ -1157,24 +1188,25 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_l
             if not _in_io_range(it, io_range): continue
             if _get_cached(it, "enabled", True) is False: continue
             if _get_cached(it, "mp") is None: continue
-            # 被上层启用且不透明度 100% 的片段覆盖 ≥80% → 跳过
+            # 收集上层覆盖区间（启用且 Opacity=100% 的片段视为有效遮挡）
+            cover_intervals = []
+            for uvi in range(vi + 1, video_count + 1):
+                if uvi not in all_ranges: continue
+                for uit, us, ue in all_ranges[uvi]:
+                    if _get_cached(uit, "enabled", True) is False:
+                        continue
+                    u_props = _get_cached(uit, "props", {})
+                    if float(u_props.get("Opacity", 100) or 100) < 100:
+                        continue
+                    ov_s = max(s, us)
+                    ov_e = min(e, ue)
+                    if ov_e > ov_s:
+                        cover_intervals.append((ov_s, ov_e))
+            # 合并重叠区间，计算实际暴露的子区间
+            exposed_ranges = _exposed_ranges(s, e, cover_intervals)
+            if not exposed_ranges:
+                continue
             clip_dur = e - s
-            if clip_dur > 0:
-                upper_cover = 0
-                for uvi in range(vi + 1, video_count + 1):
-                    if uvi not in all_ranges: continue
-                    for uit, us, ue in all_ranges[uvi]:
-                        # 上层片段未启用或不透明度不足 → 不视为有效覆盖
-                        if _get_cached(uit, "enabled", True) is False:
-                            continue
-                        u_props = _get_cached(uit, "props", {})
-                        if float(u_props.get("Opacity", 100) or 100) < 100:
-                            continue
-                        ov = min(e, ue) - max(s, us)
-                        if ov > 0:
-                            upper_cover += ov
-                if upper_cover >= clip_dur * 0.8:
-                    continue
             res_str = _get_cached(it, "mp_resolution", "")
             if not res_str or "x" not in res_str: continue
             try: src_w, src_h = map(int, res_str.split("x"))
@@ -1225,9 +1257,11 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_l
             # 跳过特殊片段（定场/转场/结尾画面）
             if any(kw in name for kw in ("未完待续", "定格转场", "全剧终")):
                 continue
-            tc = smpte.gettc(_get_cached(it, "start", 0))
-            issues.append(_make_result("fail", track=track, timecode=tc,
-                detail=f"{name}，有黑边", reason="适当调整以规避黑边"))
+            for exp_s, exp_e in exposed_ranges:
+                tc = smpte.gettc(exp_s)
+                dur_info = f"（{exp_e - exp_s}帧）" if (exp_e - exp_s) < clip_dur else ""
+                issues.append(_make_result("fail", track=track, timecode=tc,
+                    detail=f"{name}，有黑边{dur_info}", reason="适当调整以规避黑边"))
     if not issues:
         return [_make_result("pass", detail="黑边: 全部通过", is_summary=True)]
     results = [_make_result("fail", detail=f"黑边: {len(issues)} 处", is_summary=True)]
