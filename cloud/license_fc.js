@@ -206,7 +206,7 @@ async function handleInitTrial(data) {
     // 心跳：更新版本、系统、最后活跃时间
     const fields = { '最后活跃': Date.now() };
     if (data.version) fields['插件版本'] = data.version;
-    if (data.os_version) fields['macOS版本'] = data.os_version;
+    if (data.os_version) fields['系统版本'] = data.os_version;
     if (data.resolve_version) fields['达芬奇版本'] = data.resolve_version;
     try { await updateRecord(records[0].record_id, fields, TRIAL_TABLE_ID); } catch(e) { console.error('init_trial heartbeat update failed:', e.message); }
     return { status: 'ok', trial_date_ordinal: msToOrdinal(records[0].fields['首次试用时间']) };
@@ -217,7 +217,7 @@ async function handleInitTrial(data) {
     机器指纹: fp,
     首次试用时间: now,
     插件版本: data.version || '',
-    macOS版本: data.os_version || '',
+    系统版本: data.os_version || '',
     达芬奇版本: data.resolve_version || '',
     最后活跃: now,
   }, TRIAL_TABLE_ID);
@@ -242,7 +242,7 @@ async function handleVerifyStatus(data) {
     if (trialRecords.length > 0) {
       const fields = { '最后活跃': Date.now() };
       if (data.version) fields['插件版本'] = data.version;
-      if (data.os_version) fields['macOS版本'] = data.os_version;
+      if (data.os_version) fields['系统版本'] = data.os_version;
       if (data.resolve_version) fields['达芬奇版本'] = data.resolve_version;
       await updateRecord(trialRecords[0].record_id, fields, TRIAL_TABLE_ID);
     }
