@@ -2702,8 +2702,8 @@ def _do_update_sync(progress_callback=None):
 
     try:
         data = None
-        last_err = ""
-        _tmp_dir = None  # 用于 finally 清理
+        errors = []  # 记录每条链路的失败原因
+        _tmp_dir = None
         for idx, dl_url in enumerate(urls):
             _action_log(f"⬇ 下载 [{idx+1}/{len(urls)}]: {dl_url}")
             try:
@@ -2711,7 +2711,7 @@ def _do_update_sync(progress_callback=None):
                 safe = urlunparse(p._replace(path=quote(p.path, safe='/')))
                 req = Request(safe)
             except Exception as e:
-                last_err = str(e); continue
+                errors.append(f"{dl_url[:60]}: {e}"); continue
             try:
                 req.add_header("User-Agent", "DaVinciPlugin/delivery_checker")
                 # 先 HEAD 拿文件大小
@@ -2742,13 +2742,16 @@ def _do_update_sync(progress_callback=None):
                     data = b"".join(chunks)
                 if data and len(data) >= MIN_DOWNLOAD_SIZE:
                     if data[:4] != b'PK\x03\x04':
-                        last_err = "响应不是 zip 文件"; continue
+                        errors.append(f"{dl_url[:60]}: 响应不是 zip")
+                        continue
                     break
-                last_err = "下载文件无效"
+                errors.append(f"{dl_url[:60]}: 下载文件无效")
             except Exception as e:
-                last_err = str(e); continue
+                errors.append(f"{dl_url[:60]}: {e}")
+                continue
         if not data:
-            raise RuntimeError(f"所有下载链路失败: {last_err}")
+            err_detail = "; ".join(errors) if errors else "无"
+            raise RuntimeError(f"所有下载链路失败 ({len(errors)}条): {err_detail}")
 
         # GitHub API base64 解码
         try:

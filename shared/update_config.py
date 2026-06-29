@@ -17,8 +17,9 @@ VERSION_CHECK_URLS = [
 # ── 下载多链路 ──
 UPDATE_FILE = "update_latest.zip"
 DOWNLOAD_URLS = [
-    f"https://github.com/{REPO_FULL}/releases/latest/download/update_latest.zip",
     f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/update_latest.zip",
+    f"https://ghproxy.net/https://raw.githubusercontent.com/{REPO_FULL}/main/update_latest.zip",
+    f"https://raw.githubusercontent.com/{REPO_FULL}/main/update_latest.zip",
 ]
 
 # ── 超时（秒） ──
