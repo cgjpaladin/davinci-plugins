@@ -27,11 +27,14 @@ else:
     _DATA_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "交付自检")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
-# 个人版 fallback：shared/ 在同级目录（必须在 _smb_root 之前）
-_personal_shared = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shared')
-if not os.path.isdir(sys.path[1]) and os.path.isdir(_personal_shared):
-    sys.path.insert(0, _personal_shared)
+# 个人版: 优先用插件自带 shared/，避免被全局旧版 ../shared 遮蔽
+_plugin_shared = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shared')
+if os.path.isdir(_plugin_shared):
+    sys.path.insert(0, _plugin_shared)
+# 全局 shared（公司版）作为兜底
+_global_shared = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared')
+if os.path.isdir(_global_shared):
+    sys.path.insert(1, _global_shared)
 _smb_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _smb_root not in sys.path:
     sys.path.insert(0, _smb_root)
