@@ -117,7 +117,7 @@ def call_with_fallback(messages: list[dict], max_tokens: int = 2048,
     """多供应商自动降级调用。
 
     Returns:
-        {"ok": True, "content": "...", "provider": "qwen", "model": "qwen-turbo"}
+        {"ok": True, "content": "...", "model": "deepseek-v4-pro"}
         或 {"error": "all_failed", "attempts": [...]}
     """
     attempts = []
