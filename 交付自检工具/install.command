@@ -161,9 +161,6 @@ fi
 # ═══════════════════════════════════════
 # 5. 检测 External Scripting + 摘要（终端可见）
 # ═══════════════════════════════════════
-DR_RESOLVE_RUNNING=0
-pgrep -q "Resolve" 2>/dev/null && DR_RESOLVE_RUNNING=1
-echo "达芬奇运行中: $([ $DR_RESOLVE_RUNNING -eq 1 ] && echo 是 || echo 否)"
 
 DR_CONFIG="$HOME/Library/Preferences/Blackmagic Design/DaVinci Resolve/config.dat"
 DR_SCRIPTING_NEEDS_FIX=0
@@ -180,9 +177,6 @@ if [ $NEED_PYTHON -eq 1 ]; then
 fi
 if [ $DR_SCRIPTING_NEEDS_FIX -eq 1 ]; then
     echo "    🔧 启用达芬奇外部脚本权限" >&3
-fi
-if [ $DR_RESOLVE_RUNNING -eq 1 ]; then
-    echo "    ⚠ 达芬奇正在运行，安装后需重启" >&3
 fi
 echo >&3
 echo "  请在弹出的密码框中输入开机密码，确认以上操作。" >&3
@@ -265,13 +259,9 @@ fi
 # ═══════════════════════════════════════
 DR_SCRIPTING_CHANGED=0
 if [ $DR_SCRIPTING_NEEDS_FIX -eq 1 ]; then
-    if [ $DR_RESOLVE_RUNNING -eq 1 ]; then
-        DR_SCRIPTING_CHANGED=1
-    else
-        sed -i '' 's/System.Scripting.Mode = 0/System.Scripting.Mode = 1/' "$DR_CONFIG"
-        DR_SCRIPTING_CHANGED=1
-        echo "✅ External Scripting 已启用"
-    fi
+    sed -i '' 's/System.Scripting.Mode = 0/System.Scripting.Mode = 1/' "$DR_CONFIG"
+    DR_SCRIPTING_CHANGED=1
+    echo "✅ External Scripting 已启用"
 fi
 
 # ═══════════════════════════════════════
@@ -307,21 +297,8 @@ if [ $PASS -eq 1 ]; then
     echo >&3
     echo "  ✅ 安装完成" >&3
     echo >&3
-    if [ $DR_SCRIPTING_CHANGED -eq 1 ] && [ $DR_RESOLVE_RUNNING -eq 1 ]; then
-        echo "  使用方法：达芬奇 → 工作区 → 脚本 → 交付自检工具" >&3
-        echo >&3
-        echo "  ⚠ 达芬奇正在运行，请手动启用外部脚本权限并重启：" >&3
-        echo "    达芬奇 → 偏好设置 → 系统 → 外部脚本使用 → 本地" >&3
-        osascript -e $'display dialog "✅ 安装完成！\n\n使用方法：\n  工作区 → 脚本 → 交付自检工具\n\n⚠ 达芬奇正在运行，请手动启用外部脚本权限：\n  达芬奇 → 偏好设置 → 系统 → 外部脚本使用 → 本地\n\n然后重启达芬奇。" buttons {"好的"} default button "好的" with icon caution'
-    elif [ $DR_RESOLVE_RUNNING -eq 1 ]; then
-        echo "  使用方法：达芬奇 → 工作区 → 脚本 → 交付自检工具" >&3
-        echo >&3
-        echo "  ⚠ 达芬奇正在运行，请重启后使用" >&3
-        osascript -e $'display dialog "✅ 安装完成！\n\n使用方法：\n  工作区 → 脚本 → 交付自检工具\n\n⚠ 达芬奇正在运行，请重启后使用。" buttons {"好的"} default button "好的" with icon note'
-    else
-        echo "  使用方法：达芬奇 → 工作区 → 脚本 → 交付自检工具" >&3
-        osascript -e $'display dialog "✅ 安装完成！\n\n使用方法：\n  工作区 → 脚本 → 交付自检工具" buttons {"好的"} default button "好的" with icon note'
-    fi
+    echo "  使用方法：达芬奇 → 工作区 → 脚本 → 交付自检工具" >&3
+    osascript -e $'display dialog "✅ 安装完成！\n\n使用方法：\n  工作区 → 脚本 → 交付自检工具" buttons {"好的"} default button "好的" with icon note'
 else
     echo "❌ 验证失败"
     echo >&3

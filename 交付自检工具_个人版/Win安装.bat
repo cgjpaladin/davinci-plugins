@@ -138,14 +138,10 @@ echo [  OK  ] 找到 data.zip >> "%ERRFILE%"
 ::  6. 检测 DaVinci Resolve
 :: ============================================================
 set "DR_OK=0"
-set "DR_RUNNING=0"
 echo [  ..  ] 检查: %%PROGRAMDATA%%\Blackmagic Design\DaVinci Resolve >> "%ERRFILE%"
 if exist "%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve" (
     set "DR_OK=1"
     echo [  OK  ] DaVinci Resolve 已安装 >> "%ERRFILE%"
-    rem 检测达芬奇是否正在运行
-    tasklist /fi "imagename eq Resolve.exe" 2>nul | findstr /i "Resolve" >nul 2>&1 && set "DR_RUNNING=1"
-    if "!DR_RUNNING!"=="1" echo [  !!  ] 达芬奇正在运行 >> "%ERRFILE%"
     set "DR_SCRIPTING_NEEDS_FIX=0"
     set "DC=%APPDATA%\Blackmagic Design\DaVinci Resolve\Preferences\config.dat"
     if exist "!DC!" (
@@ -162,14 +158,7 @@ echo.
 echo   将进行以下操作：
 echo     [*] 安装插件到 DaVinci Resolve
 if "!NEED_PYTHON!"=="1" echo     [*] 安装 Python 3.13
-if "!DR_SCRIPTING_NEEDS_FIX!"=="1" (
-    if "!DR_RUNNING!"=="1" (
-        echo     [*] 启用达芬奇外部脚本权限（达芬奇运行中，跳过）
-    ) else (
-        echo     [*] 启用达芬奇外部脚本权限
-    )
-)
-if "!DR_RUNNING!"=="1" echo     [^!] 达芬奇正在运行，外部脚本权限需手动设置
+if "!DR_SCRIPTING_NEEDS_FIX!"=="1" echo     [*] 启用达芬奇外部脚本权限
 echo.
 echo   按任意键开始安装，关闭窗口取消...
 pause >nul
@@ -255,17 +244,11 @@ echo [  OK  ] __pycache__ 已清理 >> "%ERRFILE%"
 ::  11. 启用 External Scripting
 :: ============================================================
 if "!DR_SCRIPTING_NEEDS_FIX!"=="1" (
-    if "!DR_RUNNING!"=="1" (
-        echo [  ^!^!  ] 达芬奇运行中，跳过 External Scripting，请手动设置 >> "%ERRFILE%"
-        echo   [^!] 达芬奇正在运行，跳过外部脚本设置
-        echo       请手动：达芬奇 → 偏好设置 → 系统 → 外部脚本使用 → 本地
+    powershell -Command "(Get-Content '%DC%' -Encoding UTF8) -replace 'System\.Scripting\.Mode = 0','System.Scripting.Mode = 1' | Set-Content '%DC%' -Encoding UTF8" >> "%ERRFILE%" 2>&1
+    if !errorlevel! equ 0 (
+        echo [  OK  ] External Scripting 已启用 >> "%ERRFILE%"
     ) else (
-        powershell -Command "(Get-Content '%DC%' -Encoding UTF8) -replace 'System\.Scripting\.Mode = 0','System.Scripting.Mode = 1' | Set-Content '%DC%' -Encoding UTF8" >> "%ERRFILE%" 2>&1
-        if !errorlevel! equ 0 (
-            echo [  OK  ] External Scripting 已启用 >> "%ERRFILE%"
-        ) else (
-            echo [  ^!^!  ] External Scripting 设置失败 >> "%ERRFILE%"
-        )
+        echo [  ^!^!  ] External Scripting 设置失败 >> "%ERRFILE%"
     )
 ) else (
     echo [  OK  ] External Scripting 已启用 ^(无需修改^) >> "%ERRFILE%"
