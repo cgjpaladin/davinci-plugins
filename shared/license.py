@@ -74,7 +74,7 @@ _OLD_PATHS = [
 # ═══════════════════════════════════════════
 
 def _get_stats() -> dict:
-    """采集版本号+系统信息，用于飞书统计。永不抛异常。"""
+    """采集版本号+系统信息，用于飞书统计。永不抛异常。macOS/Windows 双平台。"""
     version = "unknown"
     os_ver = "unknown"
     # 读 config.py 拿 __version__（兼容开发版和个人版路径）
@@ -94,24 +94,43 @@ def _get_stats() -> dict:
                 break
     except Exception:
         pass
-    # macOS 版本
-    try:
-        _r = subprocess.run(["sw_vers", "-productVersion"],
-                           capture_output=True, text=True, timeout=3)
-        os_ver = _r.stdout.strip()
-    except Exception:
-        pass
-    # DaVinci Resolve 版本
+    # 系统版本（macOS + Windows）
+    if sys.platform == "darwin":
+        try:
+            _r = subprocess.run(["sw_vers", "-productVersion"],
+                               capture_output=True, text=True, timeout=3)
+            os_ver = "macOS " + _r.stdout.strip()
+        except Exception:
+            pass
+    elif sys.platform == "win32":
+        try:
+            import platform
+            _v = platform.win32_ver()
+            # win32_ver() → (release, version, csd, ptype)
+            os_ver = f"Windows {_v[0]}" if _v[0] else "Windows"
+        except Exception:
+            os_ver = "Windows"
+    # DaVinci Resolve 版本（macOS + Windows）
     resolve_ver = "unknown"
-    try:
-        _r = subprocess.run(
-            ["defaults", "read",
-             "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Info.plist",
-             "CFBundleShortVersionString"],
-            capture_output=True, text=True, timeout=3)
-        resolve_ver = _r.stdout.strip()
-    except Exception:
-        pass
+    if sys.platform == "darwin":
+        try:
+            _r = subprocess.run(
+                ["defaults", "read",
+                 "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Info.plist",
+                 "CFBundleShortVersionString"],
+                capture_output=True, text=True, timeout=3)
+            resolve_ver = _r.stdout.strip()
+        except Exception:
+            pass
+    elif sys.platform == "win32":
+        import winreg
+        try:
+            _key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                r"SOFTWARE\Blackmagic Design\DaVinci Resolve")
+            resolve_ver, _ = winreg.QueryValueEx(_key, "Version")
+            winreg.CloseKey(_key)
+        except Exception:
+            pass
     return {"version": version, "os_version": os_ver, "resolve_version": resolve_ver}
 
 

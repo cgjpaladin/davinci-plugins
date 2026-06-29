@@ -208,7 +208,7 @@ async function handleInitTrial(data) {
     if (data.version) fields['插件版本'] = data.version;
     if (data.os_version) fields['macOS版本'] = data.os_version;
     if (data.resolve_version) fields['达芬奇版本'] = data.resolve_version;
-    try { await updateRecord(records[0].record_id, fields, TRIAL_TABLE_ID); } catch(e) {}
+    try { await updateRecord(records[0].record_id, fields, TRIAL_TABLE_ID); } catch(e) { console.error('init_trial heartbeat update failed:', e.message); }
     return { status: 'ok', trial_date_ordinal: msToOrdinal(records[0].fields['首次试用时间']) };
   }
 
@@ -227,7 +227,7 @@ async function handleInitTrial(data) {
 // 启动时校验：激活码状态 + 指纹是否仍匹配
 async function handleVerifyStatus(data) {
   const key = (data.activate_key || '').trim().toUpperCase();
-  const fp = data.machine_fingerprint || '';
+  const fp = (data.machine_fingerprint || '').trim();
   if (!key || !fp) return { status: 'error', msg: '参数不完整' };
 
   const records = await listRecords(`CurrentValue.[激活码]="${key}"`);
@@ -246,7 +246,7 @@ async function handleVerifyStatus(data) {
       if (data.resolve_version) fields['达芬奇版本'] = data.resolve_version;
       await updateRecord(trialRecords[0].record_id, fields, TRIAL_TABLE_ID);
     }
-  } catch(e) {}
+  } catch(e) { console.error('verify_status trial update failed:', e.message); }
 
   const now = Math.floor(Date.now() / 1000);
   const payload = {
