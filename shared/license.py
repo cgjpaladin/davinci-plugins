@@ -123,8 +123,8 @@ def _get_stats() -> dict:
         except Exception:
             pass
     elif sys.platform == "win32":
-        import winreg
         try:
+            import winreg
             _key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
                 r"SOFTWARE\Blackmagic Design\DaVinci Resolve")
             resolve_ver, _ = winreg.QueryValueEx(_key, "Version")
