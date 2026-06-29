@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""多供应商 LLM 调用 — 统一接口 + 自动降级。
-
-供应商配置为纯数据，新增只用加一行。
+"""LLM 调用 — DeepSeek V4 Pro 单供应商。
 
 用法:
     from llm_providers import call_with_fallback
     result = call_with_fallback(messages)
-    # → {"ok": True, "content": "...", "provider": "qwen", "model": "qwen-turbo"}
+    # → {"ok": True, "content": "...", "model": "deepseek-v4-pro"}
 """
 
 import json
@@ -19,11 +17,11 @@ from urllib.error import URLError, HTTPError
 _SSL_CTX = ssl._create_unverified_context()
 
 # ══════════════════════════════════════
-# 供应商配置（新增供应商只加这里）
+# 供应商配置
 # ══════════════════════════════════════
 
 _providers = [
-    # DeepSeek V4 Pro（唯一主力，不降级；关 thinking mode，校对是确定性任务）
+    # DeepSeek V4 Pro（唯一主力；关 thinking mode，校对是确定性任务）
     {"name": "deepseek-v4-pro", "priority": 1, "vendor": "deepseek",
      "url": "https://api.deepseek.com/v1/chat/completions",
      "key_env": "DEEPSEEK_API_KEY", "format": "openai",
@@ -56,52 +54,6 @@ def _get_key(env_name: str) -> str:
         except OSError:
             continue
     return ""
-
-
-def _call_dashscope(cfg: dict, messages: list[dict],
-                    max_tokens: int, temperature: float) -> dict:
-    """千问 DashScope 格式。"""
-    api_key = _get_key(cfg["key_env"])
-    if not api_key:
-        return {"error": "no_key", "vendor": "qwen"}
-
-    body = json.dumps({
-        "model": cfg["name"],
-        "input": {"messages": messages},
-        "parameters": {
-            "result_format": "message",
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-        }
-    }).encode("utf-8")
-
-    req = Request(_providers[0]["url"], data=body)  # same URL for all qwen
-    req.add_header("Authorization", f"Bearer {api_key}")
-    req.add_header("Content-Type", "application/json")
-
-    try:
-        with urlopen(req, timeout=300, context=_SSL_CTX) as resp:
-            data = json.loads(resp.read())
-    except HTTPError as e:
-        try:
-            data = json.loads(e.read().decode("utf-8", errors="replace"))
-        except json.JSONDecodeError:
-            return {"error": f"http_{e.code}"}
-    except URLError as e:
-        reason = str(e)
-        if "timeout" in reason.lower() or "timed out" in reason.lower():
-            return {"error": "network_timeout", "message": "AI 接口响应超时（>300秒），请检查网络或稍后重试"}
-        return {"error": "network", "message": reason[:200]}
-
-    code = data.get("code", "")
-    if code:
-        return {"error": "api_error", "code": code, "message": data.get("message", "")[:200]}
-
-    try:
-        content = data["output"]["choices"][0]["message"]["content"]
-        return {"ok": True, "content": content, "model": cfg["name"]}
-    except (KeyError, IndexError):
-        return {"error": "parse"}
 
 
 def _call_openai_compat(cfg: dict, messages: list[dict],
@@ -170,11 +122,8 @@ def call_with_fallback(messages: list[dict], max_tokens: int = 2048,
     """
     attempts = []
     for p in sorted(_providers, key=lambda x: x["priority"]):
-        if p["format"] == "dashscope":
-            result = _call_dashscope(p, messages, max_tokens, temperature)
-        else:
-            result = _call_openai_compat(p, messages, max_tokens, temperature,
-                                         response_format=response_format)
+        result = _call_openai_compat(p, messages, max_tokens, temperature,
+                                     response_format=response_format)
 
         attempts.append({"model": p["name"], "result": result.get("error", "ok")})
 

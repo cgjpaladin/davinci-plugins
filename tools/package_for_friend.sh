@@ -67,7 +67,7 @@ API 注册:
   鬼手剪辑: https://www.zhaoli.com
   无痕AI: 联系无痕AI客服
   DeepSeek: https://platform.deepseek.com
-  千问: https://dashscope.aliyun.com
+  DeepSeek: https://platform.deepseek.com
 
 问题联系: b站 电影裁缝Bryan
 HEREDOC
