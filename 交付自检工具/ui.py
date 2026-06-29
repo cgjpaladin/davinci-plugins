@@ -36,7 +36,7 @@ _global_shared = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 
 if os.path.isdir(_global_shared):
     sys.path.insert(1, _global_shared)
 _smb_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _smb_root not in sys.path:
+if _smb_root not in sys.path and not IS_PERSONAL:
     sys.path.insert(0, _smb_root)
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
