@@ -1,12 +1,12 @@
 {
   "delivery_checker": {
-    "version": "2.5.9",
+    "version": "2.5.10",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/update_latest.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip"
     ],
-    "sha256": "20a235fa02d8124feba3b71484efa626d3c359d2b5abffda54a7c22b6a2d0ca1",
+    "sha256": "0eecd459c5600393103fb06b058c1006226e99b438aabace332ca632eaf8bc37",
     "notes": "🔗 飞书 Wiki 链接直接导入剧本\n🤖 不同剧集也能校对字幕，不怕传错剧本\n🛡️ 校对中锁定按钮：防误触、防崩溃",
     "history": [
       {
