@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip"
     ],
-    "sha256": "0eecd459c5600393103fb06b058c1006226e99b438aabace332ca632eaf8bc37",
+    "sha256": "e81cb7b966bc65b56a4cf52d40f70225b1cd320fb94cacfd699bab228a34c5a2",
     "notes": "🔗 飞书 Wiki 链接直接导入剧本\n🤖 不同剧集也能校对字幕，不怕传错剧本\n🛡️ 校对中锁定按钮：防误触、防崩溃",
     "history": [
       {

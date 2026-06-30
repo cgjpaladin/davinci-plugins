@@ -366,7 +366,10 @@ def init_trial() -> Tuple[bool, str]:
 
 def _try_register_trial(fp: str) -> bool:
     """静默登记旧版试用指纹。返回 True 表示登记成功。"""
+    import logging
+    _log = logging.getLogger("WB.license")
     if not BACKEND_URL or not fp:
+        _log.debug("_try_register_trial: 跳过(BACKEND_URL=%s fp=%s)", BACKEND_URL, bool(fp))
         return False
     try:
         ok, resp = _post_to_backend("/license", {
@@ -374,8 +377,13 @@ def _try_register_trial(fp: str) -> bool:
             "machine_fingerprint": fp,
             **_get_stats(),
         })
-        return ok and resp.get("status") == "ok"
-    except Exception:
+        if ok and resp.get("status") == "ok":
+            _log.info("_try_register_trial: ✅ 登记成功 fp=%s", fp[:16])
+            return True
+        _log.warning("_try_register_trial: ❌ 登记失败 ok=%s resp=%s", ok, resp)
+        return False
+    except Exception as e:
+        _log.warning("_try_register_trial: ❌ 异常 %s", e)
         return False
 
 
