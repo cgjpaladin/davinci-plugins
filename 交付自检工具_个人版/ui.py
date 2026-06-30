@@ -1362,11 +1362,14 @@ print(result[0])
                     cfg["cfg_activate_btn"].Enabled = False
                     cfg["cfg_deactivate_btn"].Enabled = True
                 else:
+                    _log_activate_fail(code, msg)
                     cfg["cfg_auth_status"].Text = f"⚠ {msg}"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
                     cfg["cfg_activate_btn"].Enabled = True
                     cfg["cfg_deactivate_btn"].Enabled = False
             except Exception as e:
+                import traceback
+                _log_activate_fail(code, f"{e}\n{traceback.format_exc()}")
                 cfg["cfg_auth_status"].Text = f"⚠ 激活失败: {e}"
                 cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
                 cfg["cfg_activate_btn"].Enabled = True
@@ -2386,10 +2389,26 @@ def _on_err_report(ev):
     _export_debug_package()
     _unlock_ui()
 
+def _log_activate_fail(code: str, detail: str):
+    """持久化激活失败记录，供调试导出使用。"""
+    import json, os
+    try:
+        fp = os.path.join(_DATA_DIR, "activate_fails.jsonl")
+        record = json.dumps({
+            "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "code": code,
+            "detail": detail,
+        }, ensure_ascii=False)
+        with open(fp, "a", encoding="utf-8") as f:
+            f.write(record + "\n")
+    except Exception:
+        pass
+
+
 def _export_debug_package():
-    """打包日志 + 系统信息 → 用户选择目录 → zip → Finder 弹出"""
+    """打包完整诊断信息 → 用户选择目录 → zip → Finder 弹出"""
     global _UI_ERROR_COUNT
-    import zipfile, subprocess, os, time, platform, socket, getpass
+    import zipfile, subprocess, os, time, platform, socket, json
     # ── 选目录 ──
     try:
         r = subprocess.run(
@@ -2410,75 +2429,152 @@ def _export_debug_package():
     fp = get_machine_fingerprint()[:8]
     zip_name = f"delivery-checker-debug-{now.tm_mon:02d}{now.tm_mday:02d}-{now.tm_hour:02d}{now.tm_min:02d}-{fp}.zip"
     zip_path = os.path.join(dest, zip_name)
-    # ── 收集日志 ──
+
+    def _add_str(zf, name, lines):
+        zf.writestr(name, "\n".join(lines).encode("utf-8"))
+
+    # ── 收集日志文件 ──
+    log_entries = []
     logs_dir = os.path.join(_DATA_DIR, "logs")
     today = time.strftime("%Y-%m-%d")
     yesterday = time.strftime("%Y-%m-%d", time.localtime(time.time() - 86400))
-    log_files = []
-    # 日志文件有乱码主机名，按日期匹配
     if os.path.isdir(logs_dir):
         for f in sorted(os.listdir(logs_dir)):
             full = os.path.join(logs_dir, f)
             if not f.endswith(".log"):
                 continue
             if today in f:
-                log_files.append((full, f"logs/ui-{today}.log"))
+                log_entries.append((full, f"logs/ui-{today}.log"))
             elif yesterday in f:
-                log_files.append((full, f"logs/ui-{yesterday}.log"))
-    # ── 系统信息 ──
+                log_entries.append((full, f"logs/ui-{yesterday}.log"))
+    # 拉取 ~/.workbuddy/logs/ 下的 launcher 日志
+    _wb_logs = os.path.join(os.path.expanduser("~"), ".workbuddy", "logs", "交付自检工具")
+    if os.path.isdir(_wb_logs):
+        for f in sorted(os.listdir(_wb_logs)):
+            if f.startswith("launcher_") and f.endswith(".log") and (today in f or yesterday in f):
+                full = os.path.join(_wb_logs, f)
+                log_entries.append((full, f"logs/{f}"))
+
+    # ── info.txt ──
     info_lines = [
-        f"交付自检工具日志",
+        "交付自检工具 · 完整诊断报告",
         f"版本: {version_string()}",
+        f"系统: {platform.platform()}",
         f"macOS: {platform.mac_ver()[0]}",
         f"主机名: {socket.gethostname()}",
         f"机器指纹: {fp}",
+        f"Python: {sys.version.split()[0]}",
         f"导出时间: {time.strftime('%Y-%m-%d %H:%M:%S')}",
     ]
-    # ── 状态信息 ──
-    state_lines = []
+
+    # ── license.txt: 授权完整快照 ──
+    license_lines = ["# License 完整快照", ""]
     try:
-        from shared.license import load_credential
+        from shared.license import load_credential, BACKEND_URL as _be_url
+        license_lines.append(f"FC端点: {_be_url or '未配置'}")
         cred = load_credential()
         if cred:
             p = cred.get("payload", {})
-            if p.get("is_trial", True):
-                tsd = p.get("trial_start_date")
-                if tsd:
-                    from datetime import date as _dt
-                    d = max(0, 30 - (_dt.today() - _dt.fromordinal(tsd)).days)
-                    state_lines.append(f"授权: 试用剩余 {d} 天")
-                else:
-                    state_lines.append("授权: 试用（天数未知）")
+            license_lines.append(f"is_trial: {p.get('is_trial', True)}")
+            tsd = p.get("trial_start_date", None)
+            if tsd:
+                from datetime import date as _dt
+                d = max(0, 30 - (_dt.today() - _dt.fromordinal(tsd)).days)
+                license_lines.append(f"trial_start_date: ordinal={tsd} 剩余={d}天")
             else:
-                state_lines.append("授权: 已激活")
+                license_lines.append("trial_start_date: 缺失")
+            license_lines.append(f"expire_time: {p.get('expire_time', '缺失')}")
+            license_lines.append(f"issue_time: {p.get('issue_time', '缺失')}")
+            license_lines.append(f"offline_grant_end: {p.get('offline_grant_end', '缺失')}")
+            license_lines.append(f"last_seen: {p.get('last_seen', '缺失')}")
+            license_lines.append(f"activate_key: {p.get('activate_key', '')[:12] if p.get('activate_key') else '未激活'}")
+            license_lines.append(f"signature: {cred.get('signature', '')[:32]}...")
         else:
-            state_lines.append("授权: 未初始化")
-    except Exception:
-        state_lines.append("授权: 读取失败")
+            license_lines.append("凭据: 不存在（未初始化）")
+    except Exception as e:
+        license_lines.append(f"读取失败: {e}")
+
+    # ── network.txt: FC 连通性诊断 ──
+    net_lines = ["# 网络连通性诊断", ""]
+    try:
+        from shared.license import BACKEND_URL as _be_url
+        from urllib.parse import urlparse
+        if _be_url:
+            host = urlparse(_be_url).hostname or ""
+            net_lines.append(f"FC端点: {_be_url}")
+            # DNS
+            try:
+                addr = socket.getaddrinfo(host, 443, socket.AF_INET, socket.SOCK_STREAM)
+                ip = addr[0][4][0] if addr else "解析失败"
+                net_lines.append(f"DNS解析: {host} → {ip}")
+            except Exception as e:
+                net_lines.append(f"DNS解析: 失败 ({e})")
+            # TCP
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(5)
+                s.connect((host, 443))
+                s.close()
+                net_lines.append(f"TCP 443: 可达")
+            except Exception as e:
+                net_lines.append(f"TCP 443: 不可达 ({e})")
+            # curl
+            try:
+                r = subprocess.run(["curl", "--version"], capture_output=True, text=True, timeout=3)
+                net_lines.append(f"curl: {r.stdout.split(chr(10))[0] if r.returncode==0 else '不可用'}")
+            except Exception:
+                net_lines.append("curl: 未安装")
+            # FC API 测试
+            try:
+                r = subprocess.run(
+                    ["curl", "-s", "-m", "10", "-X", "POST", _be_url + "/license",
+                     "-H", "Content-Type: application/json",
+                     "-d", '{"action":"init_trial","machine_fingerprint":"debug-test"}'],
+                    capture_output=True, text=True, timeout=15)
+                import json as _j
+                d = _j.loads(r.stdout) if r.stdout else {}
+                net_lines.append(f"FC API测试: {'ok' if d.get('status')=='ok' else d.get('msg','空响应')} (HTTP {r.returncode})")
+            except Exception as e:
+                net_lines.append(f"FC API测试: 失败 ({e})")
+        else:
+            net_lines.append("FC端点: 未配置")
+    except Exception as e:
+        net_lines.append(f"网络诊断失败: {e}")
+
+    # ── activate.txt: 激活失败历史 ──
+    activate_lines = ["# 激活失败记录", ""]
+    try:
+        af_path = os.path.join(_DATA_DIR, "activate_fails.jsonl")
+        if os.path.exists(af_path):
+            activate_lines.append(open(af_path, encoding="utf-8").read())
+        else:
+            activate_lines.append("无记录")
+    except Exception as e:
+        activate_lines.append(f"读取失败: {e}")
+
+    # ── state.txt ──
+    state_lines = []
+    state_lines.append(f"本次报错数: {_UI_ERROR_COUNT}")
     try:
         _keys = _load_api_keys()
         apis = [k for k in ("deepseek_key", "feishu_app_id", "feishu_secret") if _keys.get(k)]
         state_lines.append(f"API Key: {len(apis)}/3 已配置")
     except Exception:
         state_lines.append("API Key: 读取失败")
-    try:
-        from shared.deploy_config import load_smb_paths
-        paths = load_smb_paths()
-        state_lines.append(f"SMB路径: {len(paths)} 条")
-    except Exception:
-        state_lines.append("SMB路径: 读取失败")
-    state_lines.append(f"本次报错数: {_UI_ERROR_COUNT}")
+
     # ── 写 zip ──
     try:
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for src, arcname in log_files:
+            for src, arcname in log_entries:
                 try:
                     zf.write(src, arcname)
                 except Exception:
                     pass
-            zf.writestr("info.txt", "\n".join(info_lines).encode("utf-8"))
-            zf.writestr("state.txt", "\n".join(state_lines).encode("utf-8"))
-        # Finder 弹出
+            _add_str(zf, "info.txt", info_lines)
+            _add_str(zf, "license.txt", license_lines)
+            _add_str(zf, "network.txt", net_lines)
+            _add_str(zf, "activate.txt", activate_lines)
+            _add_str(zf, "state.txt", state_lines)
         if _sys.platform == "darwin":
             subprocess.run(["open", "-R", zip_path], check=False)
         else:
