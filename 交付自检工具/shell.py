@@ -28,7 +28,7 @@ for _, p in sorted(_versions, key=lambda x: x[0], reverse=True):
 # 2. 读 deploy.json 找 SMB 路径
 _cfg = {}
 try:
-    _cfg_path = os.path.expanduser("~/达芬奇插件工坊/deploy.json")
+    _cfg_path = os.path.expanduser("/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/交付自检工具/deploy.json")
     if os.path.exists(_cfg_path):
         with open(_cfg_path, encoding="utf-8") as f:
             _cfg = json.load(f)

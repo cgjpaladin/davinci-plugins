@@ -5,7 +5,7 @@
 #   灰度名单 → SMB gray/
 #   其他人 → SMB 根目录
 #
-# 路径来源：优先读 ~/达芬奇插件工坊/deploy.json，不存在则用默认值
+# 路径来源：优先读 /Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/交付自检工具/deploy.json，不存在则用默认值
 #
 # 用法:
 #   import launcher_router; launcher_router.route("AI去字幕", ui_module="stable_ui")

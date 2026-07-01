@@ -1,15 +1,17 @@
 """部署配置统一入口。
 
 取代各产品目录中分散复制的 _load_deploy_config() / _read_smb_mount()。
-单一来源：~/达芬奇插件工坊/deploy.json
+单一来源：<系统级插件目录>/deploy.json
 """
 import json as _json
 import os as _os
 
+_INSTALL_DIR = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/交付自检工具"
+
 
 def load() -> dict:
     """读取 deploy.json，不存在返回空 dict。"""
-    cfg_path = _os.path.expanduser("~/达芬奇插件工坊/deploy.json")
+    cfg_path = _os.path.join(_INSTALL_DIR, "deploy.json")
     try:
         with open(cfg_path, encoding="utf-8") as f:
             return _json.load(f)
@@ -34,7 +36,7 @@ def get_smb_paths() -> list:
 
 def save_smb_paths(paths: list) -> bool:
     """保存服务器素材路径列表到 deploy.json。"""
-    cfg_path = _os.path.expanduser("~/达芬奇插件工坊/deploy.json")
+    cfg_path = _os.path.expanduser("/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/交付自检工具/deploy.json")
     cfg = load()
     cfg["smb_paths"] = [p.strip() for p in paths if isinstance(p, str) and p.strip()]
     try:
