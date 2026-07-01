@@ -30,6 +30,25 @@ skills: davinci-resolve-scripting
 | 弹窗取消后按钮灰色不复原 | 提前 return 没走 finally（启用前灰显 + finally 恢复是铁律） |
 | urllib 在 DaVinci 子进程无限挂 | timeout 参数被忽略，线程/子进程超时均无效。改 subprocess 调 curl 或主 shell 线程 |
 | tkinter 子进程弹 Dock 图标 | macOS 任何启动 GUI 的进程占据 Dock。文件选择改用 `fu.RequestFile()` |
+| 激活失败·昨天能用今天不行 | 指纹变了（组件查询失败/os.urandom 回退）→ 查 `~/.config/dv_license/fingerprint` |
+| 试用到期限示"天数未知" | FC 从未写回 trial_start_date → 查 network.txt FC 连通性 + env.txt FC URL |
+| 激活码"已在其他设备使用"但同一台电脑 | 指纹变了（v4.0 已修复为文件缓存） |
+
+## 诊断包（v2.5.11 升级版）
+
+粉丝导出：配置页 → 📋导出日志。zip 含 7 文件：
+
+| 文件 | 诊断什么 |
+|------|---------|
+| info.txt | 版本/系统/完整指纹（可 Base 搜索匹配） |
+| license.txt | 凭据快照(is_trial/trial_start_date/expire/签名) |
+| network.txt | FC端点/DNS/TCP 443/curl/FC API实测 |
+| activate.txt | 激活失败历史(jsonl，持久化不丢) |
+| env.txt | .env 快照（密钥遮罩，FC URL 可读） |
+| state.txt | 报错计数/API Key 配置 |
+| logs/ | UI日志 + launcher日志 |
+
+**排错第一件事**：让粉丝导出诊断包——network.txt 看是否连到旧 FC URL，license.txt 看 trial_start_date 是否缺失，activate.txt 看所有失败记录。
 
 ## IME 崩溃诊断清单（2026-06-16 沉淀）
 

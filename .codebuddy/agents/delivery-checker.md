@@ -798,3 +798,32 @@ python3 tools/gen_key.py 1 --status unused # 1 个未使用
 | `_lock_ui` 按钮不全 | 校对时仍可点配置/本地/飞书 | `_lock_ui` 必须禁 BTN_CONFIG + btn_browse_script + btn_paste_link |
 | same_show=False 不显示 | Tree 渲染只用 direct_rows + ai_rows | 警告设 `lbl_gate_warn.Text+Visible=True`，不插 Tree |
 | 飞书标题异步 API 永远挂 | DaVinci 子进程 urlopen 无限 hang | 砍掉异步，同步显示类型名；解析时自有 API 调 |
+| `_write_env.py` URL ≠ `license.py` 默认值 | 新用户请求发到错的 FC | 全项目 grep 统一（v4.0 后单表 `tblGfiUYR3UHQT08`，FC 固定 `license-node-mtqaghwijy`） |
+| 指纹随机变化 | `os.urandom()` 回退 → 激活第二天失效 | v4.0 文件缓存到 `~/.config/dv_license/fingerprint` |
+
+## 授权系统（v4.0，2026-07-02）
+
+### 架构
+
+单表 `飞书 Base → 授权记录(tblGfiUYR3UHQT08)`，FC `license-node-mtqaghwijy` 四 handler。
+
+状态机：试用中 → 可激活（裁缝手写码） → 已激活 → 已停用。
+
+### 指纹
+
+`shared/license.py::get_machine_fingerprint()`：
+- 文件缓存 `~/.config/dv_license/fingerprint`，永不重算
+- macOS: IOPlatformUUID + Volume UUID + CPU
+- Windows: 主板序列号 + 磁盘序列号 + CPU  
+- 失败留空不随机，不用 MAC 地址。换主板/系统盘才变
+
+### IP/地区/ISP
+
+`shared/license.py::_get_stats()` 并行查 ifconfig.me + ip-api.com，格式 `中国 / 陕西 / 西安 / 电信`。每次心跳刷新。
+
+### 排错包
+
+配置页 → 📋导出日志 → zip 含 7 文件：
+info.txt（完整指纹可 Base 搜） / license.txt（凭据快照） / network.txt（FC 连通性测试） / activate.txt（失败历史） / env.txt（.env 密钥遮罩） / state.txt / 日志。
+
+排错第一眼看 network.txt FC URL 是否旧地址，再看 license.txt trial_start_date 是否缺失。
