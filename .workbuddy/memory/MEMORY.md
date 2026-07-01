@@ -3,8 +3,8 @@
 > 我是小裁缝的**插件分身**。
 > 管 AI 去字幕/交付自检、灰度发布部署。❌ 不管 Mac mini 运维、SMB 存储。
 
+> v4.0 | 2026-07-02 | 单表授权+Fingerprint缓存+IP/地区/ISP+诊断包全面升级
 > v3.1 | 2026-06-16 | 安装脚本重写+IME弹窗替代+FC URL修复+License重构
-> 2026-06-12 | SMB 全量同步 + 个人版残留清理
 
 ## 跨项目引用
 
@@ -21,7 +21,7 @@
 | 产品 | 版本 | 状态 |
 |------|------|------|
 | AI去字幕 | v1.11.3 | ✅ |
-| 交付自检 | v2.5.9 | ✅ 飞书Wiki+文件选择原生化+same_show硬化 |
+| 交付自检 | v2.5.11 | ✅ 单表授权+指纹缓存+IP/地区/ISP+诊断包7文件 |
 | 批量命名工具 | v3.6 | ✅ 表格版，8字段(Ep/Sc/Gr/Tk/desc/method/author/v/status)，导表+硬编码消除+审查模式+DMG分发 |
 | 批量命名工具_创壹特供版 | v1.1 | ✅ 表格版，9字段(EP/SC/SH/TK/desc/type/author/V/status)，导表+死代码清理 |
 | AI换口型 | — | 待开发 |
@@ -72,6 +72,18 @@
 
 ### 个人版
 - `build_personal.sh` 打包前自动去 channel，永不带 `-dev` 后缀。
+
+## 授权系统（v4.0 单表，2026-07-02）
+
+- **表**：飞书 Base `授权记录`（`tblGfiUYR3UHQT08`），一行一指纹，13 字段
+- **状态机**：试用中 → 可激活（裁缝老师写码+买家）→ 已激活（粉丝输入码）→ 已停用（释放码）
+- **指纹**：文件缓存 `~/.config/dv_license/fingerprint`，macOS=IOPlatformUUID+Volume UUID+CPU，Windows=主板+磁盘+CPU。失败组件留空不随机，不依赖 MAC 地址。换主板/系统盘才变
+- **IP/地区/ISP**：客户端并行查 ifconfig.me + ip-api.com（HTTP免费无限次），心跳刷新。格式 `中国 / 陕西 / 西安 / 电信`
+- **FC**：`license-node-mtqaghwijy.cn-hangzhou.fcapp.run`，Node.js 单表四 handler（init_trial/activate/deactivate/verify_status）
+- **排错包**：7 文件（info/license/network/activate/env + logs），含 FC 连通性测试 + .env 快照（密钥遮罩）+ 完整指纹
+- **配置页**：激活/停用/复制指纹三个按钮
+- **安装脚本**：Mac/Win 首次安装弹隐私确认（公网IP+第三方服务+不上传项目文件）
+- **先读我.txt**：免责声明 + 第三方服务声明 + 隐私条款
 
 ## 共享路径
 
@@ -404,15 +416,15 @@ gen_key → 待售。Admin 手动改待激活。激活 → 已激活 + 带第一
 **环境变量**（在阿里云控制台 FC 函数配置中设置）：
 - `FEISHU_APP_ID` / `FEISHU_APP_SECRET` — 飞书应用凭证
 - `BASE_TOKEN` — 飞书多维表格 token（`BRfGbDgaJa6ZYCsViuOcau2PnSe`）
-- `TRIAL_TABLE_ID` — 试用指纹表（`tblMAUMo8VQGPDZP`）
-- `ACTIVATE_TABLE_ID` — 激活码表（`tbla9FSVEuuiayQH`）
-- `APPROVE_TABLE_ID` — 审批表
+- `TABLE_ID` — 单表「授权记录」（`tblGfiUYR3UHQT08`），v4.0 起替代旧双表
 
-**两个 Base 表**：
-| 表 | 用途 | 字段 |
-|----|------|------|
-| 试用指纹表 | 记录每台机器首次试用 | 机器指纹、插件版本、macOS版本、达芬奇版本、首次试用时间、最后活跃 |
-| 激活码表 | 管理激活码生命周期 | 激活码、状态、绑定指纹、激活时间、停用时间 |
+**授权记录表**（单表，一行一指纹）：
+| 字段 | 说明 |
+|------|------|
+| 机器指纹、激活码、买家、状态 | 核心身份 + 生命周期 |
+| 首次试用时间、激活时间、最后活跃 | 时间线 |
+| 插件版本、系统版本、达芬奇版本 | 心跳刷新 |
+| 最近IP、所属地区 | 心跳刷新（含 ISP） |
 
 **故障排查**：
 ```bash
