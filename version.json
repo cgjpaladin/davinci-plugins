@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip"
     ],
-    "sha256": "1c23cd76ac492ac384130401c635bf92cfe20a553f3da3e71710c798511f2175",
+    "sha256": "2dd78c05d7b6186b8c48e308e972d78899a10b5c776804c3ae85724274d80ad5",
     "notes": "🔍 排错报告一键导出（网络诊断+授权快照+激活历史+环境配置）\n🛡️ 指纹稳定不漂移，VPN不影响激活\n📋 配置页一键复制机器指纹，发给裁缝老师",
     "history": [
       {

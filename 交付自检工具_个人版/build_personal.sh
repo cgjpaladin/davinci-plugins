@@ -34,7 +34,7 @@ mkdir -p "$PKG/交付自检工具/shared/dftt_timecode/core" "$PKG/交付自检�
 
 # 2. 核心文件（从原版同步最新）
 cp "$WS/交付自检工具"/ui.py "$WS/交付自检工具"/check_core.py "$WS/交付自检工具"/config.py "$PKG/交付自检工具/"
-cp "$WS/install_agent.py" "$PKG/交付自检工具/"
+cp "$WS/tools/install_agent.py" "$PKG/交付自检工具/"
 cp "$WS/交付自检工具"/launcher_personal.py "$WS/交付自检工具"/shell_personal.py "$WS/交付自检工具"/install.command "$WS/交付自检工具"/.env.example "$PKG/交付自检工具/"
 
 # 个人版发布永远不带 dev 通道
@@ -82,7 +82,7 @@ else
 # Agent 模式：去掉 install.command（用户不碰终端）
 rm -f "$PKG/交付自检工具/install.command"
 rm -f "$PKG/交付自检工具/shell_personal.py"
-# 保留 install_agent.py 在源码根目录
+# 保留 install_agent.py 在 tools/ 目录
 fi
 
 # 7. 清理缓存 + 清除 quarantine 属性（防下载后双击被拒）
