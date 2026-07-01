@@ -139,16 +139,28 @@ def _get_stats() -> dict:
 # ═══════════════════════════════════════════
 
 def get_machine_fingerprint() -> str:
-    """采集硬件特征，生成不可逆的 64 字符 SHA256 指纹。
+    """采集硬件特征，生成稳定的 64 字符 SHA256 指纹。
 
-    macOS: IOPlatformUUID + MAC + Volume UUID + CPU
-    Windows: WMIC 主板序列号 + 磁盘序列号 + MAC + CPU
-    两次 SHA256 哈希 + 固定盐值，保证唯一且不可逆。
+    优先从缓存文件读取；首次运行时从硬件采集并缓存。
+    macOS: IOPlatformUUID + Volume UUID + CPU 架构
+    Windows: 主板序列号 + 系统盘序列号 + CPU 架构
+    不使用 MAC 地址（VPN/网卡切换不稳定），失败组件留空不随机。
     """
+    # ── 缓存优先 ──
+    _fp_cache = _CREDENTIAL_PATH.parent / "fingerprint"
+    try:
+        if _fp_cache.exists():
+            cached = _fp_cache.read_text().strip()
+            if len(cached) == 64 and all(c in "0123456789abcdef" for c in cached):
+                return cached
+    except Exception:
+        pass
+
+    # ── 硬件采集 ──
     raw_parts = []
 
     if sys.platform == "darwin":
-        # ── macOS ──
+        # macOS: IOPlatformUUID
         try:
             result = subprocess.run(
                 ["ioreg", "-a", "-rd1", "-c", "IOPlatformExpertDevice"],
@@ -157,7 +169,8 @@ def get_machine_fingerprint() -> str:
             ioreg_uuid = (plist_data[0] if isinstance(plist_data, list) and plist_data else plist_data).get("IOPlatformUUID", "")
             raw_parts.append(ioreg_uuid)
         except Exception:
-            raw_parts.append(os.urandom(16).hex())
+            pass
+        # macOS: Volume UUID
         try:
             result = subprocess.run(
                 ["diskutil", "info", "/"],
@@ -166,53 +179,49 @@ def get_machine_fingerprint() -> str:
                 if "Volume UUID:" in line:
                     raw_parts.append(line.split(":", 1)[1].strip())
                     break
-            else:
-                raw_parts.append(os.urandom(16).hex())
         except Exception:
-            raw_parts.append(os.urandom(16).hex())
+            pass
+        # macOS: CPU
         raw_parts.append(os.uname().machine)
 
     elif sys.platform == "win32":
-        # ── Windows ──
-        # 主板序列号
+        # Windows: 主板序列号
         try:
             result = subprocess.run(
                 ["wmic", "baseboard", "get", "serialnumber"],
                 capture_output=True, text=True, timeout=5)
             lines = [l.strip() for l in result.stdout.splitlines() if l.strip() and l.strip() != "SerialNumber"]
-            raw_parts.append(lines[0] if lines else os.urandom(16).hex())
+            if lines:
+                raw_parts.append(lines[0])
         except Exception:
-            raw_parts.append(os.urandom(16).hex())
-        # 系统盘序列号
+            pass
+        # Windows: 系统盘序列号
         try:
             result = subprocess.run(
                 ["wmic", "diskdrive", "where", "MediaType='Fixed hard disk media'",
                  "get", "SerialNumber"],
                 capture_output=True, text=True, timeout=5)
             lines = [l.strip() for l in result.stdout.splitlines() if l.strip() and l.strip() != "SerialNumber"]
-            raw_parts.append(lines[0] if lines else os.urandom(16).hex())
+            if lines:
+                raw_parts.append(lines[0])
         except Exception:
-            raw_parts.append(os.urandom(16).hex())
-        # CPU
-        raw_parts.append(os.environ.get("PROCESSOR_ARCHITECTURE", "unknown"))
+            pass
+        # Windows: CPU 架构
+        raw_parts.append(os.environ.get("PROCESSOR_ARCHITECTURE", ""))
 
-    else:
-        pass
-
-    # MAC 地址（跨平台）
-    try:
-        raw_parts.append(str(uuid.getnode()))
-    except Exception:
-        raw_parts.append(str(uuid.getnode()))
-    if raw_parts and raw_parts[-1] == "0":
-        raw_parts[-1] = os.urandom(16).hex()
-
-    # 两次 SHA256 + 固定盐值
+    # ── 哈希 ──
     part_count = len(raw_parts)
     raw_parts.append(str(part_count))
-    raw = "|".join(raw_parts)
-    h1 = hashlib.sha256(raw.encode()).hexdigest()
-    h2 = hashlib.sha256(("daVinciCheck" + h1 + str(part_count)).encode()).hexdigest()
+    raw = "|".join(raw_parts) if raw_parts else "fallback"
+    h2 = hashlib.sha256(("daVinciCheck" + raw).encode()).hexdigest()
+
+    # ── 缓存 ──
+    try:
+        _fp_cache.parent.mkdir(parents=True, exist_ok=True)
+        _fp_cache.write_text(h2)
+    except Exception:
+        pass
+
     return h2
 
 # ═══════════════════════════════════════════

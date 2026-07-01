@@ -20,6 +20,40 @@ const OFFLINE_GRANT_DAYS = 30;
 let cachedToken = null;
 let tokenExpireAt = 0;
 
+// ── IP 地理查询（ip-api.com 免费，45 req/min） ──
+function lookupIP(ip) {
+  return new Promise((resolve) => {
+    if (!ip || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+      return resolve('内网');
+    }
+    const req = https.get(`https://ip-api.com/json/${ip}?lang=zh-CN&fields=country,regionName,city,isp`, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(data);
+          if (j.country) {
+            resolve(`${j.country} / ${j.regionName || ''} / ${j.city || ''}`.replace(/\/ $|^ \//g, '').trim() || j.country);
+          } else { resolve(ip); }
+        } catch(e) { resolve(ip); }
+      });
+    });
+    req.on('error', () => resolve(ip));
+    req.setTimeout(5000, () => { req.destroy(); resolve(ip); });
+  });
+}
+
+// ── 从 FC event 提取客户端 IP ──
+function getClientIP(event) {
+  try {
+    const headers = (event && event.headers) || {};
+    return (headers['x-forwarded-for'] || '').split(',')[0].trim()
+        || headers['x-real-ip']
+        || (event.requestContext && event.requestContext.clientIP)
+        || '';
+  } catch(e) { return ''; }
+}
+
 // ── Feishu API ──
 function feishuReq(method, path, body) {
   return new Promise((resolve, reject) => {
@@ -125,6 +159,8 @@ async function handleActivate(data) {
   if (!match.fields.激活时间) {
     updateFields.激活时间 = Date.now();
   }
+  if (data._ip) updateFields['最近IP'] = data._ip;
+  if (data._region) updateFields['所属地区'] = data._region;
   await updateRecord(match.record_id, updateFields);
 
   // 乐观锁：等待 200ms 后重读，确认未被并发写入覆盖
@@ -208,6 +244,8 @@ async function handleInitTrial(data) {
     if (data.version) fields['插件版本'] = data.version;
     if (data.os_version) fields['系统版本'] = data.os_version;
     if (data.resolve_version) fields['达芬奇版本'] = data.resolve_version;
+    if (data._ip) fields['最近IP'] = data._ip;
+    if (data._region) fields['所属地区'] = data._region;
     try { await updateRecord(records[0].record_id, fields, TRIAL_TABLE_ID); } catch(e) { console.error('init_trial heartbeat update failed:', e.message); }
     return { status: 'ok', trial_date_ordinal: msToOrdinal(records[0].fields['首次试用时间']) };
   }
@@ -220,6 +258,8 @@ async function handleInitTrial(data) {
     系统版本: data.os_version || '',
     达芬奇版本: data.resolve_version || '',
     最后活跃: now,
+    最近IP: data._ip || '',
+    所属地区: data._region || '',
   }, TRIAL_TABLE_ID);
   return { status: 'ok', trial_date_ordinal: msToOrdinal(now) };
 }
@@ -244,6 +284,8 @@ async function handleVerifyStatus(data) {
       if (data.version) fields['插件版本'] = data.version;
       if (data.os_version) fields['系统版本'] = data.os_version;
       if (data.resolve_version) fields['达芬奇版本'] = data.resolve_version;
+      if (data._ip) fields['最近IP'] = data._ip;
+      if (data._region) fields['所属地区'] = data._region;
       await updateRecord(trialRecords[0].record_id, fields, TRIAL_TABLE_ID);
     }
   } catch(e) { console.error('verify_status trial update failed:', e.message); }
@@ -278,6 +320,9 @@ exports.main_handler = async function(event, context) {
     } else {
       body = typeof bodyStr === 'string' ? JSON.parse(bodyStr) : bodyStr;
     }
+    // 提取客户端 IP 并查地区（异步，超时不影响主流程）
+    body._ip = getClientIP(evt);
+    body._region = body._ip ? await Promise.race([lookupIP(body._ip), new Promise(r => setTimeout(() => r(body._ip), 3000))]) : '';
   } catch(e) {
     return { statusCode: 400, body: JSON.stringify({ status: 'error', msg: `请求格式错误: ${e.message}` }) };
   }
