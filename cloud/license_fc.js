@@ -47,10 +47,19 @@ function lookupIP(ip) {
 function getClientIP(event) {
   try {
     const headers = (event && event.headers) || {};
-    return (headers['x-forwarded-for'] || '').split(',')[0].trim()
-        || headers['x-real-ip']
-        || (event.requestContext && event.requestContext.clientIP)
-        || '';
+    // Alibaba Cloud FC HTTP trigger: headers key 可能是大小写混合
+    for (const k of Object.keys(headers)) {
+      if (k.toLowerCase() === 'x-forwarded-for') {
+        const ip = (headers[k] || '').split(',')[0].trim();
+        if (ip) return ip;
+      }
+      if (k.toLowerCase() === 'x-real-ip') {
+        const ip = headers[k].trim();
+        if (ip) return ip;
+      }
+    }
+    const ctx = event.requestContext || {};
+    return ctx.clientIP || ctx.sourceIp || '';
   } catch(e) { return ''; }
 }
 
@@ -320,8 +329,12 @@ exports.main_handler = async function(event, context) {
     } else {
       body = typeof bodyStr === 'string' ? JSON.parse(bodyStr) : bodyStr;
     }
-    // 提取客户端 IP 并查地区（异步，超时不影响主流程）
-    body._ip = getClientIP(evt);
+    // 提取客户端 IP（优先用客户端自报，再尝试从 request context 取）
+    body._ip = (body.public_ip || '').trim() || getClientIP(evt);
+    const ctxIP = (context && context.requestContext && context.requestContext.clientIP)
+               || (context && context.clientIP)
+               || '';
+    if (ctxIP && !body._ip) body._ip = ctxIP;
     body._region = body._ip ? await Promise.race([lookupIP(body._ip), new Promise(r => setTimeout(() => r(body._ip), 3000))]) : '';
   } catch(e) {
     return { statusCode: 400, body: JSON.stringify({ status: 'error', msg: `请求格式错误: ${e.message}` }) };

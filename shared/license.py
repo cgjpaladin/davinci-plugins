@@ -131,7 +131,22 @@ def _get_stats() -> dict:
             winreg.CloseKey(_key)
         except Exception:
             pass
-    return {"version": version, "os_version": os_ver, "resolve_version": resolve_ver}
+    # ── 公网 IP ──
+    public_ip = ""
+    try:
+        # 双链路，超时 3 秒，不影响主流程
+        for ip_url in ("https://api.ipify.org", "https://ifconfig.me"):
+            try:
+                r = subprocess.run(["curl", "-s", "-m", "3", ip_url],
+                                   capture_output=True, text=True, timeout=5)
+                if r.returncode == 0 and r.stdout.strip():
+                    public_ip = r.stdout.strip()
+                    break
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return {"version": version, "os_version": os_ver, "resolve_version": resolve_ver, "public_ip": public_ip}
 
 
 # ═══════════════════════════════════════════
