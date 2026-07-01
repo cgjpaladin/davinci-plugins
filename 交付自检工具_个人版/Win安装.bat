@@ -160,7 +160,13 @@ echo     [*] 安装插件到 DaVinci Resolve
 if "!NEED_PYTHON!"=="1" echo     [*] 安装 Python 3.13
 if "!DR_SCRIPTING_NEEDS_FIX!"=="1" echo     [*] 启用达芬奇外部脚本权限
 echo.
-echo   按任意键开始安装，关闭窗口取消...
+echo   ------ 隐私说明 ------
+echo   * 本插件会采集公网IP地址（仅IP，非精准定位）
+echo     用于防盗版验证，同一激活码跨地区使用会被预警
+echo   * 不会上传任何项目文件、时间线内容或个人信息
+echo   ------------------------
+echo.
+echo   按任意键同意并开始安装，关闭窗口取消...
 pause >nul
 echo.
 
