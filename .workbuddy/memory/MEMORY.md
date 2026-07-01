@@ -1,7 +1,8 @@
 # 达芬奇插件工坊 — 产品开发章程
 
 > 我是小裁缝的**插件分身**。
-> 管 AI 去字幕/交付自检、灰度发布部署。❌ 不管 Mac mini 运维、SMB 存储。
+> 管全系达芬奇插件（AI去字幕/交付自检/批量命名等）+ 授权系统 + 发布部署。
+> ❌ 不管 Mac mini 运维、SMB 存储。
 
 > v4.0 | 2026-07-02 | 单表授权+Fingerprint缓存+IP/地区/ISP+诊断包全面升级
 > v3.1 | 2026-06-16 | 安装脚本重写+IME弹窗替代+FC URL修复+License重构
@@ -76,14 +77,11 @@
 ## 授权系统（v4.0 单表，2026-07-02）
 
 - **表**：飞书 Base `授权记录`（`tblGfiUYR3UHQT08`），一行一指纹，13 字段
-- **状态机**：试用中 → 可激活（裁缝老师写码+买家）→ 已激活（粉丝输入码）→ 已停用（释放码）
-- **指纹**：文件缓存 `~/.config/dv_license/fingerprint`，macOS=IOPlatformUUID+Volume UUID+CPU，Windows=主板+磁盘+CPU。失败组件留空不随机，不依赖 MAC 地址。换主板/系统盘才变
-- **IP/地区/ISP**：客户端并行查 ifconfig.me + ip-api.com（HTTP免费无限次），心跳刷新。格式 `中国 / 陕西 / 西安 / 电信`
-- **FC**：`license-node-mtqaghwijy.cn-hangzhou.fcapp.run`，Node.js 单表四 handler（init_trial/activate/deactivate/verify_status）
-- **排错包**：7 文件（info/license/network/activate/env + logs），含 FC 连通性测试 + .env 快照（密钥遮罩）+ 完整指纹
-- **配置页**：激活/停用/复制指纹三个按钮
-- **安装脚本**：Mac/Win 首次安装弹隐私确认（公网IP+第三方服务+不上传项目文件）
-- **先读我.txt**：免责声明 + 第三方服务声明 + 隐私条款
+- **状态机**：试用中 → 可激活 → 已激活 → 已停用
+- **FC**：`license-node-mtqaghwijy.cn-hangzhou.fcapp.run`，Node.js 四 handler
+- **指纹缓存**：`~/.config/dv_license/fingerprint`，换主板/系统盘才变
+- **IP/地区/ISP**：客户端自报，心跳刷新
+- 详见 `交付自检开发` skill + `插件排错诊断` skill
 
 ## 共享路径
 
@@ -180,42 +178,9 @@
 
 ## 批量命名工具架构要点（2026-05-24 终版）
 
-### 去重机制
-- `seen_fp`（`_process_paths` 局部变量）：size + 前 64KB MD5，**仅本批**。类级变量跨批泄漏是系统性反模式。
-- `_sent_fps` 已删除——其防 evaluate_js 重放的职能被局部 `seen_fp` 接管
-- JS 侧：`fp || path` 优先级，`result.duplicates` 优先于本地重算
-
-### 文件结构
-- 表格版（主）：`renamer_web.py` `app_table.js/css` `renamer_table.html`（根目录）
-- 卡片版（备用）：`card/app.js` `card/app.css` `card/renamer_web.html`
-- `_splice.py` 和 `build.sh` 均引用 `card/` 路径
-- **版本号唯一来源**：`app_table.js` 第 1 行 `const APP_VERSION='x.y'`。`_splice.py` 自动从 JS 提取版本号生成 `version_info.txt`，HTML 运行时注入。改版只改一处。（2026-06-04 解耦）
-
-### 解析系统
-- `shared/naming.py`：`FILENAME_RE` 从 `FIELD_CONFIG` 自动生成（`_build_filename_re`）
-- `FALLBACK_RE`：只匹配 `Ep/Sc/Gr/Tk` + `v/status`，中间不拆 desc/method/author
-- `_EMPTY_KEYS = {'ep','sc','gr','tk','ver'}`：解析失败强制留空，信任解析器判定
-- method 由 desc 反查（`DESC_TO_METHOD`），desc 为空时跳过推断
-
-### 构建
-- macOS：`build.sh table`，用系统 Python + `ditto`（托管 Python 无 PyInstaller）
-- Windows：`build_win.bat table`，`--add-data` 用分号分隔，`--hidden-import webview.platforms.edgechromium`
-- 打包图标：macOS `.icns`，Windows `.ico`
-
-### 日志系统
-- 逐文件 `_log.debug`：文件名、解析结果、字段值
-- 汇总 `_log.info`：`{N} files, {M} parsed, {K} raw, {D} dup`
-- `result()` 加 `call('debug_log', ...)` 确认持久结果写入
-
-### pywebview 特殊约束
-- `if(!window.pywebview)` 在注入前检查不可靠 → 用 `setTimeout + 再判断`
-- `el.focus()` 不一定触发 WKWebView 原生 focus 事件 → 去 `_focused` 守卫
-- `click.detail >= 2` 比自制 timer 可靠
-- WKWebView 会双火 drop 事件 → 去重靠局部 `seen_fp`，不加防抖
-
-### 字段校验
-- `DIGIT_STRICT`：ep/sc/gr 拒 00（`/^(0[1-9]|[1-9]\d)/`），blur + Enter 双重校验
-- `DIGIT_RULES`：输入时过滤非数字字符
+- 去重用局部 `seen_fp`，避开类级变量跨批泄漏
+- 版本号唯一来源 `app_table.js` 第 1 行，改版只改一处
+- 详见 `批量命名开发` skill
 
 ## 交付自检核心要点
 
@@ -225,13 +190,6 @@
 - AI 错别字：右侧独立面板，DeepSeek V4 Pro
 - 路径检测：无 gate 永远先跑；中英文 Type 兼容
 - 音量检测：API 限制，待达芬奇更新
-- **v2.5.7 重构**：`parse_script` 不再解析角色/分集，只返回 `{"lines": [...]}`；全量文本喂给 AI，AI 自行理解。支持 `.txt/.md/.docx/.doc/.pdf` 5 格式。集号手动输入已删除。
-- **v2.5.7 LineEdit 清零**：所有输入框替换为 Label + osascript/tkinter 弹窗，彻底消除 CJK IME → SIGSEGV 崩溃路径。主窗口 3 处 + 配置页 3 处。
-- **v2.5.7 文件守卫**：`>20MB` 拒绝，5 格式白名单拦截。
-- **v2.5.7 死代码清理**：`_extract_characters`/`_split_episodes`/`match_timeline`/`_CHINESE_NUM`/`_cn_to_int`/`_parse_episode_number` 全部删除（~300 行）。根因：剧本是喂给 AI 的，不需要正则解析。
-- **v2.5.7 按钮防连点**：8 按钮统一 `Enabled=False` + `finally` 恢复。配置窗口 `_config_open` 标志防重入。
-- **v2.5.7 授权声明**：三处同步（`license.py` 注释 / `README.md` / `先读我.txt`）。语气：公益初衷（帮同行少扣绩效少熬夜）+ 99 元回本 + 欢迎读代码学习 + 只求别破解。
-
 ## 安装体系（2026-06-16 确立）
 
 ### 四种分发方式
@@ -258,44 +216,10 @@
 
 - **外部参考**：`knowledge/davinci-reference.md`（鬼猫猫/张来吃/派派的派/HEIBA）
 
-## 进度条重构方案 (2026-05-24)
-
-**核心**: SubtitlePipeline 覆盖 `_get_progress_callback()`, 统一映射两个 adapter 的 phase→绿条+阶段标签
-
-**映射表 (按phase名,不区分adapter)**:
-| phase | 标签 | 绿条区间 |
-|-------|------|:--:|
-| upload | ⬆ 上传中 | 0.10→0.17 |
-| submit | 📤 提交中 | 0.17→0.20 |
-| processing | 🤖 AI处理中 | 0.20→0.75 |
-| (pipeline) | ⬇ 下载中 | 0.75→0.90 |
-| (pipeline) | 🔧 替换中 | 0.90→1.00 |
-
-**兼容性**: 无痕有upload/submit/processing, 鬼手有upload/processing。共用同一映射表。
-**倒计时**: 砍掉, 换阶段标签。
-**完成态**: 已实现(绿条变绿+标题✅)。
 
 
-## 飞书 CLI 配置 (2026-05-24)
-
-`lark-cli config init` 已配好 app: cli_a940d087f9b89cc9。
-读外部租户文档（jollytoday/suiyu-network）用 `--as bot`：
-```bash
-lark-cli docs +fetch --doc "<url或token>" --as bot
-```
-配置文件: ~/.lark-cli/config.json，不需要重新 OAuth。
 
 
-## 跨产品可复用模式 (2026-05-24)
-
-**进度条系统**（AI换口型/语音克隆等直接继承）：
-- `BasePipeline` 已含 `MILESTONE_ENV_OK/PREPARE/DOWNLOAD/COMPLETE` 里程碑常量
-- `interface.DaVinciPipelineUI.set_phase(text)` 直写 ST_LB
-- `_get_progress_callback()` 模式：子类覆盖返回回调，映射 adapter ratio→绿条
-
-**估值常量**：
-- `pricing_defaults.EST_BASE_SECS / EST_PER_CLIP_SECS` — 目前基于无痕+鬼手数据
-- 新工具可覆盖或追加自己的常量
 
 ## 壳方案 + 部署架构 (2026-05-25)
 
@@ -303,54 +227,13 @@ lark-cli docs +fetch --doc "<url或token>" --as bot
 - **launcher.py**: sys.executable，设 WORKBUDDY_PRODUCT 环境变量
 - **deploy_config.py**: load()/get_smb_mount()/get_python_path()，取代 6 份拷贝
 - **SSL**: 全仓 _create_unverified_context()，Python 3.14 兼容
-- **日志**: `tools/check_logs.sh <hostname>` 四源全出——插件日志 + 系统日志 + 进程状态 + 崩溃报告。**不加任何 grep 过滤，不预设关键词**。达芬奇系统日志只收 Traceback，插件的 UI 日志（~/.workbuddy/logs/）才收完整错误。别人报「用不了」，第一动作跑 check_logs.sh。
-- **构建前 `rm -rf _build`**：`_splice.py` 写入 `_build/` 目录，不删旧目录会导致 splice 读旧缓存 → 打包产物和源码不一致。bug 修了但没生效，浪费多轮排查。
 
 ## 一键更新系统 (2026-06-08 更新)
 
-### 架构
-- **版本检查**：多链路回退 jsDelivr CDN → GitHub API → GHProxy
-- **下载**：HEAD 拿文件大小 + 分块下载 + 进度条回调，60s 超时
-- **安装**：`do shell script "/bin/bash install_update.command --update"` → 直接 root 覆盖
-- **配置入口**：`shared/update_config.py`（仓库名、多链路 URL、超时、校验参数——换仓库只改这一个文件）
-- **全 ASCII 铁律**：zip 根目录、URL 中的文件名、.command 文件名三者全部英文
-
-### 个人版发布 (GitHub Release)
-
-```bash
-cd 交付自检工具_个人版 && rm -rf _build && bash build_personal.sh --update
-SHA=$(shasum -a 256 _build/交付自检工具_更新包.zip | awk '{print $1}')
-gh release create v2.x.y _build/交付自检工具_更新包.zip \
-  --repo cgjpaladin/davinci-plugins --title "v2.x.y" --notes "公告"
-git add version.json && git commit --no-verify -m "v2.x.y 发布" && git push
-```
-
-- git remote 必须 HTTPS, GH_TOKEN 有 repo scope
-- 测试机：**dd-mbp**（ZT 10.163.15.58, User ttttt, SSH 免密），本机是 DEV 模式不触发更新
-- 增量包 ~192KB（不含 Python/pkg）
-
-## macOS DMG 分发（2026-05-28 沉淀）
-
-**问题**：PyInstaller 构建的 `.app` zip 发给别人后打不开。macOS Gatekeeper 检测到下载来源（`com.apple.quarantine`）→ 拒绝 ad-hoc 签名 app。
-
-**Sequoia (15.x)**：右键→打开被砍，`spctl --master-disable` 被禁。
-
-**方案**：DMG + 隔离清除脚本。详见 `macos-dmg-dist` skill。
-
-**关键发现**：
-- `xattr -d com.apple.quarantine App.app && open App.app` 是唯一可靠方式
-- ARM64 only → Intel Mac 无法运行。用 `arch -x86_64 python3 -m PyInstaller` 构建 x86_64 可同时支持两者（Rosetta 只翻译 x86→ARM）
-- PyInstaller 后必须 `codesign --force --deep --sign -` 重签
-- `cp -R` 到被签名锁住的旧 app 会嵌套（220MB），必须先 `rm -rf`
-
-**体积**：每个 app ~110MB（ffmpeg 54MB + Python 15MB + PIL/lxml 20MB + 其他 20MB）
-
-### 更新前端到端验证（2026-06-01 铁律）
-```bash
-bash 交付自检工具_个人版/build_personal.sh --update
-python3 -c "解压zip→找install_update.command→bash -n语法→copytree到/tmp/_deli_src"
-bash /tmp/_deli_src/install_update.command --update  # 模拟安装
-```
+- 多链路回退：jsDelivr CDN → GitHub API → GHProxy
+- 分块下载 + 进度条回调，60s 超时
+- 全 ASCII 铁律：zip/URL/.command 文件名全部英文
+- 配置入口：`shared/update_config.py`
 
 ## 配置页 + License 体系 (2026-06-01)
 
@@ -467,17 +350,6 @@ ssh machine "cat ~/.config/dv_license/license.dat | python3 -c '...'"
 - **防重复**：`bad_char_ranges.txt` 中全角行 `U+FF01-U+FF5E` 已注释
 - 异体字检测不再抓全角字符
 
-## 错别字提示词优化（2026-06-04）
-
-- 7 条规则全补完整示例（original → correction + 原因），含不改反例
-- 剧本用途三段论：角色名性别 / 剧情大纲 / 当前场戏上下文，禁止逐行比对
-- 标点归并：「标点缺失或多余」，涵盖书名号《》和引号「」
-- `reason` 归一化：AI 输出「错字」自动映射为「错别字」
-
-## 配置页 SMB 路径编辑（2026-06-07）
-
-- ComboBox 选择路径 + 删除按钮（`− 删除路径`）+ 文件夹选择器添加
-
 ## 个人版安装分发（2026-06-16）
 
 ### 构建产物
@@ -490,20 +362,6 @@ ssh machine "cat ~/.config/dv_license/license.dat | python3 -c '...'"
 ### 更新包
 - `--update` 模式产出 `update_latest.zip`（ASCII 名，GitHub Release 中文文件名会乱码成 `_`）
 - 构建时 SHA 校验已移除——zip 时间戳非确定性，每次构建 SHA 不同
-
-### 安装脚本关键决策
-- `exec 3>&1 >"$LOG" 2>&1` 输出分流：fd 1→日志，fd 3→终端
-- 安装前摘要：列出所有变更→用户确认→输入密码→执行（不先斩后奏）
-- 密码取消静默退出（`grep "User canceled"` 检测）
-- osascript 弹窗换行用 `$'...\n...'` 而非 `'...\n...'`
-- External Scripting 自动启用：`sed` 改 `config.dat` 中 `System.Scripting.Mode`
-
-### 版本号
-- 唯一真相源：`config.py: __version__`
-- 构建脚本 + 文件夹/zip 名自动读取
-- `version.json` 需手动同步 version + urls + sha256 + history
-- 更新公告唯一来源：`CHANGELOG.md`（AI 不自己写）
-- ComboBox API：`CurrentText`（非 `Text`）取值，`Clear()`+`AddItem()` 刷新
 
 ## 编码铁律（从 SOUL 下沉）
 
