@@ -140,7 +140,7 @@ def _get_stats() -> dict:
         _region_result = [""]
         def _get_ip():
             try:
-                for u in ("https://api.ipify.org", "https://ifconfig.me"):
+                for u in ("https://ifconfig.me", "https://api.ipify.org", "https://ip.sb"):
                     r = subprocess.run(["curl", "-s", "-m", "3", u],
                                        capture_output=True, text=True, timeout=5)
                     if r.returncode == 0 and r.stdout.strip():
