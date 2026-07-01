@@ -131,22 +131,43 @@ def _get_stats() -> dict:
             winreg.CloseKey(_key)
         except Exception:
             pass
-    # ── 公网 IP ──
+    # ── 公网 IP + 地区（双链路并行，3 秒超时，不影响主流程） ──
     public_ip = ""
+    ip_region = ""
     try:
-        # 双链路，超时 3 秒，不影响主流程
-        for ip_url in ("https://api.ipify.org", "https://ifconfig.me"):
+        import threading as _th
+        _ip_result = [""]
+        _region_result = [""]
+        def _get_ip():
             try:
-                r = subprocess.run(["curl", "-s", "-m", "3", ip_url],
-                                   capture_output=True, text=True, timeout=5)
-                if r.returncode == 0 and r.stdout.strip():
-                    public_ip = r.stdout.strip()
-                    break
-            except Exception:
-                continue
+                for u in ("https://api.ipify.org", "https://ifconfig.me"):
+                    r = subprocess.run(["curl", "-s", "-m", "3", u],
+                                       capture_output=True, text=True, timeout=5)
+                    if r.returncode == 0 and r.stdout.strip():
+                        _ip_result[0] = r.stdout.strip()
+                        return
+            except Exception: pass
+        def _get_region():
+            try:
+                if _ip_result[0]:
+                    r = subprocess.run(["curl", "-s", "-m", "3",
+                        f"https://ipapi.co/{_ip_result[0]}/json/"],
+                        capture_output=True, text=True, timeout=5)
+                    if r.returncode == 0:
+                        j = __import__("json").loads(r.stdout)
+                        parts = [j.get("country_name"), j.get("region"), j.get("city")]
+                        parts = [p for p in parts if p]
+                        _region_result[0] = " / ".join(parts) if parts else ""
+            except Exception: pass
+        t1 = _th.Thread(target=_get_ip, daemon=True)
+        t2 = _th.Thread(target=_get_region, daemon=True)
+        t1.start(); t2.start()
+        t1.join(timeout=4); t2.join(timeout=4)
+        public_ip = _ip_result[0].strip()
+        ip_region = _region_result[0].strip()
     except Exception:
         pass
-    return {"version": version, "os_version": os_ver, "resolve_version": resolve_ver, "public_ip": public_ip}
+    return {"version": version, "os_version": os_ver, "resolve_version": resolve_ver, "public_ip": public_ip, "ip_region": ip_region}
 
 
 # ═══════════════════════════════════════════
