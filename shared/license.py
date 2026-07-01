@@ -27,7 +27,6 @@ import stat
 import subprocess
 import sys
 import time
-import uuid
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -151,11 +150,11 @@ def _get_stats() -> dict:
             try:
                 if _ip_result[0]:
                     r = subprocess.run(["curl", "-s", "-m", "3",
-                        f"http://ip-api.com/json/{_ip_result[0]}?lang=zh-CN&fields=country,regionName,city"],
+                        f"http://ip-api.com/json/{_ip_result[0]}?lang=zh-CN&fields=country,regionName,city,isp"],
                         capture_output=True, text=True, timeout=5)
                     if r.returncode == 0:
                         j = __import__("json").loads(r.stdout)
-                        parts = [j.get("country",""), j.get("regionName",""), j.get("city","")]
+                        parts = [j.get("country",""), j.get("regionName",""), j.get("city",""), j.get("isp","")]
                         parts = [p for p in parts if p]
                         _region_result[0] = " / ".join(parts) if parts else ""
             except Exception: pass

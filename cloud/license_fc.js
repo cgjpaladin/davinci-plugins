@@ -1,18 +1,14 @@
-// License 激活中间件 — Node.js, 阿里云 FC
-// 飞书 Base 表格存激活码，FC 做中间层隐藏密钥
-// v3 重构：纯激活码管理，试用纯本地，无心跳
-// v3.1：试用指纹服务端防无限重试 + 时钟防退
+// License 中间件 — Node.js, 阿里云 FC
+// v4: 单表「授权记录」，试用+激活合一，一行一指纹永生
 
 const crypto = require('crypto');
-
 const https = require('https');
 
 // ── 配置 ──
 const FEISHU_APP_ID = process.env.FEISHU_APP_ID || '';
 const FEISHU_APP_SECRET = process.env.FEISHU_APP_SECRET || '';
 const BASE_TOKEN = process.env.BASE_TOKEN || 'BRfGbDgaJa6ZYCsViuOcau2PnSe';
-const TABLE_ID = process.env.TABLE_ID || 'tbla9FSVEuuiayQH';
-const TRIAL_TABLE_ID = process.env.TRIAL_TABLE_ID || 'tblMAUMo8VQGPDZP';
+const TABLE_ID = process.env.TABLE_ID || 'tblGfiUYR3UHQT08';
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 const HMAC_SECRET = (process.env.HMAC_SECRET || 'change_me').substring(0, 64);
 const OFFLINE_GRANT_DAYS = 30;
@@ -30,82 +26,121 @@ function feishuReq(method, path, body) {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
         'Authorization': `Bearer ${cachedToken}`,
-      }
+      },
     };
-    const req = https.request(opts, res => {
+    const req = https.request(opts, (res) => {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => {
-        try { resolve(JSON.parse(data)); }
-        catch(e) { reject(new Error(data)); }
+        try { resolve(JSON.parse(data)); } catch(e) { reject(new Error(`JSON parse: ${data.slice(0,200)}`)); }
       });
     });
     req.on('error', reject);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('timeout')); });
     if (body) req.write(JSON.stringify(body));
     req.end();
   });
 }
 
 async function getToken() {
-  if (cachedToken && Date.now() < tokenExpireAt) return cachedToken;
-  const now = Date.now();
+  if (cachedToken && Date.now() < tokenExpireAt - 60000) return cachedToken;
   const resp = await feishuReq('POST', 'auth/v3/tenant_access_token/internal', {
-    app_id: FEISHU_APP_ID,
-    app_secret: FEISHU_APP_SECRET,
-  }, true);
-  if (!resp.tenant_access_token) throw new Error(`Token failed: ${JSON.stringify(resp)}`);
+    app_id: FEISHU_APP_ID, app_secret: FEISHU_APP_SECRET,
+  });
   cachedToken = resp.tenant_access_token;
-  tokenExpireAt = now + (resp.expire - 60) * 1000;
+  tokenExpireAt = Date.now() + (resp.expire || 3600) * 1000;
   return cachedToken;
 }
 
-// Override feishuReq to auto-get token
-const _feishuReq = feishuReq;
-feishuReq = async function(method, path, body, skipToken) {
-  if (!skipToken) await getToken();
-  return _feishuReq(method, path, body);
-};
-
 // ── Base CRUD ──
-async function listRecords(filter, tableId) {
-  const tid = tableId || TABLE_ID;
-  const resp = await feishuReq('GET',
-    `bitable/v1/apps/${BASE_TOKEN}/tables/${tid}/records?page_size=500${filter ? '&filter=' + encodeURIComponent(filter) : ''}`);
-  return resp.data?.items || [];
+async function listRecords(filter) {
+  await getToken();
+  const path = `bitable/v1/apps/${BASE_TOKEN}/tables/${TABLE_ID}/records?page_size=20&filter=${encodeURIComponent(filter)}`;
+  const resp = await feishuReq('GET', path);
+  return (resp.data && resp.data.items) || [];
 }
 
-async function addRecord(fields, tableId) {
-  const tid = tableId || TABLE_ID;
+async function addRecord(fields) {
+  await getToken();
   const resp = await feishuReq('POST',
-    `bitable/v1/apps/${BASE_TOKEN}/tables/${tid}/records`,
+    `bitable/v1/apps/${BASE_TOKEN}/tables/${TABLE_ID}/records`,
     { fields });
-  if (resp.code && resp.code !== 0) throw new Error(`Feishu addRecord: ${resp.code} ${resp.msg}`);
-  return resp.data?.record;
+  return resp;
 }
 
-async function updateRecord(recordId, fields, tableId) {
-  const tid = tableId || TABLE_ID;
+async function updateRecord(recordId, fields) {
+  await getToken();
   const resp = await feishuReq('PUT',
-    `bitable/v1/apps/${BASE_TOKEN}/tables/${tid}/records/${recordId}`,
+    `bitable/v1/apps/${BASE_TOKEN}/tables/${TABLE_ID}/records/${recordId}`,
     { fields });
-  if (resp.code && resp.code !== 0) throw new Error(`Feishu updateRecord: ${resp.code} ${resp.msg}`);
-  return resp.data?.record;
+  return resp;
 }
 
-// ── HMAC ──
-function sign(payload) {
-  const keys = Object.keys(payload).sort();
-  const str = keys.map(k => `${k}=${encodeURIComponent(String(payload[k]))}`).join('&');
-  return crypto.createHmac('sha256', HMAC_SECRET).update(str).digest('hex');
-}
-
+// ── Token 签名 ──
 function makeToken(payload) {
-  return JSON.stringify({ payload, signature: sign(payload) });
+  const hmac = crypto.createHmac('sha256', HMAC_SECRET);
+  const payloadStr = JSON.stringify(payload);
+  hmac.update(payloadStr);
+  return JSON.stringify({ payload, signature: hmac.digest('hex') });
 }
 
-// ── Handlers ──
+// ── 日期转换 ──
+function msToOrdinal(ms) {
+  const d = new Date(ms + 28800000); // +8h UTC
+  const y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
+  const months = [31,28,31,30,31,30,31,31,30,31,30,31];
+  let days = 0;
+  for (let yr = 1970; yr < y; yr++)
+    days += (yr%4===0&&yr%100!==0)||(yr%400===0) ? 366 : 365;
+  const leap = (y%4===0&&y%100!==0)||(y%400===0);
+  for (let i = 0; i < m; i++)
+    days += months[i] + (i===1&&leap ? 1 : 0);
+  days += day - 1;
+  return 719163 + days;
+}
 
-// 激活：仅接受「待激活」状态的码
+// ═══════════════════════════════════════════
+// Handler: init_trial
+// 按指纹查 → 有则心跳更新，无则新建
+// ═══════════════════════════════════════════
+async function handleInitTrial(data) {
+  const fp = (data.machine_fingerprint || '').trim();
+  if (!fp) return { status: 'error', msg: '参数不完整' };
+
+  const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`);
+
+  const heartbeatFields = { '最后活跃': Date.now() };
+  if (data.version) heartbeatFields['插件版本'] = data.version;
+  if (data.os_version) heartbeatFields['系统版本'] = data.os_version;
+  if (data.resolve_version) heartbeatFields['达芬奇版本'] = data.resolve_version;
+  if (data.public_ip) heartbeatFields['最近IP'] = data.public_ip;
+  if (data.ip_region) heartbeatFields['所属地区'] = data.ip_region;
+
+  if (records.length > 0) {
+    await updateRecord(records[0].record_id, heartbeatFields);
+    return { status: 'ok', trial_date_ordinal: msToOrdinal(records[0].fields['首次试用时间']) };
+  }
+
+  // 新行
+  const now = Date.now();
+  await addRecord({
+    机器指纹: fp,
+    状态: '试用中',
+    首次试用时间: now,
+    最后活跃: now,
+    插件版本: data.version || '',
+    系统版本: data.os_version || '',
+    达芬奇版本: data.resolve_version || '',
+    最近IP: data.public_ip || '',
+    所属地区: data.ip_region || '',
+  });
+  return { status: 'ok', trial_date_ordinal: msToOrdinal(now) };
+}
+
+// ═══════════════════════════════════════════
+// Handler: activate
+// 按激活码查 → 写入指纹+激活时间 → 已激活
+// ═══════════════════════════════════════════
 async function handleActivate(data) {
   const key = (data.activate_key || '').trim().toUpperCase();
   const fp = (data.machine_fingerprint || '').trim();
@@ -113,124 +148,53 @@ async function handleActivate(data) {
 
   const records = await listRecords(`CurrentValue.[激活码]="${key}"`);
   const match = records[0];
-  if (!match) return { status: 'error', msg: '此激活码不存在，请检查是否输入正确' };
+  if (!match) return { status: 'error', msg: '激活码不存在，请检查是否输入正确' };
+
   const currentStatus = match.fields.状态 || '';
-  if (currentStatus !== '待激活') return { status: 'error', msg: currentStatus === '已激活' ? '此激活码已在其他设备使用，请先在其他设备上停用' : '此激活码不存在，请检查是否输入正确' };
-
-  const now = Math.floor(Date.now() / 1000);
-  const expireTime = now + 365 * 86400 * 100; // 永久（~100年）
-
-  // 首次激活时记录时间，停用-再激活不覆盖
-  const updateFields = { 状态: '已激活', 机器指纹: fp };
-  if (!match.fields.激活时间) {
-    updateFields.激活时间 = Date.now();
+  if (currentStatus === '已激活') {
+    return { status: 'error', msg: '此激活码已在其他设备使用，请先在其他设备上停用' };
   }
-  if (data._ip) updateFields['最近IP'] = data._ip;
-  if (data._region) updateFields['所属地区'] = data._region;
+
+  const now = Date.now();
+  const updateFields = {
+    状态: '已激活',
+    机器指纹: fp,
+    激活时间: match.fields.激活时间 || now,
+  };
+  if (data.public_ip) updateFields['最近IP'] = data.public_ip;
+  if (data.ip_region) updateFields['所属地区'] = data.ip_region;
   await updateRecord(match.record_id, updateFields);
 
-  // 乐观锁：等待 200ms 后重读，确认未被并发写入覆盖
-  await new Promise(r => setTimeout(r, 200));
-  const verify = await listRecords(`CurrentValue.[激活码]="${key}"`);
-  if (verify[0] && verify[0].fields.机器指纹 !== fp) {
-    return { status: 'error', msg: '激活码已被其他设备抢先使用' };
-  }
-
-  // 记录转化：更新试用表激活时间（首次激活才写，停用-重激活不覆盖）
-  try {
-    const trialRecords = await listRecords(`CurrentValue.[机器指纹]="${fp}"`, TRIAL_TABLE_ID);
-    if (trialRecords.length > 0 && !trialRecords[0].fields['激活时间']) {
-      await updateRecord(trialRecords[0].record_id, { '激活时间': Date.now() }, TRIAL_TABLE_ID);
-    }
-  } catch(e) { console.error('trial activate update failed:', e.message); }
-
+  const expireTime = Math.floor(now / 1000) + 365 * 86400 * 100;
   const payload = {
-    activate_key: key, machine_fingerprint: fp, issue_time: now,
-    expire_time: expireTime, offline_grant_end: now + OFFLINE_GRANT_DAYS * 86400,
+    activate_key: key, machine_fingerprint: fp, issue_time: Math.floor(now / 1000),
+    expire_time: expireTime, offline_grant_end: Math.floor(now / 1000) + OFFLINE_GRANT_DAYS * 86400,
     nonce: crypto.randomBytes(8).toString('hex'),
     platform: data.platform || 'unknown', products: { delivery_checker: true }, is_trial: false,
   };
   return { status: 'ok', msg: '激活成功', license_token: makeToken(payload) };
 }
 
-// 停用：将已激活码重置为待激活，释放到其他机器
+// ═══════════════════════════════════════════
+// Handler: deactivate
+// 按指纹查已激活行 → 清指纹+状态回试用中
+// ═══════════════════════════════════════════
 async function handleDeactivate(data) {
   const fp = (data.machine_fingerprint || '').trim();
   if (!fp) return { status: 'error', msg: '机器指纹为空' };
+
   const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`);
   const activated = records.find(r => r.fields.状态 === '已激活');
   if (!activated) return { status: 'error', msg: '未找到此机器的激活记录' };
-  await updateRecord(activated.record_id, { 状态: '待激活', 机器指纹: '' });
+
+  await updateRecord(activated.record_id, { 状态: '已停用', 机器指纹: '' });
   return { status: 'ok', msg: '已停用，激活码已释放' };
 }
 
-// 管理后台
-async function handleManage(data) {
-  if (!data.admin_key || data.admin_key !== ADMIN_KEY) return { status: 'error', msg: '管理密钥错误' };
-
-  const action = data.manage_action || '';
-  if (action === 'gen_key') {
-    const newKey = crypto.randomBytes(6).toString('hex').toUpperCase();
-    const formatted = `${newKey.slice(0,4)}-${newKey.slice(4,8)}-${newKey.slice(8,12)}`;
-    await addRecord({ 激活码: formatted, 状态: '待售', 机器指纹: '' });
-    return { status: 'ok', key: formatted, msg: `激活码已生成: ${formatted}` };
-  }
-  if (action === 'list_keys') {
-    const records = await listRecords('');
-    return { status: 'ok', keys: records.map(r => ({ ...r.fields, record_id: r.record_id })) };
-  }
-  return { status: 'error', msg: `未知管理操作: ${action}` };
-}
-
-// 试用记录：服务端返回日期序数，消除时区歧义
-async function handleInitTrial(data) {
-  const fp = (data.machine_fingerprint || '').trim();
-  if (!fp) return { status: 'error', msg: '参数不完整' };
-
-  const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`, TRIAL_TABLE_ID);
-
-  const msToOrdinal = (ms) => {
-    // Feishu 日期存 UTC ms，但表格显示+8时区。加 8 小时后转当地日期
-    const d = new Date(ms + 28800000);  // +8h
-    const y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
-    const months = [31,28,31,30,31,30,31,31,30,31,30,31];
-    let days = 0;
-    for (let yr = 1970; yr < y; yr++)
-      days += (yr%4===0&&yr%100!==0)||(yr%400===0) ? 366 : 365;
-    const leap = (y%4===0&&y%100!==0)||(y%400===0);
-    for (let i = 0; i < m; i++)
-      days += months[i] + (i===1&&leap ? 1 : 0);
-    days += day - 1;
-    return 719163 + days;
-  };
-
-  if (records.length > 0) {
-    // 心跳：更新版本、系统、最后活跃时间
-    const fields = { '最后活跃': Date.now() };
-    if (data.version) fields['插件版本'] = data.version;
-    if (data.os_version) fields['系统版本'] = data.os_version;
-    if (data.resolve_version) fields['达芬奇版本'] = data.resolve_version;
-    if (data._ip) fields['最近IP'] = data._ip;
-    if (data._region) fields['所属地区'] = data._region;
-    try { await updateRecord(records[0].record_id, fields, TRIAL_TABLE_ID); } catch(e) { console.error('init_trial heartbeat update failed:', e.message); }
-    return { status: 'ok', trial_date_ordinal: msToOrdinal(records[0].fields['首次试用时间']) };
-  }
-
-  const now = Date.now();
-  await addRecord({
-    机器指纹: fp,
-    首次试用时间: now,
-    插件版本: data.version || '',
-    系统版本: data.os_version || '',
-    达芬奇版本: data.resolve_version || '',
-    最后活跃: now,
-    最近IP: data._ip || '',
-    所属地区: data._region || '',
-  }, TRIAL_TABLE_ID);
-  return { status: 'ok', trial_date_ordinal: msToOrdinal(now) };
-}
-
-// 启动时校验：激活码状态 + 指纹是否仍匹配
+// ═══════════════════════════════════════════
+// Handler: verify_status
+// 启动时双验证：激活码+指纹都匹配才有效
+// ═══════════════════════════════════════════
 async function handleVerifyStatus(data) {
   const key = (data.activate_key || '').trim().toUpperCase();
   const fp = (data.machine_fingerprint || '').trim();
@@ -242,19 +206,14 @@ async function handleVerifyStatus(data) {
   if (match.fields.状态 !== '已激活') return { status: 'revoked', msg: '授权已失效' };
   if (match.fields.机器指纹 !== fp) return { status: 'revoked', msg: '授权已失效' };
 
-  // 心跳：更新试用表的版本、系统、最后活跃时间
-  try {
-    const trialRecords = await listRecords(`CurrentValue.[机器指纹]="${fp}"`, TRIAL_TABLE_ID);
-    if (trialRecords.length > 0) {
-      const fields = { '最后活跃': Date.now() };
-      if (data.version) fields['插件版本'] = data.version;
-      if (data.os_version) fields['系统版本'] = data.os_version;
-      if (data.resolve_version) fields['达芬奇版本'] = data.resolve_version;
-      if (data._ip) fields['最近IP'] = data._ip;
-      if (data._region) fields['所属地区'] = data._region;
-      await updateRecord(trialRecords[0].record_id, fields, TRIAL_TABLE_ID);
-    }
-  } catch(e) { console.error('verify_status trial update failed:', e.message); }
+  // 心跳
+  const fields = { '最后活跃': Date.now() };
+  if (data.version) fields['插件版本'] = data.version;
+  if (data.os_version) fields['系统版本'] = data.os_version;
+  if (data.resolve_version) fields['达芬奇版本'] = data.resolve_version;
+  if (data.public_ip) fields['最近IP'] = data.public_ip;
+  if (data.ip_region) fields['所属地区'] = data.ip_region;
+  try { await updateRecord(match.record_id, fields); } catch(e) { console.error('verify_status update:', e.message); }
 
   const now = Math.floor(Date.now() / 1000);
   const payload = {
@@ -266,11 +225,19 @@ async function handleVerifyStatus(data) {
   return { status: 'ok', msg: '授权有效', license_token: makeToken(payload) };
 }
 
+// ═══════════════════════════════════════════
+// Handler: manage (管理员)
+// ═══════════════════════════════════════════
+async function handleManage(data) {
+  if (!data.admin_key || data.admin_key !== ADMIN_KEY) return { status: 'error', msg: '管理密钥错误' };
+  return { status: 'ok', msg: 'ok' };
+}
+
 const ROUTES = {
+  init_trial: handleInitTrial,
   activate: handleActivate,
   deactivate: handleDeactivate,
   verify_status: handleVerifyStatus,
-  init_trial: handleInitTrial,
   manage: handleManage,
 };
 
@@ -286,9 +253,6 @@ exports.main_handler = async function(event, context) {
     } else {
       body = typeof bodyStr === 'string' ? JSON.parse(bodyStr) : bodyStr;
     }
-    // IP + 地区：优先用客户端自报，省去服务端查询开销
-    body._ip = (body.public_ip || '').trim();
-    body._region = (body.ip_region || '').trim();
   } catch(e) {
     return { statusCode: 400, body: JSON.stringify({ status: 'error', msg: `请求格式错误: ${e.message}` }) };
   }
