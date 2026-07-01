@@ -36,7 +36,7 @@ def get_smb_paths() -> list:
 
 def save_smb_paths(paths: list) -> bool:
     """保存服务器素材路径列表到 deploy.json。"""
-    cfg_path = _os.path.expanduser("/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/交付自检工具/deploy.json")
+    cfg_path = _os.path.join(_INSTALL_DIR, "deploy.json")
     cfg = load()
     cfg["smb_paths"] = [p.strip() for p in paths if isinstance(p, str) and p.strip()]
     try:
