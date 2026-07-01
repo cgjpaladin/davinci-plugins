@@ -999,7 +999,7 @@ def _sec(title):
         "StyleSheet": "color:rgb(180,180,180);font-size:13px;font-weight:bold"})
 
 def _build_auth_section():
-    """授权管理：Label 显示状态/激活码 + 激活/停用按钮。点击激活弹出系统输入框。"""
+    """授权管理：Label 显示状态/激活码 + 复制指纹 + 激活/停用按钮。"""
     return [
         _sec("授权管理"),
         ui.VGap(SPACE_SM),
@@ -1007,6 +1007,7 @@ def _build_auth_section():
             "StyleSheet": "color:rgb(200,180,60);font-size:12px"}),
         ui.VGap(SPACE_SM),
         ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
+            ui.Button({"ID": "cfg_copy_fp", "Text": "复制指纹", "StyleSheet": BTN_STYLE, "Weight": 0}),
             ui.Button({"ID": "cfg_activate_btn", "Text": "激活", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
             ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用", "StyleSheet": BTN_STYLE, "Weight": 0}),
         ]),
@@ -1431,6 +1432,24 @@ print(result[0])
         try: config_dlg.On["cfg_activate_btn"].Clicked = _do_activate
         except Exception: pass
         try: config_dlg.On["cfg_deactivate_btn"].Clicked = _do_deactivate
+        except Exception: pass
+
+        # ── 复制指纹 ──
+        def _copy_fp(ev):
+            import subprocess as _sp
+            try:
+                from shared.license import get_machine_fingerprint
+                fp = get_machine_fingerprint()
+                if sys.platform == "darwin":
+                    _sp.run(["pbcopy"], input=fp.encode(), timeout=3)
+                else:
+                    _sp.run(["clip"], input=fp.encode(), timeout=3, shell=True)
+                cfg["cfg_auth_status"].Text = "✅ 指纹已复制到剪贴板"
+                cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(80,200,100);font-size:12px"
+            except Exception as e:
+                cfg["cfg_auth_status"].Text = f"⚠ 复制失败: {e}"
+                cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(220,80,60);font-size:12px"
+        try: config_dlg.On["cfg_copy_fp"].Clicked = _copy_fp
         except Exception: pass
 
         # ── API Key 编辑按钮 → 系统弹窗（防 UIManager IME 崩溃）──
@@ -2466,6 +2485,9 @@ def _export_debug_package():
         f"Python: {sys.version.split()[0]}",
         f"导出时间: {time.strftime('%Y-%m-%d %H:%M:%S')}",
     ]
+    # 附加完整指纹（方便 Base 搜索匹配）
+    from shared.license import get_machine_fingerprint as _get_fp
+    info_lines.append(f"完整指纹: {_get_fp()}")
 
     # ── license.txt: 授权完整快照 ──
     license_lines = ["# License 完整快照", ""]
@@ -2553,6 +2575,35 @@ def _export_debug_package():
         activate_lines.append(f"读取失败: {e}")
 
     # ── state.txt ──
+    # ── .env 快照（密钥已遮罩） ──
+    env_lines = ["# .env 快照（密钥已遮罩）", ""]
+    try:
+        _env_paths = [
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"),
+            os.path.join(_DATA_DIR, ".env"),
+        ]
+        for _ep in _env_paths:
+            if os.path.exists(_ep):
+                env_lines.append(f"文件: {_ep}")
+                env_lines.append("---")
+                with open(_ep, encoding="utf-8") as _ef:
+                    for _el in _ef:
+                        _el = _el.strip()
+                        if not _el or _el.startswith("#"):
+                            env_lines.append(_el)
+                        elif "=" in _el:
+                            k, _, v = _el.partition("=")
+                            if any(s in k.upper() for s in ("KEY", "SECRET", "PASSWORD", "TOKEN")):
+                                env_lines.append(f"{k}={v[:6]}***{v[-4:]}" if len(v) > 10 else f"{k}=***")
+                            else:
+                                env_lines.append(_el)
+                env_lines.append("")
+                break
+        else:
+            env_lines.append("未找到 .env 文件")
+    except Exception as e:
+        env_lines.append(f".env 读取失败: {e}")
+
     state_lines = []
     state_lines.append(f"本次报错数: {_UI_ERROR_COUNT}")
     try:
@@ -2574,6 +2625,7 @@ def _export_debug_package():
             _add_str(zf, "license.txt", license_lines)
             _add_str(zf, "network.txt", net_lines)
             _add_str(zf, "activate.txt", activate_lines)
+            _add_str(zf, "env.txt", env_lines)
             _add_str(zf, "state.txt", state_lines)
         if _sys.platform == "darwin":
             subprocess.run(["open", "-R", zip_path], check=False)
