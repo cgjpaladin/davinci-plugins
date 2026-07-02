@@ -1,12 +1,12 @@
 {
   "delivery_checker": {
-    "version": "2.5.12",
+    "version": "2.5.13",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/update_latest.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip"
     ],
-    "sha256": "816a6b9bc13a40f85b3181d19398351c13a95ea6dbcaeba97731ecc338dab21c",
+    "sha256": "411a55943b0da93d8b71d4649a904a81b7016149a9ddd4ee674a0983c4d8bc1f",
     "notes": "🔍 排错报告一键导出（网络诊断+授权快照+激活历史+环境配置）\n🛡️ 指纹稳定不漂移，VPN不影响激活\n📋 配置页一键复制机器指纹，发给裁缝老师",
     "history": [
       {
@@ -50,9 +50,8 @@
   "batch_renamer_mac": {
     "version": "3.7.0",
     "urls": [
-      "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_mac.zip",
-      "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_mac.zip",
-      "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_mac.zip"
+      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v3.7.0/batch_renamer_mac.zip",
+      "https://github.com/cgjpaladin/davinci-plugins/releases/download/v3.7.0/batch_renamer_mac.zip"
     ],
     "notes": "## v3.7.0\n\n🔄 自动更新——启动3秒检测，下载→重启一条龙\n🖱 右键文件 → 在 Finder 中显示\n🪟 去除双重标题栏，界面更简洁",
     "history": [

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+/* CSS_PLACEHOLDER */
+</style>
+</head>
+<body>
+
+<!-- Titlebar -->
+<div class="titlebar">
+  <span class="tb-dots"><span class="tb-dot a"></span><span class="tb-dot b"></span><span class="tb-dot b"></span></span>
+  <span>批量文件命名工具 · 创壹特供版</span>
+  <span style="color:#444;font-size:9px;cursor:pointer" id="debugMode" title="点击复制调试日志">loading...</span>
+</div>
+
+<!-- Inspector — 表格版隐藏 -->
+<div class="inspector" id="inspector"></div>
+
+<!-- Action Bar — 仅重命名+撤销 -->
+<div class="action-bar">
+  <button class="hero-btn" id="btnRename" disabled title="选中文件后重命名 (Ctrl+Enter)">批量重命名</button>
+  <button class="hero-undo" id="btnUndo" disabled title="撤销上次重命名 (Ctrl+Z)">↩ 撤销</button>
+  <button class="hero-export" id="btnExport" title="导出 Excel (含缩略图)">导出为表格</button>
+</div>
+
+<!-- File List -->
+<div class="file-section">
+  <div class="fl-bar">
+    <span id="fileCount">文件列表 · 0 个</span>
+    <div class="fl-bar-right">
+      <span class="zoom-label" id="zoomLabel">100%</span>
+      <input type="range" class="zoom-slider" id="zoomSlider" min="50" max="200" value="100" step="1">
+    </div>
+  </div>
+  <div class="fl-body" id="fileList">
+    <table>
+      <thead><tr>
+        <th class="col-num">序号</th>
+        <th class="col-thumb">缩略图</th>
+        <th class="col-base">原文件名</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="fl-empty">
+      <div>
+        <div class="fl-empty-icon">📁</div>
+        <div class="fl-empty-text">拖放素材到此处，或点击按钮</div>
+        <button class="fl-empty-btn" id="btnAddBig">+ 添加</button>
+        <div class="fl-empty-guide">
+          <div>① 拖入视频/图片</div>
+          <div>② 双击单元格编辑字段</div>
+          <div>③ 单击缩略图预览视频</div>
+          <div>④ 选中行 → 点击重命名</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="drop-overlay" id="dropOverlay"><span>释放以添加文件</span></div>
+</div>
+
+<!-- Status Bar -->
+<div class="statusbar">
+  <span class="sb-left"><span class="sb-dot"></span> <span id="statusText">就绪  ·  Ctrl+Z 撤销  ·  Del 移除</span><span id="resultMsg"></span></span>
+  <span>裁缝老师的达芬奇插件工坊 · 创壹特供版 <span id="versionLabel">v1.1</span></span>
+</div>
+
+<!-- Overlays -->
+<div class="toast" id="toast"></div>
+<div class="dialog-overlay" id="dialogOverlay">
+  <div class="dialog">
+    <h3 id="dialogTitle">确认</h3>
+    <p id="dialogMsg"></p>
+    <div class="dialog-btns">
+      <button class="cancel" id="dialogCancel">取消</button>
+      <button class="ok" id="dialogOk">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- 审查模式覆盖层 -->
+<div class="review-overlay" id="reviewOverlay">
+  <div class="review-panel">
+    <div class="review-titlebar">
+      <div class="review-close" id="reviewClose" title="关闭 (ESC)">×</div>
+      <span class="review-filename" id="reviewFilename"></span>
+    </div>
+    <div class="review-body">
+      <div class="review-media" id="reviewMedia">
+        <video id="reviewVideo" preload="auto" playsinline webkit-playsinline></video>
+        <img id="reviewImage" src="" alt="" draggable="false">
+      </div>
+      <div class="review-sidebar">
+        <div class="review-fields" id="reviewFields"></div>
+        <div class="review-status">
+          <button class="rs-ok" id="rsOK" title="通过 — 素材合格">OK</button>
+          <button class="rs-kp" id="rsKP" title="需修改 — 保留待改">KP</button>
+          <button class="rs-ng" id="rsNG" title="不合格 — 标记废弃">NG</button>
+        </div>
+        <div class="review-meta" id="reviewMeta"></div>
+        <div class="review-nav">
+          <button class="review-prev" id="reviewPrev">← 上一个</button>
+          <button class="review-next" id="reviewNext">下一个 →</button>
+        </div>
+        <div class="review-hints">Space 暂停 · ← → 跳2s · , . 逐帧 · J 减速 K 暂停 L 加速 · Ctrl+← → 切文件 · ESC 关闭</div>
+      </div>
+    </div>
+    <!-- 自定义控制栏 -->
+    <div class="review-controls" id="reviewControls">
+      <button class="rc-btn" id="rcPlay" title="播放/暂停 (Space)">▶</button>
+      <span class="rc-time" id="rcTime">0:00 / 0:00</span>
+      <span class="rc-frame" id="rcFrame">帧 0</span>
+      <input type="range" class="rc-seek" id="rcSeek" min="0" max="100" value="0" step="0.1" title="拖拽跳转">
+      <button class="rc-btn" id="rcSpeed" title="速度切换 (0.5x / 1x / 2x)">1×</button>
+      <button class="rc-btn" id="rcStepBack" title="后退1帧 (,)">◀◀</button>
+      <button class="rc-btn" id="rcStepFwd" title="前进1帧 (.)">▶▶</button>
+      <input type="range" class="rc-volume" id="rcVolume" min="0" max="100" value="100" title="音量">
+    </div>
+  </div>
+</div>
+
+<script>
+// JS_PLACEHOLDER
+</script>
+</body>
+</html>

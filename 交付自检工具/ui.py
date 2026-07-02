@@ -3259,8 +3259,8 @@ def main():
                 itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
                 itm[HINT_LB].Text += "（必须更新）"
         # else: button stays invisible (no "✓ 最新")
-    except Exception:
-        pass  # 网络不通或不支持更新检查——保持隐藏
+    except Exception as e:
+        _action_log(f"⚠ 更新检查失败: {e}")  # 至少留条日志，方便排查
 
     disp.RunLoop()
     dlg.Hide()
