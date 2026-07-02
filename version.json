@@ -48,14 +48,18 @@
     ]
   },
   "batch_renamer_mac": {
-    "version": "3.6.2",
+    "version": "3.7.0",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_mac.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_mac.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_mac.zip"
     ],
-    "notes": "## v3.6.2\n\n📋 归档路径去制作方式，加 V 层级\n🐛 修复 TK 扫描正则 \\b→_Tk\n🐛 修复归档按钮未填路径仍可点击",
+    "notes": "## v3.7.0\n\n🔄 自动更新——启动3秒检测，下载→重启一条龙\n🖱 右键文件 → 在 Finder 中显示\n🪟 去除双重标题栏，界面更简洁",
     "history": [
+      {
+        "version": "3.6.2",
+        "notes": "## v3.6.2\n\n📋 归档路径去制作方式，加 V 层级"
+      },
       {
         "version": "3.5.0",
         "notes": "## v3.5.0\n\n📊 表格版正式发布"
@@ -68,17 +72,22 @@
         "version": "3.6.1",
         "notes": "## v3.6.1\n\n📋 归档文件夹去制作方式\n🐛 修复 TK 扫描正则"
       }
-    ]
+    ],
+    "sha256": "1beaeb0f7f3b2750459158098fd324a2d4ca9e64376e47c6b27e8b1f1961331a"
   },
   "batch_renamer_win": {
-    "version": "3.6.2",
+    "version": "3.7.0",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_win.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_win.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_win.zip"
     ],
-    "notes": "## v3.6.2\n\n📋 归档路径去制作方式，加 V 层级\n🐛 修复 TK 扫描正则 \\b→_Tk\n🐛 修复归档按钮未填路径仍可点击",
+    "notes": "## v3.7.0\n\n🔄 自动更新——启动3秒检测，下载→重启一条龙\n🖱 右键文件 → 在 Explorer 中显示\n🪟 去除双重标题栏，界面更简洁",
     "history": [
+      {
+        "version": "3.6.2",
+        "notes": "## v3.6.2\n\n📋 归档路径去制作方式，加 V 层级"
+      },
       {
         "version": "3.5.0",
         "notes": "## v3.5.0\n\n📊 表格版正式发布"

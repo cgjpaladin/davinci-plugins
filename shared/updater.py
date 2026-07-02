@@ -11,9 +11,14 @@ import base64
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-from update_config import (
-    VERSION_CHECK_URLS, TIMEOUT_VERSION_CHECK,
-)
+try:
+    from update_config import (
+        VERSION_CHECK_URLS, TIMEOUT_VERSION_CHECK,
+    )
+except ImportError:
+    from shared.update_config import (
+        VERSION_CHECK_URLS, TIMEOUT_VERSION_CHECK,
+    )
 
 # 可通过环境变量覆盖第一条链路
 _env_url = os.environ.get("WB_VERSION_URL")
@@ -63,7 +68,10 @@ def check(product: str, current_version: str,
     Returns:
         {"update_available": bool, "latest": str, "url": [str, ...], "notes": str, "sha256": str|null}
     """
-    from update_config import VERSION_CHECK_URLS, TIMEOUT_VERSION_CHECK, DOWNLOAD_URLS
+    try:
+        from update_config import VERSION_CHECK_URLS, TIMEOUT_VERSION_CHECK, DOWNLOAD_URLS
+    except ImportError:
+        from shared.update_config import VERSION_CHECK_URLS, TIMEOUT_VERSION_CHECK, DOWNLOAD_URLS
     if timeout is None:
         timeout = TIMEOUT_VERSION_CHECK
     try:
@@ -204,7 +212,10 @@ def download_update(product: str, save_path: str,
     Returns:
         (success: bool, error_message: str)
     """
-    from update_config import DOWNLOAD_URLS, MIN_DOWNLOAD_SIZE, TIMEOUT_DOWNLOAD_SINGLE
+    try:
+        from update_config import DOWNLOAD_URLS, MIN_DOWNLOAD_SIZE, TIMEOUT_DOWNLOAD_SINGLE
+    except ImportError:
+        from shared.update_config import DOWNLOAD_URLS, MIN_DOWNLOAD_SIZE, TIMEOUT_DOWNLOAD_SINGLE
     import hashlib
 
     # 获取 download URLs（复用 check 里的 version.json 解析逻辑）

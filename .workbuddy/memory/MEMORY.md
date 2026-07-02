@@ -5,7 +5,6 @@
 > ❌ 不管 Mac mini 运维、SMB 存储。
 
 > v4.0 | 2026-07-02 | 单表授权+Fingerprint缓存+IP/地区/ISP+诊断包全面升级
-> v3.1 | 2026-06-16 | 安装脚本重写+IME弹窗替代+FC URL修复+License重构
 
 ## 跨项目引用
 
@@ -56,7 +55,7 @@
 - **环境隔离**：`__channel__ = "dev"` = 本地开发，`""` = 生产。repo 默认 dev。
 - **切换工具**：`交付自检工具/channel.sh dev|prod`，写后校验确认生效。
 - **bump 入口**：`publish.sh VERSION_BUMP=patch|minor|major`。
-- **dev 绝不碰 SMB**：`publish_push_all()` + `publish_sync()` 两处硬拦截 `__channel__` 非空即拒绝。sync.sh 新加 trap EXIT 自动切回 dev。2026-06-17 发现 SMB 历史残留 `channel=dev`，修复后全量验证通过。
+- **dev 绝不碰 SMB**：`publish_push_all()` + `publish_sync()` 两处硬拦截 `__channel__` 非空即拒绝。sync.sh 新加 trap EXIT 自动切回 dev。
 - **SMB 修改后验证**：每次修改 SMB 文件后必须检查 `__channel__ = ""`、`IS_PERSONAL = False`、同事机器可读。
 
 ### 四层硬拦截（dev 代码永不碰到产线）
@@ -122,9 +121,8 @@
 7. **sync 后必须重读凭证**。`verify_local` 写盘后 UI 须再次 `load_credential()`。
 8. **日期计算只用序数减法**，不用 timestamp 整除 86400。
 9. **`save()` 入口强制 str(value)**。macOS keychain 只接受字符串。
-10. **`sys.stderr` 重定向前必保存 `_real_stderr`**。所有内部写 stderr 处用 `_real_stderr.write()`，禁止 `print(..., file=sys.stderr)`。`_UIStderr.write` → `_ui_write` → `_ui_write_direct` → `print(file=sys.stderr)` → 回环 → 无限递归 → RecursionError 杀线程。——2026-06-27 紧急排障修复
+10. **`sys.stderr` 重定向前必保存 `_real_stderr`**。所有内部写 stderr 处用 `_real_stderr.write()`，禁止 `print(..., file=sys.stderr)`。`_UIStderr.write` → `_ui_write` → `_ui_write_direct` → `print(file=sys.stderr)` → 回环 → 无限递归 → RecursionError 杀线程。
 
-## 运维铁律
 ## 运维铁律
 
 - **deploy_tracker 不可信** — 人工维护的元数据，部署后逐台扫描验证文件存在。
@@ -132,7 +130,7 @@
 - **auto-commit 加 `--no-verify`** — 绕过 pre-commit 阻塞。
 - **SMB 统一配置**: `~/达芬奇插件工坊/deploy.json` → smb_mount，换公司改 JSON 不动代码。
 - **publish.sh MD5 锁**: 推 SMB 前逐文件对比 MD5，不一致硬拦截。
-- **更新发布前验证**: 改 install.command / ui.py 更新流程后，跑 `build → unzip → bash -n 安装脚本 → 模拟安装` 四步，确认再部署。2026-06-01 引入 3 轮连锁 bug 的教训。
+- **更新发布前验证**: 改 install.command / ui.py 更新流程后，跑 `build → unzip → bash -n 安装脚本 → 模拟安装` 四步，确认再部署。
 
 ## 关键 Skill
 
@@ -164,30 +162,13 @@
 
 ## 参考
 
-- **外部参考**：`knowledge/davinci-reference.md`（鬼猫猫/张来吃/派派的派/HEIBA）
+- **外部参考**：`docs/学习资料/` — HEIBA 插件源码、FUSION UI API 参考、外部开源插件（5 GitHub 仓库）
 
+## 配置页 + License 体系
 
+[历史] 以下 v2.2.31 和 v3 被 v4 单表授权替代，保留供历史参考。
 
-
-
-
-## 壳方案 + 部署架构 (2026-05-25)
-
-- **永久壳**: shell.py(40行) 每台机器 Fusion Scripts 目录，永不更新。找 Python(数字排序)→deploy.json→SMB launcher+看门狗
-- **launcher.py**: sys.executable，设 WORKBUDDY_PRODUCT 环境变量
-- **deploy_config.py**: load()/get_smb_mount()/get_python_path()，取代 6 份拷贝
-- **SSL**: 全仓 _create_unverified_context()，Python 3.14 兼容
-
-## 一键更新系统 (2026-06-08 更新)
-
-- 多链路回退：jsDelivr CDN → GitHub API → GHProxy
-- 分块下载 + 进度条回调，60s 超时
-- 全 ASCII 铁律：zip/URL/.command 文件名全部英文
-- 配置入口：`shared/update_config.py`
-
-## 配置页 + License 体系 (2026-06-01)
-
-### 配置页结构（v2.2.31 终版）
+### 配置页结构（v2.2.31 终版，已由 v4 替代）
 
 | 项目 | 个人版可见 | SMB 可见 |
 |------|:--:|:--:|
@@ -203,7 +184,7 @@
 - 显示密文（`sk-ab…xyz`），保存时检测掩码保留真值
 - SMB 用户过滤：`if not WORKBUDDY_PERSONAL` → 只渲染 `censor_personal`
 
-### License / 激活系统 (v3 — 2026-06-10 重构)
+### License / 激活系统 (v3，已由 v4 单表替代)
 
 #### 架构
 - **试用纯本地**：`init_trial()` 写本地凭据，不调服务端。30 天一次性。
@@ -312,32 +293,3 @@ ssh machine "cat ~/.config/dv_license/license.dat | python3 -c '...'"
 ### 更新包
 - `--update` 模式产出 `update_latest.zip`（ASCII 名，GitHub Release 中文文件名会乱码成 `_`）
 - 构建时 SHA 校验已移除——zip 时间戳非确定性，每次构建 SHA 不同
-
-## 编码铁律（从 SOUL 下沉）
-
-### 代码编辑
-- 批替后 diff 验证每条改动，优先精确字符串替换不用 replace_all
-- 禁止用正则批量编辑生产代码，删代码逐函数手动 Edit
-- 跨平台适配后验证缩进，不只看逻辑，逐行确认
-- 修完一处 bug → grep 全项目同款 → 一并修
-
-### 调试与问题排查
-- 先证代码无 bug 再归罪外部，审查调用链而非假设网络/服务器问题
-- 模块级缓存每次操作前主动清（`_clear_*()`），不推断"上次清过了"
-- 不在日志里猜 bug，`grep error` 的结论被用户确认前 = 幻觉
-
-### UI 开发（tkinter）
-- 改 UI/交互后审阅完整调用链——往前找三行谁设的值、往后看三步谁消费
-- 防抖是补丁不是根治，`setTimeout` 只掩盖现象，找数据层面的根因
-
-### 产品开发
-- 新产品先讨论→画图→写代码，跳过前两步 = 白写
-- 安装/配置类脚本先展示完整变更列表再等确认，密码 = 确认
-
-### 部署与配置
-- 部署后不验证 = 没部署，每次 push/scp 后跑自动化检查
-- 同一资源只能有一个 URL/路径入口，新入口必须 grep 消除重复
-
-### 算法与库
-- QR/条形码/加密等不手写，用成熟库生成后嵌入常量
-- `webbrowser.open()` 不判连通性，`socket.create_connection` 先测端口再决定
