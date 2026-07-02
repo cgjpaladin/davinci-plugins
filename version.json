@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip"
     ],
-    "sha256": "52f53f7659caf9357e8bae9a4350ebf49afd71e727e33bbe2564a05b93d33e4c",
+    "sha256": "8fc13c51b177e95273247a59587c9ce98ec676feeff417f6b8c975d92c901648",
     "notes": "🔍 排错报告一键导出（网络诊断+授权快照+激活历史+环境配置）\n🛡️ 指纹稳定不漂移，VPN不影响激活\n📋 配置页一键复制机器指纹，发给裁缝老师",
     "history": [
       {
@@ -54,7 +54,25 @@
       "https://github.com/cgjpaladin/davinci-plugins/releases/download/v3.7.0/batch_renamer_mac.zip"
     ],
     "notes": "## v3.7.0\n\n🔄 自动更新——启动3秒检测，下载→重启一条龙\n🖱 右键文件 → 在 Finder 中显示\n🪟 去除双重标题栏，界面更简洁",
-    "sha256": "7c24cee56bf6e8580ed96bbde3b355ebb2e9480dcdca3144c750984f71a7da43"
+    "sha256": "7c24cee56bf6e8580ed96bbde3b355ebb2e9480dcdca3144c750984f71a7da43",
+    "history": [
+      {
+        "version": "3.5.0",
+        "notes": "📊 表格版正式发布"
+      },
+      {
+        "version": "3.6.0",
+        "notes": "📂 归档路径：EP/V{ver}/compound · 🏷 版本号改名为制作批次"
+      },
+      {
+        "version": "3.6.1",
+        "notes": "📋 归档文件夹去制作方式 · 🐛 修复 TK 扫描正则"
+      },
+      {
+        "version": "3.6.2",
+        "notes": "📋 归档路径去制作方式，加 V 层级"
+      }
+    ]
   },
   "batch_renamer_win": {
     "version": "3.7.0",
@@ -67,19 +85,19 @@
     "history": [
       {
         "version": "3.5.0",
-        "notes": "## v3.5.0\n\n📊 表格版正式发布"
+        "notes": "📊 表格版正式发布"
       },
       {
         "version": "3.6.0",
-        "notes": "## v3.6.0\n\n📂 归档路径：EP/V{ver}/compound\n🏷 版本号改名为制作批次"
+        "notes": "📂 归档路径：EP/V{ver}/compound · 🏷 版本号改名为制作批次"
       },
       {
         "version": "3.6.1",
-        "notes": "## v3.6.1\n\n📋 归档文件夹去制作方式\n🐛 修复 TK 扫描正则"
+        "notes": "📋 归档文件夹去制作方式 · 🐛 修复 TK 扫描正则"
       },
       {
         "version": "3.6.2",
-        "notes": "## v3.6.2\n\n📋 归档路径去制作方式，加 V 层级"
+        "notes": "📋 归档路径去制作方式，加 V 层级"
       }
     ]
   }

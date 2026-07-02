@@ -3240,27 +3240,29 @@ def main():
     if itm[TRIAL_LB].Text.startswith("⏳"):
         itm[TRIAL_LB].Text = "试用权限异常，请联系裁缝老师"
 
-    # 同步检查更新（短超时，失败不影响使用）
-    try:
-        from updater import check
-        from shared.update_config import TIMEOUT_VERSION_CHECK
-        _ver = __version__  # 纯 semver，不带 -dev 后缀
-        _result = check("delivery_checker", _ver, timeout=TIMEOUT_VERSION_CHECK)
-        global _UPDATE_INFO
-        _UPDATE_INFO = _result
-        if _result.get("update_available"):
-            _action_log(f"⬆ 发现新版本 v{_result['latest']} (当前 {_ver})")
-            itm[HINT_LB].Text = f"⬆ 新版本 v{_result['latest']} — 点击右侧按钮更新"
-            itm[BTN_UPDATE].Visible = True
-            itm[BTN_UPDATE].Text = "⬆ 更新"
-            itm[BTN_UPDATE]["StyleSheet"] = "background-color:rgb(220,180,60);color:#1a1a1a;font-size:11px;font-weight:bold;border-radius:3px;padding:2px 8px"
-            if _result.get("force"):
-                itm[BTN_START].Enabled = False
-                itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
-                itm[HINT_LB].Text += "（必须更新）"
-        # else: button stays invisible (no "✓ 最新")
-    except Exception as e:
-        _action_log(f"⚠ 更新检查失败: {e}")  # 至少留条日志，方便排查
+    # 后台检查更新（不阻塞启动）
+    import threading
+    def _bg_update_check():
+        try:
+            from updater import check
+            from shared.update_config import TIMEOUT_VERSION_CHECK
+            _ver = __version__  
+            _result = check("delivery_checker", _ver, timeout=TIMEOUT_VERSION_CHECK)
+            global _UPDATE_INFO
+            _UPDATE_INFO = _result
+            if _result.get("update_available"):
+                _action_log(f"⬆ 发现新版本 v{_result['latest']} (当前 {_ver})")
+                itm[HINT_LB].Text = f"⬆ 新版本 v{_result['latest']} — 点击右侧按钮更新"
+                itm[BTN_UPDATE].Visible = True
+                itm[BTN_UPDATE].Text = "⬆ 更新"
+                itm[BTN_UPDATE]["StyleSheet"] = "background-color:rgb(220,180,60);color:#1a1a1a;font-size:11px;font-weight:bold;border-radius:3px;padding:2px 8px"
+                if _result.get("force"):
+                    itm[BTN_START].Enabled = False
+                    itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
+                    itm[HINT_LB].Text += "（必须更新）"
+        except Exception as e:
+            _action_log(f"⚠ 更新检查失败: {e}")
+    threading.Thread(target=_bg_update_check, daemon=True).start()  # 至少留条日志，方便排查
 
     disp.RunLoop()
     dlg.Hide()
