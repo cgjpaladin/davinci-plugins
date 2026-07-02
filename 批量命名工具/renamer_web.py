@@ -811,12 +811,16 @@ HTML_FILE = os.path.join(_BASE_DIR, HTML_FILE_NAME)
 # ── 版本检测 ──
 import re as _re_ver
 _SCRIPT_JS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app_table.js')
+_HTML = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'renamer_table.html')
 _APP_VERSION = '0.0.0'
 _PRODUCT_ID = ('batch_renamer_mac' if sys.platform == 'darwin' else 'batch_renamer_win')
 try:
-    if os.path.isfile(_SCRIPT_JS):
-        with open(_SCRIPT_JS, 'r', encoding='utf-8') as _vf:
-            _m = _re_ver.search(r"const APP_VERSION='([^']+)'", _vf.read(500))
+    # PyInstaller 打包后 app_table.js 不在，从拼接后的 HTML 中提取
+    vfile = _HTML if os.path.isfile(_HTML) else _SCRIPT_JS
+    if os.path.isfile(vfile):
+        with open(vfile, 'r', encoding='utf-8') as _vf:
+            content = _vf.read()
+            _m = _re_ver.search(r"const APP_VERSION='([^']+)'", content)
             if _m: _APP_VERSION = _m.group(1)
 except Exception:
     pass
