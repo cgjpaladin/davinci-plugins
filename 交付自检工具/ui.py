@@ -850,7 +850,6 @@ window_layout = [
                 ui.HGap({"Weight": 1}),
                 ui.Button({"ID": BTN_UPDATE, "Text": "",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
-                           "Visible": False,
                            "MinimumSize": [70, SIZE_BTN_H]}),
                 ui.Button({"ID": BTN_MANUAL, "Text": "📖 使用手册",
                            "StyleSheet": BTN_STYLE_SM, "Weight": 0,
@@ -879,6 +878,7 @@ dlg = disp.AddWindow({
 }, window_layout)
 
 itm = dlg.GetItems()
+itm[BTN_UPDATE].Visible = False  # 构造里设 Visible=False 有 UIManager bug，运行时设
 
 # ═══════════════════════════════════════════
 # 初始状态
