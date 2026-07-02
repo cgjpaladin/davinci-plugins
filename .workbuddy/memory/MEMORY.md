@@ -93,13 +93,11 @@
 
 ## 分发体系（2026-06-20 重构）
 
-| 渠道 | 内容 | 用途 |
-|------|------|------|
-| 飞书文档 `T5D1d...an2g` | 产品介绍 + 95MB ZIP 附件 | 唯一入口，人工下载 |
-| GitHub `update_latest.zip` | 543KB 增量包 | 插件内「检查更新」自动拉 |
-| SMB | `交付自检工具/` + `shared/` | 公司 20 台自动同步 |
-| GitHub Pages | ❌ 已删除 | 飞书文档替代 |
-| 百度网盘 | ❌ 已放弃 | 可执行文件百审不过 |
+- 飞书文档 `T5D1d...an2g`：全量包唯一入口
+- GitHub CDN `update_latest.zip`：增量更新
+- SMB `/Volumes/MYJC/.../达芬奇脚本/`：公司内网同步
+- Agent 通道：`install_agent.py` 让 AI 替用户装
+- 详见 `达芬奇发布管理` skill
 
 ## 共享模块
 
@@ -118,46 +116,15 @@
 1. **launcher 用 subprocess.Popen 外挂 Python**。Fusion 内 `__file__` 不存在。
 2. **达芬奇 API 返回值不可信**。`GetItemListInTrack` 空轨返 None，遍历必须 `or []`。
 3. **跑测试直连 GUI**，不搞 nogui。达芬奇开着时 Python 直连 `bmd.scriptapp('Resolve')`。
-4. **Tree 样式不可靠**，先上纯文字，BackgroundColor/TextColor 在 20.3.2 可能不渲染。
-5. **UI 控件 API**: `ui.Widget({"ID": "id", ...})`，不是 `("id", {...})`
-6. **事件绑定**: `win.On["ID"].Clicked`，不是 `win.On.ID.Clicked`
-7. **中文版兼容**: GetClipProperty('Type') 返回「时间线」而非「Timeline」
-8. **达芬奇内 HTTPS 调用禁止带证书验证的 urllib**。DaVinci 子进程 SSL 沙箱限制。两种合法方案：① `subprocess.run(["curl", ...])` ② `urllib + ssl._create_unverified_context()`（仅用于已信任目标如自家 FC）。
-9. **sync 后必须重读凭证**。`verify_local` 写盘后 UI 须再次 `load_credential()`。
-10. **日期计算只用序数减法**，不用 timestamp 整除 86400。
-11. **`save()` 入口强制 str(value)**。macOS keychain 只接受字符串。
-12. **按钮互斥用 `Enabled`，禁用 `Visible`**。Visible=False 释放布局空间→跳动。
-13. **`config_dlg.RecalcLayout()` 必须在 `Show()` 后调用**。
-14. **金区(TRIAL_LB)=授权、灰区(HINT_LB)=指引，永不越界**。
-15. **UIManager 非默认事件必须 `Events:{Name:True}` 启用**。鬼猫猫文档确认仅 Clicked/Close 默认启用；FocusIn/KeyPress/SliderMoved 等必须控件定义时声明。——2026-06-13
-16. **`SetFocus()` 需要 `Events:{FocusIn:True}` 前置**。待验证。——2026-06-13
-17. **涉密/激活码输入禁止用 LineEdit**。LineEdit + CJK 输入法 → `Fusion::RemoteApp::FindLocalObject` SIGSEGV 闪退（2026-06-16 实测）。替代：osascript `display dialog`（单行）或 tkinter 子进程（多框）。——2026-06-13
-18. **弹窗按钮必须防连点**。`subprocess.run` 阻塞期间 UIManager 事件排队 → N 次点击 = N 个弹窗。标准解法：`Enabled=False` 在 `try` 前 + `finally` 统一恢复。——2026-06-13
-19. **`sys.stderr` 重定向前必保存 `_real_stderr`**。所有内部写 stderr 处用 `_real_stderr.write()`，禁止 `print(..., file=sys.stderr)`。`_UIStderr.write` → `_ui_write` → `_ui_write_direct` → `print(file=sys.stderr)` → 回环 → 无限递归 → RecursionError 杀线程。——2026-06-27 紧急排障修复
+4. UIManager 开发规则+已知限制+设计规范：详见 `达芬奇UI开发` skill。
+5. **中文版兼容**: GetClipProperty('Type') 返回「时间线」而非「Timeline」
+6. **达芬奇内 HTTPS 调用禁止带证书验证的 urllib**。DaVinci 子进程 SSL 沙箱限制。两种合法方案：① `subprocess.run(["curl", ...])` ② `urllib + ssl._create_unverified_context()`（仅用于已信任目标如自家 FC）。
+7. **sync 后必须重读凭证**。`verify_local` 写盘后 UI 须再次 `load_credential()`。
+8. **日期计算只用序数减法**，不用 timestamp 整除 86400。
+9. **`save()` 入口强制 str(value)**。macOS keychain 只接受字符串。
+10. **`sys.stderr` 重定向前必保存 `_real_stderr`**。所有内部写 stderr 处用 `_real_stderr.write()`，禁止 `print(..., file=sys.stderr)`。`_UIStderr.write` → `_ui_write` → `_ui_write_direct` → `print(file=sys.stderr)` → 回环 → 无限递归 → RecursionError 杀线程。——2026-06-27 紧急排障修复
 
-## UIManager 已知限制（2026-06-16 更新）
-
-| 限制 | 影响 | 替代方案 |
-|------|------|---------|
-| LineEdit + CJK 输入法 | macOS 26+ DR 20.3.2 SIGSEGV 闪退 | osascript `display dialog` 或 tkinter 子进程 |
-| 无通用 ScrollArea | VGroup/HGroup 内容超出截断 | Tree 有滚动 (VerticalScrollMode + ScrollToItem) |
-| Tree TextColor/BackgroundColor | v20.3.2 不渲染，API 存在 | 纯文字分隔替代 |
-| Tree 无 SetItemText/SetItemChecked | 只能纯展示，不能交互勾选 | TreeItem 有 CheckState[0]（需验证） |
-| VGroup 不裁剪溢出 | 控件多时窗口撑破屏幕 |
-| `SetFocus()` 不生效 | 需要 `Events:{FocusIn:True}` 在控件定义时启用 | 待验证 |
-| 无 Timer / Idle 回调 | 不能启动后延迟执行 | 所有初始化在 `disp.RunLoop()` 前同步完成 |
-| `Visible=False` 释放布局空间 | 隐藏后后续控件挤占空位 | 用 `Enabled=False` 替代，保持占位 |
-| 非默认事件不触发 | Clicked/Close 之外需 `Events:{Name:True}` 显式启用 | 鬼猫猫文档 2026-06-13 确认 |
-| subprocess 阻塞 + Clicked 排队 | 弹窗按钮连点出多个窗口 | `Enabled=False` 在 try 前 + finally 恢复 |
-| urlopen 在子进程无限挂 | timeout 参数被忽略，线程/子进程超时均无效 | 文件选择→fu.RequestFile/Dir；网络调用→主shell线程/curl subprocess |
-| tkinter 子进程生 Docker 图标 | macOS 独立 Python 进程占据 Dock | 文件/文件夹选择→fu.RequestFile/Dir（Fusion 原生）
-
-## UI 设计规范
-
-- **标题栏**：纯产品名，不带版本号。`"WindowTitle": PRODUCT_NAME`
-- **右下角**：版本号。`f"{BRAND_NAME} | v{version_string()}"`
-- 详情见 `达芬奇交付自检开发` skill
-
+## 运维铁律
 ## 运维铁律
 
 - **deploy_tracker 不可信** — 人工维护的元数据，部署后逐台扫描验证文件存在。
@@ -192,25 +159,8 @@
 - 音量检测：API 限制，待达芬奇更新
 ## 安装体系（2026-06-16 确立）
 
-### 四种分发方式
-
-| 方式 | 用户 | 入口 |
-|------|------|------|
-| Mac 手动 | 双击 Mac安装.command → 输密码 | zip 网盘 |
-| Win 手动 | 右键 Win安装.bat → 管理员 | zip 网盘 |
-| Agent + GitHub | 发 repo 链接 | git clone → `python install_agent.py` |
-| Agent + Zip | 拖 zip 给 agent | 解压 → 读 先读我.txt agent 区 → `python install_agent.py` |
-
-### install_agent.py 设计
-- JSON 行输出（每行一个对象），agent 逐行解析
-- `need_sudo`/`need_admin` 回调 → agent 向用户要密码 → `--continue` 断点续装
-- 状态文件 `~/.delivery_checker_install_state.json` 支持中断恢复
-- 全流程 agent 最多向用户要一次密码
-
-### 打包规范
-- 单 zip 全平台通用，data.zip 内含双平台 Python 安装器（95MB）
-- 先读我.txt 人类看上半、agent 看 `# AGENT SECTION` 下半
-- README.md 同时服务 GitHub 人类 + agent 浏览
+- 双端口：人类（Mac安装.command / Win安装.bat）+ AI Agent（install_agent.py）
+- 详见 `达芬奇发布管理` skill
 
 ## 参考
 

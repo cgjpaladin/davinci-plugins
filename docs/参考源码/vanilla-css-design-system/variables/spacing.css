@@ -1,8 +1,0 @@
-:root {
-  --spacing-1: calc(var(--spacing-unit) * 1);
-  --spacing-2: calc(var(--spacing-unit) * 2);
-  --spacing-3: calc(var(--spacing-unit) * 4);
-  --spacing-4: calc(var(--spacing-unit) * 6);
-  --spacing-5: calc(var(--spacing-unit) * 8);
-  --spacing-unit: 0.25rem;
-}
