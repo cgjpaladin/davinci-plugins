@@ -160,8 +160,11 @@ def _get_stats() -> dict:
             except Exception: pass
         t1 = _th.Thread(target=_get_ip, daemon=True)
         t2 = _th.Thread(target=_get_region, daemon=True)
-        t1.start(); t2.start()
-        t1.join(timeout=4); t2.join(timeout=4)
+        t1.start()
+        t1.join(timeout=4)  # 先等 IP 拿到再查地区
+        if _ip_result[0]:
+            t2.start()
+            t2.join(timeout=4)
         public_ip = _ip_result[0].strip()
         ip_region = _region_result[0].strip()
     except Exception:

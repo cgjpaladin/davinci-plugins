@@ -1,12 +1,12 @@
 {
   "delivery_checker": {
-    "version": "2.5.13",
+    "version": "2.5.14",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/update_latest.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip"
     ],
-    "sha256": "411a55943b0da93d8b71d4649a904a81b7016149a9ddd4ee674a0983c4d8bc1f",
+    "sha256": "52f53f7659caf9357e8bae9a4350ebf49afd71e727e33bbe2564a05b93d33e4c",
     "notes": "🔍 排错报告一键导出（网络诊断+授权快照+激活历史+环境配置）\n🛡️ 指纹稳定不漂移，VPN不影响激活\n📋 配置页一键复制机器指纹，发给裁缝老师",
     "history": [
       {
