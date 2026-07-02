@@ -72,7 +72,7 @@
         "notes": "## v3.6.1\n\n📋 归档文件夹去制作方式\n🐛 修复 TK 扫描正则"
       }
     ],
-    "sha256": "1beaeb0f7f3b2750459158098fd324a2d4ca9e64376e47c6b27e8b1f1961331a"
+    "sha256": "7c24cee56bf6e8580ed96bbde3b355ebb2e9480dcdca3144c750984f71a7da43"
   },
   "batch_renamer_win": {
     "version": "3.7.0",
