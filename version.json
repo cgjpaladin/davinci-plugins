@@ -53,7 +53,7 @@
       "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/v3.7.0/batch_renamer_mac.zip",
       "https://github.com/cgjpaladin/davinci-plugins/releases/download/v3.7.0/batch_renamer_mac.zip"
     ],
-    "notes": "## v3.7.0\n\n🔄 自动更新——启动3秒检测，下载→重启一条龙\n🖱 右键文件 → 在 Finder 中显示\n🪟 去除双重标题栏，界面更简洁",
+    "notes": "🔄 自动更新——启动3秒检测，下载→重启一条龙\n🖱 右键文件 → 在 Finder 中显示\n🪟 去除双重标题栏，界面更简洁",
     "sha256": "7c24cee56bf6e8580ed96bbde3b355ebb2e9480dcdca3144c750984f71a7da43",
     "history": [
       {
