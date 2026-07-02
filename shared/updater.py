@@ -189,3 +189,83 @@ def _version_compare(a: str, b: str) -> int:
         return (_parse(a) > _parse(b)) - (_parse(a) < _parse(b))
     except Exception:
         return 0
+
+
+def download_update(product: str, save_path: str,
+                    progress_callback=None, timeout: float = 60.0) -> tuple:
+    """下载更新包到本地。
+
+    Args:
+        product: 产品标识（"batch_renamer_mac" / "delivery_checker" 等）
+        save_path: 保存路径（完整文件名）
+        progress_callback: 回调 (downloaded_bytes, total_bytes)
+        timeout: 每条链路超时秒数
+
+    Returns:
+        (success: bool, error_message: str)
+    """
+    from update_config import DOWNLOAD_URLS, MIN_DOWNLOAD_SIZE, TIMEOUT_DOWNLOAD_SINGLE
+    import hashlib
+
+    # 获取 download URLs（复用 check 里的 version.json 解析逻辑）
+    try:
+        data = _fetch_json_across_links(VERSION_CHECK_URLS, timeout=10.0)
+    except Exception as e:
+        return False, f"无法获取版本信息: {e}"
+
+    urls = None
+    expected_sha256 = None
+
+    # 从 version.json 提取 urls
+    if isinstance(data, dict) and product in data:
+        pinfo = data[product]
+        raw = pinfo.get("urls") or pinfo.get("url", "")
+        urls = raw if isinstance(raw, list) else ([raw] if raw else [])
+        expected_sha256 = pinfo.get("sha256")
+
+    if not urls:
+        urls = DOWNLOAD_URLS
+
+    timeout = timeout or TIMEOUT_DOWNLOAD_SINGLE
+    errors = []
+
+    for idx, dl_url in enumerate(urls):
+        try:
+            # 处理 URL 中的中文路径
+            from urllib.parse import quote, urlparse, urlunparse
+            p = urlparse(dl_url)
+            safe = urlunparse(p._replace(path=quote(p.path, safe='/')))
+            req = Request(safe, method="GET")
+            req.add_header("User-Agent", f"DaVinciPlugin/{product}")
+            with urlopen(req, timeout=timeout, context=_SSL_CTX) as resp:
+                total = int(resp.getheader("Content-Length", 0))
+                downloaded = 0
+                chunks = []
+                while True:
+                    chunk = resp.read(65536)
+                    if not chunk:
+                        break
+                    downloaded += len(chunk)
+                    chunks.append(chunk)
+                    if progress_callback:
+                        progress_callback(downloaded, total)
+                data_bytes = b"".join(chunks)
+                if len(data_bytes) < MIN_DOWNLOAD_SIZE:
+                    errors.append(f"{dl_url[:60]}: 文件过小({len(data_bytes)}B)")
+                    continue
+
+                # SHA256 校验
+                if expected_sha256:
+                    actual = hashlib.sha256(data_bytes).hexdigest()
+                    if actual != expected_sha256:
+                        errors.append(f"{dl_url[:60]}: SHA256 不匹配")
+                        continue
+
+                with open(save_path, "wb") as f:
+                    f.write(data_bytes)
+                return True, ""
+        except Exception as e:
+            errors.append(f"{dl_url[:60]}: {e}")
+            continue
+
+    return False, " · ".join(errors[-3:]) if errors else "所有链路均不可达"

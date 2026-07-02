@@ -1,12 +1,12 @@
 {
   "delivery_checker": {
-    "version": "2.5.11",
+    "version": "2.5.12",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/update_latest.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip"
     ],
-    "sha256": "2d3546c4036bfb119000bccb9aef8f008752ac908ca914a05ed935a7d60b41d6",
+    "sha256": "816a6b9bc13a40f85b3181d19398351c13a95ea6dbcaeba97731ecc338dab21c",
     "notes": "🔍 排错报告一键导出（网络诊断+授权快照+激活历史+环境配置）\n🛡️ 指纹稳定不漂移，VPN不影响激活\n📋 配置页一键复制机器指纹，发给裁缝老师",
     "history": [
       {
@@ -45,8 +45,52 @@
         "version": "2.5.11",
         "notes": "## v2.5.11\n\n🔍 排错报告一键导出（网络诊断+授权快照+激活历史+环境配置）\n🛡️ 指纹稳定不漂移，VPN不影响激活\n📋 配置页一键复制机器指纹，发给裁缝老师"
       }
+    ]
+  },
+  "batch_renamer_mac": {
+    "version": "3.6.2",
+    "urls": [
+      "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_mac.zip",
+      "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_mac.zip",
+      "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_mac.zip"
     ],
-    "latest_sha256": "931de336b0350c59b6006b25a834dfb5aebd98b797d9252f867277e4f4e1a7c7",
-    "latest_ver": "2.5.12"
+    "notes": "## v3.6.2\n\n📋 归档路径去制作方式，加 V 层级\n🐛 修复 TK 扫描正则 \\b→_Tk\n🐛 修复归档按钮未填路径仍可点击",
+    "history": [
+      {
+        "version": "3.5.0",
+        "notes": "## v3.5.0\n\n📊 表格版正式发布"
+      },
+      {
+        "version": "3.6.0",
+        "notes": "## v3.6.0\n\n📂 归档路径：EP/V{ver}/compound\n🏷 版本号改名为制作批次"
+      },
+      {
+        "version": "3.6.1",
+        "notes": "## v3.6.1\n\n📋 归档文件夹去制作方式\n🐛 修复 TK 扫描正则"
+      }
+    ]
+  },
+  "batch_renamer_win": {
+    "version": "3.6.2",
+    "urls": [
+      "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_win.zip",
+      "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_win.zip",
+      "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_win.zip"
+    ],
+    "notes": "## v3.6.2\n\n📋 归档路径去制作方式，加 V 层级\n🐛 修复 TK 扫描正则 \\b→_Tk\n🐛 修复归档按钮未填路径仍可点击",
+    "history": [
+      {
+        "version": "3.5.0",
+        "notes": "## v3.5.0\n\n📊 表格版正式发布"
+      },
+      {
+        "version": "3.6.0",
+        "notes": "## v3.6.0\n\n📂 归档路径：EP/V{ver}/compound\n🏷 版本号改名为制作批次"
+      },
+      {
+        "version": "3.6.1",
+        "notes": "## v3.6.1\n\n📋 归档文件夹去制作方式\n🐛 修复 TK 扫描正则"
+      }
+    ]
   }
 }
