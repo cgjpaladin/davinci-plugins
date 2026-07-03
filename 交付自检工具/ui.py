@@ -1328,7 +1328,7 @@ print(result[0])
                     r.kill()
                     cfg["cfg_activate_btn"].Enabled = True; _auth_busy = False; return
                 if r.returncode != 0:
-                    _action_log(f"🪟 激活弹窗: 子进程错误 ret={r.returncode} err={stderr[:200]}")
+                    _action_log(f"🪟 激活弹窗: 子进程异常 (退出码 {r.returncode})")
                     cfg["cfg_activate_btn"].Enabled = True; _auth_busy = False; return
                 code = stdout.strip()
                 if not code:
@@ -1971,7 +1971,9 @@ def _run_ai_typo():
             _action_log(f"✅ 校对完成: 0处错别字, {total}系统 ({provider}/{model})")
 
     except Exception as e:
-        _action_log(f"💥 AI校对崩溃: {e}\n{traceback.format_exc()}")
+        _action_log(f"💥 AI校对失败，请重试")
+        import sys as _sys2
+        traceback.print_exc(file=_sys2.stderr)
         itm[HINT_LB].Text = f"❌ 校对异常: {e}"
 
     finally:
@@ -2860,9 +2862,19 @@ def _do_update(ev):
         except Exception as e:
             _items["up_icon"].Text = "❌"
             _items["up_title"].Text = "更新失败"
-            _items["up_body"].PlainText = str(e)[:200]
+            # 翻译常见错误为人话
+            _err_raw = str(e)
+            if "timeout" in _err_raw.lower() or "timed out" in _err_raw.lower():
+                _err_friendly = "下载超时，请检查网络后重试"
+            elif "certificate" in _err_raw.lower() or "ssl" in _err_raw.lower():
+                _err_friendly = "网络连接不安全，请检查系统时间或关闭代理"
+            elif "all links" in _err_raw.lower() or "链路均不可达" in _err_raw:
+                _err_friendly = "所有下载链路均不可达，请稍后重试"
+            else:
+                _err_friendly = f"下载失败，请稍后重试"
+            _items["up_body"].PlainText = _err_friendly
             _items["up_status"].Text = ""
-            _action_log(f"🪟 ❌更新失败: {str(e)[:80]}")
+            _action_log(f"🪟 ❌更新失败: {_err_raw[:80]}")
         _UPDATING = False
         _items["updateNotesGo"].Text = "关闭"; _items["updateNotesGo"].Enabled = True
 
