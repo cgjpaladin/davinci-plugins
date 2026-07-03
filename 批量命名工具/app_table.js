@@ -412,7 +412,7 @@ function _initTBodyClick(){
       for(let c=0;c<cells.length;c++){
         const td=document.createElement('td');
         const w=cells[c].offsetWidth;
-        td.style.cssText=`height:2px;padding:0!important;background:#39f!important;width:${w}px`;
+        td.style.cssText=`height:2px;padding:0!important;border:none!important;background:#39f!important;width:${w}px`;
         _dragPlaceholder.appendChild(td);
       }
       tr.parentNode.insertBefore(_dragPlaceholder, ref);

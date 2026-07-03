@@ -7,10 +7,10 @@ WS="$(cd "$SCRIPT_DIR/.." && pwd)"
 VER=$(python3 -c "exec(open('$WS/交付自检工具/config.py', encoding='utf-8').read()); print(__version__)")
 PKG="$SCRIPT_DIR/_build/交付自检工具_v${VER}"
 INNER_ZIP_NAME="data.zip"
-# --all 模式：一次输出全量 + 增量 + agent 三个包
+# --all 模式：一次输出全量 + 增量两个包（全量包同时适用于人类和 Agent）
 if [ "$1" = "--all" ]; then
-    bash "$0" && bash "$0" --update && bash "$0" --agent
-    echo "═══ 全量包 + 增量包 + Agent包 完成 ═══"
+    bash "$0" && bash "$0" --update
+    echo "═══ 全量包 + 增量包 完成 ═══"
     exit 0
 fi
 # 增量更新包用 ASCII 根目录名避免 zip 乱码
