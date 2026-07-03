@@ -408,14 +408,14 @@ function _initTBodyClick(){
     const ref = before ? tr : tr.nextSibling;
     if(!_dragPlaceholder){
       _dragPlaceholder=document.createElement('tr');_dragPlaceholder.className='drag-place';
-      const colCount = tr.cells.length;
-      for(let c=0;c<colCount;c++){
+      const cells=tr.cells;
+      for(let c=0;c<cells.length;c++){
         const td=document.createElement('td');
-        td.style.cssText='height:2px;padding:0!important;background:#39f!important';
+        const w=cells[c].offsetWidth;
+        td.style.cssText=`height:2px;padding:0!important;background:#39f!important;width:${w}px`;
         _dragPlaceholder.appendChild(td);
       }
       tr.parentNode.insertBefore(_dragPlaceholder, ref);
-      _dragPlaceholder.offsetHeight; // 强制 reflow，让列宽对齐
     } else if(_dragPlaceholder.nextSibling !== ref || _dragPlaceholder.previousSibling === ref) {
       // 只在位置变化时才移动，避免每帧重建
       tr.parentNode.insertBefore(_dragPlaceholder, ref);
