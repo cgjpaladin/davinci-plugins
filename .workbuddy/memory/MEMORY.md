@@ -83,6 +83,13 @@
 - **IP/地区/ISP**：客户端自报，心跳刷新
 - 详见 `交付自检开发` skill + `插件排错诊断` skill
 
+## SMB vs 个人版（严格分界）
+
+- **SMB = 公司版**：仅西安幕屿剧创 20 台。`push_all.sh` 同步，路径 `/Volumes/MYJC/06_Software/达芬奇脚本/`。
+- **个人版 = 全用途包**：`build_personal.sh --all` 构建。全量 zip → 桌面 → 飞书文档；增量 `update_latest.zip` → GitHub CDN。
+- **两者代码不可混推**。个人版改动走 `cat | ssh dd-mbp` 测试，确认后 `build_personal.sh --all` + git push。
+- dd-mbp（邓邓 14寸 MBP）是个人版测试机，不在 SMB 上。
+
 ## 共享路径
 
 - **SMB**: `/Volumes/MYJC/06_Software/达芬奇脚本/`
@@ -142,10 +149,15 @@
 | `达芬奇插件发布管理` | 版本号 + 灰度 + 全量 |
 | `达芬奇交付自检开发` | 交付自检扩展约定 |
 
-## 批量命名工具架构要点（2026-05-24 终版）
+## 批量命名工具架构要点（2026-07-03 更新）
 
 - 去重用局部 `seen_fp`，避开类级变量跨批泄漏
 - 版本号唯一来源 `app_table.js` 第 1 行，改版只改一处
+- **拖拽排序**：用鼠标事件（`mousedown` on col-num + `mousemove` + `mouseup`），非 HTML5 DnD。pywebview 原生文件拖放拦截 `dragover`——与 Tauri 同病。
+- **placeholder td 必须 `border:none!important`**：`tbody td{border-bottom:1px}` 会污染动态插入行。
+- **TK 不手写**：纯自动编号，拖拽排序是 TK 唯一控制手段。`buildTK(i)` 遍历 `files[0..i]` 按分组键计数。
+- **图片缩略图最优路径**：`Image.open(filepath)` → `ImageOps.exif_transpose` → `thumbnail(LANCZOS)` → RGBA/P→RGB → `BytesIO.save(JPEG,q80)` → base64 → `setThumb`。不读全文件，不写临时盘。
+- **SMB 性能**：`_process_paths` 指纹只读 4KB，图片缩略图不读全文件。视频 ffmpeg 逐帧抽取不受影响。
 - 详见 `批量命名开发` skill
 
 ## 交付自检核心要点
@@ -164,102 +176,6 @@
 ## 参考
 
 - **外部参考**：`docs/学习资料/` — HEIBA 插件源码、FUSION UI API 参考、外部开源插件（5 GitHub 仓库）
-
-## 配置页 + License 体系
-
-[历史] 以下 v2.2.31 和 v3 被 v4 单表授权替代，保留供历史参考。
-
-### 配置页结构（v2.2.31 终版，已由 v4 替代）
-
-| 项目 | 个人版可见 | SMB 可见 |
-|------|:--:|:--:|
-| 激活码 | ✅ | — |
-| 转移授权（停用按钮） | ✅ | — |
-| DeepSeek API Key | ✅ | — |
-| 飞书 App ID | ✅ | — |
-| 飞书 App Secret | ✅ | — |
-| 个人词典（Finder 定位） | ✅ | ✅ |
-
-- API Key 存储：`~/Library/Application Support/交付自检/api_keys.json`
-- 首次打开从 `.env` 自动迁移（兼容 `FEISHU_BOT_APP_ID` 等旧变量名）
-- 显示密文（`sk-ab…xyz`），保存时检测掩码保留真值
-- SMB 用户过滤：`if not WORKBUDDY_PERSONAL` → 只渲染 `censor_personal`
-
-### License / 激活系统 (v3，已由 v4 单表替代)
-
-#### 架构
-- **试用纯本地**：`init_trial()` 写本地凭据，不调服务端。30 天一次性。
-- **无心跳**：仅启动时 `verify_status` 校验激活码是否仍有效。
-- **停用回归试用**：试用天数冻结（存 `trial_remain_secs`），停用时恢复剩余天数。
-- **吊销保护**：启动时联网查激活码+指纹 → revoked → 写过期凭据（非清空），防止删除重拿试用。
-- **凭证**：单文件 `~/.config/dv_license/license.dat`，隐藏 + 指纹校验。
-
-#### 表结构（飞书 Base）
-```
-激活码 | 状态(待售/待激活/已激活) | 机器指纹 | 激活时间 | 用户 | 备注
-```
-gen_key → 待售。Admin 手动改待激活。激活 → 已激活 + 带第一次激活时间。
-
-#### 状态机
-```
-启动 → 无凭证 → init_trial()（纯本地）→ 30 天试用
-       有凭证 → is_trial=True  → 试用剩余 N 天 / 0 天（到期）
-                 is_trial=False → verify_status → 已激活 ✓ / 吊销
-激活 → 服务端 validate → 待激活→已激活 → is_trial=False
-停用 → 服务端 deactivate → 已激活→待激活+清指纹 → is_trial=True（恢复试用天数）
-```
-
-#### 关键规则
-- **`_ai_allowed` ≠ `is_trial`**。预填、保存跳过都应以 `load_credential().is_trial` 判断，不用 `_ai_allowed`。
-- **用户输错码不记入错误计数器**：`_activation_failed` 机制。
-- **黄字 = 许可证售卖**，**白字 = 功能指引**。
-- **服务端直出人性化消息**，客户端零翻译。
-- **tkinter 子进程三框弹窗（2026-06-16 替代 LineEdit）**：防 IME 崩溃，`isascii()` 双重校验。
-
-#### 云函数（阿里云 FC）
-
-| 项目 | 值 |
-|------|-----|
-| 函数名 | `license-node` |
-| 服务 | `license-node-mtqaghwijy.cn-hangzhou` |
-| 正确 URL | `https://license-node-mtqaghwijy.cn-hangzhou.fcapp.run` |
-| 运行时 | Node.js |
-| 路由 | `POST /license {"action":"activate|deactivate|verify_status|init_trial|manage"}` |
-| 部署方式 | `aliyun fc PUT /2023-03-30/functions/license-node` + base64 zip |
-| FC 代码 | `cloud/license_fc.js` |
-
-**环境变量**（在阿里云控制台 FC 函数配置中设置）：
-- `FEISHU_APP_ID` / `FEISHU_APP_SECRET` — 飞书应用凭证
-- `BASE_TOKEN` — 飞书多维表格 token（`BRfGbDgaJa6ZYCsViuOcau2PnSe`）
-- `TABLE_ID` — 单表「授权记录」（`tblGfiUYR3UHQT08`），v4.0 起替代旧双表
-
-**授权记录表**（单表，一行一指纹）：
-| 字段 | 说明 |
-|------|------|
-| 机器指纹、激活码、买家、状态 | 核心身份 + 生命周期 |
-| 首次试用时间、激活时间、最后活跃 | 时间线 |
-| 插件版本、系统版本、达芬奇版本 | 心跳刷新 |
-| 最近IP、所属地区 | 心跳刷新（含 ISP） |
-
-**故障排查**：
-```bash
-# 测试 FC 连通性
-curl -s -X POST 'https://license-node-mtqaghwijy.cn-hangzhou.fcapp.run/license' \
-  -H 'Content-Type: application/json' \
-  -d '{"action":"init_trial","machine_fingerprint":"test"}'
-
-# 查看 FC 函数状态
-aliyun fc GET /2023-03-30/functions/license-node
-
-# 客户端验证（远程机器）
-ssh machine "grep WB_LICENSE_URL '...交付自检工具/.env'"
-ssh machine "cat ~/.config/dv_license/license.dat | python3 -c '...'"
-```
-
-**踩坑**：`_write_env.py` 和 `license.py` 默认值曾指向不同的 FC URL（2026-06-16 统一为 `license-node-mtqaghwijy`）。
-
-#### 激活码格式
-不分大小写，支持数字/字母/任意组合。gen_key 生成 `XXXX-XXXX-XXXX`。管理后台可手填。
 
 ### PYTHONUTF8=1 + -B
 
