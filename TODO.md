@@ -4,8 +4,10 @@
 
 ## 🔴 高优
 
-- SMB 文件夹拖入性能：`_process_paths` 逐个 `os.stat` + `os.path.isfile` + `open().read(4KB)` 50 文件 ≈ 150 次网络往返。异步分批或指纹缓存可减 I/O
-- 图片缩略图生成同步阻塞 UI：PIL `Image.open` 在 SMB 上是全文件读取，需后台线程化或延迟加载
+- 🔴 **Windows 构建**：`build_win.bat` 未跑，`batch_renamer_win.zip` 缺失——当前只有 Mac 用户能收到更新
+- 🔴 **发布验证**：跑一遍完整发布链 `build.sh → publish_release.sh --product batch_renamer` 确认 mac zip + version.json + CDN purge 全线通
+- SMB 文件夹拖入性能：`_process_paths` 逐个 `os.stat` 150 次网络往返，需异步分批
+- 图片缩略图同步阻塞 UI：PIL `Image.open` 在 SMB 上是全文件读取，需后台线程化
 
 ## 🟡 中优
 
