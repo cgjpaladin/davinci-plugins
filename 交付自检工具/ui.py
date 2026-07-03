@@ -2323,8 +2323,8 @@ def _start_check():
     except Exception as e:
         import traceback
         tb = traceback.format_exc()
-        _action_log(f"❌ 检查异常: {type(e).__name__}")
-        _action_log(tb)
+        _action_log(f"❌ 检查异常: {type(e).__name__}（详情已记录）")
+        import sys as _sys3; traceback.print_exc(file=_sys3.stderr)
         itm[HINT_LB].Text = "❌ 检查失败，请重试"
     finally:
         _unlock_ui()
