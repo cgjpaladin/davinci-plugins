@@ -15,7 +15,7 @@ window.onerror=function(m,s,l,c,e){const msg='JS错误: '+(m||'未知')+' @ '+(s
 window.addEventListener('unhandledrejection',e=>{const msg='Promise错误: '+e.reason;toast(msg);call('debug_log',msg)});
 const _origErr=console.error;console.error=function(...a){_origErr.apply(console,a);call('debug_log','CONSOLE: '+a.join(' '))};
 
-let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, undoAvail=false, _thumbs={};
+let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, undoAvail=false, _thumbs={}, _undoSnap=null;
 let _sortKey=null,_sortAsc=true;
 const _sortKeys={base:'basename',ep:'ep',sc:'sc',gr:'gr',tk:'tk',desc:'desc',method:'method',author:'author',ver:'ver',status:'status'};
 function applySort(){if(!_sortKey||!files.length)return;const key=_sortKeys[_sortKey]||_sortKey;if(key==='basename'){files.sort((a,b)=>(a.basename||'').localeCompare(b.basename||''));if(!_sortAsc)files.reverse();return}const s0=files[0].fields[key];const cmp=typeof s0==='string'?((a,b)=>(a.fields[key]||'').localeCompare(b.fields[key]||'')):((a,b)=>parseInt(a.fields[key]||0)-parseInt(b.fields[key]||0));files.sort((a,b)=>_sortAsc?cmp(a,b):cmp(b,a))}
@@ -293,6 +293,7 @@ function _buildRow(f,i){
 
   const tdNum = document.createElement('td');
   tdNum.className = 'col-num'; tdNum.dataset.row = i;
+  if(!f.archived) tdNum.classList.add('grip');
   const pl = Math.max(2, String(files.length).length);
   tdNum.appendChild(Object.assign(document.createElement('span'),{textContent:String(i+1).padStart(pl,'0')}));
   tr.appendChild(tdNum);
@@ -377,13 +378,121 @@ function _initTBodyClick(){
     }
     rowClick(e, i);
   });
-  // 右键菜单：在 Finder 中显示
+  // 右键菜单
   tbody.addEventListener('contextmenu', e => {
     const tr = e.target.closest('tr'); if(!tr) return;
     const i = parseInt(tr.dataset.index); if(isNaN(i)||!files[i]) return;
     e.preventDefault();
-    sel.add(i); renderList();
-    call('reveal_in_finder', files[i].path);
+    // 清理旧菜单 + 更新选中
+    const old = document.getElementById('ctxMenu'); if(old) old.remove();
+    if(!sel.has(i)){sel.clear();sel.add(i)}
+    // 高亮选中行（不重渲染整表）
+    tbody.querySelectorAll('tr').forEach(r=>r.classList.toggle('sel',sel.has(parseInt(r.dataset.index))));
+    const menu = document.createElement('div'); menu.id='ctxMenu';
+    menu.style.cssText='position:fixed;z-index:10000;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 0;min-width:160px;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,.5)';
+    const safePath = files[i].path.replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,'\\x27');
+    menu.innerHTML=[
+      `<div style="padding:6px 12px;cursor:pointer;color:var(--text)" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('ctxMenu').remove();call('reveal_in_finder','${safePath}')">📂 在 Finder 中显示</div>`,
+      `<div style="padding:6px 12px;cursor:pointer;color:#e55" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('ctxMenu').remove();removeSelected()">🗑 从列表移除</div>`,
+    ].join('');
+    // 防止菜单溢出屏幕
+    const maxX = window.innerWidth - 170; const maxY = window.innerHeight - 60;
+    menu.style.left = Math.min(e.clientX, maxX) + 'px';
+    menu.style.top = Math.min(e.clientY, maxY) + 'px';
+    document.body.appendChild(menu);
+    setTimeout(()=>document.addEventListener('click',function cm(e){const m=document.getElementById('ctxMenu');if(m&&!m.contains(e.target)){m.remove()};document.removeEventListener('click',cm)},{once:true}),0);
+  });
+  // 拖拽排序 — 用鼠标事件而非 HTML5 DnD（pywebview 原生拖放拦截导致 dragover 不可靠）
+  let _dragIdx=-1, _dragGhost=null, _dragPlaceholder=null, _dragOffsetY=0;
+  function _showPlaceholder(tr, before){
+    const ref = before ? tr : tr.nextSibling;
+    if(!_dragPlaceholder){
+      _dragPlaceholder=document.createElement('tr');_dragPlaceholder.className='drag-place';
+      const colCount = tr.cells.length;
+      for(let c=0;c<colCount;c++){
+        const td=document.createElement('td');
+        td.style.cssText='height:2px;padding:0!important;background:#39f!important';
+        _dragPlaceholder.appendChild(td);
+      }
+      tr.parentNode.insertBefore(_dragPlaceholder, ref);
+      _dragPlaceholder.offsetHeight; // 强制 reflow，让列宽对齐
+    } else if(_dragPlaceholder.nextSibling !== ref || _dragPlaceholder.previousSibling === ref) {
+      // 只在位置变化时才移动，避免每帧重建
+      tr.parentNode.insertBefore(_dragPlaceholder, ref);
+    }
+  }
+  function _hidePlaceholder(){if(_dragPlaceholder&&_dragPlaceholder.parentNode)_dragPlaceholder.parentNode.removeChild(_dragPlaceholder)}
+  function _finishDrag() {
+    if(_dragGhost){
+      // 清除所有拖拽时设的 inline 样式
+      _dragGhost.style.position='';_dragGhost.style.zIndex='';_dragGhost.style.left='';_dragGhost.style.top='';
+      _dragGhost.style.width='';_dragGhost.style.pointerEvents='';_dragGhost.style.opacity='';_dragGhost.style.boxShadow='';
+      _dragGhost.classList.remove('dragging');_dragGhost=null
+    }
+    _hidePlaceholder();
+    document.removeEventListener('mousemove',_onDragMove);
+    document.removeEventListener('mouseup',_onDragEnd);
+  }
+  function _onDragMove(e){
+    if(!_dragGhost||_dragIdx<0) return;
+    _dragGhost.style.top=(e.clientY-_dragOffsetY)+'px';
+    const tr=document.elementFromPoint(e.clientX,e.clientY)?.closest('tbody tr:not(.dragging):not(.drag-place)');
+    if(tr){
+      const rect=tr.getBoundingClientRect();
+      const before=e.clientY<rect.top+rect.height/2;
+      _showPlaceholder(tr,before);
+      _dropIdx=before?parseInt(tr.dataset.index):parseInt(tr.dataset.index)+1;
+    }
+  }
+  function _onDragEnd(){
+    if(_dragIdx<0) return;
+    const oldIdx=_dragIdx;
+    const insertAt=_dropIdx>=0?_dropIdx:oldIdx;
+    _finishDrag();
+    if(insertAt===oldIdx||insertAt===oldIdx+1) return;
+    _undoSnap=files.map(f=>({...f,fields:{...f.fields}}));
+    const row=files.splice(oldIdx,1)[0];
+    const actualInsert=insertAt>oldIdx?insertAt-1:insertAt;
+    files.splice(actualInsert,0,row);
+    _sortKey=null;_sortAsc=true;sel.clear();reindex();
+    // 只移动 DOM 行
+    const trs=document.querySelectorAll('#fileList tbody tr:not(.drag-place)');
+    const dragged=trs[oldIdx];
+    if(dragged){const ref=trs[actualInsert];if(ref&&ref!==dragged)tbody.insertBefore(dragged,ref);else if(actualInsert>=trs.length)tbody.appendChild(dragged)}
+    tbody.querySelectorAll('tr:not(.drag-place)').forEach((tr,j)=>{
+      tr.dataset.index=j;
+      const s=tr.querySelector('.col-num span');if(s)s.textContent=String(j+1).padStart(Math.max(2,String(files.length).length),'0');
+      const tk=tr.querySelector('.col-tk');if(tk)tk.textContent=buildTK(j);
+    });
+    updSortIndicators();
+    _dragIdx=-1;_dropIdx=-1;
+  }
+  // 在 col-num 上按下开始拖拽
+  tbody.addEventListener('mousedown', e => {
+    const td=e.target.closest('.col-num');if(!td||td.classList.contains('locked'))return;
+    const tr=td.closest('tr');if(!tr||tr.dataset.index==null)return;
+    const i=parseInt(tr.dataset.index);if(isNaN(i)||!files[i]||files[i].archived)return;
+    if(e.button!==0)return;  // 只响应左键
+    const cm=document.getElementById('ctxMenu');if(cm)cm.remove();
+    if(window._shrinkTimer){clearTimeout(window._shrinkTimer);window._shrinkTimer=null}
+    _dragIdx=i;_dropIdx=-1;
+    const rect=tr.getBoundingClientRect();
+    _dragOffsetY=e.clientY-rect.top;
+    // 升起 ghost 行
+    _dragGhost=tr;
+    _dragGhost.style.position='fixed';
+    _dragGhost.style.zIndex='10000';
+    _dragGhost.style.left=rect.left+'px';
+    _dragGhost.style.top=(e.clientY-_dragOffsetY)+'px';
+    _dragGhost.style.width=rect.width+'px';
+    _dragGhost.style.pointerEvents='none';
+    _dragGhost.style.opacity='.85';
+    _dragGhost.style.boxShadow='0 4px 16px rgba(0,0,0,.5)';
+    _dragGhost.classList.add('dragging');
+    // 原位置显示占位
+    _showPlaceholder(tr,true);
+    document.addEventListener('mousemove',_onDragMove);
+    document.addEventListener('mouseup',_onDragEnd);
   });
 }
 
@@ -661,7 +770,7 @@ function updButtons(){
   document.getElementById('btnArchive').disabled=!(hs&&af&&dest);
   document.getElementById('btnUndo').disabled=!undoAvail;
   const dot=document.querySelector('.sb-dot');
-  if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  拖入文件开始  ·  Ctrl+Z 撤销  ·  Del 移除');return}
+  if(!hf){dot.style.background='var(--green)';setStatus('就绪  ·  拖入文件开始  ·  拖拽排序  ·  右键菜单  ·  Ctrl+Z 撤销  ·  Del 移除');return}
   // 全就绪
   if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，可以重命名');call('debug_log',`updButtons: GREEN hs=${hs} af=${af}`);return}
   // 全部就绪但未选中 → 绿色
@@ -861,30 +970,65 @@ function onDropResult(result){
 }
 
 // ═══ 审查模式 ═══
-let _reviewIdx=-1, _mediaBlobUrl=null, _metaGen=0, _rcInterval=null;
+let _reviewIdx=-1, _mediaBlobUrl=null, _metaGen=0, _rcInterval=null, _vidCheckTimeout=null;
 const _speeds=[0.5,1,2];let _speedI=1;
 function formatTime(s){if(!isFinite(s)||s<0)return'0:00';const m=Math.floor(s/60),sec=Math.floor(s%60);return m+':'+String(sec).padStart(2,'0')}
 const _VIDEO_EXT=new Set(['.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw']);
+const _IMG_EXT=new Set(['.jpg','.jpeg','.png','.bmp','.tiff','.tif','.gif','.webp']);
 function _isVideo(ext){return _VIDEO_EXT.has((ext||'').toLowerCase())}
 
 async function openReview(i){
   call('debug_log',`openReview: START i=${i} file=${files[i]?.basename}`);
+  if(_vidCheckTimeout){clearTimeout(_vidCheckTimeout);_vidCheckTimeout=null}
   _reviewIdx=i;const f=files[i];const ff=f.fields;const isVideo=_isVideo(f.ext);
   const tk=buildTK(i);
   document.getElementById('reviewFilename').textContent=`Ep${ff.ep||'__'}_Sc${ff.sc||'__'}_Gr${ff.gr||'__'}_Tk${tk}_${ff.desc||''}_${ff.method||''}_${ff.author||'__'}_v${ff.ver||'__'}_${ff.status||'__'}`;
   const video=document.getElementById('reviewVideo');video.removeAttribute('src');
   const img=document.getElementById('reviewImage');img.removeAttribute('src');
   if(_mediaBlobUrl){URL.revokeObjectURL(_mediaBlobUrl);_mediaBlobUrl=null}
-  try{const r=await call('get_media_data',f.path);
-    call('debug_log',`openReview: media r=${r?'ok':'null'} size=${r?.size||0}`);
-    if(r&&r.data){
-      const bytes=Uint8Array.from(atob(r.data),c=>c.charCodeAt(0));
-      const blob=new Blob([bytes],{type:r.mime});
-      _mediaBlobUrl=URL.createObjectURL(blob);
-      if(isVideo){video.src=_mediaBlobUrl;video.style.display='';img.style.display='none';_speedI=1;document.getElementById('rcSpeed').textContent='1×';video.playbackRate=1;video.play().catch(()=>{});initReviewControls(video)}
-      else{img.src=_mediaBlobUrl;img.style.display='';video.style.display='none';video.pause();document.getElementById('reviewControls').style.display='none'}
-    }else{call('debug_log','openReview: NO media data')}
-  }catch(e){call('debug_log','openReview: media ERROR '+e.message)}
+  const mediaErr=document.getElementById('reviewMediaErr');if(mediaErr)mediaErr.style.display='none';
+  // 视频：通过 bottle HTTP 路由加载（WKWebView 禁止 file://）
+  if(isVideo){
+    const mediaUrl=await call('get_media_url',f.path);
+    call('debug_log',`openReview: mediaUrl=${mediaUrl||'(empty)'}`);
+    if(mediaUrl){
+      video.src=mediaUrl;video.style.display='';img.style.display='none';
+      _speedI=1;document.getElementById('rcSpeed').textContent='1×';video.playbackRate=1;
+      // 3 秒后检查是否真的在播（兼容编码不支持的黑屏）
+      if(_vidCheckTimeout) clearTimeout(_vidCheckTimeout);
+      _vidCheckTimeout=setTimeout(()=>{
+        if(video.readyState<2||video.videoWidth===0){
+          video.style.display='none';
+          if(mediaErr){mediaErr.innerHTML='⚠ 视频编码不支持<br><span style="color:#39f;cursor:pointer;text-decoration:underline" onclick="call(\"reveal_in_finder\",\"'+f.path.replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,'\\x27')+'\")">→ 在 Finder 中打开</span>';mediaErr.style.display='block'}
+        }
+      },3000);
+      video.addEventListener('loadeddata',()=>{clearTimeout(vidTimeout)}, {once:true});
+      video.play().catch(()=>{if(mediaErr){mediaErr.textContent='⏯ 单击缩略图播放';mediaErr.style.display='block'}});
+      initReviewControls(video);
+    }else{
+      if(mediaErr){mediaErr.textContent='⚠ 无法加载视频';mediaErr.style.display='block'};
+      video.style.display='none';img.style.display='none';
+    }
+  }else{
+    // 图片或其他文件：尝试 base64 加载
+    try{const r=await call('get_media_data',f.path);
+      call('debug_log',`openReview: media r=${r?'ok':'null'} size=${r?.size||0}`);
+      if(r&&r.data){
+        const bytes=Uint8Array.from(atob(r.data),c=>c.charCodeAt(0));
+        const blob=new Blob([bytes],{type:r.mime});
+        _mediaBlobUrl=URL.createObjectURL(blob);
+        img.src=_mediaBlobUrl;img.style.display='';video.style.display='none';
+        video.pause();document.getElementById('reviewControls').style.display='none';
+      }else if(r&&r.error){
+        call('debug_log','openReview: media ERR '+r.error);
+        if(mediaErr){mediaErr.textContent=r.error;mediaErr.style.display='block'}
+        video.style.display='none';img.style.display='none';
+      }else{
+        call('debug_log','openReview: NO media data');
+        video.style.display='none';img.style.display='none';
+      }
+    }catch(e){call('debug_log','openReview: media ERROR '+e.message)}
+  }
   buildReviewFields(ff,isVideo);
   highlightStatusBtn(ff.status||'');
   loadMediaMeta(f.path,isVideo,video,img);
@@ -900,6 +1044,7 @@ function closeReview(){
   document.getElementById('reviewImage').removeAttribute('src');
   if(_mediaBlobUrl){URL.revokeObjectURL(_mediaBlobUrl);_mediaBlobUrl=null}
   if(_rcInterval){clearInterval(_rcInterval);_rcInterval=null}
+  if(_vidCheckTimeout){clearTimeout(_vidCheckTimeout);_vidCheckTimeout=null}
   _reviewIdx=-1;document.getElementById('reviewOverlay').classList.remove('show');
   document.getElementById('reviewControls').style.display='';
   renderList(true);
@@ -1099,7 +1244,7 @@ document.addEventListener('keydown',e=>{
     if(e.key==='End'){const v=document.getElementById('reviewVideo');if(v.src){v.currentTime=v.duration;return}}
     if(e.key==='l'||e.key==='L'){const v=document.getElementById('reviewVideo');if(!v.src)return;const rates=[1,2,4,8];let ri=v.paused?0:rates.indexOf(v.playbackRate);ri=ri<0?0:(ri+1)%rates.length;v.playbackRate=rates[ri];document.getElementById('rcSpeed').textContent=rates[ri]+'×';if(v.paused){v.play();document.getElementById('rcPlay').textContent='⏸'}return}
   }
-  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();if(_undoSnap){files=_undoSnap;_undoSnap=null;reindex();renderList();toast('已撤销排序')}else{doUndo()}}
   if((e.key==='Delete'||e.key==='Backspace')&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){e.preventDefault();removeSelected()}
   // ↑↓ 切换文件
   if((e.key==='ArrowUp'||e.key==='ArrowDown')&&sel.size===1&&files.length>0){
@@ -1345,4 +1490,4 @@ async function doRestart(){
 }
 function checkUpdate(){ call('check_update').then(r=>{if(r.update_available)onUpdateFound(r.latest,r.notes)}); }
 
-setStatus('就绪  ·  Ctrl+Z 撤销  ·  Del 移除');
+setStatus('就绪  ·  拖拽排序  ·  右键菜单  ·  Ctrl+Z 撤销  ·  Del 移除');

@@ -57,6 +57,7 @@ $SYSPY -m PyInstaller \
   --hidden-import PIL \
   --hidden-import PIL.Image \
   --hidden-import PIL.ImageOps \
+  --hidden-import PIL.PngImagePlugin \
   --hidden-import openpyxl \
   --hidden-import openpyxl.drawing.image \
   --hidden-import openpyxl.utils.units \
@@ -82,7 +83,7 @@ else
 fi
 
 # ═══ 更新包（用于自动更新） ═══
-UPDATE_ZIP="$HOME/Desktop/batch_renamer_mac.zip"
+UPDATE_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/batch_renamer_mac.zip"
 # 从桌面 app 打 zip（已经是最终名称）
 cd "$HOME/Desktop"
 zip -rq "$UPDATE_ZIP" "$APP_NAME.app" 2>/dev/null

@@ -32,8 +32,9 @@ if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
     sys.path.insert(0, os.path.dirname(_SHARED_DIR))
 
 # 视频扩展名集合 + 文件对话框过滤器
-VIDEO_EXT = {'.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw'}
-_DIALOG_FILTER = "媒体文件 (" + ";".join(sorted(e.replace(".","*.") for e in VIDEO_EXT)) + ")"
+SUPPORTED_EXT = {'.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw',
+                  '.jpg','.jpeg','.png','.bmp','.tiff','.tif','.gif','.webp'}
+_DIALOG_FILTER = "媒体文件 (" + ";".join(sorted(e.replace(".","*.") for e in SUPPORTED_EXT)) + ")"
 
 CFG_FILE = os.path.join(os.path.expanduser("~"), ".renamer_saved.json")
 PATH_RE = re.compile(r"^(\d{8})_(.+)$")
@@ -45,6 +46,12 @@ if os.path.exists(CFG_FILE):
             _saved_defaults = json.load(f)
     except Exception:
         pass
+
+def _has_pil():
+    try:
+        import PIL; return True
+    except ImportError:
+        return False
 
 THUMB_MAX = 100  # 缩略图批次上限
 _undo_stack = []  # list of lists: [[(old,new),...], [(old,new),...]]
@@ -60,43 +67,74 @@ class RenamerAPI:
         return {"path": ""}
 
     def generate_thumbnails(self, paths):
-        """用 ffmpeg 提取视频第一帧，逐帧推送到 JS（渐进渲染）"""
-        import subprocess, base64, tempfile, shutil, sys, json
+        """视频用 ffmpeg 抽帧，图片用 Pillow 缩略"""
+        import subprocess, base64, tempfile, shutil, sys as _sys, json
         ffmpeg = shutil.which("ffmpeg")
         if not ffmpeg:
-            for pfx in (sys._MEIPASS if getattr(sys,'_MEIPASS',False) else '', '/opt/homebrew/bin', '/usr/local/bin'):
-                exe_name = 'ffmpeg.exe' if sys.platform == 'win32' else 'ffmpeg'
+            for pfx in (_sys._MEIPASS if getattr(_sys,'_MEIPASS',False) else '', '/opt/homebrew/bin', '/usr/local/bin'):
+                exe_name = 'ffmpeg.exe' if _sys.platform == 'win32' else 'ffmpeg'
                 test = os.path.join(pfx, exe_name) if pfx else 'ffmpeg'
                 if os.path.exists(test): ffmpeg = test; break
+        # bundle 内 ffmpeg 优先
+        meipass = getattr(_sys, '_MEIPASS', '')
+        if meipass:
+            bundled = os.path.join(meipass, 'ffmpeg')
+            if os.path.exists(bundled): ffmpeg = bundled
         if not ffmpeg: ffmpeg = 'ffmpeg'
-        _log.info(f"generate_thumbnails: {len(paths)} files, ffmpeg={ffmpeg}")
+        IMG_EXT = {'.jpg','.jpeg','.png','.bmp','.tiff','.tif','.gif','.webp'}
+        _log.info(f"generate_thumbnails: {len(paths)} files, ffmpeg={ffmpeg} PIL={'ok' if _has_pil() else 'MISSING'}")
         total = 0
         for p in paths[:THUMB_MAX]:
             try:
-                tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
-                tmp.close()
-                kw = dict(capture_output=True, timeout=8)
-                if sys.platform == 'win32':
-                    kw['creationflags'] = subprocess.CREATE_NO_WINDOW
-                # 先尝试 1 秒处抽帧；失败则用首帧（视频短于 1 秒）
-                for ss in ('00:00:01', '00:00:00.1'):
-                    subprocess.run(
-                        [ffmpeg, '-y', '-ss', ss, '-i', p, '-vframes', '1',
-                         '-vf', 'scale=120:120:force_original_aspect_ratio=decrease',
-                         '-q:v', '8', tmp.name],
-                        **kw
-                    )
-                    if os.path.isfile(tmp.name) and os.path.getsize(tmp.name) > 100:
-                        break
-                if os.path.isfile(tmp.name) and os.path.getsize(tmp.name) > 100:
-                    with open(tmp.name, 'rb') as f:
-                        b64 = base64.b64encode(f.read()).decode()
+                ext = os.path.splitext(p)[1].lower()
+                if ext in IMG_EXT:
+                    if not _has_pil():
+                        _log.warning(f"  thumb skip {os.path.basename(p)}: PIL not installed")
+                        continue
+                    from PIL import Image
+                    img = Image.open(p)
+                    # EXIF 自变换
+                    try:
+                        from PIL import ImageOps
+                        img = ImageOps.exif_transpose(img)
+                    except Exception:
+                        pass
+                    img.thumbnail((120, 120), Image.LANCZOS)
+                    if img.mode in ('RGBA', 'P'):
+                        img = img.convert('RGB')
+                    from io import BytesIO
+                    buf = BytesIO()
+                    img.save(buf, format='JPEG', quality=80)
+                    b64 = base64.b64encode(buf.getvalue()).decode()
                     thumb = f"data:image/jpeg;base64,{b64}"
                     if _window:
                         _window.evaluate_js(f"setThumb({json.dumps(p)},{json.dumps(thumb)})")
                     total += 1
-                try: os.unlink(tmp.name)
-                except OSError: pass
+                else:
+                    # 视频：ffmpeg 抽帧
+                    tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
+                    tmp.close()
+                    kw = dict(capture_output=True, timeout=8)
+                    if _sys.platform == 'win32':
+                        kw['creationflags'] = subprocess.CREATE_NO_WINDOW
+                    for ss in ('00:00:01', '00:00:00.1'):
+                        subprocess.run(
+                            [ffmpeg, '-y', '-ss', ss, '-i', p, '-vframes', '1',
+                             '-vf', 'scale=120:120:force_original_aspect_ratio=decrease',
+                             '-q:v', '8', tmp.name],
+                            **kw
+                        )
+                        if os.path.isfile(tmp.name) and os.path.getsize(tmp.name) > 100:
+                            break
+                    if os.path.isfile(tmp.name) and os.path.getsize(tmp.name) > 100:
+                        with open(tmp.name, 'rb') as f:
+                            b64 = base64.b64encode(f.read()).decode()
+                        thumb = f"data:image/jpeg;base64,{b64}"
+                        if _window:
+                            _window.evaluate_js(f"setThumb({json.dumps(p)},{json.dumps(thumb)})")
+                        total += 1
+                    try: os.unlink(tmp.name)
+                    except OSError: pass
             except Exception as e:
                 _log.info(f"  thumb error: {e}")
                 try: os.unlink(tmp.name)
@@ -176,10 +214,12 @@ class RenamerAPI:
             if len(files) >= MAX_FILES: truncated = True; break
             p = str(p_).strip()
             if p.startswith("file://"): p = unquote(p[7:])
+            # smb:// → /Volumes/ 转换（Finder 拖入 SMB 文件时可能带 smb:// 前缀）
+            p = re.sub(r'^smb://[\d.]+/', '/Volumes/', p)
 
             if os.path.isfile(p):
                 ext = os.path.splitext(p)[1].lower()
-                if ext not in VIDEO_EXT:
+                if ext not in SUPPORTED_EXT:
                     _log.debug(f"  skip non-video: {os.path.basename(p)}")
                     skipped += 1
                     continue
@@ -188,7 +228,7 @@ class RenamerAPI:
                 try:
                     import hashlib
                     st = os.stat(p)
-                    fp_key = f"{st.st_size}:{hashlib.md5(open(p,'rb').read(65536)).hexdigest()}"
+                    fp_key = f"{st.st_size}:{hashlib.md5(open(p,'rb').read(4096)).hexdigest()}"
                 except OSError:
                     fp_key = p  # fallback to path
                 if fp_key in seen_fp: duplicates += 1; continue
@@ -210,11 +250,11 @@ class RenamerAPI:
                         fp = os.path.join(p, f)
                         if os.path.isfile(fp):
                             ext2 = os.path.splitext(fp)[1].lower()
-                            if ext2 not in VIDEO_EXT: continue
+                            if ext2 not in SUPPORTED_EXT: continue
                             if fp in {x["path"] for x in files}: duplicates += 1; continue
                             try:
                                 st = os.stat(fp)
-                                fp_key2 = f"{st.st_size}:{hashlib.md5(open(fp,'rb').read(65536)).hexdigest()}"
+                                fp_key2 = f"{st.st_size}:{hashlib.md5(open(fp,'rb').read(4096)).hexdigest()}"
                             except OSError:
                                 fp_key2 = fp
                             if fp_key2 in {x.get("fp","") for x in files}: duplicates += 1; continue
@@ -323,16 +363,13 @@ class RenamerAPI:
         if not v: return {"ok": False, "msg": ""}
         # smb:// → /Volumes/ 静默转换
         v = re.sub(r'^smb://[\d.]+/', '/Volumes/', v)
-        m = PATH_RE.match(os.path.basename(v))
-        if not m: return {"ok": False, "msg": "✗ 格式: YYYYMMDD_项目名"}
-        try: datetime.strptime(m.group(1), "%Y%m%d")
-        except ValueError: return {"ok": False, "msg": "✗ 无效日期"}
-        name = m.group(2)
-        cleaned, warns = sanitize_text(name, for_filename=True)
-        if not cleaned: return {"ok": False, "msg": "✗ 项目名不能为空"}
-        if warns: return {"ok": False, "msg": "✗ " + "; ".join(warns)}
-        if len(cleaned) > 50: return {"ok": False, "msg": "✗ 项目名过长 (≤50字)"}
-        return {"ok": True, "msg": "✓ 格式正确"}
+        # 检查路径有效性
+        if os.path.isdir(v):
+            return {"ok": True, "msg": "✓"}
+        parent = os.path.dirname(v)
+        if parent and os.path.isdir(parent):
+            return {"ok": True, "msg": "✓ (将新建文件夹)"}
+        return {"ok": False, "msg": "✗ 父目录不存在"}
 
     def do_archive(self, files, dest):
         import hashlib
@@ -705,11 +742,12 @@ del "%~f0"
 
     def reveal_in_finder(self, path):
         """在 Finder 中显示文件"""
+        import subprocess
         try:
             if sys.platform == 'darwin':
                 subprocess.run(['open', '-R', path])
             elif sys.platform == 'win32':
-                subprocess.run(['explorer', '/select,', path])
+                subprocess.run(['explorer', f'/select,{path}'])
         except Exception as e:
             _log.info(f"reveal_in_finder error: {e}")
 
@@ -791,16 +829,28 @@ del "%~f0"
         ext = os.path.splitext(path)[1].lower()
         mime_map = {'.mp4':'video/mp4','.mov':'video/quicktime','.avi':'video/x-msvideo','.mkv':'video/x-matroska','.webm':'video/webm','.mxf':'application/mxf','.m4v':'video/mp4','.flv':'video/x-flv','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.bmp':'image/bmp','.tiff':'image/tiff','.tif':'image/tiff'}
         try:
+            if not os.path.isfile(path):
+                _log.warning(f"get_media_data: file not found: {path}")
+                return {'error': '文件不存在'}
             size = os.path.getsize(path)
-            if size > 300 * 1024 * 1024:
+            _log.info(f"get_media_data: {path} {size/1048576:.1f}MB")
+            if size > 500 * 1024 * 1024:
                 _log.warning(f"get_media_data: file too large ({size} bytes)")
-                return None
+                return {'error': f'文件过大 ({size/1048576:.0f}MB)，上限 500MB'}
             with open(path, 'rb') as f:
                 data = f.read()
             return {'data': base64.b64encode(data).decode('ascii'), 'mime': mime_map.get(ext, 'application/octet-stream'), 'size': size}
         except Exception as e:
             _log.warning(f"get_media_data failed: {e}")
-            return None
+            return {'error': str(e)[:100]}
+
+    def get_media_url(self, path):
+        """返回可用于 <video src> 的 HTTP URL（绕过 WKWebView file:// 限制）"""
+        import urllib.parse
+        port = getattr(self, '_server_port', 0)
+        if not port or not os.path.isfile(path):
+            return ''
+        return f'http://127.0.0.1:{port}/media?path={urllib.parse.quote(path, safe="")}'
 _HTML_CANDIDATES = ["renamer_table.html", "renamer_web.html"]
 HTML_FILE_NAME = "renamer_web.html"  # 默认
 for _c in _HTML_CANDIDATES:
@@ -841,6 +891,19 @@ if __name__ == "__main__":
     def index():
         return static_file(HTML_FILE_NAME, root=_BASE_DIR)
 
+    @route('/media')
+    def serve_media():
+        """绕过 WKWebView 的 file:// 限制，通过 HTTP 提供视频/图片"""
+        from bottle import request, Response, HTTPError
+        path = request.query.path or request.query.get('path', '')
+        if not path or not os.path.isfile(path):
+            return HTTPError(404, "File not found")
+        ext = os.path.splitext(path)[1].lower()
+        mime_map = {'.mp4':'video/mp4','.mov':'video/quicktime','.mkv':'video/x-matroska','.webm':'video/webm',
+                    '.avi':'video/x-msvideo','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg',
+                    '.bmp':'image/bmp','.gif':'image/gif','.webp':'image/webp','.tiff':'image/tiff','.tif':'image/tiff'}
+        return static_file(os.path.basename(path), root=os.path.dirname(path), mimetype=mime_map.get(ext, 'application/octet-stream'))
+
     # 找空闲端口
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(('127.0.0.1', 0))
@@ -871,6 +934,7 @@ if __name__ == "__main__":
         background_color='#151515',
         text_select=True,
     )
+    api._server_port = port  # 供 /media 路由使用
 
     # 拖放：用 loaded 事件在 DOM 就绪后绑定 Python 端 handler
     def _bind_drop():

@@ -235,6 +235,10 @@ tbody tr.warn td{background:var(--tbl-row-warn)}
 /* ── Column widths (table-layout:fixed, all explicit) ── */
 .col-num{text-align:left;padding-right:12px!important;padding-left:8px;width:44px;position:relative}
 td.col-num{font-size:13px}
+td.col-num.grip{cursor:grab;padding-left:4px}
+td.col-num.grip::after{content:'⋮⋮';position:absolute;right:2px;top:0;bottom:0;display:flex;align-items:center;color:var(--tbl-dim);font-size:10px;letter-spacing:-2px;opacity:0;transition:opacity .15s}
+tr:hover td.col-num.grip::after{opacity:1}
+tr:active td.col-num.grip{cursor:grabbing}
 .col-thumb{width:calc(52px * var(--thumb-scale, 1));padding:4px!important;overflow:hidden}
 .col-ep,.col-sc,.col-gr,.col-tk,.col-ver{text-align:left;width:60px}
 .col-status{text-align:left;width:66px}
@@ -269,6 +273,11 @@ tbody tr.row-empty td.col-num::before{background:var(--red)}
 tbody tr.archived{opacity:.45}
 tbody tr.archived td{color:var(--tbl-dim)!important}
 tbody tr.archived td.empty{background:transparent}
+
+/* ── 拖拽排序 ── */
+tbody tr.dragging{opacity:.85;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+/* 蓝色占位行 */
+tr.drag-place td{height:2px!important;padding:0!important;background:#39f!important}
 
 /* ── Readonly cell (TK) ── */
 td.readonly{cursor:default;color:var(--tbl-dim);font-style:italic}

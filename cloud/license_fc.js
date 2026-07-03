@@ -160,6 +160,7 @@ async function handleActivate(data) {
     状态: '已激活',
     机器指纹: fp,
     激活时间: match.fields.激活时间 || now,
+    首次试用时间: match.fields.首次试用时间 || now,
   };
   if (data.public_ip) updateFields['最近IP'] = data.public_ip;
   if (data.ip_region) updateFields['所属地区'] = data.ip_region;
