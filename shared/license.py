@@ -385,7 +385,6 @@ def init_trial() -> Tuple[bool, str]:
         ok, resp = _post_to_backend("/license", {
             "action": "init_trial",
             "machine_fingerprint": fp,
-            **_get_stats(),
         })
         if ok:
             tsd = resp.get("trial_date_ordinal")
@@ -422,7 +421,6 @@ def _try_register_trial(fp: str) -> bool:
         ok, resp = _post_to_backend("/license", {
             "action": "init_trial",
             "machine_fingerprint": fp,
-            **_get_stats(),
         })
         if ok and resp.get("status") == "ok":
             _log.info("_try_register_trial: ✅ 登记成功 fp=%s", fp[:16])
@@ -442,7 +440,6 @@ def _sync_trial_start(payload: dict, fp: str) -> None:
         ok, resp = _post_to_backend("/license", {
             "action": "init_trial",
             "machine_fingerprint": fp,
-            **_get_stats(),
         })
         if ok:
             tsd = resp.get("trial_date_ordinal")
@@ -508,7 +505,6 @@ def verify_activation() -> Tuple[bool, str]:
         "action": "verify_status",
         "activate_key": p.get("activate_key", ""),
         "machine_fingerprint": fp,
-        **_get_stats(),
     })
     if not ok:
         # FC 不通：距上次成功校验 > 30 天才视为吊销

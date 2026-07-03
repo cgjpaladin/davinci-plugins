@@ -1985,9 +1985,43 @@ def _run_ai_typo():
 # ═══════════════════════════════════════════
 
 def _start_check():
-    global _checking, _start_time
+    global _checking, _start_time, _UPDATE_INFO, _ai_allowed, _trial_expired
     if _BUSY or _checking:
         return
+    
+    # 读后台子进程的更新检测结果（兜底：RunLoop前没读到的话，第一次开始检查时再读）
+    if _update_result_path and os.path.exists(_update_result_path):
+        _r = None
+        try:
+            import json as _json
+            with open(_update_result_path) as f: _r = _json.load(f)
+        except Exception: pass
+        try: os.remove(_update_result_path)
+        except OSError: pass
+        if _r and _r.get("update_available"):
+            _UPDATE_INFO = _r
+            _action_log(f"⬆ 发现新版本 v{_r['latest']} (当前 {__version__})")
+            itm[HINT_LB].Text = f"⬆ 新版本 v{_r['latest']} — 点击右侧按钮更新"
+            itm[BTN_UPDATE].Visible = True
+            itm[BTN_UPDATE].Text = "⬆ 更新"
+            itm[BTN_UPDATE]["StyleSheet"] = "background-color:rgb(220,180,60);color:#1a1a1a;font-size:11px;font-weight:bold;border-radius:3px;padding:2px 8px"
+    
+    # 读后台子进程的 FC 验证结果（兜底）
+    if _fc_result_path and os.path.exists(_fc_result_path):
+        _r = None
+        try:
+            import json as _json2
+            with open(_fc_result_path) as f: _r = _json2.load(f)
+        except Exception: pass
+        try: os.remove(_fc_result_path)
+        except OSError: pass
+        if _r and isinstance(_r, dict) and _r.get("ok") is False:
+            _ai_allowed = False; _trial_expired = True
+            _action_log(f"License 吊销: {_r.get('msg')}")
+            itm[TRIAL_LB].Text = _format_trial(0)
+            itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
+            itm[BTN_AI_TYPO].Enabled = False
+    
     _checking = True
     _start_time = time.time()
     _lock_ui("检查中")
@@ -2738,6 +2772,8 @@ dlg.On["btn_browse_script"].Clicked = _browse_script
 # 一键更新
 _UPDATING = False
 _UPDATE_INFO = {}  # 版本检查结果，防止 NameError
+_update_result_path = ""  # 更新检测子进程结果文件
+_fc_result_path = ""  # FC 验证子进程结果文件
 
 def _do_update(ev):
     """弹更新日志 → 确认后一直留在屏幕上 → 下载完成变关闭按钮"""
@@ -2958,13 +2994,23 @@ def _do_update_sync(progress_callback=None):
                                 capture_output=True, start_new_session=True,
                                 env={**os.environ, "TERM": "dumb"})
         if result.returncode != 0:
-            err = "安装脚本失败"
-            try:
-                stderr_text = result.stderr.decode('utf-8', errors='replace').strip()
-                if stderr_text:
-                    err = f"安装脚本失败: {stderr_text[:200]}"
-            except Exception:
-                pass
+            # 解析 osascript 返回码，转为人话
+            if result.returncode == 1:
+                # 返回码 1 通常伴随 stderr，解析具体原因
+                try:
+                    stderr_text = result.stderr.decode('utf-8', errors='replace').strip()
+                except Exception:
+                    stderr_text = ""
+                if "-128" in stderr_text:
+                    err = "更新已取消"
+                elif "not found" in stderr_text.lower() or "no such file" in stderr_text.lower():
+                    err = "未找到安装脚本，请重新下载更新包"
+                elif stderr_text:
+                    err = f"安装失败: {stderr_text.split(chr(10))[0][:100]}"
+                else:
+                    err = "安装失败，请重试"
+            else:
+                err = f"安装失败 (错误码 {result.returncode})"
             raise RuntimeError(err)
         itm[HINT_LB].Text = "✅ 更新完成！请重启达芬奇插件生效"
         itm[BTN_UPDATE].Text = "✅"
@@ -3142,7 +3188,7 @@ def main():
         threading.Thread(target=_warm_osascript, daemon=True).start()
 
     # ══ License ══（仅个人版，同步校验）
-    global _ai_allowed
+    global _ai_allowed, _trial_expired
     _ai_allowed = True
     _trial_expired = False
     _cred = None
@@ -3179,14 +3225,26 @@ def main():
                             _trial_expired = True
                 else:
                     text = "已激活 ✓"
+                    # 后台子进程验证 FC（不阻塞启动），verify_local 已通过
+                    global _fc_result_path
+                    import tempfile as _tmp_fc
+                    _fc_result_path = os.path.join(_tmp_fc.gettempdir(), f"dv_fc_{os.getpid()}.json")
                     try:
-                        v_ok, v_msg = verify_activation()
-                        if not v_ok:
-                            _ai_allowed = False; _trial_expired = True
-                            text = _format_trial(0)
-                            _action_log(f"License 吊销: {v_msg}")
-                    except Exception:
-                        pass
+                        _shared_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shared")
+                        _script_dir = os.path.dirname(os.path.abspath(__file__))
+                        _check_code = f'''import sys,json,os
+sys.path.insert(0,r"{_shared_dir}")
+sys.path.insert(0,r"{_script_dir}")
+from shared.license import verify_activation
+try:
+    ok,msg=verify_activation()
+    with open(sys.argv[1],"w") as f:json.dump({{"ok":ok,"msg":msg}},f)
+except Exception as e:
+    with open(sys.argv[1],"w") as f:json.dump({{"ok":False,"error":str(e)}},f)
+'''
+                        subprocess.Popen([sys.executable, "-c", _check_code, _fc_result_path],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    except Exception: pass
                 itm[TRIAL_LB].Text = text
                 _action_log(f"License: {text}  ({'✅' if ok else '❌ '+msg})")
             else:
@@ -3240,29 +3298,94 @@ def main():
     if itm[TRIAL_LB].Text.startswith("⏳"):
         itm[TRIAL_LB].Text = "试用权限异常，请联系裁缝老师"
 
-    # 后台检查更新（不阻塞启动）
-    import threading
-    def _bg_update_check():
+    # ── 后台检查更新 ──
+    itm[BTN_UPDATE].Visible = True
+    itm[BTN_UPDATE].Text = "⏳ 检查更新中…"
+    itm[BTN_UPDATE]["StyleSheet"] = "color:#888;font-size:11px;border-radius:3px;padding:2px 8px;background-color:#3a3a3a"
+    import tempfile as _tmp
+    global _update_result_path
+    _update_result_path = os.path.join(_tmp.gettempdir(), f"dv_update_{os.getpid()}.json")
+    _subp = None
+    try:
+        _shared_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shared")
+        _check_code = f'''import sys,json,time
+sys.path.insert(0,"{_shared_dir}")
+from updater import check
+r=check("delivery_checker",sys.argv[1],timeout=3)
+with open(sys.argv[2],"w") as f:json.dump(r,f)
+'''
+        _action_log(f"🔍 更新子进程: py={sys.executable[-40:]}, shared_exists={os.path.exists(_shared_dir)}")
+        _subp = subprocess.Popen([sys.executable, "-c", _check_code, __version__, _update_result_path],
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    except Exception as e:
+        _action_log(f"⚠ 更新子进程启动失败: {e}")
+
+    # 等子进程写出结果（最多 3s）
+    import time as _poll_t
+    _t0 = _poll_t.time()
+    for _ in range(30):
+        if os.path.exists(_update_result_path):
+            break
+        _poll_t.sleep(0.1)
+    _elapsed = _poll_t.time() - _t0
+    _found = os.path.exists(_update_result_path)
+
+    # 读结果
+    _result = None
+    if _found and _update_result_path:
         try:
-            from updater import check
-            from shared.update_config import TIMEOUT_VERSION_CHECK
-            _ver = __version__  
-            _result = check("delivery_checker", _ver, timeout=TIMEOUT_VERSION_CHECK)
-            global _UPDATE_INFO
-            _UPDATE_INFO = _result
-            if _result.get("update_available"):
-                _action_log(f"⬆ 发现新版本 v{_result['latest']} (当前 {_ver})")
-                itm[HINT_LB].Text = f"⬆ 新版本 v{_result['latest']} — 点击右侧按钮更新"
-                itm[BTN_UPDATE].Visible = True
-                itm[BTN_UPDATE].Text = "⬆ 更新"
-                itm[BTN_UPDATE]["StyleSheet"] = "background-color:rgb(220,180,60);color:#1a1a1a;font-size:11px;font-weight:bold;border-radius:3px;padding:2px 8px"
-                if _result.get("force"):
-                    itm[BTN_START].Enabled = False
-                    itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
-                    itm[HINT_LB].Text += "（必须更新）"
-        except Exception as e:
-            _action_log(f"⚠ 更新检查失败: {e}")
-    threading.Thread(target=_bg_update_check, daemon=True).start()  # 至少留条日志，方便排查
+            import json as _json
+            with open(_update_result_path) as f: _result = _json.load(f)
+        except Exception: pass
+        try: os.remove(_update_result_path)
+        except OSError: pass
+
+    # 如果没结果且子进程还在，读 stderr 诊断
+    _stderr_msg = ""
+    if not _result and _subp:
+        try:
+            _, _stderr = _subp.communicate(timeout=1)
+            _stderr_msg = _stderr.decode("utf-8", errors="replace")[:200] if _stderr else ""
+        except Exception: pass
+
+    # ── 面板更新 ──
+    if _result and _result.get("update_available"):
+        # 状态 A: 有更新
+        global _UPDATE_INFO
+        _UPDATE_INFO = _result
+        _action_log(f"⬆ 发现新版本 v{_result['latest']} (当前 {__version__})")
+        itm[HINT_LB].Text = f"⬆ 新版本 v{_result['latest']} — 点击右侧按钮更新"
+        itm[BTN_UPDATE].Text = "⬆ 更新"
+        itm[BTN_UPDATE]["StyleSheet"] = "background-color:rgb(220,180,60);color:#1a1a1a;font-size:11px;font-weight:bold;border-radius:3px;padding:2px 8px"
+        if _result.get("force"):
+            itm[BTN_START].Enabled = False
+            itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
+            itm[HINT_LB].Text += "（必须更新）"
+    elif not _found:
+        # 状态 B: 子进程没写结果（崩溃/超时/网络不通）
+        itm[BTN_UPDATE].Text = "⚠ 检查失败"
+        itm[BTN_UPDATE]["StyleSheet"] = "color:#e88;font-size:11px;border-radius:3px;padding:2px 8px;background-color:#3a3a3a"
+        _action_log(f"⚠ 更新检测失败 (elapsed={_elapsed:.1f}s, err={_stderr_msg[:80]})")
+    else:
+        # 状态 C: 没有新版本
+        itm[BTN_UPDATE].Text = "✓ 已是最新"
+        itm[BTN_UPDATE]["StyleSheet"] = "color:#8a8;font-size:11px;border-radius:3px;padding:2px 8px;background-color:#3a3a3a"
+        _action_log(f"🔍 更新检测: 已是最新 v{_result.get('latest','?') if _result else '?'}, elapsed={_elapsed:.1f}s, stderr={_stderr_msg[:50]}")
+
+    # 读 FC 验证结果
+    if _fc_result_path and os.path.exists(_fc_result_path):
+        _r = None
+        try:
+            with open(_fc_result_path) as f: _r = json.load(f)
+        except Exception: pass
+        try: os.remove(_fc_result_path)
+        except OSError: pass
+        if _r and isinstance(_r, dict) and _r.get("ok") is False:
+            _ai_allowed = False; _trial_expired = True
+            _action_log(f"License 吊销: {_r.get('msg')}")
+            itm[TRIAL_LB].Text = _format_trial(0)
+            itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
+            itm[BTN_AI_TYPO].Enabled = False
 
     disp.RunLoop()
     dlg.Hide()
