@@ -1778,7 +1778,7 @@ def _run_ai_typo():
                 _action_log(f"📝 字幕系统检测: {total} 项")
                 _stop("字幕系统检测完成")
             except Exception as e:
-                import traceback; _action_log(f"❌ {traceback.format_exc()}")
+                import traceback; _action_log(f"❌ 字幕检测异常: {e}")
                 _stop(f"检测失败: {e}")
             _checking = False; _unlock_ui(); return
 
@@ -2179,7 +2179,10 @@ def _start_check():
                     io_range=io_range, debug_log=_action_log))
             except Exception:
                 import traceback
-                _action_log(f"❌ {check['section']}检查崩溃: {traceback.format_exc()}")
+                _action_log(f"❌ {check['section']}检查失败，请重试（详情已存日志）")
+                # 原始异常写 stderr 供排错，不暴露给用户
+                import sys as _sys
+                traceback.print_exc(file=_sys.stderr)
                 # 返回 warn 而非空列表，让用户看到此项不可用
                 all_results = [_make_result_passthrough("warn",
                     detail=f"{check['section']}: 检查不可用",
@@ -2318,9 +2321,9 @@ def _start_check():
     except Exception as e:
         import traceback
         tb = traceback.format_exc()
-        _action_log(f"❌ 检查崩溃: {e}")
+        _action_log(f"❌ 检查异常: {type(e).__name__}")
         _action_log(tb)
-        itm[HINT_LB].Text = f"❌ 检查崩溃: {e}"
+        itm[HINT_LB].Text = "❌ 检查失败，请重试"
     finally:
         _unlock_ui()
         _checking = False
@@ -3177,16 +3180,6 @@ def main():
     dlg.RecalcLayout()
     _init_connection()
 
-    # 预热 osascript（macOS 首次调用需初始化 AppleScript 引擎，Windows 跳过）
-    if _sys.platform == "darwin":
-        import threading
-        def _warm_osascript():
-            try:
-                subprocess.run(["osascript", "-e", ""], timeout=10, capture_output=True)
-            except Exception:
-                pass
-        threading.Thread(target=_warm_osascript, daemon=True).start()
-
     # ══ License ══（仅个人版，同步校验）
     global _ai_allowed, _trial_expired
     _ai_allowed = True
@@ -3237,7 +3230,7 @@ sys.path.insert(0,r"{_shared_dir}")
 sys.path.insert(0,r"{_script_dir}")
 from shared.license import verify_activation
 try:
-    ok,msg=verify_activation()
+    ok,msg=verify_activation(_writeback=False)
     with open(sys.argv[1],"w") as f:json.dump({{"ok":ok,"msg":msg}},f)
 except Exception as e:
     with open(sys.argv[1],"w") as f:json.dump({{"ok":False,"error":str(e)}},f)

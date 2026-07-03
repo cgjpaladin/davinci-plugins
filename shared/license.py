@@ -486,10 +486,13 @@ def activate(activate_key: str) -> Tuple[bool, str]:
     return True, resp.get("msg", "激活成功")
 
 
-def verify_activation() -> Tuple[bool, str]:
+def verify_activation(_writeback: bool = True) -> Tuple[bool, str]:
     """启动时联网校验：激活码是否仍有效（防止盗用/误操作）。
     
     仅对已激活凭据调用。revoked → 清除凭据并返回 False。
+    
+    Args:
+        _writeback: 是否写盘（子进程调用时设为 False，避免与主线程竞态）
     Returns: (still_valid, message)
     """
     if not BACKEND_URL:
@@ -511,9 +514,24 @@ def verify_activation() -> Tuple[bool, str]:
         now = int(time.time())
         last = p.get("_last_verify", 0)
         if not last:
-            p["_last_verify"] = now  # 首次宽限
-            save_credential({"payload": p, "signature": cred.get("signature", "")})
+            if _writeback:
+                p["_last_verify"] = now  # 首次宽限
+                save_credential({"payload": p, "signature": cred.get("signature", "")})
         elif now - last > 30 * 86400:
+            if _writeback:
+                payload = {
+                    "activate_key": "", "machine_fingerprint": fp,
+                    "issue_time": now - 365 * 86400, "expire_time": now - 1,
+                    "offline_grant_end": now - 1, "nonce": os.urandom(8).hex(),
+                    "platform": sys.platform, "products": {}, "is_trial": True, "trial_used": True,
+                }
+                save_credential({"payload": payload, "signature": "revoked"})
+            return False, "授权校验失败，请联系管理员"
+        return True, ""
+    if resp.get("status") == "revoked":
+        if _writeback:
+            # 写永久过期标记，防止删除后重拿试用
+            now = int(time.time())
             payload = {
                 "activate_key": "", "machine_fingerprint": fp,
                 "issue_time": now - 365 * 86400, "expire_time": now - 1,
@@ -521,26 +539,15 @@ def verify_activation() -> Tuple[bool, str]:
                 "platform": sys.platform, "products": {}, "is_trial": True, "trial_used": True,
             }
             save_credential({"payload": payload, "signature": "revoked"})
-            return False, "授权校验失败，请联系管理员"
-        return True, ""
-    if resp.get("status") == "revoked":
-        # 写永久过期标记，防止删除后重拿试用
-        now = int(time.time())
-        payload = {
-            "activate_key": "", "machine_fingerprint": fp,
-            "issue_time": now - 365 * 86400, "expire_time": now - 1,
-            "offline_grant_end": now - 1, "nonce": os.urandom(8).hex(),
-            "platform": sys.platform, "products": {}, "is_trial": True, "trial_used": True,
-        }
-        save_credential({"payload": payload, "signature": "revoked"})
         return False, resp.get("msg", "授权已失效")
     # 校验成功：更新凭证并刷新最后校验时间
-    token = resp.get("license_token")
-    if token:
-        if isinstance(token, str):
-            token = json.loads(token)
-        token["payload"]["_last_verify"] = int(time.time())
-        save_credential(token)
+    if _writeback:
+        token = resp.get("license_token")
+        if token:
+            if isinstance(token, str):
+                token = json.loads(token)
+            token["payload"]["_last_verify"] = int(time.time())
+            save_credential(token)
     return True, resp.get("msg", "授权有效")
 
 
