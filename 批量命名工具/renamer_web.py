@@ -33,7 +33,7 @@ if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
 
 # 视频扩展名集合 + 文件对话框过滤器
 SUPPORTED_EXT = {'.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw',
-                  '.jpg','.jpeg','.png','.bmp','.tiff','.tif','.gif','.webp'}
+                  '.jpg','.jpeg','.png','.bmp','.tiff','.tif','.gif','.webp','.tga','.targa','.psd'}
 _DIALOG_FILTER = "媒体文件 (" + ";".join(sorted(e.replace(".","*.") for e in SUPPORTED_EXT)) + ")"
 
 CFG_FILE = os.path.join(os.path.expanduser("~"), ".renamer_saved.json")
@@ -81,7 +81,7 @@ class RenamerAPI:
             bundled = os.path.join(meipass, 'ffmpeg')
             if os.path.exists(bundled): ffmpeg = bundled
         if not ffmpeg: ffmpeg = 'ffmpeg'
-        IMG_EXT = {'.jpg','.jpeg','.png','.bmp','.tiff','.tif','.gif','.webp'}
+        IMG_EXT = {'.jpg','.jpeg','.png','.bmp','.tiff','.tif','.gif','.webp','.tga','.targa','.psd'}
         _log.info(f"generate_thumbnails: {len(paths)} files, ffmpeg={ffmpeg} PIL={'ok' if _has_pil() else 'MISSING'}")
         total = 0
         for p in paths[:THUMB_MAX]:
@@ -827,7 +827,7 @@ del "%~f0"
         """返回媒体文件 base64 + MIME（审查面板 Blob URL）"""
         import base64
         ext = os.path.splitext(path)[1].lower()
-        mime_map = {'.mp4':'video/mp4','.mov':'video/quicktime','.avi':'video/x-msvideo','.mkv':'video/x-matroska','.webm':'video/webm','.mxf':'application/mxf','.m4v':'video/mp4','.flv':'video/x-flv','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.bmp':'image/bmp','.tiff':'image/tiff','.tif':'image/tiff'}
+        mime_map = {'.mp4':'video/mp4','.mov':'video/quicktime','.avi':'video/x-msvideo','.mkv':'video/x-matroska','.webm':'video/webm','.mxf':'application/mxf','.m4v':'video/mp4','.flv':'video/x-flv','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.bmp':'image/bmp','.tiff':'image/tiff','.tif':'image/tiff','.gif':'image/gif','.webp':'image/webp','.tga':'image/x-targa','.targa':'image/x-targa','.psd':'image/vnd.adobe.photoshop'}
         try:
             if not os.path.isfile(path):
                 _log.warning(f"get_media_data: file not found: {path}")
@@ -901,7 +901,8 @@ if __name__ == "__main__":
         ext = os.path.splitext(path)[1].lower()
         mime_map = {'.mp4':'video/mp4','.mov':'video/quicktime','.mkv':'video/x-matroska','.webm':'video/webm',
                     '.avi':'video/x-msvideo','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg',
-                    '.bmp':'image/bmp','.gif':'image/gif','.webp':'image/webp','.tiff':'image/tiff','.tif':'image/tiff'}
+                    '.bmp':'image/bmp','.gif':'image/gif','.webp':'image/webp','.tiff':'image/tiff','.tif':'image/tiff',
+                    '.tga':'image/x-targa','.targa':'image/x-targa','.psd':'image/vnd.adobe.photoshop'}
         return static_file(os.path.basename(path), root=os.path.dirname(path), mimetype=mime_map.get(ext, 'application/octet-stream'))
 
     # 找空闲端口

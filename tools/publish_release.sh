@@ -59,7 +59,9 @@ case "$PRODUCT" in
         fi
         ;;
     batch_renamer)
-        ZIP_FILES["$HOME/Desktop/batch_renamer_mac.zip"]="batch_renamer_mac.zip"
+        # macOS zip: 项目根优先（build.sh 输出），桌面回退
+        ZIP_FILES["$WS/batch_renamer_mac.zip"]="batch_renamer_mac.zip"
+        # Windows zip: 桌面（Windows 机器 build_win.bat 拷过来）
         ZIP_FILES["$HOME/Desktop/batch_renamer_win.zip"]="batch_renamer_win.zip"
         ZIP_NAMES=("batch_renamer_mac.zip" "batch_renamer_win.zip")
         PRODUCT_KEYS=("batch_renamer_mac" "batch_renamer_win")

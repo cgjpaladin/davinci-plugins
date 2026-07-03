@@ -58,6 +58,7 @@ $SYSPY -m PyInstaller \
   --hidden-import PIL.Image \
   --hidden-import PIL.ImageOps \
   --hidden-import PIL.PngImagePlugin \
+  --hidden-import PIL._webp \
   --hidden-import openpyxl \
   --hidden-import openpyxl.drawing.image \
   --hidden-import openpyxl.utils.units \

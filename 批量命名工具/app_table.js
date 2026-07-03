@@ -423,8 +423,8 @@ function _initTBodyClick(){
   }
   function _hidePlaceholder(){if(_dragPlaceholder&&_dragPlaceholder.parentNode)_dragPlaceholder.parentNode.removeChild(_dragPlaceholder)}
   function _finishDrag() {
+    _dragIdx=-1;_dropIdx=-1;  // 必须最先设——防 double-run（blur→_finishDrag→松手→_onDragEnd→guard 拦截）
     if(_dragGhost){
-      // 清除所有拖拽时设的 inline 样式
       _dragGhost.style.position='';_dragGhost.style.zIndex='';_dragGhost.style.left='';_dragGhost.style.top='';
       _dragGhost.style.width='';_dragGhost.style.pointerEvents='';_dragGhost.style.opacity='';_dragGhost.style.boxShadow='';
       _dragGhost.classList.remove('dragging');_dragGhost=null
@@ -432,7 +432,11 @@ function _initTBodyClick(){
     _hidePlaceholder();
     document.removeEventListener('mousemove',_onDragMove);
     document.removeEventListener('mouseup',_onDragEnd);
+    window.removeEventListener('blur',_onDragBlur);
+    document.removeEventListener('keydown',_onDragEsc);
   }
+  function _onDragBlur(){ _finishDrag(); }
+  function _onDragEsc(e){ if(e.key==='Escape'){ e.preventDefault(); _finishDrag(); } }
   function _onDragMove(e){
     if(!_dragGhost||_dragIdx<0) return;
     _dragGhost.style.top=(e.clientY-_dragOffsetY)+'px';
@@ -493,6 +497,8 @@ function _initTBodyClick(){
     _showPlaceholder(tr,true);
     document.addEventListener('mousemove',_onDragMove);
     document.addEventListener('mouseup',_onDragEnd);
+    window.addEventListener('blur',_onDragBlur);
+    document.addEventListener('keydown',_onDragEsc);
   });
 }
 
