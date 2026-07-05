@@ -1,4 +1,4 @@
-const APP_VERSION='3.7.0';
+const APP_VERSION='3.7.1';
 const APP_GIT_HASH='';
 const APP_BRANCH='';
 const APP_BUILD_TIME='';
@@ -15,7 +15,7 @@ window.onerror=function(m,s,l,c,e){const msg='JS错误: '+(m||'未知')+' @ '+(s
 window.addEventListener('unhandledrejection',e=>{const msg='Promise错误: '+e.reason;toast(msg);call('debug_log',msg)});
 const _origErr=console.error;console.error=function(...a){_origErr.apply(console,a);call('debug_log','CONSOLE: '+a.join(' '))};
 
-let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, undoAvail=false, _thumbs={}, _undoSnap=null;
+let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, undoAvail=false, _thumbs={}, _undoSnap=null, _localUndos=[];
 let _sortKey=null,_sortAsc=true;
 const _sortKeys={base:'basename',ep:'ep',sc:'sc',gr:'gr',tk:'tk',desc:'desc',method:'method',author:'author',ver:'ver',status:'status'};
 function applySort(){if(!_sortKey||!files.length)return;const key=_sortKeys[_sortKey]||_sortKey;if(key==='basename'){files.sort((a,b)=>(a.basename||'').localeCompare(b.basename||''));if(!_sortAsc)files.reverse();return}const s0=files[0].fields[key];const cmp=typeof s0==='string'?((a,b)=>(a.fields[key]||'').localeCompare(b.fields[key]||'')):((a,b)=>parseInt(a.fields[key]||0)-parseInt(b.fields[key]||0));files.sort((a,b)=>_sortAsc?cmp(a,b):cmp(b,a))}
@@ -189,6 +189,13 @@ function onMethodChange(oldMethod, newMethod, ri){
   const changedRows = rows.filter(r => files[r] && files[r].fields.method === oldMethod && oldMethod !== m);
   call('debug_log',`onMethodChange: rows=${rows.length} sel=${sel.size} changed=${changedRows.length} old='${oldMethod||'(空)'}' new='${m||'(空)'}'`);
   if(!changedRows.length) return;
+  // snapshot old values for undo (method + desc both change)
+  const mcChanges = changedRows.map(r => ({
+    idx: r,
+    method: files[r].fields.method || '',
+    desc: files[r].fields.desc || ''
+  }));
+  _localUndos.push({type:'methodChange', changes: mcChanges});
   changedRows.forEach(r => { files[r].fields.method = m; });
   if(cfg.mode === 'locked'){
     changedRows.forEach(r => { files[r].fields.desc = cfg.value; });
@@ -705,6 +712,9 @@ function activateEdit(td, key, i){
         return;
       }
       const rows = isMulti ? [...sel] : [i];
+      // snapshot old values for undo
+      const changes = rows.map(r => ({idx: r, key, oldVal: files[r].fields[key] || ''}));
+      _localUndos.push({type:'edit', changes});
       rows.forEach(r => { files[r].fields[key] = finalVal; });
       call('debug_log',`edit ${key}: ${oldVal||'(空)'} → ${finalVal||'(空)'} on ${rows.length} row(s)`);
       renderList(true);
@@ -808,8 +818,8 @@ function showDialog(title,msg){return new Promise(r=>{
 })}
 
 // ═══ Actions ═══
-async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);applySort();reindex();r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
-async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);applySort();reindex();r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
+async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);_undoSnap=null;_localUndos=[];applySort();reindex();r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
+async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);_undoSnap=null;_localUndos=[];applySort();reindex();r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
 function _toastResult(r){let m=`已追加 ${r.total} 个文件`;if(r.skipped)m+=` · ${r.skipped} 个格式不支持`;if(r.duplicates)m+=` · ${r.duplicates} 个重复跳过`;if(r.subdirs_skipped)m+=` · ${r.subdirs_skipped} 个子文件夹跳过`;if(r.truncated)m+=` (上限${r.max}个)`;toast(m)}
 
 async function doRename(){
@@ -875,7 +885,35 @@ async function doUndo(){
   renderList(true);updButtons();
 }
 
-function removeSelected(){if(sel.size===0)return;call('debug_log','remove: '+sel.size+' files');files=files.filter((_,i)=>!sel.has(i));sel.clear();renderList();toast('已移除')}
+function removeSelected(){
+  if(sel.size===0)return;
+  call('debug_log','remove: '+sel.size+' files');
+  const removed=[], indices=[];
+  for(const i of sel){removed.push(files[i]);indices.push(i)}
+  _localUndos.push({type:'remove', rows:removed, indices:[...indices].sort((a,b)=>a-b)});
+  files=files.filter((_,i)=>!sel.has(i));
+  sel.clear();renderList();toast('已移除 · Ctrl+Z 可撤销');
+}
+function undoLocal(){
+  if(_localUndos.length===0) return;
+  const entry=_localUndos.pop();
+  if(entry.type==='remove'){
+    let offset=0;
+    entry.indices.forEach((idx,i)=>{
+      files.splice(idx+offset,0,entry.rows[i]); offset++;
+    });
+    reindex();renderList();
+    toast(`已撤销删除 · ${entry.rows.length} 个文件`);
+  } else if(entry.type==='edit'){
+    entry.changes.forEach(({idx,key,oldVal})=>{ files[idx].fields[key]=oldVal; });
+    renderList(true);
+    toast(`已撤销编辑 · ${entry.changes.length} 个字段`);
+  } else if(entry.type==='methodChange'){
+    entry.changes.forEach(({idx,method,desc})=>{ files[idx].fields.method=method;files[idx].fields.desc=desc; });
+    renderList(true);
+    toast(`已撤销方式 · ${entry.changes.length} 行`);
+  }
+}
 async function doArchive(){
   if(sel.size===0){toast('未选中文件');return}
   const dest=document.getElementById('destInput').value.trim();
@@ -964,7 +1002,7 @@ function onDropResult(result){
   const sk = result.skipped || 0;
   if(fresh.length===0 && dup===0 && sk>0){toast(`${sk} 个格式不支持`);return}
   if(fresh.length===0){toast(`全部重复 · ${dup} 个已跳过`);return}
-  files=files.concat(fresh);applySort();reindex();
+  files=files.concat(fresh);_undoSnap=null;_localUndos=[];applySort();reindex();
   call("debug_log",`FILES list: ${files.length} total (added ${fresh.length})`);
   let msg=`已追加 ${fresh.length} 个文件`;
   if(dup) msg+=` · ${dup} 个重复跳过`;
@@ -1250,7 +1288,7 @@ document.addEventListener('keydown',e=>{
     if(e.key==='End'){const v=document.getElementById('reviewVideo');if(v.src){v.currentTime=v.duration;return}}
     if(e.key==='l'||e.key==='L'){const v=document.getElementById('reviewVideo');if(!v.src)return;const rates=[1,2,4,8];let ri=v.paused?0:rates.indexOf(v.playbackRate);ri=ri<0?0:(ri+1)%rates.length;v.playbackRate=rates[ri];document.getElementById('rcSpeed').textContent=rates[ri]+'×';if(v.paused){v.play();document.getElementById('rcPlay').textContent='⏸'}return}
   }
-  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();if(_undoSnap){files=_undoSnap;_undoSnap=null;reindex();renderList();toast('已撤销排序')}else{doUndo()}}
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();if(_undoSnap){files=_undoSnap;_undoSnap=null;reindex();renderList();toast('已撤销排序')}else if(_localUndos.length>0){undoLocal()}else{doUndo()}}
   if((e.key==='Delete'||e.key==='Backspace')&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){e.preventDefault();removeSelected()}
   // ↑↓ 切换文件
   if((e.key==='ArrowUp'||e.key==='ArrowDown')&&sel.size===1&&files.length>0){

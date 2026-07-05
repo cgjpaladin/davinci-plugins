@@ -85,8 +85,9 @@ fi
 # ═══ 文件存在性检查 ═══
 for LOCAL_PATH in "${!ZIP_FILES[@]}"; do
     if [ ! -f "$LOCAL_PATH" ]; then
-        echo "❌ 找不到 $LOCAL_PATH"
-        exit 1
+        GH_NAME="${ZIP_FILES[$LOCAL_PATH]}"
+        echo "⚠️  跳过 $GH_NAME — 文件不存在（$LOCAL_PATH）"
+        unset "ZIP_FILES[$LOCAL_PATH]"
     fi
 done
 

@@ -383,12 +383,13 @@ class RenamerAPI:
                     if not chunk: break
                     h.update(chunk)
             return h.digest()
-        # 扫目标文件夹，预建 {hash: path}（同内容只保留一条，限 200 个文件）
+        # 扫目标文件夹，预建 {hash: path}（同内容只保留一条，限 200 个文件，跳过 .tmp）
         seen = {}  # hash bytes → path
         if os.path.isdir(dest):
             for root, dirs, filenames in os.walk(dest):
                 for fn in filenames:
                     if len(seen) >= 200: break
+                    if fn.endswith('.tmp'): continue  # 跳过残片
                     fp = os.path.join(root, fn)
                     try:
                         sz = os.path.getsize(fp)
@@ -416,6 +417,7 @@ class RenamerAPI:
                     if len(parts) == 2:
                         tk_prefix = parts[0] + '_Tk'
                         for fn in os.listdir(folder):
+                            if fn.endswith('.tmp'): continue  # 跳过残片
                             if not fn.startswith(tk_prefix): continue
                             m = re.search(r'_Tk(0[1-9]|[1-9]\d)(?:_|\.mp4|\.mov|\.mxf|\.avi|\.mkv|$)', fn)
                             if m:
@@ -442,8 +444,11 @@ class RenamerAPI:
                 # 哈希去重
                 src_hash = _hash_file(f["path"])
                 if src_hash in seen: dup += 1; continue
-                shutil.copy2(f["path"], target)
-                seen[src_hash] = target
+                # 逐文件原子写入：copy2 → mark dedup → rename
+                tmp_target = target + '.tmp'
+                shutil.copy2(f["path"], tmp_target)
+                seen[src_hash] = target  # 先标记去重——即使后续 move 失败，内容已在 .tmp
+                shutil.move(tmp_target, target)
                 archived.append((f["path"], target))
                 ok += 1
                 _log.debug(f"  ✓ {os.path.basename(f['path'])} → {os.path.basename(target)}")
