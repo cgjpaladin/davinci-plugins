@@ -2429,17 +2429,25 @@ def _export_debug_package():
     global _UI_ERROR_COUNT
     import zipfile, subprocess, os, time, platform, socket, json
     # ── 选目录 ──
-    try:
-        r = subprocess.run(
-            ["osascript", "-e",
-             'POSIX path of (choose folder with prompt "选择导出位置")'],
-            capture_output=True, text=True, encoding="utf-8", timeout=60)
-        dest = r.stdout.strip()
-        if not dest or not os.path.isdir(dest):
-            itm[BTN_ERR_SEND].Text = "📋 导出日志" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
-            return
-    except Exception as e:
-        _action_log(f"❌ 选目录失败: {e}")
+    dest = ""
+    if sys.platform == "darwin":
+        try:
+            r = subprocess.run(
+                ["osascript", "-e",
+                 'POSIX path of (choose folder with prompt "选择导出位置")'],
+                capture_output=True, text=True, encoding="utf-8", timeout=60)
+            dest = r.stdout.strip()
+        except Exception as e:
+            _action_log(f"❌ 选目录失败: {e}")
+    elif sys.platform == "win32":
+        try:
+            ps_code = 'Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; $f.ShowDialog(); $f.SelectedPath'
+            r = subprocess.run(["powershell", "-NoProfile", "-Command", ps_code],
+                               capture_output=True, text=True, timeout=60)
+            dest = r.stdout.strip() if r.returncode == 0 else ""
+        except Exception as e:
+            _action_log(f"❌ 选目录失败: {e}")
+    if not dest or not os.path.isdir(dest):
         itm[BTN_ERR_SEND].Text = "📋 导出日志" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
         return
     # ── 文件名 ──
@@ -3180,7 +3188,7 @@ def main():
                 else:
                     text = "已激活 ✓"
                     try:
-                        v_ok, v_msg = verify_activation()
+                        v_ok, v_msg = verify_activation(_writeback=False)
                         if not v_ok:
                             _ai_allowed = False; _trial_expired = True
                             text = _format_trial(0)
