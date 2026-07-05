@@ -87,28 +87,40 @@ def check(product: str, current_version: str,
 
     # 兼容 Releases API 格式: {tag_name, body, assets, ...}
     if isinstance(data, dict) and "tag_name" in data and "assets" in data:
-        tag = data["tag_name"].lstrip("v")
+        import re
+        tag = data["tag_name"]
+        # 从 tag 提取版本号: "batch_renamer-v3.7.1" → "3.7.1", "v2.5.14" → "2.5.14"
+        vm = re.search(r'(\d+\.\d+\.\d+)', tag)
+        version = vm.group(1) if vm else tag.lstrip("v")
         notes = data.get("body", "")
-        # 从 assets 找下载链接
+        # 从 assets 找匹配产品的下载链接
         dl_urls = []
+        # 尝试匹配 asset 名字中的产品标识
         for a in data.get("assets", []):
+            name = a.get("name", "")
             url = a.get("browser_download_url", "")
             if not url: continue
-            # ghproxy 优先
-            if "github.com" in url:
+            # 过滤：只取与当前 product 相关的 asset
+            if product in name or product.replace('_win','').replace('_mac','') in name:
                 dl_urls.append("https://ghproxy.net/" + url)
-            dl_urls.append(url)  # 直连兜底
+                dl_urls.append(url)  # 直连兜底
+        if not dl_urls:
+            # fallback: 全取
+            for a in data.get("assets", []):
+                url = a.get("browser_download_url", "")
+                if not url: continue
+                if "github.com" in url:
+                    dl_urls.append("https://ghproxy.net/" + url)
+                dl_urls.append(url)
         if not dl_urls:
             dl_urls = DOWNLOAD_URLS
-        # 提取 SHA256（如果有）
         sha256 = None
         for a in data.get("assets", []):
             if a.get("name", "").endswith(".sha256"):
-                # 有 .sha256 文件可尝试下载
                 pass
         data = {
             product: {
-                "version": tag,
+                "version": version,
                 "notes": notes,
                 "urls": dl_urls,
                 "sha256": sha256,

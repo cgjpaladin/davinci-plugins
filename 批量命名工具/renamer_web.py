@@ -644,13 +644,16 @@ class RenamerAPI:
             import tempfile, stat, subprocess
 
             # 找到当前 app 位置
-            meipass = getattr(sys, '_MEIPASS', '')
-            _log.info(f"apply_update: _MEIPASS={meipass}")
-            if not meipass:
-                return {"ok": False, "error": "无法定位 app 路径 (_MEIPASS 为空)"}
-
-            app_path = os.path.dirname(os.path.dirname(meipass))  # .app 目录
+            if sys.platform == 'darwin':
+                meipass = getattr(sys, '_MEIPASS', '')
+                _log.info(f"apply_update: _MEIPASS={meipass}")
+                if not meipass:
+                    return {"ok": False, "error": "无法定位 app 路径 (_MEIPASS 为空)"}
+                app_path = os.path.dirname(os.path.dirname(meipass))  # .app bundle
+            else:
+                app_path = sys.executable  # Windows onefile: 直接取 exe 路径
             _log.info(f"apply_update: app_path={app_path}")
+
             # 新 app：从解压目录找第一个 .app 或 .exe
             ext_dir = _UPDATE_STATE["extract_dir"]
             _log.info(f"apply_update: ext_dir={ext_dir}, listing={os.listdir(ext_dir)[:5]}")
@@ -662,7 +665,6 @@ class RenamerAPI:
                 elif sys.platform == 'win32' and item.endswith('.exe'):
                     new_app = full; break
             if not new_app:
-                # 搜一层子目录
                 for root, dirs, files in os.walk(ext_dir):
                     for f in files + dirs:
                         if (sys.platform == 'darwin' and f.endswith('.app')) or \
@@ -675,13 +677,13 @@ class RenamerAPI:
             script_path = os.path.join(tempfile.gettempdir(),
                                        'renamer_update.command' if sys.platform == 'darwin' else 'renamer_update.bat')
 
-            need_admin = app_path.startswith('/Applications') or app_path.startswith('/Applications/')
-
             if sys.platform == 'darwin':
+                need_admin = app_path.startswith('/Applications') or app_path.startswith('/Applications/')
                 if need_admin:
                     script = f'''#!/bin/bash
 sleep 2
-osascript -e 'do shell script "rm -rf \\"{app_path}\\" && mv \\"{new_app}\\" \\"{app_path}\\" && open \\"{app_path}\\"" with administrator privileges'
+xattr -d com.apple.quarantine "{new_app}" 2>/dev/null
+osascript -e 'do shell script "rm -rf \\"{app_path}\\" && mv \\"{new_app}\\" \\"{app_path}\\" && xattr -d com.apple.quarantine \\"{app_path}\\" 2>/dev/null && open \\"{app_path}\\"" with administrator privileges'
 rm -- "$0"
 '''
                 else:
@@ -689,20 +691,38 @@ rm -- "$0"
 sleep 2
 rm -rf "{app_path}"
 mv "{new_app}" "{app_path}"
+xattr -d com.apple.quarantine "{app_path}" 2>/dev/null
 open "{app_path}"
 rm -- "$0"
 '''
             else:  # Windows
+                need_admin = 'Program Files' in app_path
+                # 先 rename 旧 exe 防锁，再 move 新 exe，下次启动自动清 .old
+                app_dir = os.path.dirname(app_path)
                 app_name = os.path.basename(app_path)
-                script = f'''@echo off
+                old_name = app_name + '.old'
+                old_path = os.path.join(app_dir, old_name)
+                if need_admin:
+                    script = f'''@echo off
+chcp 65001 >nul
 timeout /t 2 /nobreak >nul
 taskkill /f /im "{app_name}" 2>nul
-move /y "{new_app}" "{app_path}"
+ren "{app_path}" "{old_name}" 2>nul
+powershell -Command "Start-Process cmd -ArgumentList '/c move /y \"\"\"{new_app}\"\"\" \"\"\"{app_path}\"\"\" && start \"\"\"\" \"\"\"{app_path}\"\"\" && del \"\"\"%~f0\"\"\"' -Verb RunAs"
+'''
+                else:
+                    script = f'''@echo off
+chcp 65001 >nul
+timeout /t 2 /nobreak >nul
+taskkill /f /im "{app_name}" 2>nul
+ren "{app_path}" "{old_name}" 2>nul
+move /y "{new_app}" "{app_path}" 2>nul
 start "" "{app_path}"
+del "{old_path}" 2>nul
 del "%~f0"
 '''
 
-            with open(script_path, 'w', encoding='utf-8') as f:
+            with open(script_path, 'w', encoding='utf-8-sig' if sys.platform == 'win32' else 'utf-8') as f:
                 f.write(script)
             os.chmod(script_path, 0o755)
 

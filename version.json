@@ -54,7 +54,7 @@
       "https://github.com/cgjpaladin/davinci-plugins/releases/download/batch_renamer-v3.7.1/batch_renamer_mac.zip"
     ],
     "notes": "🛡️ 归档中断保护：逐文件 .tmp 原子写入\n🔙 完整 Undo：字段编辑/删除/拖拽/改名 全覆盖\n🖱️ 拖拽 ghost 残留修复\n🖼 图片格式扩充：gif/webp/tga/psd\n🐛 蓝条闪烁修复 · SMB 性能优化",
-    "sha256": "56dd88394c75437a4c3654c46d528f4b316a04ad75d825de567174f26c920d3f",
+    "sha256": "43cc6e7b766feb1beb483bc47bdd04a24676aebc6e854e3a7d042b01b21a70ca",
     "history": [
       {
         "version": "3.7.1",
