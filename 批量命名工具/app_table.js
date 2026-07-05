@@ -1474,7 +1474,7 @@ async function doDownload(){
   _updating=true;_updateReady=false;_dlStart=Date.now();
   const el=document.getElementById('updateStatus');
   el.innerHTML='⬇ 下载中… 0%';
-  const tr=await call('trigger_update');
+  const tr=await call('trigger_delta');
   if(!tr||!tr.ok){
     el.innerHTML='❌ 更新失败 <button class="up-btn" onclick="retryUpdate()">重试</button>';
     _updating=false;return;
@@ -1490,9 +1490,8 @@ function pollProgress(){
     if(p.total>0){
       const pct=Math.min(99,Math.round(p.downloaded*100/p.total));
       const mbDown=(p.downloaded/1048576).toFixed(1);
-      const mbTotal=(p.total/1048576).toFixed(1);
       const elapsed=((Date.now()-_dlStart)/1000).toFixed(0);
-      el.innerHTML=`⬇ ${pct}% · ${mbDown}/${mbTotal}MB · ${elapsed}s`;
+      el.innerHTML=`⬇ ${pct}% · ${mbDown}MB · ${elapsed}s`;
     }
     if(p.ready){
       _updating=false;_updateReady=true;
@@ -1506,12 +1505,9 @@ async function doRestart(){
   if(!_updateReady)return;
   const el=document.getElementById('updateStatus');
   el.innerHTML='重启中…';
-  const r=await call('apply_update');
-  if(r&&!r.ok){el.innerHTML='❌ 重启失败: '+(r.error||'未知错误');}
+  const r=await call('apply_delta');
+  if(r&&!r.ok){el.innerHTML='❌ 失败: '+(r.error||'未知');}
 }
 function checkUpdate(){ call('check_update').then(r=>{if(r.update_available)onUpdateFound(r.latest,r.notes);}); }
-
-setStatus('就绪  ·  拖拽排序  ·  右键菜单  ·  Ctrl+Z 撤销  ·  Del 移除');
-function checkUpdate(){ call('check_update').then(r=>{if(r.update_available)onUpdateFound(r.latest,r.notes)}); }
 
 setStatus('就绪  ·  拖拽排序  ·  右键菜单  ·  Ctrl+Z 撤销  ·  Del 移除');

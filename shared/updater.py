@@ -292,3 +292,48 @@ def download_update(product: str, save_path: str,
             continue
 
     return False, " · ".join(errors[-3:]) if errors else "所有链路均不可达"
+
+
+def download_delta(save_path: str, progress_callback=None, timeout: float = 300.0) -> tuple:
+    """下载差分更新包 update_latest.zip（<3MB）。
+    走 CDN 多链路，失败自动切换。"""
+    try:
+        from update_config import DOWNLOAD_URLS, MIN_DOWNLOAD_SIZE
+    except ImportError:
+        from shared.update_config import DOWNLOAD_URLS, MIN_DOWNLOAD_SIZE
+
+    import hashlib
+    errors = []
+    dl_urls = DOWNLOAD_URLS
+
+    for idx, dl_url in enumerate(dl_urls):
+        try:
+            from urllib.parse import quote, urlparse, urlunparse
+            p = urlparse(dl_url)
+            safe = urlunparse(p._replace(path=quote(p.path, safe='/')))
+            req = Request(safe, method="GET")
+            req.add_header("User-Agent", f"DaVinciPlugin/delta")
+            with urlopen(req, timeout=timeout, context=_SSL_CTX) as resp:
+                total = int(resp.getheader("Content-Length", 0))
+                downloaded = 0
+                chunks = []
+                while True:
+                    chunk = resp.read(65536)
+                    if not chunk:
+                        break
+                    downloaded += len(chunk)
+                    chunks.append(chunk)
+                    if progress_callback:
+                        progress_callback(downloaded, total)
+                data = b"".join(chunks)
+                if len(data) < MIN_DOWNLOAD_SIZE:
+                    errors.append(f"{dl_url[:60]}: 文件过小 ({len(data)}B)")
+                    continue
+                with open(save_path, "wb") as f:
+                    f.write(data)
+                return True, ""
+        except Exception as e:
+            errors.append(f"{dl_url[:60]}: {e}")
+            continue
+
+    return False, " · ".join(errors[-3:]) if errors else "所有链路均不可达"

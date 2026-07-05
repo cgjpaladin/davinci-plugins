@@ -569,7 +569,7 @@ class RenamerAPI:
             _log.warning(f"save_file failed: {e}")
             return {"ok": False, "path": result}
 
-    # ═══ 自动更新 ═══
+    # ═══ 自动更新（差分优先） ═══
     def check_update(self):
         global _UPDATE_STATE
         if "-dev" in _APP_VERSION:
@@ -587,13 +587,75 @@ class RenamerAPI:
             _log.info(f"check_update error: {e}")
             return {"update_available": False, "reason": str(e)[:80]}
 
-    def trigger_update(self):
-        """开始下载更新包"""
+    def trigger_delta(self):
+        """下载差分更新包 update_latest.zip（<3MB）"""
         global _UPDATE_STATE
         if not _UPDATE_STATE["available"]:
             return {"ok": False, "error": "没有可用更新"}
         if _UPDATE_STATE["downloading"]:
             return {"ok": False, "error": "已在下载中"}
+        try:
+            _UPDATE_STATE["downloading"] = True
+            _UPDATE_STATE["downloaded"] = 0
+            _UPDATE_STATE["total"] = 0
+
+            import tempfile
+            tmp_dir = tempfile.mkdtemp(prefix="renamer_delta_")
+            zip_path = os.path.join(tmp_dir, "delta.zip")
+            from shared import updater
+
+            def _progress(dl, total):
+                _UPDATE_STATE["downloaded"] = dl
+                _UPDATE_STATE["total"] = total
+
+            ok, err = updater.download_delta(zip_path, progress_callback=_progress)
+            if not ok:
+                _UPDATE_STATE["downloading"] = False
+                return {"ok": False, "error": err}
+
+            _UPDATE_STATE["zip_path"] = zip_path
+            _UPDATE_STATE["ready"] = True
+            _UPDATE_STATE["downloading"] = False
+            _UPDATE_STATE["is_delta"] = True
+            _log.info(f"delta update ready: {zip_path}")
+            return {"ok": True}
+        except Exception as e:
+            _UPDATE_STATE["downloading"] = False
+            _log.warning(f"trigger_delta error: {e}")
+            return {"ok": False, "error": str(e)[:100]}
+
+    def apply_delta(self):
+        """将差分文件写入当前 .app，重启应用"""
+        global _UPDATE_STATE
+        if not _UPDATE_STATE["ready"]:
+            return {"ok": False, "error": "更新包未就绪"}
+        try:
+            meipass = getattr(sys, '_MEIPASS', '')
+            if not meipass:
+                return {"ok": False, "error": "无法定位 _MEIPASS"}
+            app_path = os.path.dirname(os.path.dirname(meipass))
+            res_dir = os.path.join(meipass)
+            _log.info(f"apply_delta: app_path={app_path}, res_dir={res_dir}")
+
+            import zipfile, tempfile
+            with zipfile.ZipFile(_UPDATE_STATE["zip_path"], 'r') as zf:
+                zf.extractall(res_dir)
+
+            # 清 pyc 缓存（避免旧字节码加载）
+            for root, dirs, files in os.walk(res_dir):
+                for d in list(dirs):
+                    if d == '__pycache__':
+                        import shutil
+                        shutil.rmtree(os.path.join(root, d), ignore_errors=True)
+
+            _log.info(f"apply_delta done, restarting")
+            # 重启
+            import subprocess
+            subprocess.Popen(['open', app_path])
+            os._exit(0)
+        except Exception as e:
+            _log.warning(f"apply_delta error: {e}")
+            return {"ok": False, "error": str(e)[:100]}
         try:
             _UPDATE_STATE["downloading"] = True
             _UPDATE_STATE["downloaded"] = 0

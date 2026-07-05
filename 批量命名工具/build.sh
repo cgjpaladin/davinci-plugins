@@ -86,15 +86,29 @@ else
   echo \"❌ 打包异常：CSS/JS 未嵌入！\"; exit 1
 fi
 
-# ═══ 更新包（用于自动更新） ═══
-UPDATE_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/batch_renamer_mac.zip"
-# 从 dist 打 zip
+# ═══ 更新包 ═══
+# 全量（完整 .app，128MB，新装/大改时用）
+FULL_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/batch_renamer_mac.zip"
 cd "$SCRIPT_DIR/dist"
-zip -rq "$UPDATE_ZIP" "$APP_NAME.app" 2>/dev/null
+zip -rq "$FULL_ZIP" "$APP_NAME.app" 2>/dev/null
 cd "$OLDPWD"
-if [ -f "$UPDATE_ZIP" ]; then
-  SHA=$(shasum -a 256 "$UPDATE_ZIP" | cut -d' ' -f1)
-  echo "✅ 更新包: $UPDATE_ZIP ($(du -h "$UPDATE_ZIP" | cut -f1)) SHA256=$SHA"
+if [ -f "$FULL_ZIP" ]; then
+  SHA=$(shasum -a 256 "$FULL_ZIP" | cut -d' ' -f1)
+  echo "✅ 全量包: $FULL_ZIP ($(du -h "$FULL_ZIP" | cut -f1)) SHA256=$SHA"
+fi
+
+# 差分（只含 HTML/CSS/JS + shared/，<3MB，日常更新用）
+DELTA_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/update_latest.zip"
+cd "$APP_OUT/Contents/Resources"
+zip -rq "$DELTA_ZIP" \
+  "$HTML_FILE" \
+  shared/ \
+  -x "shared/__pycache__/*" "shared/*.pyc" "shared/dftt_timecode/*" "shared/pypdf/*" "shared/naming.py" "shared/script_parser.py" \
+  2>/dev/null
+cd "$OLDPWD"
+if [ -f "$DELTA_ZIP" ]; then
+  DSHA=$(shasum -a 256 "$DELTA_ZIP" | cut -d' ' -f1)
+  echo "✅ 差分包: $DELTA_ZIP ($(du -h "$DELTA_ZIP" | cut -f1)) SHA256=$DSHA"
 fi
 
 # 同步到桌面（ditto 原子替换，不嵌套）
