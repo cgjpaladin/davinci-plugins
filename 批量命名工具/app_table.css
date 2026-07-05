@@ -435,7 +435,10 @@ td.editing select{
 .update-overlay.show{display:flex}
 .update-dialog{background:#1e1e1e;border:1px solid #3a3a3a;border-radius:8px;padding:24px;max-width:420px;width:90%}
 .up-title{font-size:16px;font-weight:600;margin-bottom:12px;color:#e0e0e0}
-.up-body{font-size:12.5px;color:#a0a0a0;line-height:1.6;max-height:200px;overflow-y:auto;margin-bottom:16px}
+.up-body{font-size:12.5px;color:#a0a0a0;line-height:1.6;max-height:200px;overflow-y:auto;margin-bottom:16px;-webkit-user-select:text;user-select:text;white-space:pre-wrap}
+.up-progress{height:4px;background:#2a2a2a;border-radius:2px;margin-bottom:8px;overflow:hidden}
+.up-progress-bar{height:100%;background:#3c8cdc;border-radius:2px;width:0;transition:width .3s}
+.up-speed{font-size:11px;color:#666;margin-bottom:8px;text-align:center}
 .up-actions{display:flex;gap:8px;justify-content:flex-end}
 .up-btn-cancel{background:transparent;color:#a0a0a0;border:1px solid #3a3a3a;border-radius:4px;padding:6px 16px;font-size:12px;cursor:pointer}
 .up-btn-cancel:hover{color:#e0e0e0;border-color:#555}

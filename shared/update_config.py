@@ -24,7 +24,7 @@ DOWNLOAD_URLS = [
 
 # ── 超时（秒） ──
 TIMEOUT_VERSION_CHECK = 10      # 每条版本检查链路（国内 GitHub API 需更长）
-TIMEOUT_DOWNLOAD_SINGLE = 60   # 每条下载链路
+TIMEOUT_DOWNLOAD_SINGLE = 1800  # 每条下载链路（128MB @ 77KB/s ≈ 28min）
 TIMEOUT_INSTALL = 180          # osascript 安装（含用户输入密码时间）
 
 # ── 下载校验 ──

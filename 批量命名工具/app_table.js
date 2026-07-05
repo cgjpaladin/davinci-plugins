@@ -1478,7 +1478,9 @@ function showUpdateDialog(){
   document.addEventListener('keydown', function esc(e){if(e.key==='Escape'){_updating=false;_dialogEl.remove();_dialogEl=null;document.removeEventListener('keydown',esc);}});
   _dialogEl.innerHTML=`<div class="update-dialog">
     <div class="up-title">🎉 新版本 v${_updateVer}</div>
-    <div class="up-body" id="upBody">当前版本 v${APP_VERSION} → v${_updateVer}<br><br>${(_updateNotes||'暂无更新说明').replace(/\n/g,'<br>')}</div>
+    <div class="up-body" id="upBody">当前版本 v${APP_VERSION} → v${_updateVer}\n\n${(_updateNotes||'暂无更新说明').replace(/\\n/g,'\n')}</div>
+    <div class="up-progress" id="upProgress" style="display:none"><div class="up-progress-bar" id="upProgressBar"></div></div>
+    <div class="up-speed" id="upSpeed" style="display:none"></div>
     <div class="up-actions" id="upActions">
       <button class="up-btn-cancel" onclick="closeUpdateDialog()">取消</button>
       <button class="up-btn-go" id="upGoBtn" onclick="doDownload()">下载更新</button>
@@ -1492,7 +1494,10 @@ function closeUpdateDialog(){
 }
 async function doDownload(){
   const btn=document.getElementById('upGoBtn');btn.textContent='下载中…';btn.className='up-btn-go';btn.onclick=null;btn.disabled=true;
-  _updating=true;_updateReady=false;
+  _updating=true;_updateReady=false;_dlStart=Date.now();
+  // 显示进度条
+  document.getElementById('upProgress').style.display='block';
+  document.getElementById('upSpeed').style.display='block';
   const tr=await call('trigger_update');
   call('debug_log','trigger_update: '+JSON.stringify(tr));
   if(!tr||!tr.ok){
@@ -1509,20 +1514,30 @@ function pollProgress(){
     const el=document.getElementById('updateStatus');
     const body=document.getElementById('upBody');
     const btn=document.getElementById('upGoBtn');
+    const pbar=document.getElementById('upProgressBar');
+    const prg=document.getElementById('upProgress');
+    const spd=document.getElementById('upSpeed');
     if(p.total>0){
       const pct=Math.min(99,Math.round(p.downloaded*100/p.total));
-      const bar='█'.repeat(pct/5)+'░'.repeat(20-pct/5);
-      el.innerHTML=`⬇ [${bar}] ${pct}%`;
-      if(body)body.textContent=`下载中… ${(p.downloaded/1048576).toFixed(1)}/${(p.total/1048576).toFixed(1)}MB`;
+      const mbDown=(p.downloaded/1048576).toFixed(1);
+      const mbTotal=(p.total/1048576).toFixed(1);
+      const elapsed=((Date.now()-_dlStart)/1000).toFixed(0);
+      const kbps=p.downloaded>0?Math.round(p.downloaded*8/(Date.now()-_dlStart+1)):0;
+      prg.style.display='block';spd.style.display='block';
+      pbar.style.width=pct+'%';
+      spd.textContent=`${mbDown} / ${mbTotal} MB · ${kbps} Kbps · ${elapsed}s`;
+      el.innerHTML=`⬇ ${pct}%`;
+      body.textContent=`下载中…`;
     }
     if(p.ready){
       _updating=false;_updateReady=true;
       if(btn){btn.textContent='立即重启';btn.className='up-btn-go';btn.onclick=doRestart;btn.disabled=false;}
       if(body)body.textContent='更新包已下载完成，准备好后点击重启';
+      if(spd)spd.textContent='';
       el.innerHTML='✅ 更新就绪';
       return;
     }
-    setTimeout(pollProgress,400);
+    setTimeout(pollProgress,500);
   });
 }
 async function doRestart(){
