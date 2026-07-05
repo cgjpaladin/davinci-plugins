@@ -35,7 +35,7 @@ fi
 NODE=$(command -v node) || { echo "❌ Node.js 未安装"; exit 1; }
 $NODE --check "$JS_FILE" || { echo "❌ JS 语法错误"; exit 1; }
 
-# 不手动 rm -rf dist/，不设 --clean——避免批量删除弹窗
+# 构建 dist/ → 验证 → zip → 桌面（一次打包一次清，就一个弹窗）
 mkdir -p _build
 python3 _splice.py "$VARIANT"
 
@@ -67,11 +67,12 @@ $SYSPY -m PyInstaller \
   --noconfirm \
   renamer_web.py
 
-# 从临时 dist mv 到正式 dist，再同步桌面
+# 清除旧构建 → mv 新构建 → 验证 → zip → 桌面（一次打包一次清，就一个弹窗）
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_OUT="$SCRIPT_DIR/dist/$APP_NAME.app"
-mv -f "$BUILD_DIST/批量命名工具.app" "$APP_OUT" 2>/dev/null && echo "✅ $APP_NAME.app → $APP_OUT"
-rmdir "$BUILD_DIST" 2>/dev/null  # 空目录清掉，不触发批量删除
+rm -rf "$APP_OUT" 2>/dev/null
+mv "$BUILD_DIST/批量命名工具.app" "$APP_OUT" && echo "✅ $APP_NAME.app → dist/"
+rmdir "$BUILD_DIST" 2>/dev/null
 
 # 验证打包完整性
 BUNDLE="$APP_OUT/Contents/Resources/$HTML_FILE"
