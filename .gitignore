@@ -8,6 +8,7 @@
 *.pkg
 *.pyc
 *.zip
+!update_latest.zip
 .DS_Store
 .env
 .workbuddy/

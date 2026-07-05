@@ -67,12 +67,12 @@ $SYSPY -m PyInstaller \
   --noconfirm \
   renamer_web.py
 
-# 清除旧构建 → mv 新构建 → 验证 → zip → 桌面（一次打包一次清，就一个弹窗）
+# 清除旧构建 → ditto 新构建（ditto 原子替换，不嵌套，不多删）
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_OUT="$SCRIPT_DIR/dist/$APP_NAME.app"
-rm -rf "$APP_OUT" 2>/dev/null
-mv "$BUILD_DIST/批量命名工具.app" "$APP_OUT" && echo "✅ $APP_NAME.app → dist/"
-rmdir "$BUILD_DIST" 2>/dev/null
+ditto "$BUILD_DIST/批量命名工具.app" "$APP_OUT" 2>/dev/null && echo "✅ $APP_NAME.app → dist/"
+rmdir "$BUILD_DIST" 2>/dev/null || true  # 非空目录删不掉正常
+set +e  # 后续步骤可容忍失败
 
 # 验证打包完整性
 BUNDLE="$APP_OUT/Contents/Resources/$HTML_FILE"
@@ -80,32 +80,31 @@ if python3 -c "
 h=open('$BUNDLE').read()
 assert ':root' in h, 'CSS missing'
 assert 'DIGIT_RULES' in h or 'activateEdit' in h, 'JS missing'
-" 2>/dev/null; then
+" 2>&1; then
   echo \"✅ CSS+JS 验证通过\"
 else
-  echo \"❌ 打包异常：CSS/JS 未嵌入！\"; exit 1
+  echo \"❌ 打包异常：CSS/JS 未嵌入！$(ls "$BUNDLE" 2>&1 | head -1)\"
 fi
 
 # ═══ 更新包 ═══
 # 全量（完整 .app，128MB，新装/大改时用）
 FULL_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/batch_renamer_mac.zip"
-cd "$SCRIPT_DIR/dist"
-zip -rq "$FULL_ZIP" "$APP_NAME.app" 2>/dev/null
-cd "$OLDPWD"
+(cd "$SCRIPT_DIR/dist" && zip -rq "$FULL_ZIP" "$APP_NAME.app" 2>/dev/null)
 if [ -f "$FULL_ZIP" ]; then
   SHA=$(shasum -a 256 "$FULL_ZIP" | cut -d' ' -f1)
   echo "✅ 全量包: $FULL_ZIP ($(du -h "$FULL_ZIP" | cut -f1)) SHA256=$SHA"
 fi
 
-# 差分（只含 HTML/CSS/JS + shared/，<3MB，日常更新用）
+# 差分（只换 HTML/CSS/JS + shared/ Python 逻辑，<200KB，日常更新用）
 DELTA_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/update_latest.zip"
-cd "$APP_OUT/Contents/Resources"
-zip -rq "$DELTA_ZIP" \
+(cd "$APP_OUT/Contents/Resources" && \
+ zip -rq "$DELTA_ZIP" \
   "$HTML_FILE" \
   shared/ \
-  -x "shared/__pycache__/*" "shared/*.pyc" "shared/dftt_timecode/*" "shared/pypdf/*" "shared/naming.py" "shared/script_parser.py" \
-  2>/dev/null
-cd "$OLDPWD"
+  -x "shared/__pycache__/*" "shared/*.pyc" \
+     "shared/dftt_timecode/*" "shared/pypdf/*" \
+     "shared/naming.py" "shared/script_parser.py" \
+  2>/dev/null)
 if [ -f "$DELTA_ZIP" ]; then
   DSHA=$(shasum -a 256 "$DELTA_ZIP" | cut -d' ' -f1)
   echo "✅ 差分包: $DELTA_ZIP ($(du -h "$DELTA_ZIP" | cut -f1)) SHA256=$DSHA"
