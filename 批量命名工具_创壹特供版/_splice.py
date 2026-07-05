@@ -16,7 +16,7 @@ from datetime import datetime
 try:
     h = subprocess.check_output(['git','-C','..','rev-parse','--short','HEAD']).decode().strip()
     b = subprocess.check_output(['git','-C','..','rev-parse','--abbrev-ref','HEAD']).decode().strip()
-except:
+except (subprocess.CalledProcessError, FileNotFoundError, OSError):
     h = 'dev'; b = '?'
 ts = datetime.now().strftime('%m-%d %H:%M')
 js = re.sub(r"const APP_GIT_HASH=''", f"const APP_GIT_HASH='{h}'", js)

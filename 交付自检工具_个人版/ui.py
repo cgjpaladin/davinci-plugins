@@ -1256,7 +1256,7 @@ def _show_config_dialog():
 import tkinter as tk, sys, os
 # macOS: bring tkinter to front; Windows: no-op（Win32 默认前台）
 if sys.platform == "darwin":
-    os.system("""/usr/bin/osascript -e 'tell application "System Events" to set frontmost of process "Python" to true' 2>/dev/null &""")
+    import subprocess; subprocess.run(["/usr/bin/osascript", "-e", 'tell application "System Events" to set frontmost of process "Python" to true'], timeout=2, capture_output=True)
 root = tk.Tk()
 root.withdraw()  # 先隐藏，避免左上角闪现
 root.title("交付自检工具 · 激活")
