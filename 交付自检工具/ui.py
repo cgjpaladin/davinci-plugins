@@ -1256,7 +1256,7 @@ def _show_config_dialog():
 import tkinter as tk, sys, os
 # macOS: bring tkinter to front; Windows: no-op（Win32 默认前台）
 if sys.platform == "darwin":
-    os.system("""/usr/bin/osascript -e 'tell application "System Events" to set frontmost of process "Python" to true' 2>/dev/null &""")
+    import subprocess; subprocess.run(["/usr/bin/osascript", "-e", 'tell application "System Events" to set frontmost of process "Python" to true'], timeout=2, capture_output=True)
 root = tk.Tk()
 root.withdraw()  # 先隐藏，避免左上角闪现
 root.title("交付自检工具 · 激活")
@@ -2466,19 +2466,27 @@ def _export_debug_package():
     global _UI_ERROR_COUNT
     import zipfile, subprocess, os, time, platform, socket, json
     # ── 选目录 ──
-    try:
-        r = subprocess.run(
-            ["osascript", "-e",
-             'POSIX path of (choose folder with prompt "选择导出位置")'],
-            capture_output=True, text=True, encoding="utf-8", timeout=60)
-        dest = r.stdout.strip()
-        if not dest or not os.path.isdir(dest):
-            itm[BTN_ERR_SEND].Text = "📋 导出日志" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
-            return
-    except Exception as e:
-        _action_log(f"❌ 选目录失败: {e}")
+    dest = ""
+    if sys.platform == "darwin":
+        try:
+            r = subprocess.run(
+                ["osascript", "-e",
+                 'POSIX path of (choose folder with prompt "选择导出位置")'],
+                capture_output=True, text=True, encoding="utf-8", timeout=60)
+            dest = r.stdout.strip()
+        except Exception as e:
+            _action_log(f"❌ 选目录失败: {e}")
+    elif sys.platform == "win32":
+        try:
+            # PowerShell folder picker — 兼容性好于 tkinter askdirectory
+            ps_code = 'Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; $f.ShowDialog(); $f.SelectedPath'
+            r = subprocess.run(["powershell", "-NoProfile", "-Command", ps_code],
+                               capture_output=True, text=True, timeout=60)
+            dest = r.stdout.strip() if r.returncode == 0 else ""
+        except Exception as e:
+            _action_log(f"❌ 选目录失败: {e}")
+    if not dest or not os.path.isdir(dest):
         itm[BTN_ERR_SEND].Text = "📋 导出日志" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
-        return
     # ── 文件名 ──
     now = time.localtime()
     from shared.license import get_machine_fingerprint
