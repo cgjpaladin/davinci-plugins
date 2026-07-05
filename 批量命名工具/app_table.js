@@ -1466,8 +1466,8 @@ function result(m){call('debug_log','result: '+m);document.getElementById('resul
 let _updateVer='', _updateNotes='', _updating=false, _updateReady=false, _dlStart=0;
 function onUpdateFound(ver, notes){
   _updateVer=ver;_updateNotes=notes;
-  // 直接开始后台下载
-  doDownload();
+  const el=document.getElementById('updateStatus');
+  el.innerHTML='<span class="up-dot"></span> v'+ver+' 可用 <button class="up-btn" onclick="doDownload()">更新</button>';
 }
 async function doDownload(){
   if(_updating)return;
