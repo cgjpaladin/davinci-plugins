@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip"
     ],
-    "sha256": "0b8db232e7bc17093276ff6204120730b44e801fb8d78b20febad8bf96e42ed0",
+    "sha256": "b0e47629b1b83296b3f591fb6807ce2c9e96cd4f6cf43fbc56c1fa6be1b1e770",
     "notes": "🔍 排错报告一键导出（网络诊断+授权快照+激活历史+环境配置）\n🛡️ 指纹稳定不漂移，VPN不影响激活\n📋 配置页一键复制机器指纹，发给裁缝老师",
     "history": [
       {
@@ -54,7 +54,7 @@
       "https://github.com/cgjpaladin/davinci-plugins/releases/download/batch_renamer-v3.7.1/batch_renamer_mac.zip"
     ],
     "notes": "🛡️ 归档中断保护：逐文件 .tmp 原子写入\n🔙 完整 Undo：字段编辑/删除/拖拽/改名 全覆盖\n🖱️ 拖拽 ghost 残留修复\n🖼 图片格式扩充：gif/webp/tga/psd\n🐛 蓝条闪烁修复 · SMB 性能优化",
-    "sha256": "6a6979aa6a1ea2e0ac9f4aa8d5386cf450d569b11ee29673f60a917b151610f9",
+    "sha256": "b0e47629b1b83296b3f591fb6807ce2c9e96cd4f6cf43fbc56c1fa6be1b1e770",
     "history": [
       {
         "version": "3.7.1",
