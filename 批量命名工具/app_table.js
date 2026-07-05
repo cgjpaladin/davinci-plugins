@@ -1,4 +1,4 @@
-const APP_VERSION='3.7.0';
+const APP_VERSION='3.7.1';
 const APP_GIT_HASH='';
 const APP_BRANCH='';
 const APP_BUILD_TIME='';
@@ -1462,79 +1462,41 @@ function _runSelfTest(){
 let tt;function toast(m){call('debug_log','TOAST: '+m);const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2500)}
 function result(m){call('debug_log','result: '+m);document.getElementById('resultMsg').textContent=m}
 
-// ═══ 自动更新 ═══
-let _updateVer='', _updateNotes='', _updating=false, _updateReady=false, _dialogEl=null;
+// ═══ 自动更新（Downie 式：后台下载，状态栏进度） ═══
+let _updateVer='', _updateNotes='', _updating=false, _updateReady=false, _dlStart=0;
 function onUpdateFound(ver, notes){
   _updateVer=ver;_updateNotes=notes;
-  const el=document.getElementById('updateStatus');
-  el.innerHTML='<span class="up-dot"></span> v'+ver+' 可用 <button class="up-btn" onclick="showUpdateDialog()">更新</button>';
-  call('debug_log','UPDATE: found v'+ver);
-}
-function showUpdateDialog(){
-  if(!_updateVer)return;
-  if(_dialogEl){_dialogEl.remove();_dialogEl=null;}
-  _dialogEl=document.createElement('div');_dialogEl.className='update-overlay show';
-  _dialogEl.addEventListener('click', e => { if(e.target===_dialogEl){_updating=false;_dialogEl.remove();_dialogEl=null;} });
-  document.addEventListener('keydown', function esc(e){if(e.key==='Escape'){_updating=false;_dialogEl.remove();_dialogEl=null;document.removeEventListener('keydown',esc);}});
-  _dialogEl.innerHTML=`<div class="update-dialog">
-    <div class="up-title">🎉 新版本 v${_updateVer}</div>
-    <div class="up-body" id="upBody">当前版本 v${APP_VERSION} → v${_updateVer}\n\n${(_updateNotes||'暂无更新说明').replace(/\\n/g,'\n')}</div>
-    <div class="up-progress" id="upProgress" style="display:none"><div class="up-progress-bar" id="upProgressBar"></div></div>
-    <div class="up-speed" id="upSpeed" style="display:none"></div>
-    <div class="up-actions" id="upActions">
-      <button class="up-btn-cancel" onclick="closeUpdateDialog()">取消</button>
-      <button class="up-btn-go" id="upGoBtn" onclick="doDownload()">下载更新</button>
-    </div>
-  </div>`;
-  document.body.appendChild(_dialogEl);
-}
-function closeUpdateDialog(){
-  _updating=false;
-  if(_dialogEl){_dialogEl.remove();_dialogEl=null;}
+  // 直接开始后台下载
+  doDownload();
 }
 async function doDownload(){
-  const btn=document.getElementById('upGoBtn');btn.textContent='下载中…';btn.className='up-btn-go';btn.onclick=null;btn.disabled=true;
+  if(_updating)return;
   _updating=true;_updateReady=false;_dlStart=Date.now();
-  // 显示进度条
-  document.getElementById('upProgress').style.display='block';
-  document.getElementById('upSpeed').style.display='block';
+  const el=document.getElementById('updateStatus');
+  el.innerHTML='⬇ 下载中… 0%';
   const tr=await call('trigger_update');
-  call('debug_log','trigger_update: '+JSON.stringify(tr));
   if(!tr||!tr.ok){
-    btn.textContent='下载更新';btn.onclick=doDownload;btn.disabled=false;document.getElementById('upBody').textContent='下载失败: '+(tr?tr.error:'网络不可达');
+    el.innerHTML='❌ 更新失败 <button class="up-btn" onclick="retryUpdate()">重试</button>';
     _updating=false;return;
   }
-  // 轮询进度
   pollProgress();
 }
+function retryUpdate(){doDownload();}
 function pollProgress(){
   if(!_updating)return;
   call('get_update_progress').then(p=>{
     if(!_updating)return;
     const el=document.getElementById('updateStatus');
-    const body=document.getElementById('upBody');
-    const btn=document.getElementById('upGoBtn');
-    const pbar=document.getElementById('upProgressBar');
-    const prg=document.getElementById('upProgress');
-    const spd=document.getElementById('upSpeed');
     if(p.total>0){
       const pct=Math.min(99,Math.round(p.downloaded*100/p.total));
       const mbDown=(p.downloaded/1048576).toFixed(1);
       const mbTotal=(p.total/1048576).toFixed(1);
       const elapsed=((Date.now()-_dlStart)/1000).toFixed(0);
-      const kbps=p.downloaded>0?Math.round(p.downloaded*8/(Date.now()-_dlStart+1)):0;
-      prg.style.display='block';spd.style.display='block';
-      pbar.style.width=pct+'%';
-      spd.textContent=`${mbDown} / ${mbTotal} MB · ${kbps} Kbps · ${elapsed}s`;
-      el.innerHTML=`⬇ ${pct}%`;
-      body.textContent=`下载中…`;
+      el.innerHTML=`⬇ ${pct}% · ${mbDown}/${mbTotal}MB · ${elapsed}s`;
     }
     if(p.ready){
       _updating=false;_updateReady=true;
-      if(btn){btn.textContent='立即重启';btn.className='up-btn-go';btn.onclick=doRestart;btn.disabled=false;}
-      if(body)body.textContent='更新包已下载完成，准备好后点击重启';
-      if(spd)spd.textContent='';
-      el.innerHTML='✅ 更新就绪';
+      el.innerHTML=`✅ v${_updateVer} 就绪 <button class="up-btn" onclick="doRestart()">重启</button>`;
       return;
     }
     setTimeout(pollProgress,500);
@@ -1542,11 +1504,14 @@ function pollProgress(){
 }
 async function doRestart(){
   if(!_updateReady)return;
-  const btn=document.getElementById('upGoBtn');btn.textContent='重启中…';btn.disabled=true;
-  toast('正在重启…');
+  const el=document.getElementById('updateStatus');
+  el.innerHTML='重启中…';
   const r=await call('apply_update');
-  if(r&&!r.ok){btn.textContent='立即重启';btn.onclick=doRestart;btn.disabled=false;toast('重启失败: '+(r.error||'未知错误'));}
+  if(r&&!r.ok){el.innerHTML='❌ 重启失败: '+(r.error||'未知错误');}
 }
+function checkUpdate(){ call('check_update').then(r=>{if(r.update_available)onUpdateFound(r.latest,r.notes);}); }
+
+setStatus('就绪  ·  拖拽排序  ·  右键菜单  ·  Ctrl+Z 撤销  ·  Del 移除');
 function checkUpdate(){ call('check_update').then(r=>{if(r.update_available)onUpdateFound(r.latest,r.notes)}); }
 
 setStatus('就绪  ·  拖拽排序  ·  右键菜单  ·  Ctrl+Z 撤销  ·  Del 移除');
