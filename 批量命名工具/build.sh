@@ -11,7 +11,7 @@ if [ "$VARIANT" = "table" ]; then
   JS_FILE="app_table.js"
   HTML_FILE="renamer_table.html"
   HTML_BUNDLE="_build/renamer_table.html"
-  APP_NAME="批量命名工具-表格版"
+  APP_NAME="批量命名工具"
 else
   JS_FILE="card/app.js"
   HTML_FILE="renamer_web.html"

@@ -2829,9 +2829,19 @@ def _do_update(ev):
         except Exception as e:
             _items["up_icon"].Text = "❌"
             _items["up_title"].Text = "更新失败"
-            _items["up_body"].PlainText = str(e)[:200]
+            # 翻译常见错误为人话
+            _err_raw = str(e)
+            if "timeout" in _err_raw.lower() or "timed out" in _err_raw.lower():
+                _err_friendly = "下载超时，请检查网络后重试"
+            elif "certificate" in _err_raw.lower() or "ssl" in _err_raw.lower():
+                _err_friendly = "网络连接不安全，请检查系统时间或关闭代理"
+            elif "all links" in _err_raw.lower() or "链路均不可达" in _err_raw:
+                _err_friendly = "所有下载链路均不可达，请稍后重试"
+            else:
+                _err_friendly = f"下载失败，请稍后重试"
+            _items["up_body"].PlainText = _err_friendly
             _items["up_status"].Text = ""
-            _action_log(f"🪟 ❌更新失败: {str(e)[:80]}")
+            _action_log(f"🪟 ❌更新失败: {_err_raw[:80]}")
         _UPDATING = False
         _items["updateNotesGo"].Text = "关闭"; _items["updateNotesGo"].Enabled = True
 
@@ -3138,16 +3148,6 @@ def main():
     dlg.Show()
     dlg.RecalcLayout()
     _init_connection()
-
-    # 预热 osascript（macOS 首次调用需初始化 AppleScript 引擎，Windows 跳过）
-    if _sys.platform == "darwin":
-        import threading
-        def _warm_osascript():
-            try:
-                subprocess.run(["osascript", "-e", ""], timeout=10, capture_output=True)
-            except Exception:
-                pass
-        threading.Thread(target=_warm_osascript, daemon=True).start()
 
     # ══ License ══（仅个人版，同步校验）
     global _ai_allowed
