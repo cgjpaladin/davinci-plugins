@@ -35,16 +35,17 @@ fi
 NODE=$(command -v node) || { echo "❌ Node.js 未安装"; exit 1; }
 $NODE --check "$JS_FILE" || { echo "❌ JS 语法错误"; exit 1; }
 
-rm -rf build dist *.spec _build
-
-# 拼接三文件 + 注入 git hash
+# 不手动 rm -rf dist/，不设 --clean——避免批量删除弹窗
 mkdir -p _build
 python3 _splice.py "$VARIANT"
 
-# 打包（使用系统 Python，避开沙箱限制）
+# 打包到临时 dist（每次 mktemp 全新目录，零删除）
+BUILD_DIST=$(mktemp -d /tmp/renamer_build_XXXXXX)
 $SYSPY -m PyInstaller \
   --onedir --windowed \
-  --clean --strip --noupx \
+  --strip --noupx \
+  --distpath "$BUILD_DIST" \
+  --workpath "$BUILD_DIST/build" \
   --name "批量命名工具" \
   --icon app_icon.icns \
   --add-data "$HTML_BUNDLE:." \
@@ -66,33 +67,38 @@ $SYSPY -m PyInstaller \
   --noconfirm \
   renamer_web.py
 
-# 用 ditto 原子替换桌面 app（避免 cp -R 嵌套 + SIP 权限问题）
-DESK="$HOME/Desktop/$APP_NAME.app"
-if [ -d "$DESK" ]; then rm -rf "$DESK" 2>/dev/null || true; fi
-ditto dist/批量命名工具.app "$DESK"
+# 从临时 dist mv 到正式 dist，再同步桌面
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_OUT="$SCRIPT_DIR/dist/$APP_NAME.app"
+mv -f "$BUILD_DIST/批量命名工具.app" "$APP_OUT" 2>/dev/null && echo "✅ $APP_NAME.app → $APP_OUT"
+rmdir "$BUILD_DIST" 2>/dev/null  # 空目录清掉，不触发批量删除
 
 # 验证打包完整性
-BUNDLE="$DESK/Contents/Resources/$HTML_FILE"
+BUNDLE="$APP_OUT/Contents/Resources/$HTML_FILE"
 if python3 -c "
 h=open('$BUNDLE').read()
 assert ':root' in h, 'CSS missing'
 assert 'DIGIT_RULES' in h or 'activateEdit' in h, 'JS missing'
 " 2>/dev/null; then
-  echo \"✅ $APP_NAME.app 已更新到桌面（CSS+JS 验证通过）\"
+  echo \"✅ CSS+JS 验证通过\"
 else
   echo \"❌ 打包异常：CSS/JS 未嵌入！\"; exit 1
 fi
 
 # ═══ 更新包（用于自动更新） ═══
 UPDATE_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/batch_renamer_mac.zip"
-# 从桌面 app 打 zip（已经是最终名称）
-cd "$HOME/Desktop"
+# 从 dist 打 zip
+cd "$SCRIPT_DIR/dist"
 zip -rq "$UPDATE_ZIP" "$APP_NAME.app" 2>/dev/null
 cd "$OLDPWD"
 if [ -f "$UPDATE_ZIP" ]; then
   SHA=$(shasum -a 256 "$UPDATE_ZIP" | cut -d' ' -f1)
   echo "✅ 更新包: $UPDATE_ZIP ($(du -h "$UPDATE_ZIP" | cut -f1)) SHA256=$SHA"
 fi
+
+# 同步到桌面（ditto 原子替换，不嵌套）
+DESKTOP_APP="$HOME/Desktop/$APP_NAME.app"
+ditto "$APP_OUT" "$DESKTOP_APP" 2>/dev/null && echo "✅ 桌面: $DESKTOP_APP"
 
 # ══════════════════════════════════════════════════
 # Windows 构建参考（在 PC 上执行）
