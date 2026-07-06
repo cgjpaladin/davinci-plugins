@@ -1,4 +1,4 @@
-const APP_VERSION='3.7.1';
+const APP_VERSION='3.7.2';
 const APP_GIT_HASH='';
 const APP_BRANCH='';
 const APP_BUILD_TIME='';
@@ -1463,39 +1463,68 @@ let tt;function toast(m){call('debug_log','TOAST: '+m);const el=document.getElem
 function result(m){call('debug_log','result: '+m);document.getElementById('resultMsg').textContent=m}
 
 // ═══ 自动更新（Downie 式：后台下载，状态栏进度） ═══
-let _updateVer='', _updateNotes='', _updating=false, _updateReady=false, _dlStart=0;
+// ═══ 自动更新（弹窗公告 + 差分下载） ═══
+let _updateVer='', _updateNotes='', _updating=false, _updateReady=false, _dlStart=0, _dialogEl=null;
 function onUpdateFound(ver, notes){
   _updateVer=ver;_updateNotes=notes;
   const el=document.getElementById('updateStatus');
-  el.innerHTML='<span class="up-dot"></span> v'+ver+' 可用 <button class="up-btn" onclick="doDownload()">更新</button>';
+  el.innerHTML='<span class="up-dot"></span> v'+ver+' 可用 <button class="up-btn" onclick="showUpdateDialog()">更新</button>';
+}
+function showUpdateDialog(){
+  if(!_updateVer)return;
+  if(_dialogEl){_dialogEl.remove();_dialogEl=null;}
+  _dialogEl=document.createElement('div');_dialogEl.className='update-overlay show';
+  _dialogEl.addEventListener('click',e=>{if(e.target===_dialogEl){_updating=false;_dialogEl.remove();_dialogEl=null;}});
+  document.addEventListener('keydown',function esc(e){if(e.key==='Escape'){_updating=false;_dialogEl.remove();_dialogEl=null;document.removeEventListener('keydown',esc);}});
+  _dialogEl.innerHTML=`<div class="update-dialog">
+    <div class="up-title">\uD83C\uDF89 v${_updateVer}</div>
+    <div class="up-body" id="upBody">${APP_VERSION} \u2192 ${_updateVer}\n\n${(_updateNotes||'\u6682\u65E0\u66F4\u65B0\u8BF4\u660E').replace(/\\n/g,'\n')}</div>
+    <div class="up-progress" id="upProgress" style="display:none"><div class="up-progress-bar" id="upProgressBar"></div></div>
+    <div class="up-speed" id="upSpeed" style="display:none"></div>
+    <div class="up-actions" id="upActions">
+      <button class="up-btn-cancel" onclick="closeUpdateDialog()">\u53D6\u6D88</button>
+      <button class="up-btn-go" id="upGoBtn" onclick="doDownload()">\u4E0B\u8F7D\u66F4\u65B0</button>
+    </div>
+  </div>`;
+  document.body.appendChild(_dialogEl);
+}
+function closeUpdateDialog(){
+  _updating=false;
+  if(_dialogEl){_dialogEl.remove();_dialogEl=null;}
 }
 async function doDownload(){
   if(_updating)return;
   _updating=true;_updateReady=false;_dlStart=Date.now();
-  const el=document.getElementById('updateStatus');
-  el.innerHTML='⬇ 下载中… 0%';
+  const btn=document.getElementById('upGoBtn');btn.textContent='\u4E0B\u8F7D\u4E2D\u2026';btn.disabled=true;btn.onclick=null;
+  const prg=document.getElementById('upProgress');prg.style.display='block';
+  const spd=document.getElementById('upSpeed');spd.style.display='block';
   const tr=await call('trigger_delta');
   if(!tr||!tr.ok){
-    el.innerHTML='❌ 更新失败 <button class="up-btn" onclick="retryUpdate()">重试</button>';
+    document.getElementById('upBody').textContent='\u4E0B\u8F7D\u5931\u8D25: '+(tr?tr.error:'\u7F51\u7EDC\u4E0D\u53EF\u8FBE');
+    btn.textContent='\u4E0B\u8F7D\u66F4\u65B0';btn.onclick=doDownload;btn.disabled=false;
     _updating=false;return;
   }
   pollProgress();
 }
-function retryUpdate(){doDownload();}
 function pollProgress(){
   if(!_updating)return;
   call('get_update_progress').then(p=>{
     if(!_updating)return;
+    const body=document.getElementById('upBody');const btn=document.getElementById('upGoBtn');
+    const pbar=document.getElementById('upProgressBar');const spd=document.getElementById('upSpeed');
     const el=document.getElementById('updateStatus');
     if(p.total>0){
       const pct=Math.min(99,Math.round(p.downloaded*100/p.total));
-      const mbDown=(p.downloaded/1048576).toFixed(1);
-      const elapsed=((Date.now()-_dlStart)/1000).toFixed(0);
-      el.innerHTML=`⬇ ${pct}% · ${mbDown}MB · ${elapsed}s`;
+      const mbDown=(p.downloaded/1048576).toFixed(1);const elapsed=((Date.now()-_dlStart)/1000).toFixed(0);
+      pbar.style.width=pct+'%';spd.textContent=`${mbDown}MB \u00B7 ${elapsed}s`;
+      el.innerHTML=`\u2B07 ${pct}%`;
+      body.textContent='\u4E0B\u8F7D\u4E2D\u2026';
     }
     if(p.ready){
       _updating=false;_updateReady=true;
-      el.innerHTML=`✅ v${_updateVer} 就绪 <button class="up-btn" onclick="doRestart()">重启</button>`;
+      btn.textContent='\u7ACB\u5373\u91CD\u542F';btn.className='up-btn-go';btn.onclick=doRestart;btn.disabled=false;
+      body.textContent='\u66F4\u65B0\u5305\u5DF2\u4E0B\u8F7D\u5B8C\u6210\uFF0C\u70B9\u51FB\u91CD\u542F';
+      spd.textContent='';el.innerHTML='\u2705 \u66F4\u65B0\u5C31\u7EEA';
       return;
     }
     setTimeout(pollProgress,500);
@@ -1503,11 +1532,11 @@ function pollProgress(){
 }
 async function doRestart(){
   if(!_updateReady)return;
-  const el=document.getElementById('updateStatus');
-  el.innerHTML='重启中…';
+  const btn=document.getElementById('upGoBtn');btn.textContent='\u91CD\u542F\u4E2D\u2026';btn.disabled=true;
+  const el=document.getElementById('updateStatus');el.innerHTML='\u91CD\u542F\u4E2D\u2026';
   const r=await call('apply_delta');
-  if(r&&!r.ok){el.innerHTML='❌ 失败: '+(r.error||'未知');}
+  if(r&&!r.ok){btn.textContent='\u7ACB\u5373\u91CD\u542F';btn.onclick=doRestart;btn.disabled=false;el.innerHTML='\u274C \u5931\u8D25: '+(r.error||'\u672A\u77E5');}
 }
 function checkUpdate(){ call('check_update').then(r=>{if(r.update_available)onUpdateFound(r.latest,r.notes);}); }
 
-setStatus('就绪  ·  拖拽排序  ·  右键菜单  ·  Ctrl+Z 撤销  ·  Del 移除');
+setStatus('\u5C31\u7EEA  \u00B7  \u62D6\u62FD\u6392\u5E8F  \u00B7  \u53F3\u952E\u83DC\u5355  \u00B7  Ctrl+Z \u64A4\u9500  \u00B7  Del \u79FB\u9664');

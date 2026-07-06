@@ -8,10 +8,9 @@ REPO_FULL = f"{REPO_OWNER}/{REPO_NAME}"
 
 # ── 版本检查多链路（按优先级） ──
 VERSION_CHECK_URLS = [
+    f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/version.json",   # CDN 最快
     f"https://raw.githubusercontent.com/{REPO_FULL}/main/version.json",
-    f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/version.json",
     f"https://ghproxy.net/https://raw.githubusercontent.com/{REPO_FULL}/main/version.json",
-    f"https://api.github.com/repos/{REPO_FULL}/releases/latest",
 ]
 
 # ── 下载多链路 ──
