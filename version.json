@@ -48,14 +48,18 @@
     ]
   },
   "batch_renamer_mac": {
-    "version": "3.7.11",
+    "version": "3.7.12",
     "urls": [
       "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/batch_renamer-v3.7.1/batch_renamer_mac.zip",
       "https://github.com/cgjpaladin/davinci-plugins/releases/download/batch_renamer-v3.7.1/batch_renamer_mac.zip"
     ],
-    "notes": "🛡️ 归档中断保护：逐文件 .tmp 原子写入\n🔙 完整 Undo：字段编辑/删除/拖拽/改名 全覆盖\n🖱️ 拖拽 ghost 残留修复\n🖼 图片格式扩充：gif/webp/tga/psd\n🐛 蓝条闪烁修复 · SMB 性能优化",
-    "sha256": "bea6262c8db8c9981fb09bf4e9e30339c423cba3ac881be81c9c0c99ecb8d430",
+    "notes": "🔄 差分更新 + macOS原生菜单 + 非阻塞检测\n🔍 断网提示⚠ + 失败回滚 + 人话翻译\n🖥 原生菜单：关于 + 检查更新（PyObjC）",
+    "sha256": "960b4907cfeee6ca2b6fe992380a66dbbb024475651d516204991787cee3ff75",
     "history": [
+      {
+        "version": "3.7.12",
+        "notes": "🔄 差分更新 · 🖥 原生菜单 · 🔍 断网提示 · 🛡️ 回滚"
+      },
       {
         "version": "3.7.11",
         "notes": "🛡️ 归档保护 · 🔙 Undo全覆盖 · 🖱 ghost修复 · 🖼 gif/webp/tga/psd"
