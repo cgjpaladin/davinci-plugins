@@ -5,8 +5,7 @@ const APP_BUILD_TIME='';
 const EXPORT_FILENAME_PREFIX='批量命名导出_';
 // ═══ 立即执行 — 确认脚本加载 ═══
 document.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('debugMode').textContent='JS ✓';
-  // _tryStart 轮询统一处理 mock/live 初始化
+  document.getElementById('appMenu').textContent='☰';  // _tryStart 轮询统一处理 mock/live 初始化
 });
 // ═══ State ═══
 
@@ -66,8 +65,7 @@ function mock(m,...a){
 // ═══ Load ═══
 async function init(){
   if(window._initialized)return;window._initialized=true;
-  const dm = document.getElementById('debugMode');
-  const isLive=_isLive();dm.textContent=isLive?'✔ Live':'✖ Mock';call("debug_log",`APP START: ${isLive?"pywebview":"MOCK"} mode, files=${files.length}`);
+  const isLive=_isLive();call("debug_log",`APP START: ${isLive?"pywebview":"MOCK"} mode, files=${files.length}`);
   document.getElementById('updateStatus').textContent = 'v' + APP_VERSION;
 
   const cfg=await call('get_config');
@@ -165,7 +163,7 @@ function _tryStart(){
   if(live){
     _ready=true;
     if(window._tryIv)clearInterval(window._tryIv);
-    init().catch(()=>{ document.getElementById('debugMode').textContent='❌ 启动失败'; });
+    init().catch(()=>{ document.getElementById('appMenu').textContent='❌'; });
   }
 }
 window._tryIv=setInterval(_tryStart,300);
@@ -1537,6 +1535,37 @@ async function doRestart(){
   const r=await call('apply_delta');
   if(r&&!r.ok){btn.textContent='\u7ACB\u5373\u91CD\u542F';btn.onclick=doRestart;btn.disabled=false;el.innerHTML='\u274C \u5931\u8D25: '+(r.error||'\u672A\u77E5');}
 }
-function checkUpdate(){ call('check_update').then(r=>{if(r.update_available)onUpdateFound(r.latest,r.notes);}); }
+function checkUpdate(){ call('check_update').then(r=>{if(r.update_available)onUpdateFound(r.latest,r.notes);else toast('已是最新版本 v'+APP_VERSION);}); }
+
+// ── App 菜单 ──
+function showAppMenu(e){
+  const old=document.querySelector('.app-dropdown');if(old)old.remove();
+  const d=document.createElement('div');d.className='app-dropdown';
+  d.innerHTML='<div id="mnuCheck">检查更新</div><div id="mnuAbout">关于</div>';
+  const r=e.target.getBoundingClientRect();
+  d.style.left=Math.min(r.left-100,window.innerWidth-150)+'px';d.style.top=(r.bottom+4)+'px';
+  document.body.appendChild(d);
+  d.querySelector('#mnuCheck').onclick=()=>{checkUpdate();d.remove()};
+  d.querySelector('#mnuAbout').onclick=()=>{showAbout();d.remove()};
+  const close=()=>{d.remove();document.removeEventListener('click',close)};
+  setTimeout(()=>document.addEventListener('click',close),10);
+}
+function showAbout(){
+  const old=document.querySelector('.about-overlay');if(old)old.remove();
+  const ov=document.createElement('div');
+  ov.className='update-overlay show';ov.id='aboutOverlay';
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()});
+  ov.innerHTML='<div class="update-dialog"><div class="up-title">批量命名工具</div><div class="up-body" style="user-select:text;white-space:pre-wrap">版本 v'+APP_VERSION+'\n\n达芬奇剪辑工作流 · 批量文件重命名\n剧有文化 &copy; 2025-2026\n\n裁缝老师的达芬奇插件工坊</div><div class="up-actions"><button class="up-btn-go" onclick="document.getElementById(\'aboutOverlay\').remove()">关闭</button></div></div>';
+  document.body.appendChild(ov);
+}
+document.getElementById('appMenu').addEventListener('click',showAppMenu);
+// 双击 ☰ 复制调试日志
+document.getElementById('appMenu').addEventListener('dblclick',()=>{
+  call('debug_log','').then(r=>{
+    const t=(r.log||[]).join('\n');
+    if(t)navigator.clipboard.writeText(t).then(()=>toast('已复制 '+r.log.length+' 条日志'));
+    else toast('无日志');
+  });
+});
 
 setStatus('\u5C31\u7EEA  \u00B7  \u62D6\u62FD\u6392\u5E8F  \u00B7  \u53F3\u952E\u83DC\u5355  \u00B7  Ctrl+Z \u64A4\u9500  \u00B7  Del \u79FB\u9664');
