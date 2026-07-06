@@ -71,6 +71,12 @@ $SYSPY -m PyInstaller \
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_OUT="$SCRIPT_DIR/dist/$APP_NAME.app"
 ditto "$BUILD_DIST/批量命名工具.app" "$APP_OUT" 2>/dev/null && echo "✅ $APP_NAME.app → dist/"
+
+# 注入版本号到 Info.plist（原生 About 面板用）
+VERSION=$(python3 -c "import re; m=re.search(r\"const APP_VERSION='([^']+)'\", open('$SCRIPT_DIR/app_table.js').read()); print(m.group(1) if m else '0.0.0')")
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP_OUT/Contents/Info.plist" 2>/dev/null
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$APP_OUT/Contents/Info.plist" 2>/dev/null
+
 rmdir "$BUILD_DIST" 2>/dev/null || true  # 非空目录删不掉正常
 set +e  # 后续步骤可容忍失败
 

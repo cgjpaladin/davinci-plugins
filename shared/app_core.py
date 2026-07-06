@@ -199,6 +199,12 @@ class RenamerAPI:
             self._dbg_buf.append(msg)
             if len(self._dbg_buf) > 500:
                 self._dbg_buf = self._dbg_buf[-500:]
+            # 立即写盘方便排错
+            try:
+                _real_stderr = getattr(sys, '__stderr__', sys.stderr)
+                print(f"[JS] {msg}", file=_real_stderr)
+            except Exception:
+                pass
             _log.info(f"[JS] {msg}")
             return "ok"
         return {"log": list(self._dbg_buf)}
@@ -585,7 +591,42 @@ class RenamerAPI:
             return r
         except Exception as e:
             _log.info(f"check_update error: {e}")
-            return {"update_available": False, "reason": str(e)[:80]}
+            return {"update_available": False, "reason": _err_human(e)}
+
+    @staticmethod
+    def _err_human(e):
+        """技术错误 → 人话"""
+        s = str(e).lower()
+        if "timeout" in s or "timed out" in s: return "网络超时，请检查网络后重试"
+        if "429" in s or "too many" in s: return "服务器繁忙，请稍后重试"
+        if "所有" in str(e) and "不可达" in str(e): return "无法连接更新服务器，请检查网络"
+        if "connection" in s or "refused" in s: return "网络不可达，请检查网络连接"
+        return str(e)[:60]
+
+    def trigger_bg_update(self):
+        """后台查更新，不阻塞 JS 线程。完成后回调 JS onUpdateCheckDone()"""
+        import threading, json as _json
+        def _run():
+            try:
+                r = self.check_update()
+                import webview
+                windows = getattr(webview, 'windows', None)
+                if windows and len(windows) > 0:
+                    result_json = _json.dumps(r, ensure_ascii=False)
+                    windows[0].evaluate_js(f'onUpdateCheckDone({result_json})')
+            except Exception as e:
+                _log.info(f"trigger_bg_update error: {e}")
+                # 通知 JS 检测失败（json 序列化避免字符转义问题）
+                try:
+                    _reason = _err_human(e)
+                    _reason_json = _json.dumps({"reason": _reason}, ensure_ascii=False)
+                    import webview
+                    windows = getattr(webview, 'windows', None)
+                    if windows and len(windows) > 0:
+                        windows[0].evaluate_js(f'onUpdateCheckDone({_reason_json})')
+                except Exception:
+                    pass
+        threading.Thread(target=_run, daemon=True).start()
 
     def trigger_delta(self):
         """下载差分更新包 update_latest.zip（<3MB）"""
@@ -622,10 +663,10 @@ class RenamerAPI:
         except Exception as e:
             _UPDATE_STATE["downloading"] = False
             _log.warning(f"trigger_delta error: {e}")
-            return {"ok": False, "error": str(e)[:100]}
+            return {"ok": False, "error": _err_human(e)}
 
     def apply_delta(self):
-        """将差分文件写入当前 .app，重启应用"""
+        """将差分文件写入当前 .app，重启应用。失败自动回滚。"""
         global _UPDATE_STATE
         if not _UPDATE_STATE["ready"]:
             return {"ok": False, "error": "更新包未就绪"}
@@ -637,16 +678,43 @@ class RenamerAPI:
             res_dir = os.path.join(meipass)
             _log.info(f"apply_delta: app_path={app_path}, res_dir={res_dir}")
 
-            import zipfile, tempfile
-            with zipfile.ZipFile(_UPDATE_STATE["zip_path"], 'r') as zf:
-                zf.extractall(res_dir)
+            import zipfile, tempfile, shutil as _sh
+            zip_path = _UPDATE_STATE["zip_path"]
+            backup_dir = tempfile.mkdtemp(prefix="renamer_backup_")
 
-            # 清 pyc 缓存（避免旧字节码加载）
-            for root, dirs, files in os.walk(res_dir):
-                for d in list(dirs):
-                    if d == '__pycache__':
-                        import shutil
-                        shutil.rmtree(os.path.join(root, d), ignore_errors=True)
+            try:
+                # 只备份将被覆盖的文件
+                with zipfile.ZipFile(zip_path, 'r') as zf:
+                    for zi in zf.infolist():
+                        if zi.is_dir(): continue
+                        target = os.path.join(res_dir, zi.filename)
+                        if os.path.isfile(target):
+                            bkp = os.path.join(backup_dir, zi.filename)
+                            os.makedirs(os.path.dirname(bkp), exist_ok=True)
+                            _sh.copy2(target, bkp)
+
+                # 解压差分
+                with zipfile.ZipFile(zip_path, 'r') as zf:
+                    zf.extractall(res_dir)
+
+                # 清 pyc 缓存
+                for root, dirs, files in os.walk(res_dir):
+                    for d in list(dirs):
+                        if d == '__pycache__':
+                            _sh.rmtree(os.path.join(root, d), ignore_errors=True)
+
+            except Exception as zip_err:
+                _log.warning(f"apply_delta failed, rolling back: {zip_err}")
+                # 回滚：恢复备份文件
+                for root, dirs, files in os.walk(backup_dir):
+                    for f in files:
+                        src = os.path.join(root, f)
+                        rel = os.path.relpath(src, backup_dir)
+                        dst = os.path.join(res_dir, rel)
+                        _sh.copy2(src, dst)
+                return {"ok": False, "error": _err_human(zip_err)}
+            finally:
+                _sh.rmtree(backup_dir, ignore_errors=True)
 
             _log.info(f"apply_delta done, restarting")
             # 用独立脚本重启（避免 os._exit 杀子进程）
@@ -663,7 +731,7 @@ class RenamerAPI:
             os._exit(0)
         except Exception as e:
             _log.warning(f"apply_delta error: {e}")
-            return {"ok": False, "error": str(e)[:100]}
+            return {"ok": False, "error": _err_human(e)}
         try:
             _UPDATE_STATE["downloading"] = True
             _UPDATE_STATE["downloaded"] = 0
@@ -823,7 +891,7 @@ del "%~f0"
 
         except Exception as e:
             _log.warning(f"apply_update error: {e}")
-            return {"ok": False, "error": str(e)[:100]}
+            return {"ok": False, "error": _err_human(e)}
 
     def get_update_progress(self):
         global _UPDATE_STATE
@@ -955,8 +1023,8 @@ HTML_FILE = os.path.join(_BASE_DIR, HTML_FILE_NAME)
 
 # ── 版本检测 ──
 import re as _re_ver
-_SCRIPT_JS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app_table.js')
-_HTML = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'renamer_table.html')
+_SCRIPT_JS = os.path.join(_BASE_DIR, 'app_table.js')
+_HTML = os.path.join(_BASE_DIR, HTML_FILE_NAME) if os.path.isfile(os.path.join(_BASE_DIR, HTML_FILE_NAME)) else os.path.join(_BASE_DIR, 'renamer_table.html')
 _APP_VERSION = '0.0.0'
 _PRODUCT_ID = ('batch_renamer_mac' if sys.platform == 'darwin' else 'batch_renamer_win')
 try:
@@ -976,6 +1044,69 @@ _UPDATE_STATE = {
     "downloading": False, "downloaded": 0, "total": 0, "ready": False,
     "zip_path": "", "extract_dir": "",
 }
+
+def _setup_native_menu_cocoa():
+    """追加「检查更新」到 pywebview 现有 App 菜单。不替换，不重复。"""
+    import subprocess, threading
+    try:
+        from Foundation import NSObject
+        from AppKit import NSApplication, NSMenuItem
+        from objc import selector
+    except ImportError:
+        return
+
+    app = NSApplication.sharedApplication()
+    main_menu = app.mainMenu()
+    if not main_menu or main_menu.numberOfItems() == 0:
+        return
+
+    app_menu_item = main_menu.itemAtIndex_(0)
+    app_menu = app_menu_item.submenu()
+    if not app_menu:
+        return
+
+    # 持久化 receiver 列表（防止 GC 回收导致菜单灰掉）
+    _receivers = getattr(_setup_native_menu_cocoa, '_receivers', None)
+    if _receivers is None:
+        _receivers = []
+        _setup_native_menu_cocoa._receivers = _receivers
+
+    # 复用 webview 的 update 模块：菜单回调触发 JS checkUpdate() → Python updater.check()
+    class _CheckUpdateTarget(NSObject):
+        @selector
+        def checkForUpdates_(self, sender=None):
+            import threading
+            def _do():
+                try:
+                    import webview
+                    windows = getattr(webview, 'windows', None)
+                    if windows and len(windows) > 0:
+                        windows[0].evaluate_js('checkUpdate()')
+                except Exception:
+                    pass
+            threading.Thread(target=_do, daemon=True).start()
+
+    target = _CheckUpdateTarget.alloc().init()
+    target.retain()
+    _receivers.append(target)
+
+    item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+        '检查更新', 'checkForUpdates:', '')
+    item.setTarget_(target)
+
+    # 插入在分隔符之前（About 之后、Quit 之前）
+    sep_idx = app_menu.indexOfItemWithTitle_('')  # 找第一个空标题项或遍历
+    found = -1
+    for i in range(app_menu.numberOfItems()):
+        it = app_menu.itemAtIndex_(i)
+        if it.isSeparatorItem():
+            found = i
+            break
+    if found >= 0:
+        app_menu.insertItem_atIndex_(item, found)
+    else:
+        app_menu.addItem_(item)
+
 
 def main():
     """应用入口，由 launcher 调用"""
@@ -1022,32 +1153,6 @@ def main():
 
     api = RenamerAPI()
 
-    # ── macOS 原生菜单（pywebview 版本不兼容时静默跳过） ──
-    _native_menu = []
-    if sys.platform == 'darwin':
-        def _app_menu_action(action):
-            def _cb():
-                try:
-                    windows = getattr(webview, 'windows', None)
-                    if windows and len(windows) > 0:
-                        windows[0].evaluate_js(action)
-                except Exception:
-                    pass
-            return _cb
-        try:
-            from webview import Menu, MenuAction, MenuSeparator
-            app_menu = Menu('__app__', [
-                MenuAction('关于批量命名工具', lambda: __import__('subprocess').run(
-                    ['osascript', '-e', f'tell app "Finder" to display dialog "批量文件命名工具 v{_APP_VERSION}\\n\\n达芬奇剪辑工作流 · 批量文件重命名\\n\\n裁缝老师的插件工坊" with title "关于" buttons {{"好"}} default button 1']
-                )),
-                MenuAction('检查更新', _app_menu_action('checkUpdate()')),
-                MenuSeparator(),
-                MenuAction('退出', lambda: _window.destroy()),
-            ])
-            _native_menu = [app_menu]
-        except ImportError:
-            pass
-
     _window = webview.create_window(
         title="批量文件命名工具",
         url=f"http://127.0.0.1:{port}",
@@ -1057,7 +1162,6 @@ def main():
         resizable=True,
         background_color='#151515',
         text_select=True,
-        menu=_native_menu,
     )
     api._server_port = port  # 供 /media 路由使用
 
@@ -1093,5 +1197,19 @@ def main():
         _log.info("DOM drop handler bound")
 
     _window.events.loaded += _bind_drop
+
+    # macOS 原生菜单——loaded 后在主线程设置
+    if sys.platform == 'darwin':
+        def _setup_menu_on_loaded():
+            from Foundation import NSObject
+            from objc import selector
+            class _MenuSetupHelper(NSObject):
+                @selector
+                def performMenuSetup_(self, sender=None):
+                    _setup_native_menu_cocoa()
+            helper = _MenuSetupHelper.alloc().init()
+            helper.performSelectorOnMainThread_withObject_waitUntilDone_(
+                'performMenuSetup:', None, False)
+        _window.events.loaded += _setup_menu_on_loaded
 
     webview.start(debug=False)

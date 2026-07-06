@@ -35,7 +35,7 @@ const tc=['#2a3a1a','#1a2a3a','#3a201a','#2a1a3a','#1a3a2a','#3a301a','#1a3a3a',
 function call(m,...a){
   try{
     if(window.pywebview&&window.pywebview.api)return window.pywebview.api[m](...a);
-  }catch(e){toast("API错误: "+m);return null}
+  }catch(e){toast("API错误: "+m+" - "+e);return null}
   return mock(m,...a);
 }
 function mock(m,...a){
@@ -71,10 +71,8 @@ async function init(){
 
   const cfg=await call('get_config');
 
-  // 自动查更新（启动后 3s）
-  setTimeout(() => call('check_update').then(r => {
-    if(r && r.update_available) onUpdateFound(r.latest, r.notes);
-  }).catch(()=>{}), 3000);
+  // 自动查更新（后台线程，不阻塞 UI）
+  setTimeout(() => call('trigger_bg_update').catch(()=>{}), 3000);
   methodDescMap=cfg.method_desc_map||{};_nameFmt=cfg.name_format||[];
   // 收集所有预置镜头描述值供碰撞检测
   _reservedDesc.clear();
@@ -1477,7 +1475,7 @@ function showUpdateDialog(){
   document.addEventListener('keydown',function esc(e){if(e.key==='Escape'){_updating=false;_dialogEl.remove();_dialogEl=null;document.removeEventListener('keydown',esc);}});
   _dialogEl.innerHTML=`<div class="update-dialog">
     <div class="up-title">\uD83C\uDF89 v${_updateVer}</div>
-    <div class="up-body" id="upBody">${APP_VERSION} \u2192 ${_updateVer}\n\n${(_updateNotes||'\u6682\u65E0\u66F4\u65B0\u8BF4\u660E').replace(/\\n/g,'\n')}</div>
+    <div class="up-body" id="upBody" style="user-select:text;-webkit-user-select:text;white-space:pre-wrap">${APP_VERSION} \u2192 ${_updateVer}\n\n${(_updateNotes||'\u6682\u65E0\u66F4\u65B0\u8BF4\u660E')}</div>
     <div class="up-progress" id="upProgress" style="display:none"><div class="up-progress-bar" id="upProgressBar"></div></div>
     <div class="up-speed" id="upSpeed" style="display:none"></div>
     <div class="up-actions" id="upActions">
@@ -1537,5 +1535,14 @@ async function doRestart(){
   if(r&&!r.ok){btn.textContent='\u7ACB\u5373\u91CD\u542F';btn.onclick=doRestart;btn.disabled=false;el.innerHTML='\u274C \u5931\u8D25: '+(r.error||'\u672A\u77E5');}
 }
 function checkUpdate(){ call('check_update').then(r=>{if(r.update_available)onUpdateFound(r.latest,r.notes);else toast('已是最新版本 v'+APP_VERSION);}); }
+function onUpdateCheckDone(r){
+  var st=document.getElementById('updateStatus');
+  if(!r){ st.innerHTML='⚠ <a href="#" onclick="checkUpdate();return false" style="color:#e88">网络不可用</a>'; return; }
+  if(r.reason){ st.innerHTML='⚠ <a href="#" onclick="checkUpdate();return false" style="color:#e88">'+_errHuman(r.reason)+'</a>'; return; }
+  if(r.update_available){ onUpdateFound(r.latest,r.notes); }
+  else{ st.textContent='v'+APP_VERSION; }
+}
+function _errHuman(s){ s=s||''; if(/timeout|timed out|URLError|urlopen/i.test(s)) return '网络超时'; if(/429|Too Many/i.test(s)) return '服务器繁忙'; if(/所有.*不可达/i.test(s)) return '无法连接服务器'; return '检测失败'; }
+function showAbout(){ toast('批量文件命名工具 v'+APP_VERSION+' — 裁缝老师的插件工坊'); }
 
 setStatus('\u5C31\u7EEA  \u00B7  \u62D6\u62FD\u6392\u5E8F  \u00B7  \u53F3\u952E\u83DC\u5355  \u00B7  Ctrl+Z \u64A4\u9500  \u00B7  Del \u79FB\u9664');
