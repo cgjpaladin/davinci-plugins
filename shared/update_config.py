@@ -6,14 +6,12 @@ REPO_OWNER = "cgjpaladin"
 REPO_NAME = "davinci-plugins"
 REPO_FULL = f"{REPO_OWNER}/{REPO_NAME}"
 
-# ── 版本检查多链路（按优先级） ──
+# ── 版本检查多链路（GitHub raw 唯一真相源，CDN 作降级） ──
 VERSION_CHECK_URLS = [
-    f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/version.json",   # CDN 最快
-    f"https://raw.githubusercontent.com/{REPO_FULL}/main/version.json",
-    f"https://ghproxy.net/https://raw.githubusercontent.com/{REPO_FULL}/main/version.json",
+    f"https://raw.githubusercontent.com/{REPO_FULL}/main/version.json",  # 真相源
+    f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/version.json",        # CDN 降级
 ]
-
-# ── 下载多链路 ──
+TIMEOUT_VERSION_CHECK = 8   # 单链路超时
 UPDATE_FILE = "update_latest.zip"
 DOWNLOAD_URLS = [
     f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/update_latest.zip",
