@@ -48,7 +48,7 @@
     ]
   },
   "batch_renamer_mac": {
-    "version": "3.7.3",
+    "version": "3.7.4",
     "urls": [
       "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/batch_renamer-v3.7.1/batch_renamer_mac.zip",
       "https://github.com/cgjpaladin/davinci-plugins/releases/download/batch_renamer-v3.7.1/batch_renamer_mac.zip"
@@ -57,7 +57,7 @@
     "sha256": "c77b180748528c1548ce0e6b3763fb0163b5217519ca800f527789cad81ba03c",
     "history": [
       {
-        "version": "3.7.3",
+        "version": "3.7.4",
         "notes": "🛡️ 归档保护 · 🔙 Undo全覆盖 · 🖱 ghost修复 · 🖼 gif/webp/tga/psd"
       },
       {

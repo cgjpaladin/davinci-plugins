@@ -1015,6 +1015,30 @@ if __name__ == "__main__":
             time.sleep(0.1)
 
     api = RenamerAPI()
+
+    # ── macOS 原生菜单 ──
+    from webview import Menu, MenuAction, MenuSeparator
+    def _app_menu_action(action):
+        def _cb():
+            try:
+                windows = getattr(webview, 'windows', None)
+                if windows and len(windows) > 0:
+                    windows[0].evaluate_js(action)
+            except Exception:
+                pass
+        return _cb
+    app_menu = Menu('__app__', [
+        MenuAction('关于批量命名工具', lambda: (
+            __import__('subprocess').run(['osascript', '-e',
+                f'tell app "Finder" to display dialog "批量文件命名工具 v{_APP_VERSION}\\n\\n达芬奇剪辑工作流 · 批量重命名\\n剧有文化 © 2025-2026\\n\\n裁缝老师的达芬奇插件工坊" with title "关于" buttons {{"好"}} default button 1']))
+        )),
+        MenuAction('检查更新', _app_menu_action('checkUpdate()')),
+        MenuSeparator(),
+        MenuAction('退出', lambda: _window.destroy()),
+    ])
+    # 只在 macOS 启用原生菜单（pywebview __app__ 在其他平台被忽略）
+    _native_menu = [app_menu] if sys.platform == 'darwin' else []
+
     _window = webview.create_window(
         title="批量文件命名工具",
         url=f"http://127.0.0.1:{port}",
@@ -1024,6 +1048,7 @@ if __name__ == "__main__":
         resizable=True,
         background_color='#151515',
         text_select=True,
+        menu=_native_menu,
     )
     api._server_port = port  # 供 /media 路由使用
 
