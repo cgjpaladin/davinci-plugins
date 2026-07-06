@@ -649,12 +649,17 @@ class RenamerAPI:
                         shutil.rmtree(os.path.join(root, d), ignore_errors=True)
 
             _log.info(f"apply_delta done, restarting")
-            # 重启
-            import subprocess
+            # 用独立脚本重启（避免 os._exit 杀子进程）
+            import subprocess, tempfile
             if sys.platform == 'darwin':
-                subprocess.Popen(['open', '-n', app_path])  # -n = 新实例
+                script = f'#!/bin/bash\nsleep 1\nopen -n "{app_path}"\nrm -f "$0"\n'
             else:
-                subprocess.Popen([app_path], shell=True)
+                script = f'@echo off\nping -n 2 127.0.0.1 >nul\nstart "" "{app_path}"\ndel "%~f0"\n'
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.sh' if sys.platform == 'darwin' else '.bat', delete=False) as sf:
+                sf.write(script)
+                sf.flush(); os.chmod(sf.name, 0o755)
+            subprocess.Popen(['/bin/bash', sf.name] if sys.platform == 'darwin' else ['cmd', '/c', sf.name],
+                start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             os._exit(0)
         except Exception as e:
             _log.warning(f"apply_delta error: {e}")
@@ -1017,27 +1022,31 @@ def main():
 
     api = RenamerAPI()
 
-    # ── macOS 原生菜单 ──
-    from webview import Menu, MenuAction, MenuSeparator
-    def _app_menu_action(action):
-        def _cb():
-            try:
-                windows = getattr(webview, 'windows', None)
-                if windows and len(windows) > 0:
-                    windows[0].evaluate_js(action)
-            except Exception:
-                pass
-        return _cb
-    app_menu = Menu('__app__', [
-        MenuAction('关于批量命名工具', lambda: __import__('subprocess').run(
-            ['osascript', '-e', f'tell app "Finder" to display dialog "批量文件命名工具 v{_APP_VERSION}\\n\\n达芬奇剪辑工作流 · 批量文件重命名\\n\\n裁缝老师的插件工坊" with title "关于" buttons {{"好"}} default button 1']
-        )),
-        MenuAction('检查更新', _app_menu_action('checkUpdate()')),
-        MenuSeparator(),
-        MenuAction('退出', lambda: _window.destroy()),
-    ])
-    # 只在 macOS 启用原生菜单（pywebview __app__ 在其他平台被忽略）
-    _native_menu = [app_menu] if sys.platform == 'darwin' else []
+    # ── macOS 原生菜单（pywebview 版本不兼容时静默跳过） ──
+    _native_menu = []
+    if sys.platform == 'darwin':
+        def _app_menu_action(action):
+            def _cb():
+                try:
+                    windows = getattr(webview, 'windows', None)
+                    if windows and len(windows) > 0:
+                        windows[0].evaluate_js(action)
+                except Exception:
+                    pass
+            return _cb
+        try:
+            from webview import Menu, MenuAction, MenuSeparator
+            app_menu = Menu('__app__', [
+                MenuAction('关于批量命名工具', lambda: __import__('subprocess').run(
+                    ['osascript', '-e', f'tell app "Finder" to display dialog "批量文件命名工具 v{_APP_VERSION}\\n\\n达芬奇剪辑工作流 · 批量文件重命名\\n\\n裁缝老师的插件工坊" with title "关于" buttons {{"好"}} default button 1']
+                )),
+                MenuAction('检查更新', _app_menu_action('checkUpdate()')),
+                MenuSeparator(),
+                MenuAction('退出', lambda: _window.destroy()),
+            ])
+            _native_menu = [app_menu]
+        except ImportError:
+            pass
 
     _window = webview.create_window(
         title="批量文件命名工具",
