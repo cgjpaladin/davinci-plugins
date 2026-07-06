@@ -38,40 +38,17 @@ def _fetch_text(url: str, timeout: float = 5.0) -> str:
 
 
 def _fetch_json_across_links(urls: list, timeout: float = 5.0) -> dict:
-    """依次尝试各 URL，返回版本号最高的 JSON dict（防止 CDN 过期）"""
-    best = None
-    best_version = ""
+    """依次尝试各 URL，返回第一个成功解析的 JSON dict。"""
     for url in urls:
         try:
             raw = _fetch_text(url, timeout=timeout)
             data = json.loads(raw)
             if isinstance(data, dict) and data.get("encoding") == "base64":
                 data = json.loads(base64.b64decode(data["content"]).decode("utf-8"))
-            # 提取版本号比较，取最高的
-            for k, v in data.items():
-                if isinstance(v, dict) and "version" in v:
-                    ver = v["version"]
-                    if _ver_cmp(ver, best_version) > 0:
-                        best = data
-                        best_version = ver
+            return data
         except Exception:
             continue
-    if best is None:
-        raise RuntimeError("所有更新链路均不可达")
-    return best
-
-
-def _ver_cmp(a, b):
-    """比较 semver 字符串，a > b 返回 1"""
-    try:
-        aa = [int(x) for x in a.split('.')]
-        bb = [int(x) for x in b.split('.')]
-        for va, vb in zip(aa, bb):
-            if va > vb: return 1
-            if va < vb: return -1
-        return len(aa) - len(bb)
-    except Exception:
-        return 0
+    raise RuntimeError("所有更新链路均不可达")
 
 
 def check(product: str, current_version: str,

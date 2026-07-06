@@ -1029,7 +1029,7 @@ if __name__ == "__main__":
         return _cb
     app_menu = Menu('__app__', [
         MenuAction('关于批量命名工具', lambda: __import__('subprocess').run(
-            ['osascript', '-e', f'tell app "Finder" to display dialog "批量文件命名工具 v{_APP_VERSION}\\n\\n达芬奇剪辑工作流 · 批量重命名\\n剧有文化 © 2025-2026\\n\\n裁缝老师的达芬奇插件工坊" with title "关于" buttons {{"好"}} default button 1']
+            ['osascript', '-e', f'tell app "Finder" to display dialog "批量文件命名工具 v{_APP_VERSION}\\n\\n达芬奇剪辑工作流 · 批量文件重命名\\n\\n裁缝老师的插件工坊" with title "关于" buttons {{"好"}} default button 1']
         )),
         MenuAction('检查更新', _app_menu_action('checkUpdate()')),
         MenuSeparator(),
