@@ -1,85 +1,85 @@
 {
   "delivery_checker": {
-    "version": "3.7.6",
+    "version": "3.7.7",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/update_latest.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/update_latest.zip"
     ],
-    "sha256": "f1739ab57446129fbc47263ec1a7ff75b5e87603815c5253bd2f7455cebf1234",
+    "sha256": "243c5cbc2c85f0a323663bb4fed147c33ea2a6219e47af061232644146c3a3ec",
     "notes": "🔍 排错报告一键导出（网络诊断+授权快照+激活历史+环境配置）\n🛡️ 指纹稳定不漂移，VPN不影响激活\n📋 配置页一键复制机器指纹，发给裁缝老师",
     "history": [
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "## v2.4.0\n\n📏 抖音短剧时长合规\n\n| 时长 | 结果 | 说明 |\n|------|:--:|------|\n| ＜41s | 🔴 | 低于付费集最低时长 |\n| ＞180s | 🔴 | 超时驳回，建议优化至90s |\n| 41~180s | 🟢 | 通过 |"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "## v2.5.0\n\n🎨 界面重新设计，字幕检测独立为右侧面板\n🤖 AI 校对更聪明，脏话变体不再误报"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "## v2.5.1\n\n📂 素材路径检测更灵活，支持多文件夹\n🔤 新增全半角字符检测（如全角数字→半角）\n📝 AI 校对大幅改进：减少误报，不再逐字对照剧本\n🐛 修复多处小问题"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "## v2.5.3\n\n⬇ 软件更新支持进度条，下载速度一目了然"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "## v2.5.6\n\n🔑 激活码系统正式上线，购买后输入激活码即可永久使用"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "## v2.5.7\n\n🐛 修复：个别设备授权异常的问题\n🛡️ 修复：中文输入法下输入激活码或 API Key 可能闪退\n📦 安装流程更简洁\n🔄 更新检测更准确"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "## v2.5.8\n\n📦 安装包自带 Python，省去手动下载"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "## v2.5.9\n\n🔗 飞书 Wiki 链接直接导入剧本\n🤖 不同剧集也能校对字幕，不怕传错剧本\n🛡️ 校对中锁定按钮：防误触、防崩溃"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "## v2.5.11\n\n🔍 排错报告一键导出（网络诊断+授权快照+激活历史+环境配置）\n🛡️ 指纹稳定不漂移，VPN不影响激活\n📋 配置页一键复制机器指纹，发给裁缝老师"
       }
     ]
   },
   "batch_renamer_mac": {
-    "version": "3.7.6",
+    "version": "3.7.7",
     "urls": [
       "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/batch_renamer-v3.7.1/batch_renamer_mac.zip",
       "https://github.com/cgjpaladin/davinci-plugins/releases/download/batch_renamer-v3.7.1/batch_renamer_mac.zip"
     ],
     "notes": "🛡️ 归档中断保护：逐文件 .tmp 原子写入\n🔙 完整 Undo：字段编辑/删除/拖拽/改名 全覆盖\n🖱️ 拖拽 ghost 残留修复\n🖼 图片格式扩充：gif/webp/tga/psd\n🐛 蓝条闪烁修复 · SMB 性能优化",
-    "sha256": "f1739ab57446129fbc47263ec1a7ff75b5e87603815c5253bd2f7455cebf1234",
+    "sha256": "243c5cbc2c85f0a323663bb4fed147c33ea2a6219e47af061232644146c3a3ec",
     "history": [
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "🛡️ 归档保护 · 🔙 Undo全覆盖 · 🖱 ghost修复 · 🖼 gif/webp/tga/psd"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "📊 表格版正式发布"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "📂 归档路径：EP/V{ver}/compound · 🏷 版本号改名为制作批次"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "📋 归档文件夹去制作方式 · 🐛 修复 TK 扫描正则"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "📋 归档路径去制作方式，加 V 层级"
       }
     ]
   },
   "batch_renamer_win": {
-    "version": "3.7.6",
+    "version": "3.7.7",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_win.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_win.zip",
@@ -88,19 +88,19 @@
     "notes": "## v3.7.0\n\n🔄 自动更新——启动3秒检测，下载→重启一条龙\n🖱 右键文件 → 在 Explorer 中显示\n🪟 去除双重标题栏，界面更简洁",
     "history": [
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "📊 表格版正式发布"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "📂 归档路径：EP/V{ver}/compound · 🏷 版本号改名为制作批次"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "📋 归档文件夹去制作方式 · 🐛 修复 TK 扫描正则"
       },
       {
-        "version": "3.7.6",
+        "version": "3.7.7",
         "notes": "📋 归档路径去制作方式，加 V 层级"
       }
     ]
