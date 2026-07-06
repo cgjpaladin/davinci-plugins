@@ -651,7 +651,10 @@ class RenamerAPI:
             _log.info(f"apply_delta done, restarting")
             # 重启
             import subprocess
-            subprocess.Popen(['open', app_path])
+            if sys.platform == 'darwin':
+                subprocess.Popen(['open', '-n', app_path])  # -n = 新实例
+            else:
+                subprocess.Popen([app_path], shell=True)
             os._exit(0)
         except Exception as e:
             _log.warning(f"apply_delta error: {e}")
