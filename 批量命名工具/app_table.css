@@ -446,9 +446,3 @@ td.editing select{
 .up-btn-go:hover{background:#4a9cef}
 .up-btn-go:disabled{opacity:.5;cursor:default}
 #rcSpeed{min-width:32px;font-size:12px;font-weight:600}
-/* ── App 菜单 ── */
-.menu-trigger{cursor:pointer;font-size:13px;padding:2px 6px;border-radius:3px;color:#666;transition:color .2s}
-.menu-trigger:hover{color:#e0e0e0;background:#2a2a2a}
-.app-dropdown{position:fixed;z-index:10000;background:#1e1e1e;border:1px solid #3a3a3a;border-radius:4px;min-width:140px;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,.5);padding:3px 0}
-.app-dropdown div{padding:6px 14px;cursor:pointer;color:#c0c0c0}
-.app-dropdown div:hover{background:#2a2a2a;color:#e0e0e0}
