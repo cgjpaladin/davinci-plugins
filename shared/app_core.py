@@ -717,12 +717,19 @@ class RenamerAPI:
                 _sh.rmtree(backup_dir, ignore_errors=True)
 
             _log.info(f"apply_delta done, restarting")
-            # 用独立脚本重启（避免 os._exit 杀子进程）
             import subprocess, tempfile
-            if sys.platform == 'darwin':
-                script = f'#!/bin/bash\nsleep 1\nopen -n "{app_path}"\nrm -f "$0"\n'
+            bundle_name = os.path.basename(app_path)
+            # 去掉 .app 后缀取二进制名
+            if bundle_name.endswith('.app'):
+                binary = os.path.join(app_path, 'Contents', 'MacOS', bundle_name[:-4])
             else:
-                script = f'@echo off\nping -n 2 127.0.0.1 >nul\nstart "" "{app_path}"\ndel "%~f0"\n'
+                binary = os.path.join(app_path, 'Contents', 'MacOS', '批量命名工具')
+            if not os.path.isfile(binary):
+                binary = os.path.join(app_path, 'Contents', 'MacOS', '批量命名工具')
+            if sys.platform == 'darwin':
+                script = f'#!/bin/bash\nsleep 0.5\n"{binary}"\nrm -f "$0"\n'
+            else:
+                script = f'@echo off\nping -n 2 127.0.0.1 >nul\nstart "" "{binary}"\ndel "%~f0"\n'
             with tempfile.NamedTemporaryFile(mode='w', suffix='.sh' if sys.platform == 'darwin' else '.bat', delete=False) as sf:
                 sf.write(script)
                 sf.flush(); os.chmod(sf.name, 0o755)
