@@ -1531,8 +1531,8 @@ async function doRestart(){
   if(!_updateReady)return;
   const btn=document.getElementById('upGoBtn');btn.textContent='\u91CD\u542F\u4E2D\u2026';btn.disabled=true;
   const el=document.getElementById('updateStatus');el.innerHTML='\u91CD\u542F\u4E2D\u2026';
-  const r=await call('apply_delta');
-  if(r&&!r.ok){btn.textContent='\u7ACB\u5373\u91CD\u542F';btn.onclick=doRestart;btn.disabled=false;el.innerHTML='\u274C \u5931\u8D25: '+(r.error||'\u672A\u77E5');}
+  // apply_delta 末尾 os._exit → Promise 不会 resolve，用 fire-and-forget
+  call('apply_delta').catch(()=>{});
 }
 function checkUpdate(){ call('check_update').then(r=>{if(r.update_available)onUpdateFound(r.latest,r.notes);else toast('已是最新版本 v'+APP_VERSION);}); }
 function onUpdateCheckDone(r){
