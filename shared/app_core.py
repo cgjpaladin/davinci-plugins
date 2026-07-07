@@ -734,8 +734,11 @@ class RenamerAPI:
             with open(script_path, 'w') as sf:
                 sf.write(script)
             os.chmod(script_path, 0o755)
+            _real_stderr = getattr(sys, '__stderr__', sys.stderr)
+            print(f"[RESTART] script={script_path} binary={binary} exists={os.path.isfile(binary)}", file=_real_stderr)
             subprocess.Popen(['/bin/bash', script_path] if sys.platform == 'darwin' else ['cmd', '/c', script_path],
                 start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            import time; time.sleep(0.2)  # 给子进程 fork 时间
             os._exit(0)
         except Exception as e:
             _log.warning(f"apply_delta error: {e}")
