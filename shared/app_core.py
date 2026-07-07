@@ -58,6 +58,16 @@ _undo_stack = []  # list of lists: [[(old,new),...], [(old,new),...]]
 _window = None  # 存引用
 
 
+def _err_human(e):
+    """技术错误 → 人话（模块级，类方法内裸名可用）"""
+    s = str(e).lower()
+    if "timeout" in s or "timed out" in s: return "网络超时，请检查网络后重试"
+    if "429" in s or "too many" in s: return "服务器繁忙，请稍后重试"
+    if "所有" in str(e) and "不可达" in str(e): return "无法连接更新服务器，请检查网络"
+    if "connection" in s or "refused" in s: return "网络不可达，请检查网络连接"
+    return str(e)[:60]
+
+
 class RenamerAPI:
     def pick_dest_folder(self):
         """打开文件夹选择框，返回路径"""
@@ -593,16 +603,6 @@ class RenamerAPI:
             _log.info(f"check_update error: {e}")
             return {"update_available": False, "reason": _err_human(e)}
 
-    @staticmethod
-    def _err_human(e):
-        """技术错误 → 人话"""
-        s = str(e).lower()
-        if "timeout" in s or "timed out" in s: return "网络超时，请检查网络后重试"
-        if "429" in s or "too many" in s: return "服务器繁忙，请稍后重试"
-        if "所有" in str(e) and "不可达" in str(e): return "无法连接更新服务器，请检查网络"
-        if "connection" in s or "refused" in s: return "网络不可达，请检查网络连接"
-        return str(e)[:60]
-
     def trigger_bg_update(self):
         """后台查更新，不阻塞 JS 线程。完成后回调 JS onUpdateCheckDone()"""
         import threading, json as _json
@@ -668,6 +668,8 @@ class RenamerAPI:
     def apply_delta(self):
         """将差分文件写入当前 .app，重启应用。失败自动回滚。"""
         global _UPDATE_STATE
+        _real_stderr = getattr(sys, '__stderr__', sys.stderr)
+        print(f"[APPLY_DELTA] called, ready={_UPDATE_STATE.get('ready')}, zip={_UPDATE_STATE.get('zip_path','')[:60]}", file=_real_stderr)
         if not _UPDATE_STATE["ready"]:
             return {"ok": False, "error": "更新包未就绪"}
         try:
