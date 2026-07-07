@@ -719,7 +719,6 @@ class RenamerAPI:
             _log.info(f"apply_delta done, restarting")
             import subprocess, tempfile
             bundle_name = os.path.basename(app_path)
-            # 去掉 .app 后缀取二进制名
             if bundle_name.endswith('.app'):
                 binary = os.path.join(app_path, 'Contents', 'MacOS', bundle_name[:-4])
             else:
@@ -727,13 +726,15 @@ class RenamerAPI:
             if not os.path.isfile(binary):
                 binary = os.path.join(app_path, 'Contents', 'MacOS', '批量命名工具')
             if sys.platform == 'darwin':
-                script = f'#!/bin/bash\nsleep 0.5\n"{binary}"\nrm -f "$0"\n'
+                script_path = os.path.join(tempfile.gettempdir(), '_renamer_restart.sh')
+                script = f'#!/bin/bash\nsleep 0.5\n"{binary}" >> /tmp/renamer_restart.log 2>&1\nrm -f "$0"\n'
             else:
+                script_path = os.path.join(tempfile.gettempdir(), '_renamer_restart.bat')
                 script = f'@echo off\nping -n 2 127.0.0.1 >nul\nstart "" "{binary}"\ndel "%~f0"\n'
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.sh' if sys.platform == 'darwin' else '.bat', delete=False) as sf:
+            with open(script_path, 'w') as sf:
                 sf.write(script)
-                sf.flush(); os.chmod(sf.name, 0o755)
-            subprocess.Popen(['/bin/bash', sf.name] if sys.platform == 'darwin' else ['cmd', '/c', sf.name],
+            os.chmod(script_path, 0o755)
+            subprocess.Popen(['/bin/bash', script_path] if sys.platform == 'darwin' else ['cmd', '/c', script_path],
                 start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             os._exit(0)
         except Exception as e:
