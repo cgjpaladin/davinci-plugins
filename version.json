@@ -54,7 +54,7 @@
       "https://github.com/cgjpaladin/davinci-plugins/releases/download/batch_renamer-v3.7.1/batch_renamer_mac.zip"
     ],
     "notes": "🔄 差分更新 + macOS原生菜单 + 非阻塞检测\n🔍 断网提示⚠ + 失败回滚 + 人话翻译\n🖥 原生菜单：关于 + 检查更新（PyObjC）",
-    "sha256": "22e4967d329ebf3289c6535826ef5c4179a822d0c8804e0321933e3c828e502b",
+    "sha256": "d51bf606b99ebc2c693cfe580a1838686011fa81bdbaef13cb37e862b6313fe2",
     "history": [
       {
         "version": "3.7.12",
