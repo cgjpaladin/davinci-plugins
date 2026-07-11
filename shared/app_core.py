@@ -696,6 +696,11 @@ class RenamerAPI:
             try:
                 try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] starting backup, zip={zip_path}\n")
                 except: pass
+                # 移除代码签名（否则 Frameworks/ 写保护）
+                import subprocess as _sp
+                _sp.run(['codesign', '--remove-signature', app_path], capture_output=True, timeout=10)
+                try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] codesign removed\n")
+                except: pass
                 # 只备份将被覆盖的文件
                 with zipfile.ZipFile(zip_path, 'r') as zf:
                     for zi in zf.infolist():
