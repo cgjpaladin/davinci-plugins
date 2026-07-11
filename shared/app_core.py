@@ -712,11 +712,15 @@ class RenamerAPI:
                 with zipfile.ZipFile(zip_path, 'r') as zf:
                     zf.extractall(res_dir)
 
-                # 清 pyc 缓存
-                for root, dirs, files in os.walk(res_dir):
-                    for d in list(dirs):
-                        if d == '__pycache__':
-                            _sh.rmtree(os.path.join(root, d), ignore_errors=True)
+                try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extract done\n")
+                except: pass
+                # 清 pyc 缓存（仅 shared/，避免遍历整个 Frameworks 卡死）
+                shared_dir = os.path.join(res_dir, 'shared')
+                if os.path.isdir(shared_dir):
+                    for root, dirs, files in os.walk(shared_dir):
+                        for d in list(dirs):
+                            if d == '__pycache__':
+                                _sh.rmtree(os.path.join(root, d), ignore_errors=True)
 
             except Exception as zip_err:
                 _log.warning(f"apply_delta failed, rolling back: {zip_err}")
