@@ -715,14 +715,19 @@ class RenamerAPI:
             binary = os.path.join(app_path, 'Contents', 'MacOS', '批量命名工具')
         if sys.platform == 'darwin':
             script_path = os.path.join(tempfile.gettempdir(), '_renamer_restart.sh')
+            logfile = '/tmp/renamer_restart.log'
             script = (
                 f'#!/bin/bash\n'
                 f'sleep 0.5\n'
-                f'codesign --remove-signature "{app_path}" 2>/dev/null\n'
-                f'rsync -a "{delta_tmp}/" "{fram_dir}/"\n'
+                f'echo "restart started $(date)" >> "{logfile}"\n'
+                f'codesign --remove-signature "{app_path}" >> "{logfile}" 2>&1\n'
+                f'echo "codesign=$? rsyncing {delta_tmp} -> {fram_dir}" >> "{logfile}"\n'
+                f'rsync -av "{delta_tmp}/" "{fram_dir}/" >> "{logfile}" 2>&1\n'
+                f'echo "rsync=$?" >> "{logfile}"\n'
                 f'rm -rf "{delta_tmp}"\n'
                 f'find "{fram_dir}/shared" -name __pycache__ -type d -exec rm -rf {{}} + 2>/dev/null\n'
-                f'"{binary}" >> /tmp/renamer_restart.log 2>&1\n'
+                f'echo "launching {binary}" >> "{logfile}"\n'
+                f'"{binary}" >> "{logfile}" 2>&1\n'
                 f'rm -f "$0"\n'
             )
         else:
