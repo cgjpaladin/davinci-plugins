@@ -706,14 +706,21 @@ class RenamerAPI:
                             os.makedirs(os.path.dirname(bkp), exist_ok=True)
                             _sh.copy2(target, bkp)
 
-                try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] backup done, extracting to {res_dir[:80]}\n")
+                try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] backup done, extracting to {res_dir}\n")
                 except: pass
                 # 解压差分
-                with zipfile.ZipFile(zip_path, 'r') as zf:
-                    zf.extractall(res_dir)
-
-                try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extract done\n")
-                except: pass
+                try:
+                    with zipfile.ZipFile(zip_path, 'r') as zf:
+                        names = zf.namelist()[:5]
+                        try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] zip contains: {names}\n")
+                        except: pass
+                        zf.extractall(res_dir)
+                    try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extract done\n")
+                    except: pass
+                except Exception as ex:
+                    try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extract FAILED: {ex}\n")
+                    except: pass
+                    raise
                 # 清 pyc 缓存（仅 shared/，避免遍历整个 Frameworks 卡死）
                 shared_dir = os.path.join(res_dir, 'shared')
                 if os.path.isdir(shared_dir):
@@ -723,6 +730,8 @@ class RenamerAPI:
                                 _sh.rmtree(os.path.join(root, d), ignore_errors=True)
 
             except Exception as zip_err:
+                try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] ERROR: {zip_err}\n")
+                except: pass
                 _log.warning(f"apply_delta failed, rolling back: {zip_err}")
                 # 回滚：恢复备份文件
                 for root, dirs, files in os.walk(backup_dir):
