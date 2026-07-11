@@ -690,21 +690,14 @@ class RenamerAPI:
 
             import zipfile, tempfile, shutil as _sh, subprocess as _sp
             zip_path = _UPDATE_STATE["zip_path"]
-
-            # 解压到 Resources（运行时可写）
-            try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extracting to {res_dir}\n")
+            # 解压到外部临时目录（macOS 禁止进程修改自身 .app bundle）
+            delta_tmp = tempfile.mkdtemp(prefix="renamer_delta_")
+            try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extracting to temp {delta_tmp}\n")
             except: pass
             with zipfile.ZipFile(zip_path, 'r') as zf:
-                zf.extractall(res_dir)
+                zf.extractall(delta_tmp)
             try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extract done\n")
             except: pass
-            # 清 Resources/shared/ 的 pyc
-            shared_dir = os.path.join(res_dir, 'shared')
-            if os.path.isdir(shared_dir):
-                for root, dirs, files in os.walk(shared_dir):
-                    for d in list(dirs):
-                        if d == '__pycache__':
-                            _sh.rmtree(os.path.join(root, d), ignore_errors=True)
 
         except Exception as zip_err:
             try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] ERROR: {zip_err}\n")
@@ -713,7 +706,6 @@ class RenamerAPI:
 
         try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] building restart script\n")
         except: pass
-        # 重启脚本：去签名 → 从 Resources 同步到 Frameworks → 清 pyc → 启动
         bundle_name = os.path.basename(app_path)
         if bundle_name.endswith('.app'):
             binary = os.path.join(app_path, 'Contents', 'MacOS', bundle_name[:-4])
@@ -727,7 +719,8 @@ class RenamerAPI:
                 f'#!/bin/bash\n'
                 f'sleep 0.5\n'
                 f'codesign --remove-signature "{app_path}" 2>/dev/null\n'
-                f'rsync -a "{res_dir}/" "{fram_dir}/"\n'
+                f'rsync -a "{delta_tmp}/" "{fram_dir}/"\n'
+                f'rm -rf "{delta_tmp}"\n'
                 f'find "{fram_dir}/shared" -name __pycache__ -type d -exec rm -rf {{}} + 2>/dev/null\n'
                 f'"{binary}" >> /tmp/renamer_restart.log 2>&1\n'
                 f'rm -f "$0"\n'
