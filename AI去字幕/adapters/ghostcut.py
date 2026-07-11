@@ -140,7 +140,11 @@ class GhostCutAdapter(BaseAdapter):
         )
         try:
             with urllib.request.urlopen(req, timeout=15, context=_SSL_CTX) as resp:
-                return json.loads(resp.read().decode("utf-8"))
+                data = json.loads(resp.read().decode("utf-8"))
+                # V3 规范：code==1000 才算成功，其他 code 为业务错误
+                if (code := data.get("code")) and code != 1000:
+                    raise RuntimeError(f"鬼手业务错误 {code}: {data.get('msg', '')}")
+                return data
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"API {e.code}: {body[:200]}") from e

@@ -668,23 +668,34 @@ class RenamerAPI:
     def apply_delta(self):
         """将差分文件写入当前 .app，重启应用。失败自动回滚。"""
         global _UPDATE_STATE
-        _real_stderr = getattr(sys, '__stderr__', sys.stderr)
-        print(f"[APPLY_DELTA] called, ready={_UPDATE_STATE.get('ready')}, zip={_UPDATE_STATE.get('zip_path','')[:60]}", file=_real_stderr)
-        if not _UPDATE_STATE["ready"]:
+        # PyInstaller --windowed 无 stderr，用具名文件确保可见
+        try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] apply_delta called, ready={_UPDATE_STATE.get('ready')}, zip={'yes' if _UPDATE_STATE.get('zip_path') else 'no'}\n")
+        except: pass
+        if not _UPDATE_STATE.get("ready"):
             return {"ok": False, "error": "更新包未就绪"}
         try:
             meipass = getattr(sys, '_MEIPASS', '')
             if not meipass:
                 return {"ok": False, "error": "无法定位 _MEIPASS"}
+            # _MEIPASS = Contents/Frameworks（PyInstaller onedir 运行目录）
+            res_dir = meipass
             app_path = os.path.dirname(os.path.dirname(meipass))
-            res_dir = os.path.join(meipass)
-            _log.info(f"apply_delta: app_path={app_path}, res_dir={res_dir}")
+            if not app_path.endswith('.app'):
+                # _MEIPASS 路径不标准时，向上找 .app
+                p = meipass
+                for _ in range(5):
+                    if p.endswith('.app'): app_path = p; break
+                    p = os.path.dirname(p)
+            try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] meipass={meipass[:60]}, app_path={app_path[:80]}\n")
+            except: pass
 
             import zipfile, tempfile, shutil as _sh
             zip_path = _UPDATE_STATE["zip_path"]
             backup_dir = tempfile.mkdtemp(prefix="renamer_backup_")
 
             try:
+                try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] starting backup, zip={zip_path}\n")
+                except: pass
                 # 只备份将被覆盖的文件
                 with zipfile.ZipFile(zip_path, 'r') as zf:
                     for zi in zf.infolist():
@@ -695,6 +706,8 @@ class RenamerAPI:
                             os.makedirs(os.path.dirname(bkp), exist_ok=True)
                             _sh.copy2(target, bkp)
 
+                try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] backup done, extracting to {res_dir[:80]}\n")
+                except: pass
                 # 解压差分
                 with zipfile.ZipFile(zip_path, 'r') as zf:
                     zf.extractall(res_dir)
@@ -736,8 +749,8 @@ class RenamerAPI:
             with open(script_path, 'w') as sf:
                 sf.write(script)
             os.chmod(script_path, 0o755)
-            _real_stderr = getattr(sys, '__stderr__', sys.stderr)
-            print(f"[RESTART] script={script_path} binary={binary} exists={os.path.isfile(binary)}", file=_real_stderr)
+            try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] RESTART script={script_path} binary={binary} exists={os.path.isfile(binary)}\n")
+            except: pass
             subprocess.Popen(['/bin/bash', script_path] if sys.platform == 'darwin' else ['cmd', '/c', script_path],
                 start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             import time; time.sleep(0.2)  # 给子进程 fork 时间
