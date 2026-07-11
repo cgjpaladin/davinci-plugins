@@ -14,9 +14,9 @@ VERSION_CHECK_URLS = [
 TIMEOUT_VERSION_CHECK = 8
 UPDATE_FILE = "update_latest.zip"
 DOWNLOAD_URLS = [
-    f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/update_latest.zip",
+    f"https://raw.githubusercontent.com/{REPO_FULL}/main/update_latest.zip",  # 主源，5min 缓存
     f"https://ghproxy.net/https://raw.githubusercontent.com/{REPO_FULL}/main/update_latest.zip",
-    f"https://raw.githubusercontent.com/{REPO_FULL}/main/update_latest.zip",
+    f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/update_latest.zip",  # 降级
 ]
 
 # ── 超时（秒） ──
