@@ -1037,6 +1037,11 @@ try:
             content = _vf.read()
             _m = _re_ver.search(r"const APP_VERSION='([^']+)'", content)
             if _m: _APP_VERSION = _m.group(1)
+    # 增量覆盖目录的版本文件（优先级最高）
+    _delta_ver = os.path.expanduser('~/.config/renamer/delta/version.txt')
+    if os.path.isfile(_delta_ver):
+        with open(_delta_ver) as _dv:
+            _APP_VERSION = _dv.read().strip()
 except Exception:
     pass
 

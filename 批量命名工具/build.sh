@@ -102,16 +102,20 @@ if [ -f "$FULL_ZIP" ]; then
   echo "✅ 全量包: $FULL_ZIP ($(du -h "$FULL_ZIP" | cut -f1)) SHA256=$SHA"
 fi
 
-# 差分（只换 HTML/CSS/JS + shared/ Python 逻辑，<200KB，日常更新用）
+# 差分（仅 shared/ Python 逻辑 + version.txt，<200KB，日常更新用）
 DELTA_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/update_latest.zip"
+# 写入版本文件供运行时覆盖
+echo "$VERSION" > "$APP_OUT/Contents/Resources/version.txt"
 (cd "$APP_OUT/Contents/Resources" && \
  zip -rq "$DELTA_ZIP" \
   "$HTML_FILE" \
+  "version.txt" \
   shared/ \
   -x "shared/__pycache__/*" "shared/*.pyc" \
      "shared/dftt_timecode/*" "shared/pypdf/*" \
      "shared/naming.py" "shared/script_parser.py" \
   2>/dev/null)
+rm -f "$APP_OUT/Contents/Resources/version.txt"
 if [ -f "$DELTA_ZIP" ]; then
   DSHA=$(shasum -a 256 "$DELTA_ZIP" | cut -d' ' -f1)
   echo "✅ 差分包: $DELTA_ZIP ($(du -h "$DELTA_ZIP" | cut -f1)) SHA256=$DSHA"
