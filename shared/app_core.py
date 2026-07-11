@@ -1126,7 +1126,11 @@ def main():
     def index():
         # 优先加载 delta 覆盖的 HTML
         if os.path.isfile(os.path.join(_DELTA_HTML, HTML_FILE_NAME)):
+            try: open('/tmp/bottle_route.log','w').write(f"serving delta HTML, version={_APP_VERSION}\n")
+            except: pass
             return static_file(HTML_FILE_NAME, root=_DELTA_HTML)
+        try: open('/tmp/bottle_route.log','w').write(f"serving bundled HTML, version={_APP_VERSION}\n")
+        except: pass
         return static_file(HTML_FILE_NAME, root=_BASE_DIR)
 
     @route('/media')
