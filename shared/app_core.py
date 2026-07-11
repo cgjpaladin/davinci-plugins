@@ -690,12 +690,15 @@ class RenamerAPI:
 
             import zipfile, tempfile, shutil as _sh, subprocess as _sp
             zip_path = _UPDATE_STATE["zip_path"]
-            # 解压到外部临时目录（macOS 禁止进程修改自身 .app bundle）
-            delta_tmp = tempfile.mkdtemp(prefix="renamer_delta_")
-            try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extracting to temp {delta_tmp}\n")
+            # macOS 禁止修改 .app bundle → 解压到 ~/.config/renamer/delta/
+            delta_dir = os.path.expanduser('~/.config/renamer/delta')
+            if os.path.exists(delta_dir):
+                _sh.rmtree(delta_dir, ignore_errors=True)
+            os.makedirs(delta_dir, exist_ok=True)
+            try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extracting to {delta_dir}\n")
             except: pass
             with zipfile.ZipFile(zip_path, 'r') as zf:
-                zf.extractall(delta_tmp)
+                zf.extractall(delta_dir)
             try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extract done\n")
             except: pass
 
@@ -704,8 +707,7 @@ class RenamerAPI:
             except: pass
             return {"ok": False, "error": _err_human(zip_err)}
 
-        try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] building restart script\n")
-        except: pass
+        # 重启（launcher 自动从 ~/.config/renamer/delta/ 加载覆盖）
         bundle_name = os.path.basename(app_path)
         if bundle_name.endswith('.app'):
             binary = os.path.join(app_path, 'Contents', 'MacOS', bundle_name[:-4])
@@ -715,18 +717,9 @@ class RenamerAPI:
             binary = os.path.join(app_path, 'Contents', 'MacOS', '批量命名工具')
         if sys.platform == 'darwin':
             script_path = os.path.join(tempfile.gettempdir(), '_renamer_restart.sh')
-            logfile = '/tmp/renamer_restart.log'
             script = (
-                f'#!/bin/bash\n'
-                f'sleep 0.5\n'
-                f'echo "restart started $(date)" >> "{logfile}"\n'
-                f'# 用 ditto 合并而非逐文件 cp（macOS bundle 保护影响个别文件操作）\n'
-                f'ditto "{delta_tmp}" "{fram_dir}" >> "{logfile}" 2>&1\n'
-                f'echo "ditto rc=$?" >> "{logfile}"\n'
-                f'rm -rf "{delta_tmp}"\n'
-                f'find "{fram_dir}/shared" -name __pycache__ -type d -exec rm -rf {{}} + 2>/dev/null\n'
-                f'echo "launching {binary}" >> "{logfile}"\n'
-                f'"{binary}" >> "{logfile}" 2>&1\n'
+                f'#!/bin/bash\nsleep 0.5\n'
+                f'"{binary}" >> /tmp/renamer_restart.log 2>&1\n'
                 f'rm -f "$0"\n'
             )
         else:
@@ -1123,8 +1116,12 @@ def main():
     from bottle import route, run, static_file
 
     # 用 bottle HTTP 服务绕过 WKWebView 沙箱限制
+    _DELTA_HTML = os.path.expanduser('~/.config/renamer/delta')
     @route('/')
     def index():
+        # 优先加载 delta 覆盖的 HTML
+        if os.path.isfile(os.path.join(_DELTA_HTML, HTML_FILE_NAME)):
+            return static_file(HTML_FILE_NAME, root=_DELTA_HTML)
         return static_file(HTML_FILE_NAME, root=_BASE_DIR)
 
     @route('/media')
