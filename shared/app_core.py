@@ -668,7 +668,6 @@ class RenamerAPI:
     def apply_delta(self):
         """将差分文件写入当前 .app，重启应用。失败自动回滚。"""
         global _UPDATE_STATE
-        # PyInstaller --windowed 无 stderr，用具名文件确保可见
         try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] apply_delta called, ready={_UPDATE_STATE.get('ready')}, zip={'yes' if _UPDATE_STATE.get('zip_path') else 'no'}\n")
         except: pass
         if not _UPDATE_STATE.get("ready"):
@@ -677,105 +676,74 @@ class RenamerAPI:
             meipass = getattr(sys, '_MEIPASS', '')
             if not meipass:
                 return {"ok": False, "error": "无法定位 _MEIPASS"}
-            # _MEIPASS = Contents/Frameworks（PyInstaller onedir 运行目录）
-            res_dir = meipass
+            # _MEIPASS = Contents/Frameworks（运行时不能写）→ 解压到 Contents/Resources
+            fram_dir = meipass  # Contents/Frameworks/
+            res_dir = os.path.join(os.path.dirname(fram_dir), 'Resources')  # Contents/Resources/
             app_path = os.path.dirname(os.path.dirname(meipass))
             if not app_path.endswith('.app'):
-                # _MEIPASS 路径不标准时，向上找 .app
                 p = meipass
                 for _ in range(5):
                     if p.endswith('.app'): app_path = p; break
                     p = os.path.dirname(p)
-            try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] meipass={meipass[:60]}, app_path={app_path[:80]}\n")
+            try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] fram={fram_dir}, res={res_dir}, app={app_path}\n")
             except: pass
 
-            import zipfile, tempfile, shutil as _sh
+            import zipfile, tempfile, shutil as _sh, subprocess as _sp
             zip_path = _UPDATE_STATE["zip_path"]
-            backup_dir = tempfile.mkdtemp(prefix="renamer_backup_")
 
-            try:
-                try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] starting backup, zip={zip_path}\n")
-                except: pass
-                # 移除代码签名（否则 Frameworks/ 写保护）
-                import subprocess as _sp
-                _sp.run(['codesign', '--remove-signature', app_path], capture_output=True, timeout=10)
-                try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] codesign removed\n")
-                except: pass
-                # 只备份将被覆盖的文件
-                with zipfile.ZipFile(zip_path, 'r') as zf:
-                    for zi in zf.infolist():
-                        if zi.is_dir(): continue
-                        target = os.path.join(res_dir, zi.filename)
-                        if os.path.isfile(target):
-                            bkp = os.path.join(backup_dir, zi.filename)
-                            os.makedirs(os.path.dirname(bkp), exist_ok=True)
-                            _sh.copy2(target, bkp)
-
-                try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] backup done, extracting to {res_dir}\n")
-                except: pass
-                # 解压差分
-                try:
-                    with zipfile.ZipFile(zip_path, 'r') as zf:
-                        names = zf.namelist()[:5]
-                        try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] zip contains: {names}\n")
-                        except: pass
-                        zf.extractall(res_dir)
-                    try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extract done\n")
-                    except: pass
-                except Exception as ex:
-                    try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extract FAILED: {ex}\n")
-                    except: pass
-                    raise
-                # 清 pyc 缓存（仅 shared/，避免遍历整个 Frameworks 卡死）
-                shared_dir = os.path.join(res_dir, 'shared')
-                if os.path.isdir(shared_dir):
-                    for root, dirs, files in os.walk(shared_dir):
-                        for d in list(dirs):
-                            if d == '__pycache__':
-                                _sh.rmtree(os.path.join(root, d), ignore_errors=True)
-
-            except Exception as zip_err:
-                try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] ERROR: {zip_err}\n")
-                except: pass
-                _log.warning(f"apply_delta failed, rolling back: {zip_err}")
-                # 回滚：恢复备份文件
-                for root, dirs, files in os.walk(backup_dir):
-                    for f in files:
-                        src = os.path.join(root, f)
-                        rel = os.path.relpath(src, backup_dir)
-                        dst = os.path.join(res_dir, rel)
-                        _sh.copy2(src, dst)
-                return {"ok": False, "error": _err_human(zip_err)}
-            finally:
-                _sh.rmtree(backup_dir, ignore_errors=True)
-
-            _log.info(f"apply_delta done, restarting")
-            import subprocess, tempfile
-            bundle_name = os.path.basename(app_path)
-            if bundle_name.endswith('.app'):
-                binary = os.path.join(app_path, 'Contents', 'MacOS', bundle_name[:-4])
-            else:
-                binary = os.path.join(app_path, 'Contents', 'MacOS', '批量命名工具')
-            if not os.path.isfile(binary):
-                binary = os.path.join(app_path, 'Contents', 'MacOS', '批量命名工具')
-            if sys.platform == 'darwin':
-                script_path = os.path.join(tempfile.gettempdir(), '_renamer_restart.sh')
-                script = f'#!/bin/bash\nsleep 0.5\n"{binary}" >> /tmp/renamer_restart.log 2>&1\nrm -f "$0"\n'
-            else:
-                script_path = os.path.join(tempfile.gettempdir(), '_renamer_restart.bat')
-                script = f'@echo off\nping -n 2 127.0.0.1 >nul\nstart "" "{binary}"\ndel "%~f0"\n'
-            with open(script_path, 'w') as sf:
-                sf.write(script)
-            os.chmod(script_path, 0o755)
-            try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] RESTART script={script_path} binary={binary} exists={os.path.isfile(binary)}\n")
+            # 解压到 Resources（运行时可写）
+            try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extracting to {res_dir}\n")
             except: pass
-            subprocess.Popen(['/bin/bash', script_path] if sys.platform == 'darwin' else ['cmd', '/c', script_path],
-                start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            import time; time.sleep(0.2)  # 给子进程 fork 时间
-            os._exit(0)
-        except Exception as e:
-            _log.warning(f"apply_delta error: {e}")
-            return {"ok": False, "error": _err_human(e)}
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                zf.extractall(res_dir)
+            try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] extract done\n")
+            except: pass
+            # 清 Resources/shared/ 的 pyc
+            shared_dir = os.path.join(res_dir, 'shared')
+            if os.path.isdir(shared_dir):
+                for root, dirs, files in os.walk(shared_dir):
+                    for d in list(dirs):
+                        if d == '__pycache__':
+                            _sh.rmtree(os.path.join(root, d), ignore_errors=True)
+
+        except Exception as zip_err:
+            try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] ERROR: {zip_err}\n")
+            except: pass
+            return {"ok": False, "error": _err_human(zip_err)}
+
+        try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] building restart script\n")
+        except: pass
+        # 重启脚本：去签名 → 从 Resources 同步到 Frameworks → 清 pyc → 启动
+        bundle_name = os.path.basename(app_path)
+        if bundle_name.endswith('.app'):
+            binary = os.path.join(app_path, 'Contents', 'MacOS', bundle_name[:-4])
+        else:
+            binary = os.path.join(app_path, 'Contents', 'MacOS', '批量命名工具')
+        if not os.path.isfile(binary):
+            binary = os.path.join(app_path, 'Contents', 'MacOS', '批量命名工具')
+        if sys.platform == 'darwin':
+            script_path = os.path.join(tempfile.gettempdir(), '_renamer_restart.sh')
+            script = (
+                f'#!/bin/bash\n'
+                f'sleep 0.5\n'
+                f'codesign --remove-signature "{app_path}" 2>/dev/null\n'
+                f'rsync -a "{res_dir}/" "{fram_dir}/"\n'
+                f'find "{fram_dir}/shared" -name __pycache__ -type d -exec rm -rf {{}} + 2>/dev/null\n'
+                f'"{binary}" >> /tmp/renamer_restart.log 2>&1\n'
+                f'rm -f "$0"\n'
+            )
+        else:
+            script_path = os.path.join(tempfile.gettempdir(), '_renamer_restart.bat')
+            script = f'@echo off\nping -n 2 127.0.0.1 >nul\nstart "" "{binary}"\ndel "%~f0"\n'
+        with open(script_path, 'w') as sf:
+            sf.write(script)
+        os.chmod(script_path, 0o755)
+        try: open('/tmp/apply_delta.log','a').write(f"[{datetime.now():%H:%M:%S}] launching restart via {script_path}\n")
+        except: pass
+        _sp.Popen(['/bin/bash', script_path] if sys.platform == 'darwin' else ['cmd', '/c', script_path],
+            start_new_session=True, stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
+        import time; time.sleep(0.2)
+        os._exit(0)
         try:
             _UPDATE_STATE["downloading"] = True
             _UPDATE_STATE["downloaded"] = 0
