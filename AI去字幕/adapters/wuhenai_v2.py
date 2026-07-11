@@ -240,8 +240,8 @@ class WuhenAIV21Adapter(BaseAdapter):
             raise RuntimeError(f"OSS {e.code}: {err_body[:200]}") from e
 
     def _oss_put(self, object_key: str, data: bytes, content_type: str = "application/octet-stream",
-                 timeout: int = 120):
-        """OSS 上传。timeout 设为 120s（单文件上传不应该超过 2 分钟）"""
+                 timeout: int = 60):
+        """OSS 上传。timeout 60s（3-20MB 文件在 500KB/s 实测 6-40s，2 倍余量）"""
         resp = self._oss_request("PUT", object_key, data=data, content_type=content_type, timeout=timeout)
         if resp.status not in (200, 201):
             raise RuntimeError(f"OSS PUT 失败, HTTP {resp.status}")

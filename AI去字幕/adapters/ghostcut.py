@@ -139,7 +139,7 @@ class GhostCutAdapter(BaseAdapter):
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=30, context=_SSL_CTX) as resp:
+            with urllib.request.urlopen(req, timeout=15, context=_SSL_CTX) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="replace")
@@ -307,7 +307,7 @@ class GhostCutAdapter(BaseAdapter):
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=120, context=_SSL_CTX) as resp:
+        with urllib.request.urlopen(req, timeout=60, context=_SSL_CTX) as resp:
             resp_text = resp.read().decode()
         
         if resp_text.strip() != '{"Status":"OK"}':
@@ -317,7 +317,7 @@ class GhostCutAdapter(BaseAdapter):
         cdn_url = policy["urlPrefix"] + filename
         return cdn_url
 
-    def wait_for_result(self, task_id: str, timeout: int = 600, cancel_check=None) -> SubtitleResult:
+    def wait_for_result(self, task_id: str, timeout: int = 300, cancel_check=None) -> SubtitleResult:
         """
         轮询任务结果
         
@@ -399,7 +399,7 @@ class GhostCutAdapter(BaseAdapter):
             time.sleep(poll_interval)
             poll_interval = min(poll_interval * 1.5, 30)  # 逐渐拉长到30秒
 
-    def _process_impl(self, tasks: list, timeout: int = 600,
+    def _process_impl(self, tasks: list, timeout: int = 300,
                        cancel_check=None, progress_callback=None) -> list:
         """
         批量处理：上传全部 → 一次提交 → 一起轮询 → 逐个下载。
