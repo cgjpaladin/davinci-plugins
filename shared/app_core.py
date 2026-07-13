@@ -917,10 +917,16 @@ class RenamerAPI:
             if os.path.isfile(_dv):
                 with open(_dv, encoding='utf-8') as _f:
                     _dver = _f.read().strip()
-                if _APP_VERSION and _dver < _APP_VERSION:
-                    import shutil
-                    shutil.rmtree(delta_dir, ignore_errors=True)
-                    return {"ok": False, "error": f"增量包版本过旧 ({_dver} < {_APP_VERSION})，已跳过"}
+                if _APP_VERSION:
+                    try:
+                        _dvt = tuple(int(x) for x in _dver.split('.'))
+                        _avt = tuple(int(x) for x in _APP_VERSION.split('.'))
+                        if _dvt < _avt:
+                            import shutil
+                            shutil.rmtree(delta_dir, ignore_errors=True)
+                            return {"ok": False, "error": f"增量包版本过旧 ({_dver} < {_APP_VERSION})，已跳过"}
+                    except ValueError:
+                        pass
         except Exception:
             pass
 
@@ -1277,10 +1283,17 @@ try:
         with open(_delta_ver, encoding='utf-8') as _dv:
             _dver = _dv.read().strip()
         # 如果 delta 版本低于内置版本，不使用 delta（清除覆盖目录）
-        if _dver and _APP_VERSION and _dver < _APP_VERSION:
-            import shutil
-            shutil.rmtree(os.path.dirname(_delta_ver), ignore_errors=True)
-        else:
+        if _dver and _APP_VERSION:
+            try:
+                _dvt = tuple(int(x) for x in _dver.split('.'))
+                _avt = tuple(int(x) for x in _APP_VERSION.split('.'))
+                if _dvt < _avt:
+                    import shutil
+                    shutil.rmtree(os.path.dirname(_delta_ver), ignore_errors=True)
+                    _dver = None
+            except ValueError:
+                pass
+        if _dver:
             _APP_VERSION = _dver
 except Exception:
     pass
@@ -1366,10 +1379,10 @@ def main():
     def index():
         # 优先加载 delta 覆盖的 HTML
         if os.path.isfile(os.path.join(_DELTA_HTML, HTML_FILE_NAME)):
-            try: open('/tmp/bottle_route.log','w').write(f"serving delta HTML, version={_APP_VERSION}\n")
+            try: open(os.path.join(tempfile.gettempdir(), 'bottle_route.log'),'w',encoding='utf-8').write(f"serving delta HTML, version={_APP_VERSION}\n")
             except: pass
             return static_file(HTML_FILE_NAME, root=_DELTA_HTML)
-        try: open('/tmp/bottle_route.log','w').write(f"serving bundled HTML, version={_APP_VERSION}\n")
+        try: open(os.path.join(tempfile.gettempdir(), 'bottle_route.log'),'w',encoding='utf-8').write(f"serving bundled HTML, version={_APP_VERSION}\n")
         except: pass
         return static_file(HTML_FILE_NAME, root=_BASE_DIR)
 
