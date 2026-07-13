@@ -143,6 +143,7 @@ if [ -f "$DELTA_ZIP" ]; then
 fi
 
 # 同步到桌面（ditto 原子替换，不嵌套）
+find "$APP_OUT" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null
 DESKTOP_APP="$HOME/Desktop/$APP_NAME.app"
 ditto "$APP_OUT" "$DESKTOP_APP" 2>/dev/null && echo "✅ 桌面: $DESKTOP_APP"
 
