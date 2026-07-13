@@ -359,14 +359,16 @@ class RenamerAPI:
         try:
             r = _sp.run(["curl", "-sI", "--max-time", "8",
                 "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/version.json"],
-                capture_output=True, text=True, timeout=10)
+                capture_output=True, text=True, timeout=10,
+                creationflags=_CF)
             net.append(f"GitHub raw: HTTP {r.returncode} (stdout {len(r.stdout)}B)")
         except Exception as e:
             net.append(f"GitHub raw: 不可达 ({e})")
         try:
             r = _sp.run(["curl", "-sI", "--max-time", "8",
                 "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/version.json"],
-                capture_output=True, text=True, timeout=10)
+                capture_output=True, text=True, timeout=10,
+                creationflags=_CF)
             net.append(f"ghproxy: HTTP {r.returncode} (stdout {len(r.stdout)}B)")
         except Exception as e:
             net.append(f"ghproxy: 不可达 ({e})")
