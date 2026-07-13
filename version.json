@@ -58,9 +58,13 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
-    "notes": "🔄 差分更新 + macOS原生菜单 + 非阻塞检测\n🔍 断网提示⚠ + 失败回滚 + 人话翻译\n🖥 原生菜单：关于 + 检查更新（PyObjC）",
+    "notes": "📋 导出诊断日志（ZIP文件，一键定位）\n🔄 增量更新支持 macOS Sequoia\n🖥 Win/Mac 双平台兼容\n📁 日志迁移到系统标准目录",
     "sha256": "9702d42ce26cc9d2e7adea4e5907b65d96176caf5d607193b408c0da32d4b862",
     "history": [
+      {
+        "version": "3.7.13",
+        "notes": "📋 导出诊断日志 · 🔄 macOS增量修复 · 🖥 双平台"
+      },
       {
         "version": "3.7.12",
         "notes": "🔄 差分更新 · 🖥 原生菜单 · 🔍 断网提示 · 🛡️ 回滚"
