@@ -871,7 +871,7 @@ class RenamerAPI:
         """将差分文件写入当前 .app，重启应用。失败自动回滚。"""
         import tempfile
         global _UPDATE_STATE
-        try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a').write(f"[{datetime.now():%H:%M:%S}] apply_delta called, ready={_UPDATE_STATE.get('ready')}, zip={'yes' if _UPDATE_STATE.get('zip_path') else 'no'}\n")
+        try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] apply_delta called, ready={_UPDATE_STATE.get('ready')}, zip={'yes' if _UPDATE_STATE.get('zip_path') else 'no'}\n")
         except: pass
         if not _UPDATE_STATE.get("ready"):
             return {"ok": False, "error": "更新包未就绪"}
@@ -891,7 +891,7 @@ class RenamerAPI:
                 for _ in range(5):
                     if p.endswith('.app'): app_path = p; break
                     p = os.path.dirname(p)
-            try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a').write(f"[{datetime.now():%H:%M:%S}] fram={fram_dir}, res={res_dir}, app={app_path}\n")
+            try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] fram={fram_dir}, res={res_dir}, app={app_path}\n")
             except: pass
 
             import zipfile, tempfile, shutil as _sh, subprocess as _sp
@@ -901,15 +901,15 @@ class RenamerAPI:
             if os.path.exists(delta_dir):
                 _sh.rmtree(delta_dir, ignore_errors=True)
             os.makedirs(delta_dir, exist_ok=True)
-            try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a').write(f"[{datetime.now():%H:%M:%S}] extracting to {delta_dir}\n")
+            try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] extracting to {delta_dir}\n")
             except: pass
             with zipfile.ZipFile(zip_path, 'r') as zf:
                 zf.extractall(delta_dir)
-            try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a').write(f"[{datetime.now():%H:%M:%S}] extract done\n")
+            try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] extract done\n")
             except: pass
 
         except Exception as zip_err:
-            try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a').write(f"[{datetime.now():%H:%M:%S}] ERROR: {zip_err}\n")
+            try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] ERROR: {zip_err}\n")
             except: pass
             return {"ok": False, "error": _err_human(zip_err)}
 
@@ -968,7 +968,7 @@ class RenamerAPI:
             sf.write(script)
         if not is_win:
             os.chmod(script_path, 0o755)
-        try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a').write(f"[{datetime.now():%H:%M:%S}] launching restart via {script_path}\n")
+        try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] launching restart via {script_path}\n")
         except: pass
         _sp.Popen(['/bin/bash', script_path] if sys.platform == 'darwin' else ['cmd', '/c', script_path],
             start_new_session=True, stdout=_sp.DEVNULL, stderr=_sp.DEVNULL,
