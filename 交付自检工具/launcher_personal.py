@@ -41,4 +41,8 @@ if os.path.exists(_dotenv):
     except Exception:
         pass
 
-subprocess.Popen([_PYTHON, "-B", os.path.join(_HERE, 'ui.py')], env=_env)
+_creationflags = 0
+if sys.platform.startswith("win"):
+    # Windows 上隐藏启动 ui.py 时的黑色控制台窗口
+    _creationflags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
+subprocess.Popen([_PYTHON, "-B", os.path.join(_HERE, 'ui.py')], env=_env, creationflags=_creationflags)

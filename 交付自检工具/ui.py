@@ -2892,6 +2892,93 @@ def _do_update(ev):
     update_disp.RunLoop()
     del update_disp
 
+# ======================================================================
+#  Windows 增量更新支持（自提权 + 自包含安装脚本）
+#  等价 Mac 的 osascript administrator 弹密码：Windows 弹一次 UAC。
+# ======================================================================
+def _generate_win_update_bat(plugin_root):
+    """运行时生成自包含安装脚本：把 plugin_root 复制到系统安装目录。"""
+    import tempfile
+    _bat = os.path.join(tempfile.gettempdir(), "deli_install_update.bat")
+    _content = (
+        "@echo off\n"
+        "chcp 65001 >nul\n"
+        "set \"SRC=%~2\"\n"
+        "if \"%SRC%\"==\"\" set \"SRC=%~1\"\n"
+        "if \"%SRC%\"==\"\" (echo SRC_MISSING>\"%PROGRAMDATA%\\deli_update_result.txt\" & exit /b 2)\n"
+        "set \"DST=%PROGRAMDATA%\\Blackmagic Design\\DaVinci Resolve\\Fusion\\Scripts\\交付自检工具\"\n"
+        "if not exist \"%DST%\" mkdir \"%DST%\"\n"
+        "robocopy \"%SRC%\" \"%DST%\" /E /NFL /NDL /NJH /NJS /nc /ns /np >nul\n"
+        "if errorlevel 8 (echo FAILED>\"%PROGRAMDATA%\\deli_update_result.txt\" & exit /b 1)\n"
+        "echo OK>\"%PROGRAMDATA%\\deli_update_result.txt\"\n"
+        "exit /b 0\n"
+    )
+    with open(_bat, "w", encoding="utf-8") as _f:
+        _f.write(_content)
+    return _bat
+
+
+def _read_update_result():
+    _p = os.path.join(os.environ.get("PROGRAMDATA", "C:\\ProgramData"), "deli_update_result.txt")
+    try:
+        with open(_p, encoding="utf-8") as _f:
+            return _f.read().strip()
+    except Exception:
+        return None
+
+
+def _run_elevated_windows(bat_path, plugin_root):
+    """以管理员身份运行 bat（弹一次 UAC），等价 Mac 输密码。返回进程退出码。"""
+    import ctypes
+    from ctypes import wintypes, Structure, byref, c_ulong, c_void_p, c_int
+    _SEE_MASK_NOCLOSEPROCESS = 0x00000040
+    _SW_HIDE = 0
+
+    class _SHELLEXECUTEINFO(Structure):
+        _fields_ = [
+            ("cbSize", c_ulong),
+            ("fMask", c_ulong),
+            ("hwnd", c_void_p),
+            ("lpVerb", wintypes.LPCWSTR),
+            ("lpFile", wintypes.LPCWSTR),
+            ("lpParameters", wintypes.LPCWSTR),
+            ("lpDirectory", wintypes.LPCWSTR),
+            ("nShow", c_int),
+            ("hInstApp", c_void_p),
+            ("lpIDList", c_void_p),
+            ("lpClass", wintypes.LPCWSTR),
+            ("hKeyClass", c_void_p),
+            ("dwHotKey", c_ulong),
+            ("hIconOrMonitor", c_void_p),
+            ("hProcess", c_void_p),
+        ]
+    _params = '/c "{0}" --update "{1}"'.format(bat_path, plugin_root)
+    _sei = _SHELLEXECUTEINFO()
+    _sei.cbSize = ctypes.sizeof(_sei)
+    _sei.fMask = _SEE_MASK_NOCLOSEPROCESS
+    _sei.hwnd = None
+    _sei.lpVerb = "runas"
+    _sei.lpFile = "cmd.exe"
+    _sei.lpParameters = _params
+    _sei.lpDirectory = None
+    _sei.nShow = _SW_HIDE
+    _sei.hInstApp = None
+    _sei.lpIDList = None
+    _sei.lpClass = None
+    _sei.hKeyClass = None
+    _sei.dwHotKey = 0
+    _sei.hIconOrMonitor = None
+    _sei.hProcess = None
+    if not ctypes.windll.shell32.ShellExecuteExW(byref(_sei)):
+        return 1223  # 用户拒绝 UAC 或触发失败
+    _hproc = _sei.hProcess
+    ctypes.windll.kernel32.WaitForSingleObject(_hproc, 600000)  # 最多等 10 分钟
+    _ec = c_ulong()
+    ctypes.windll.kernel32.GetExitCodeProcess(_hproc, byref(_ec))
+    ctypes.windll.kernel32.CloseHandle(_hproc)
+    return _ec.value
+
+
 def _do_update_sync(progress_callback=None):
     """同步下载 + 安装 — 每步写日志方便远程监控。progress_callback(downloaded, total)"""
     from urllib.request import Request, urlopen
@@ -2978,62 +3065,78 @@ def _do_update_sync(progress_callback=None):
                 raise RuntimeError(f"SHA256 校验失败: {got[:16]}... ≠ {expected_sha256[:16]}...")
             _action_log("   SHA256 ✓")
         _action_log(f"   📦 下载完成: {len(data)//1024}KB, 开始安装…")
-        _tmp_dir = tempfile.mkdtemp(dir="/tmp")  # root 可访问，不用用户沙箱
+        # ---- 跨平台：准备临时目录（Windows→%TEMP%，Mac→/var/folders）----
+        _tmp_dir = tempfile.mkdtemp()
         zip_path = os.path.join(_tmp_dir, "update.zip")
         with open(zip_path, "wb") as f:
             f.write(data)
         with zipfile.ZipFile(zip_path, metadata_encoding="utf-8") as zf:
             zf.extractall(_tmp_dir)
 
-        # 找安装脚本：优先 ASCII 名，兜底后缀 + 全局搜索
-        cmd = None
-        for root, _, files in os.walk(_tmp_dir):
-            for fn in files:
-                if fn == "install_update.command":
-                    cmd = os.path.join(root, fn); break
-            if cmd: break
-        if not cmd:
-            for root, _, files in os.walk(_tmp_dir):
-                for fn in files:
-                    if fn.endswith(".command"):
-                        cmd = os.path.join(root, fn); break
-                if cmd: break
-        if not cmd:
-            raise RuntimeError("安装包中未找到 install.command")
-
-        os.chmod(cmd, 0o755)
-        # 找插件根目录（含 shell_personal.py 的那个），拷贝到安装期望位置
-        import shutil as _sh2
-        _src = os.path.dirname(cmd)  # davinci_plugin_update/
-        for _root, _dirs, _files in os.walk(_src):
+        # 找插件根目录（含 shell_personal.py 的那个目录）
+        _plugin_root = None
+        for _root, _dirs, _files in os.walk(_tmp_dir):
             if "shell_personal.py" in _files:
-                _src = _root; break
-        _sh2.rmtree("/tmp/_deli_src", ignore_errors=True)
-        _sh2.copytree(_src, "/tmp/_deli_src")
+                _plugin_root = _root
+                break
+        if not _plugin_root:
+            raise RuntimeError("更新包中未找到插件文件 (shell_personal.py)")
+
+        # ---- 查找安装脚本：优先同包内，其次已装目录兜底，再次运行时生成 ----
+        _is_win = sys.platform.startswith("win")
+        cmd = None
+        if _is_win:
+            for _r, _, _fs in os.walk(_tmp_dir):
+                if "install_update.bat" in _fs:
+                    cmd = os.path.join(_r, "install_update.bat"); break
+        else:
+            for _r, _, _fs in os.walk(_tmp_dir):
+                if "install_update.command" in _fs:
+                    cmd = os.path.join(_r, "install_update.command"); break
+        if not cmd:
+            # 已安装目录里的兜底脚本
+            _fallback = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     "install_update.bat" if _is_win else "install_update.command")
+            if os.path.exists(_fallback):
+                cmd = _fallback
+        if not cmd and _is_win:
+            cmd = _generate_win_update_bat(_plugin_root)   # 运行时自生成，自包含
+        if not cmd:
+            raise RuntimeError("安装包中未找到安装脚本")
+
         _action_log("   → 开始安装更新…")
-        script = f'do shell script "/bin/bash {shlex.quote(cmd)} --update" with administrator privileges'
-        result = subprocess.run(["osascript", "-e", script], timeout=TIMEOUT_INSTALL,
-                                capture_output=True, start_new_session=True,
-                                env={**os.environ, "TERM": "dumb"})
-        if result.returncode != 0:
-            # 解析 osascript 返回码，转为人话
-            if result.returncode == 1:
-                # 返回码 1 通常伴随 stderr，解析具体原因
-                try:
-                    stderr_text = result.stderr.decode('utf-8', errors='replace').strip()
-                except Exception:
-                    stderr_text = ""
-                if "-128" in stderr_text:
-                    err = "更新已取消"
-                elif "not found" in stderr_text.lower() or "no such file" in stderr_text.lower():
-                    err = "未找到安装脚本，请重新下载更新包"
-                elif stderr_text:
-                    err = f"安装失败: {stderr_text.split(chr(10))[0][:100]}"
+        if _is_win:
+            # Windows：自提权运行（等价 Mac 输密码，弹一次 UAC）
+            _rc = _run_elevated_windows(cmd, _plugin_root)
+            if _rc != 0:
+                _err = _read_update_result() or f"安装失败 (错误码 {_rc})"
+                if _rc in (1223, 2):
+                    _err = "更新已取消"
+                raise RuntimeError(_err)
+        else:
+            os.chmod(cmd, 0o755)
+            script = f'do shell script "/bin/bash {shlex.quote(cmd)} --update" with administrator privileges'
+            result = subprocess.run(["osascript", "-e", script], timeout=TIMEOUT_INSTALL,
+                                    capture_output=True, start_new_session=True,
+                                    env={**os.environ, "TERM": "dumb"})
+            if result.returncode != 0:
+                # 解析 osascript 返回码，转为人话
+                if result.returncode == 1:
+                    try:
+                        stderr_text = result.stderr.decode('utf-8', errors='replace').strip()
+                    except Exception:
+                        stderr_text = ""
+                    if "-128" in stderr_text:
+                        err = "更新已取消"
+                    elif "not found" in stderr_text.lower() or "no such file" in stderr_text.lower():
+                        err = "未找到安装脚本，请重新下载更新包"
+                    elif stderr_text:
+                        err = f"安装失败: {stderr_text.split(chr(10))[0][:100]}"
+                    else:
+                        err = "安装失败，请重试"
                 else:
-                    err = "安装失败，请重试"
-            else:
-                err = f"安装失败 (错误码 {result.returncode})"
-            raise RuntimeError(err)
+                    err = f"安装失败 (错误码 {result.returncode})"
+                raise RuntimeError(err)
         itm[HINT_LB].Text = "✅ 更新完成！请重启达芬奇插件生效"
         itm[BTN_UPDATE].Text = "✅"
         _unlock_ui()
