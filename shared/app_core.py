@@ -911,6 +911,19 @@ class RenamerAPI:
             except: pass
             return {"ok": False, "error": _err_human(zip_err)}
 
+        # 解压后检查版本：delta 版本不能低于当前版本（防止旧代码覆盖新修复）
+        try:
+            _dv = os.path.join(delta_dir, 'version.txt')
+            if os.path.isfile(_dv):
+                with open(_dv, encoding='utf-8') as _f:
+                    _dver = _f.read().strip()
+                if _APP_VERSION and _dver < _APP_VERSION:
+                    import shutil
+                    shutil.rmtree(delta_dir, ignore_errors=True)
+                    return {"ok": False, "error": f"增量包版本过旧 ({_dver} < {_APP_VERSION})，已跳过"}
+        except Exception:
+            pass
+
         # 重启（launcher 自动从 ~/.config/renamer/delta/ 加载覆盖）
         _tmp = tempfile.gettempdir()
         is_win = sys.platform == "win32"
@@ -942,13 +955,16 @@ class RenamerAPI:
                 f'"{binary}" >> {restart_log} 2>&1\n'
                 f'rm -f "$0"\n'
             )
-        with open(script_path, 'w') as sf:
+        is_win = sys.platform == "win32"
+        with open(script_path, 'w', encoding='gbk' if is_win else 'utf-8') as sf:
             sf.write(script)
-        os.chmod(script_path, 0o755)
+        if not is_win:
+            os.chmod(script_path, 0o755)
         try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a').write(f"[{datetime.now():%H:%M:%S}] launching restart via {script_path}\n")
         except: pass
         _sp.Popen(['/bin/bash', script_path] if sys.platform == 'darwin' else ['cmd', '/c', script_path],
-            start_new_session=True, stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
+            start_new_session=True, stdout=_sp.DEVNULL, stderr=_sp.DEVNULL,
+            creationflags=_sp.CREATE_NO_WINDOW if is_win else 0)
         import time; time.sleep(0.2)
         os._exit(0)
         try:
@@ -1255,11 +1271,17 @@ try:
             content = _vf.read()
             _m = _re_ver.search(r"const APP_VERSION='([^']+)'", content)
             if _m: _APP_VERSION = _m.group(1)
-    # 增量覆盖目录的版本文件（优先级最高）
+    # 增量覆盖目录的版本文件（优先级最高，但不降级）
     _delta_ver = os.path.expanduser('~/.config/renamer/delta/version.txt')
     if os.path.isfile(_delta_ver):
-        with open(_delta_ver) as _dv:
-            _APP_VERSION = _dv.read().strip()
+        with open(_delta_ver, encoding='utf-8') as _dv:
+            _dver = _dv.read().strip()
+        # 如果 delta 版本低于内置版本，不使用 delta（清除覆盖目录）
+        if _dver and _APP_VERSION and _dver < _APP_VERSION:
+            import shutil
+            shutil.rmtree(os.path.dirname(_delta_ver), ignore_errors=True)
+        else:
+            _APP_VERSION = _dver
 except Exception:
     pass
 
