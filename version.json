@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "e82c190be87f9c19f0e7fd965e37793a9d02d7e48c7629a25840e6f2e00ff0f6",
+    "sha256": "485e66b73ba26f858feee2915d9f51055d3730164f8762ec5ab03c462dfadef7",
     "notes": "🔍 排错报告一键导出（网络诊断+授权快照+激活历史+环境配置）\n🛡️ 指纹稳定不漂移，VPN不影响激活\n📋 配置页一键复制机器指纹，发给裁缝老师",
     "history": [
       {
@@ -48,14 +48,14 @@
     ]
   },
   "batch_renamer_mac": {
-    "version": "3.7.12",
+    "version": "3.7.13",
     "urls": [
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
     "notes": "🔄 差分更新 + macOS原生菜单 + 非阻塞检测\n🔍 断网提示⚠ + 失败回滚 + 人话翻译\n🖥 原生菜单：关于 + 检查更新（PyObjC）",
-    "sha256": "084290a3cb1d8fca85bd91c5c13dd5329d52f7e9e55ca1086cd191babe816cac",
+    "sha256": "e1d4685ec661e74c00a9441de17183ef98dbed2af4023c92b4dfb7da47f35d03",
     "history": [
       {
         "version": "3.7.12",

@@ -2511,8 +2511,9 @@ def _export_debug_package():
                 log_entries.append((full, f"logs/ui-{today}.log"))
             elif yesterday in f:
                 log_entries.append((full, f"logs/ui-{yesterday}.log"))
-    # 拉取 ~/.workbuddy/logs/ 下的 launcher 日志
-    _wb_logs = os.path.join(os.path.expanduser("~"), ".workbuddy", "logs", "交付自检工具")
+    # 拉取系统日志目录下的 launcher 日志
+    from shared.cross_platform import app_logs_dir
+    _wb_logs = app_logs_dir("交付自检工具")
     if os.path.isdir(_wb_logs):
         for f in sorted(os.listdir(_wb_logs)):
             if f.startswith("launcher_") and f.endswith(".log") and (today in f or yesterday in f):

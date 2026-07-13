@@ -15,11 +15,13 @@ from shared.naming import (
 from shared.naming_checks import check_zero_byte, check_double_ext, check_size_anomaly
 
 import webview
-import logging, tempfile
+import logging
 _log = logging.getLogger("renamer_web")
 _log.setLevel(logging.DEBUG)
 try:
-    _hdlr = logging.FileHandler(os.path.join(tempfile.gettempdir(), "renamer_web.log"))
+    _log_dir = os.path.join(os.path.expanduser("~"), "Library", "Logs", "批量命名工具")
+    os.makedirs(_log_dir, exist_ok=True)
+    _hdlr = logging.FileHandler(os.path.join(_log_dir, "renamer.log"))
     _hdlr.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
     _log.addHandler(_hdlr)
 except Exception:
@@ -327,22 +329,22 @@ class RenamerAPI:
                 # 内存调试日志
                 if self._dbg_buf:
                     _add_str(zf, "debug_memory.log", self._dbg_buf)
-                # Python 日志文件（/tmp/renamer_web.log）
-                _log_file = os.path.join(tempfile.gettempdir(), "renamer_web.log")
+                # Python 日志文件（~/Library/Logs/批量命名工具/renamer.log）
+                _log_file = os.path.join(os.path.expanduser("~"), "Library", "Logs", "批量命名工具", "renamer.log")
                 if os.path.isfile(_log_file):
                     try:
-                        zf.write(_log_file, "renamer_web.log")
+                        zf.write(_log_file, "renamer.log")
                     except Exception:
                         pass
-                # ~/.workbuddy/logs/批量命名工具/
-                _wb_logs = os.path.expanduser("~/.workbuddy/logs/批量命名工具")
-                if os.path.isdir(_wb_logs):
+                # ~/Library/Logs/批量命名工具/
+                _log_dir = os.path.join(os.path.expanduser("~"), "Library", "Logs", "批量命名工具")
+                if os.path.isdir(_log_dir):
                     today = time.strftime("%Y-%m-%d")
                     yesterday = time.strftime("%Y-%m-%d", time.localtime(time.time() - 86400))
-                    for f in sorted(os.listdir(_wb_logs)):
+                    for f in sorted(os.listdir(_log_dir)):
                         if (today in f or yesterday in f) and (f.endswith(".log") or f.endswith(".jsonl")):
                             try:
-                                zf.write(os.path.join(_wb_logs, f), f"logs/{f}")
+                                zf.write(os.path.join(_log_dir, f), f"logs/{f}")
                             except Exception:
                                 pass
                 # 诊断日志文件（apply_delta / bottle_route）

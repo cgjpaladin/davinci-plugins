@@ -18,6 +18,8 @@
 
 import json
 import os
+
+from cross_platform import app_logs_dir
 import socket
 import threading
 import time
@@ -77,7 +79,8 @@ def _write(entry: dict):
     log_dir = _log_dir
     if not log_dir:
         # fallback：没确认项目路径时写到本地 ops 日志目录
-        log_dir = os.path.join(os.path.expanduser("~"), ".workbuddy", "logs", "ops")
+        from .cross_platform import app_logs_dir
+        log_dir = app_logs_dir("ops")
     with _lock:
         import random as _random
         line = json.dumps(entry, ensure_ascii=False) + "\n"
@@ -241,7 +244,7 @@ def cost_estimate(points: int, yuan: float, estimated_min: int, need: int, cache
 
 # ── 通用本地日志（按主机名分文件，供运维排查）──
 
-_LOG_DIR = os.path.join(os.path.expanduser("~"), ".workbuddy", "logs", "ops")
+_LOG_DIR = app_logs_dir("ops")
 _OP_LOG = os.path.join(_LOG_DIR, f"{socket.gethostname()}.log")
 
 

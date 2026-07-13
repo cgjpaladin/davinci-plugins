@@ -10,9 +10,9 @@ log_writer.py — 统一文件日志系统（持久化，永不覆盖）
     log.ops({"action": "scan", "count": 3})
 
 路径:
-    ~/.workbuddy/logs/{产品名}/ui_{hostname}_{date}.log
-    ~/.workbuddy/logs/{产品名}/launcher_{hostname}_{date}.log
-    ~/.workbuddy/logs/{产品名}/ops_{hostname}_{date}.jsonl
+    macOS: ~/Library/Logs/{产品名}/ui_{hostname}_{date}.log
+    macOS: ~/Library/Logs/{产品名}/launcher_{hostname}_{date}.log
+    macOS: ~/Library/Logs/{产品名}/ops_{hostname}_{date}.jsonl
 
 注意: 达芬奇 subprocess 无法访问 SMB，SMB 日志需 SSH 远程读取本地文件。
 """
@@ -27,7 +27,7 @@ class _DailyWriter:
     def __init__(self, base_dir: str, suffix: str, product: str, fmt: str = "log"):
         """
         Args:
-            base_dir: 日志根目录（如 ~/.workbuddy/logs/ 或 SMB 路径）
+            base_dir: 日志根目录（如 ~/Library/Logs/ 或 SMB 路径）
             suffix:   文件名后缀（如 ui / launcher / ops / {hostname}）
             product:  产品名
             fmt:      文件格式 "log" 或 "jsonl"
@@ -71,7 +71,8 @@ class LogWriter:
     """产品级日志写入器。"""
 
     def __init__(self, product: str):
-        _local_root = os.path.join(os.path.expanduser("~"), ".workbuddy", "logs")
+        from cross_platform import app_logs_dir
+        _local_root = app_logs_dir(product)
         _host = socket.gethostname()
 
         self.ui =       _DailyWriter(_local_root, f"ui_{_host}",       product, "log")

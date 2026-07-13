@@ -82,12 +82,16 @@ def app_data_dir(subdir: str = "交付自检") -> str:
 
 
 def app_logs_dir(subdir: str = "交付自检工具") -> str:
-    """返回平台级日志目录。"""
+    """返回平台标准日志目录。
+    macOS: ~/Library/Logs/交付自检工具/
+    Windows: %LOCALAPPDATA%/交付自检工具/logs/
+    区别于 app_data_dir（配置/凭据），日志走系统标准位，用户不会误删。
+    """
     if _IS_MACOS:
-        return os.path.expanduser(f"~/.workbuddy/logs/{subdir}")
+        return os.path.join(os.path.expanduser("~/Library/Logs"), subdir)
     if _IS_WINDOWS:
-        return os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), subdir, "logs")
-    return os.path.expanduser(f"~/.{subdir}/logs")
+        return os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), subdir, "logs")
+    return os.path.join(os.path.expanduser("~"), "." + subdir, "logs")
 
 
 # ═══ DaVinci Resolve 路径 ═══
