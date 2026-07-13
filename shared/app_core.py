@@ -1246,7 +1246,7 @@ _SCRIPT_JS = os.path.join(_BASE_DIR, 'app_table.js')
 _HTML = os.path.join(_BASE_DIR, HTML_FILE_NAME) if os.path.isfile(os.path.join(_BASE_DIR, HTML_FILE_NAME)) else os.path.join(_BASE_DIR, 'renamer_table.html')
 _APP_VERSION = '0.0.0'
 _PRODUCT_ID = ('batch_renamer_mac' if sys.platform == 'darwin' else 'batch_renamer_win')
-_MANUAL_URL = "https://jcnjno6i0upk.feishu.cn/docx/HEvydRFQZorKEnxBTYkconsinih"
+_MANUAL_URL = "https://jcnjno6i0upk.feishu.cn/docx/HEvydRFQZorKEnxBTYkconsinih?from=from_copylink"
 try:
     # PyInstaller 打包后 app_table.js 不在，从拼接后的 HTML 中提取
     vfile = _HTML if os.path.isfile(_HTML) else _SCRIPT_JS
