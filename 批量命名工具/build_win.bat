@@ -1,31 +1,27 @@
 @echo off
-REM 批量命名工具 - Windows 打包脚本 (v3.7.1)
+REM 批量命名工具 - Windows 打包脚本 (v3.7.13)
 REM 用法: build_win.bat table  表格版（推荐）
 REM       build_win.bat        卡片版（备用）
-REM 前提: Python 3.11（webview 不支持 ≥3.12）+ ffmpeg.exe 在项目目录
+REM 前提: Python 3.13 + pywebview 6.2.1 + ffmpeg.exe 在项目目录
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 set VARIANT=%1
 if "%VARIANT%"=="" set VARIANT=table
 
-REM 使用 py -3.11（webview 仅支持 ≤3.11）
-py -3.11 --version >nul 2>&1
+REM Python 版本检测
+python --version >nul 2>&1
 if errorlevel 1 (
-    echo ❌ 需要 Python 3.11，请安装后重试
+    echo ❌ Python 未安装
     exit /b 1
 )
 
 if "%VARIANT%"=="table" (
-    set JS_FILE=app_table.js
-    set HTML_FILE=renamer_table.html
     set HTML_BUNDLE=_build\renamer_table.html
-    set APP_NAME=批量命名工具-v3.7
+    set APP_NAME=批量命名工具-v3.7.13
 ) else (
-    set JS_FILE=card\app.js
-    set HTML_FILE=card\renamer_web.html
     set HTML_BUNDLE=_build\renamer_web.html
-    set APP_NAME=批量命名工具-卡片版-v3.7
+    set APP_NAME=批量命名工具-卡片版-v3.7.13
 )
 
 REM 清理
@@ -35,11 +31,11 @@ if exist _build rmdir /s /q _build
 
 REM 拼接 HTML
 mkdir _build
-py -3.11 _splice.py %VARIANT%
+python _splice.py %VARIANT%
 if errorlevel 1 ( echo 拼接失败 & exit /b 1 )
 
-REM 打包 (--add-data 在 Windows 用分号分隔)
-py -3.11 -m PyInstaller ^
+REM 打包 --onefile（方案C：单文件 + 首次运行自安装）
+python -m PyInstaller ^
   --onefile --windowed --clean --noconsole ^
   --name "%APP_NAME%" ^
   --icon app_icon.ico --version-file version_info.txt ^
@@ -66,17 +62,5 @@ py -3.11 -m PyInstaller ^
   renamer_web.py
 if errorlevel 1 ( echo 打包失败 & exit /b 1 )
 
-REM 输出到桌面
-set DESK=%USERPROFILE%\Desktop
-copy "dist\%APP_NAME%.exe" "%DESK%\%APP_NAME%.exe" >nul
-echo ✅ %APP_NAME%.exe 已输出到桌面
-
-REM 更新包（用于自动更新）
-set UPDATE_ZIP=%DESK%\batch_renamer_win.zip
-powershell -Command "Compress-Archive -Path '%DESK%\%APP_NAME%.exe' -DestinationPath '%UPDATE_ZIP%' -Force" >nul 2>&1
-if exist "%UPDATE_ZIP%" (
-    echo ✅ 更新包: %UPDATE_ZIP%
-    certutil -hashfile "%UPDATE_ZIP%" SHA256 | findstr /v "hash" > "%UPDATE_ZIP%.sha256"
-) else (
-    echo ⚠ 更新包创建失败
-)
+echo ✅ 构建成功: dist\%APP_NAME%.exe
+echo 产物路径: %CD%\dist\%APP_NAME%.exe

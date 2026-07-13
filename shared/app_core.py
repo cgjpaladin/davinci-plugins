@@ -229,6 +229,7 @@ class RenamerAPI:
         """打包完整诊断信息 → 用户选择目录 → ZIP → Finder/Explorer 定位"""
         import zipfile, subprocess as _sp, socket, time, platform
         is_win = sys.platform == "win32"
+        _CF = _sp.CREATE_NO_WINDOW if is_win else 0  # 隐藏控制台黑框
 
         # ── 选目录 ──
         dest = ""
@@ -238,7 +239,7 @@ class RenamerAPI:
                            '$f = New-Object System.Windows.Forms.FolderBrowserDialog; '
                            '$f.Description = "选择导出位置"; $f.ShowDialog(); $f.SelectedPath')
                 r = _sp.run(["powershell", "-NoProfile", "-Command", ps_code],
-                            capture_output=True, text=True, timeout=120)
+                            capture_output=True, text=True, timeout=120, creationflags=_CF)
                 dest = r.stdout.strip() if r.returncode == 0 else ""
             else:
                 r = _sp.run(
@@ -841,7 +842,10 @@ class RenamerAPI:
             # _MEIPASS = Contents/Frameworks（运行时不能写）→ 解压到 Contents/Resources
             fram_dir = meipass  # Contents/Frameworks/
             res_dir = os.path.join(os.path.dirname(fram_dir), 'Resources')  # Contents/Resources/
-            app_path = os.path.dirname(os.path.dirname(meipass))
+            if sys.platform == 'win32':
+                app_path = os.path.dirname(sys.executable)
+            else:
+                app_path = os.path.dirname(os.path.dirname(meipass))
             if not app_path.endswith('.app'):
                 p = meipass
                 for _ in range(5):
@@ -873,14 +877,12 @@ class RenamerAPI:
         _tmp = tempfile.gettempdir()
         is_win = sys.platform == "win32"
         if is_win:
-            # --onedir: 寻找 exe（renamer_web.exe 或 批量命名工具.exe）
-            candidates = [os.path.join(app_path, "批量命名工具.exe"),
-                          os.path.join(app_path, "renamer_web.exe")]
-            binary = ""
-            for c in candidates:
-                if os.path.isfile(c):
-                    binary = c; break
-            if not binary:
+            if os.path.isfile(os.path.join(app_path, "批量命名工具.exe")):
+                binary = os.path.join(app_path, "批量命名工具.exe")
+            elif os.path.isfile(os.path.join(app_path, "renamer_web.exe")):
+                binary = os.path.join(app_path, "renamer_web.exe")
+            else:
+                binary = sys.executable  # --onefile fallback
                 binary = os.path.join(app_path, "批量命名工具.exe")
         else:
             bundle_name = os.path.basename(app_path)
