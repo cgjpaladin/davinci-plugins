@@ -55,7 +55,7 @@
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
     "notes": "🔄 差分更新 + macOS原生菜单 + 非阻塞检测\n🔍 断网提示⚠ + 失败回滚 + 人话翻译\n🖥 原生菜单：关于 + 检查更新（PyObjC）",
-    "sha256": "2b7b76fc8cfe6ef9c498b6044d820d60936fa437b3e89f6f46f0ee8fe2502c77",
+    "sha256": "34f4aba4131c7210a062a727c33643d404907946c33e12b4fc48920bdb44a521",
     "history": [
       {
         "version": "3.7.12",
