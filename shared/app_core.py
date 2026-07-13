@@ -19,7 +19,11 @@ import logging
 _log = logging.getLogger("renamer_web")
 _log.setLevel(logging.DEBUG)
 try:
-    _log_dir = os.path.join(os.path.expanduser("~"), "Library", "Logs", "批量命名工具")
+    if sys.platform == "win32":
+        _log_dir = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
+                                "批量命名工具", "Logs")
+    else:
+        _log_dir = os.path.join(os.path.expanduser("~"), "Library", "Logs", "批量命名工具")
     os.makedirs(_log_dir, exist_ok=True)
     _hdlr = logging.FileHandler(os.path.join(_log_dir, "renamer.log"))
     _hdlr.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
@@ -222,32 +226,41 @@ class RenamerAPI:
         return {"log": list(self._dbg_buf)}
 
     def export_debug_package(self):
-        """打包完整诊断信息 → 用户选择目录 → ZIP → Finder 定位"""
+        """打包完整诊断信息 → 用户选择目录 → ZIP → Finder/Explorer 定位"""
         import zipfile, subprocess as _sp, socket, time, platform
-        _real_stderr = getattr(sys, '__stderr__', sys.stderr)
+        is_win = sys.platform == "win32"
 
         # ── 选目录 ──
         dest = ""
         try:
-            r = _sp.run(
-                ["osascript", "-e",
-                 'POSIX path of (choose folder with prompt "选择导出位置")'],
-                capture_output=True, text=True, encoding="utf-8", timeout=120)
-            dest = r.stdout.strip()
+            if is_win:
+                ps_code = ('Add-Type -AssemblyName System.Windows.Forms; '
+                           '$f = New-Object System.Windows.Forms.FolderBrowserDialog; '
+                           '$f.Description = "选择导出位置"; $f.ShowDialog(); $f.SelectedPath')
+                r = _sp.run(["powershell", "-NoProfile", "-Command", ps_code],
+                            capture_output=True, text=True, timeout=120)
+                dest = r.stdout.strip() if r.returncode == 0 else ""
+            else:
+                r = _sp.run(
+                    ["osascript", "-e",
+                     'POSIX path of (choose folder with prompt "选择导出位置")'],
+                    capture_output=True, text=True, encoding="utf-8", timeout=120)
+                dest = r.stdout.strip()
         except Exception as e:
             _log.warning(f"export_debug: choose folder failed: {e}")
         if not dest or not os.path.isdir(dest):
             return {"ok": False, "error": "未选择目录"}
 
+        # ── 日志目录 ──
+        if is_win:
+            _log_root = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
+                                     "批量命名工具", "Logs")
+        else:
+            _log_root = os.path.join(os.path.expanduser("~"), "Library", "Logs", "批量命名工具")
+
         # ── ZIP 文件名 ──
         now = time.localtime()
-        fp = ""
-        try:
-            from shared.license import get_machine_fingerprint
-            fp = "-" + get_machine_fingerprint()[:8]
-        except Exception:
-            pass
-        zip_name = f"batch-renamer-debug-{now.tm_mon:02d}{now.tm_mday:02d}-{now.tm_hour:02d}{now.tm_min:02d}{fp}.zip"
+        zip_name = f"批量命名工具-诊断日志-{now.tm_mon:02d}{now.tm_mday:02d}-{now.tm_hour:02d}{now.tm_min:02d}.zip"
         zip_path = os.path.join(dest, zip_name)
 
         def _add_str(zf, name, lines):
@@ -329,34 +342,38 @@ class RenamerAPI:
                 # 内存调试日志
                 if self._dbg_buf:
                     _add_str(zf, "debug_memory.log", self._dbg_buf)
-                # Python 日志文件（~/Library/Logs/批量命名工具/renamer.log）
-                _log_file = os.path.join(os.path.expanduser("~"), "Library", "Logs", "批量命名工具", "renamer.log")
+                # Python 日志文件
+                _log_file = os.path.join(_log_root, "renamer.log")
                 if os.path.isfile(_log_file):
                     try:
                         zf.write(_log_file, "renamer.log")
                     except Exception:
                         pass
-                # ~/Library/Logs/批量命名工具/
-                _log_dir = os.path.join(os.path.expanduser("~"), "Library", "Logs", "批量命名工具")
-                if os.path.isdir(_log_dir):
+                # 当天/前一天日志
+                if os.path.isdir(_log_root):
                     today = time.strftime("%Y-%m-%d")
                     yesterday = time.strftime("%Y-%m-%d", time.localtime(time.time() - 86400))
-                    for f in sorted(os.listdir(_log_dir)):
+                    for f in sorted(os.listdir(_log_root)):
                         if (today in f or yesterday in f) and (f.endswith(".log") or f.endswith(".jsonl")):
                             try:
-                                zf.write(os.path.join(_log_dir, f), f"logs/{f}")
+                                zf.write(os.path.join(_log_root, f), f"logs/{f}")
                             except Exception:
                                 pass
-                # 诊断日志文件（apply_delta / bottle_route）
-                for diag in ["/tmp/apply_delta.log", "/tmp/renamer_restart.log",
-                             "/tmp/bottle_route.log", "/tmp/_renamer_restart.sh"]:
-                    if os.path.isfile(diag):
+                # 诊断日志文件
+                _tmp = os.environ.get("TEMP") or os.environ.get("TMP") or "/tmp"
+                for diag in ["apply_delta.log", "renamer_restart.log",
+                             "bottle_route.log", "_renamer_restart.sh"]:
+                    diag_path = os.path.join(_tmp, diag)
+                    if os.path.isfile(diag_path):
                         try:
-                            zf.write(diag, os.path.basename(diag))
+                            zf.write(diag_path, diag)
                         except Exception:
                             pass
-            # Finder 定位
-            _sp.run(["open", "-R", zip_path], check=False)
+            # 定位文件
+            if is_win:
+                _sp.run(["explorer", "/select,", zip_path], check=False)
+            else:
+                _sp.run(["open", "-R", zip_path], check=False)
             _log.info(f"export_debug: saved {zip_path}")
             return {"ok": True, "path": zip_path, "name": zip_name}
         except Exception as e:
