@@ -58,6 +58,7 @@ function mock(m,...a){
         ],total:6,duplicates:0});break;
       case'debug_log':r('ok');break;
       case'export_debug_package':toast('Mock: 日志导出仅在生产环境可用');r({ok:false,error:'Mock'});break;
+      case'open_manual':toast('Mock: 使用手册仅在生产环境可用');r({ok:false,error:'Mock'});break;
       default:r({});
     }
   });
@@ -103,6 +104,31 @@ async function init(){
       dm.textContent = cfg.dev ? ('🔧 '+APP_VERSION) : '📋 导出日志';
     });
   };
+
+  // 使用教程按钮
+  const mb = document.getElementById('manualBtn');
+  if(mb){
+    mb.title = '使用教程';
+    mb.onclick = () => {
+      call('open_manual').then(r => {
+        if(!r || !r.ok){ toast('打开教程失败'); return; }
+        if(r.method === 'browser') return; // 浏览器已打开
+        // 离线 QR 弹窗
+        if(r.method === 'qr'){
+          if(_dialogEl){_dialogEl.remove();_dialogEl=null;}
+          _dialogEl=document.createElement('div');_dialogEl.className='update-overlay show';
+          _dialogEl.addEventListener('click',e=>{if(e.target===_dialogEl){_dialogEl.remove();_dialogEl=null;}});
+          _dialogEl.innerHTML='<div class="update-dialog" style="text-align:center">'+
+            '<div class="up-title">📖 使用教程</div>'+
+            '<div class="up-body" style="user-select:text;-webkit-user-select:text">当前离线，手机扫码查看：</div>'+
+            '<img src="data:image/png;base64,'+r.qr+'" style="width:'+r.size+'px;height:'+r.size+'px;margin:12px auto;display:block">'+
+            '<div class="up-actions"><button class="up-btn-cancel" onclick="if(_dialogEl){_dialogEl.remove();_dialogEl=null;}">关闭</button></div>'+
+            '</div>';
+          document.body.appendChild(_dialogEl);
+        }
+      }).catch(e => toast('打开教程异常: '+e));
+    };
+  }
 
   // 动态生成表头（单一事实来源，防止 HTML/JS 列序漂移）
   const theadTr = document.querySelector('#fileList thead tr');

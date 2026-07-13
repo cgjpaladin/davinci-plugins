@@ -177,7 +177,45 @@ class RenamerAPI:
             "method_desc_map": METHOD_DESC_MAP,
             "field_rules": FIELD_RULES,
             "name_format": fmt,
+            "manual_url": _MANUAL_URL,
+            "app_version": _APP_VERSION,
         }
+
+    def open_manual(self):
+        """使用手册：在线→浏览器打开，离线→返回 QR 码 base64"""
+        import socket, base64
+        from urllib.parse import urlparse
+        try:
+            host = urlparse(_MANUAL_URL).hostname
+            s = socket.create_connection((host, 443), timeout=2)
+            s.close()
+            import webbrowser
+            webbrowser.open(_MANUAL_URL)
+            return {"ok": True, "method": "browser"}
+        except Exception:
+            pass
+        try:
+            from shared._qr import generate as _qr_generate
+            matrix, size = _qr_generate(_MANUAL_URL.encode())
+            scale = 4; pad = 12
+            from io import BytesIO
+            from PIL import Image
+            img = Image.new("RGB", (size * scale + pad * 2, size * scale + pad * 2), "#ffffff")
+            for r in range(size):
+                for c in range(size):
+                    if matrix[r][c]:
+                        x = pad + c * scale
+                        y = pad + r * scale
+                        for dx in range(scale):
+                            for dy in range(scale):
+                                img.putpixel((x + dx, y + dy), (0, 0, 0))
+            buf = BytesIO()
+            img.save(buf, "PNG")
+            b64 = base64.b64encode(buf.getvalue()).decode()
+            return {"ok": True, "method": "qr", "qr": b64, "size": img.size[0], "url": _MANUAL_URL}
+        except Exception as e:
+            _log.warning(f"open_manual qr failed: {e}")
+            return {"ok": False, "error": str(e)}
 
     def add_files_via_dialog(self):
         result = _window.create_file_dialog(
@@ -1208,6 +1246,7 @@ _SCRIPT_JS = os.path.join(_BASE_DIR, 'app_table.js')
 _HTML = os.path.join(_BASE_DIR, HTML_FILE_NAME) if os.path.isfile(os.path.join(_BASE_DIR, HTML_FILE_NAME)) else os.path.join(_BASE_DIR, 'renamer_table.html')
 _APP_VERSION = '0.0.0'
 _PRODUCT_ID = ('batch_renamer_mac' if sys.platform == 'darwin' else 'batch_renamer_win')
+_MANUAL_URL = "https://请替换为飞书文档链接"  # TODO: 替换为真实链接
 try:
     # PyInstaller 打包后 app_table.js 不在，从拼接后的 HTML 中提取
     vfile = _HTML if os.path.isfile(_HTML) else _SCRIPT_JS
