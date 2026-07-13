@@ -8,7 +8,9 @@
 *.pkg
 *.pyc
 *.zip
-!update_latest.zip
+!delivery_checker_update.zip
+!batch_renamer_mac.zip
+!batch_renamer_win.zip
 .DS_Store
 .env
 .workbuddy/
