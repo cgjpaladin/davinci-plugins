@@ -30,3 +30,4 @@ tools/_wsl.py
 批量命名工具_创壹特供版/card/
 桌面/
 批量命名工具/dist_build/
+.build_cache/
