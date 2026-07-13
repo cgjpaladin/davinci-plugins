@@ -58,36 +58,20 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
-    "notes": "📋 导出诊断日志（ZIP文件，一键定位）\n🔄 增量更新支持 macOS Sequoia\n🖥 Win/Mac 双平台兼容\n📁 日志迁移到系统标准目录",
+    "notes": "## v3.7.13\n\n📋 导出诊断日志——点击 📋 按钮，一键打包 ZIP 到桌面\n🔄 macOS Sequoia 增量更新适配——不再写 .app，外部目录覆盖加载\n🖥 Windows / macOS 双平台兼容\n📁 日志迁移到系统标准目录，不怕误删\n🐛 修复导出 cfg 变量未定义导致崩溃",
     "sha256": "9702d42ce26cc9d2e7adea4e5907b65d96176caf5d607193b408c0da32d4b862",
     "history": [
       {
         "version": "3.7.13",
-        "notes": "📋 导出诊断日志 · 🔄 macOS增量修复 · 🖥 双平台"
+        "notes": "## v3.7.13\n\n📋 导出诊断日志——点击 📋 按钮，一键打包 ZIP 到桌面\n🔄 macOS Sequoia 增量更新适配——不再写 .app，外部目录覆盖加载\n🖥 Windows / macOS 双平台兼容\n📁 日志迁移到系统标准目录，不怕误删\n🐛 修复导出 cfg 变量未定义导致崩溃"
       },
       {
         "version": "3.7.12",
-        "notes": "🔄 差分更新 · 🖥 原生菜单 · 🔍 断网提示 · 🛡️ 回滚"
+        "notes": "## v3.7.12\n\n🔄 差分更新系统——版本检测 + 下载进度 + 一键重启\n🖥 macOS 原生菜单——关于 + 检查更新\n🔍 断网提示 + 失败回滚 + 人话翻译\n🐛 修复增量更新 macOS 写保护问题"
       },
       {
         "version": "3.7.11",
-        "notes": "🛡️ 归档保护 · 🔙 Undo全覆盖 · 🖱 ghost修复 · 🖼 gif/webp/tga/psd"
-      },
-      {
-        "version": "3.7.11",
-        "notes": "📊 表格版正式发布"
-      },
-      {
-        "version": "3.7.11",
-        "notes": "📂 归档路径：EP/V{ver}/compound · 🏷 版本号改名为制作批次"
-      },
-      {
-        "version": "3.7.11",
-        "notes": "📋 归档文件夹去制作方式 · 🐛 修复 TK 扫描正则"
-      },
-      {
-        "version": "3.7.11",
-        "notes": "📋 归档路径去制作方式，加 V 层级"
+        "notes": "## v3.7.11\n\n🛡️ 归档保护——同内容文件只归档一次\n🔙 Undo 全覆盖——拖拽/重命名/归档均可撤销\n🖱 ghost 行修复——拖拽排序时占位行不绑定事件\n🖼 支持 gif/webp/tga/psd 缩略图\n📊 表格版正式发布"
       }
     ]
   },
