@@ -31,3 +31,4 @@ tools/_wsl.py
 桌面/
 批量命名工具/dist_build/
 .build_cache/
+.build_cache/
