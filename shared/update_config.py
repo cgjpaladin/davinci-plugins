@@ -12,11 +12,11 @@ VERSION_CHECK_URLS = [
     f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/version.json",
 ]
 TIMEOUT_VERSION_CHECK = 8
-UPDATE_FILE = "delivery_checker_update.zip"
+UPDATE_FILE = "batch_renamer_update.zip"
 DOWNLOAD_URLS = [
-    f"https://raw.githubusercontent.com/{REPO_FULL}/main/delivery_checker_update.zip",  # 主源，5min 缓存
-    f"https://ghproxy.net/https://raw.githubusercontent.com/{REPO_FULL}/main/delivery_checker_update.zip",
-    f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/delivery_checker_update.zip",  # 降级
+    f"https://raw.githubusercontent.com/{REPO_FULL}/main/batch_renamer_update.zip",  # 主源，5min 缓存
+    f"https://ghproxy.net/https://raw.githubusercontent.com/{REPO_FULL}/main/batch_renamer_update.zip",
+    f"https://cdn.jsdelivr.net/gh/{REPO_FULL}@main/batch_renamer_update.zip",  # 降级
 ]
 
 # ── 超时（秒） ──

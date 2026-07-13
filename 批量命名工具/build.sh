@@ -103,7 +103,7 @@ if [ -f "$FULL_ZIP" ]; then
 fi
 
 # 差分（仅 shared/ Python 逻辑 + version.txt，<200KB，日常更新用）
-DELTA_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/update_latest.zip"
+DELTA_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/batch_renamer_update.zip"
 # 写入版本文件供运行时覆盖
 echo "$VERSION" > "$APP_OUT/Contents/Resources/version.txt"
 (cd "$APP_OUT/Contents/Resources" && \
