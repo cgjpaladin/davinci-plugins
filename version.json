@@ -58,20 +58,20 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
-    "notes": "## v3.7.13\n\n📋 导出诊断日志——点击 📋 按钮，一键打包 ZIP 到桌面\n🔄 macOS Sequoia 增量更新适配——不再写 .app，外部目录覆盖加载\n🖥 Windows / macOS 双平台兼容\n📁 日志迁移到系统标准目录，不怕误删\n🐛 修复导出 cfg 变量未定义导致崩溃",
+    "notes": "## v3.7.13\n\n📋 导出诊断日志——点击 📋 一键打包，排错不再靠截图\n🔄 增量更新更快更稳，不再闪退\n🖥 全面支持 Windows，双平台功能一致\n📁 日志放到系统目录，不怕整理文件时误删\n🐛 修复导出日志报错的问题",
     "sha256": "9702d42ce26cc9d2e7adea4e5907b65d96176caf5d607193b408c0da32d4b862",
     "history": [
       {
         "version": "3.7.13",
-        "notes": "## v3.7.13\n\n📋 导出诊断日志——点击 📋 按钮，一键打包 ZIP 到桌面\n🔄 macOS Sequoia 增量更新适配——不再写 .app，外部目录覆盖加载\n🖥 Windows / macOS 双平台兼容\n📁 日志迁移到系统标准目录，不怕误删\n🐛 修复导出 cfg 变量未定义导致崩溃"
+        "notes": "## v3.7.13\n\n📋 导出诊断日志——点击 📋 一键打包，排错不再靠截图\n🔄 增量更新更快更稳，不再闪退\n🖥 全面支持 Windows，双平台功能一致\n📁 日志放到系统目录，不怕整理文件时误删\n🐛 修复导出日志报错的问题"
       },
       {
         "version": "3.7.12",
-        "notes": "## v3.7.12\n\n🔄 差分更新系统——版本检测 + 下载进度 + 一键重启\n🖥 macOS 原生菜单——关于 + 检查更新\n🔍 断网提示 + 失败回滚 + 人话翻译\n🐛 修复增量更新 macOS 写保护问题"
+        "notes": "## v3.7.12\n\n🔄 版本更新——新版本自动检测，一键下载重启\n🖥 macOS 原生菜单——顶部菜单栏直接检查更新\n🔍 网络异常有提示，下载失败自动重试"
       },
       {
         "version": "3.7.11",
-        "notes": "## v3.7.11\n\n🛡️ 归档保护——同内容文件只归档一次\n🔙 Undo 全覆盖——拖拽/重命名/归档均可撤销\n🖱 ghost 行修复——拖拽排序时占位行不绑定事件\n🖼 支持 gif/webp/tga/psd 缩略图\n📊 表格版正式发布"
+        "notes": "## v3.7.11\n\n🛡️ 智能归档——同内容文件只存一份，省空间\n🔙 万能撤销——改名/拖拽/归档都能 Ctrl+Z\n🖱 拖拽排序更稳——修复抖动和误触\n🖼 支持 gif/webp/tga/psd 缩略图\n📊 表格版正式发布"
       }
     ]
   },
