@@ -2491,7 +2491,7 @@ def _export_debug_package():
     now = time.localtime()
     from shared.license import get_machine_fingerprint
     fp = get_machine_fingerprint()[:8]
-    zip_name = f"delivery-checker-debug-{now.tm_mon:02d}{now.tm_mday:02d}-{now.tm_hour:02d}{now.tm_min:02d}-{fp}.zip"
+    zip_name = f"交付自检-诊断报告-{now.tm_mon:02d}{now.tm_mday:02d}-{now.tm_hour:02d}{now.tm_min:02d}-{fp}.zip"
     zip_path = os.path.join(dest, zip_name)
 
     def _add_str(zf, name, lines):

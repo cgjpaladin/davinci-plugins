@@ -58,20 +58,20 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
-    "notes": "## v3.7.13\n\n📋 导出诊断日志——点击 📋 一键打包，排错不再靠截图\n🔄 增量更新更快更稳，不再闪退\n🖥 全面支持 Windows，双平台功能一致\n📁 日志放到系统目录，不怕整理文件时误删\n🐛 修复导出日志报错的问题",
+    "notes": "## v3.7.13\n\n📋 遇到问题？右下角点 📋，自动打包诊断文件发给作者\n🖥 新增 Windows 版，和 Mac 版功能完全一样\n📁 工作日志统一放到系统目录，不怕误删\n🐛 修了一处导出日志时报错的小问题",
     "sha256": "9702d42ce26cc9d2e7adea4e5907b65d96176caf5d607193b408c0da32d4b862",
     "history": [
       {
         "version": "3.7.13",
-        "notes": "## v3.7.13\n\n📋 导出诊断日志——点击 📋 一键打包，排错不再靠截图\n🔄 增量更新更快更稳，不再闪退\n🖥 全面支持 Windows，双平台功能一致\n📁 日志放到系统目录，不怕整理文件时误删\n🐛 修复导出日志报错的问题"
+        "notes": "## v3.7.13\n\n📋 遇到问题？右下角点 📋，自动打包诊断文件发给作者\n🖥 新增 Windows 版，和 Mac 版功能完全一样\n📁 工作日志统一放到系统目录，不怕误删\n🐛 修了一处导出日志时报错的小问题"
       },
       {
         "version": "3.7.12",
-        "notes": "## v3.7.12\n\n🔄 版本更新——新版本自动检测，一键下载重启\n🖥 macOS 原生菜单——顶部菜单栏直接检查更新\n🔍 网络异常有提示，下载失败自动重试"
+        "notes": "## v3.7.12\n\n🔄 有新版本会自动提醒，点一下就能在线更新\n🖥 Mac 顶部菜单栏可以直接检查更新\n🔍 网络不好时有明确提示，下载失败自动重试"
       },
       {
         "version": "3.7.11",
-        "notes": "## v3.7.11\n\n🛡️ 智能归档——同内容文件只存一份，省空间\n🔙 万能撤销——改名/拖拽/归档都能 Ctrl+Z\n🖱 拖拽排序更稳——修复抖动和误触\n🖼 支持 gif/webp/tga/psd 缩略图\n📊 表格版正式发布"
+        "notes": "## v3.7.11\n\n🛡️ 归档更聪明：重复文件只存一份，节省硬盘\n🔙 改错了随时撤销——改名、拖拽、归档都支持 Ctrl+Z\n🖱 拖拽排序不再抖动，手感更稳\n🖼 缩略图支持更多格式：gif、webp、tga、psd\n📊 表格版正式上线"
       }
     ]
   },
