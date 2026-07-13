@@ -223,7 +223,7 @@ class RenamerAPI:
 
     def export_debug_package(self):
         """打包完整诊断信息 → 用户选择目录 → ZIP → Finder 定位"""
-        import zipfile, subprocess as _sp, socket, time, platform, tempfile
+        import zipfile, subprocess as _sp, socket, time, platform
         _real_stderr = getattr(sys, '__stderr__', sys.stderr)
 
         # ── 选目录 ──
@@ -268,13 +268,13 @@ class RenamerAPI:
             info.append(f"机器指纹: {get_machine_fingerprint()}")
         except Exception:
             info.append(f"机器指纹: N/A")
-        info.append(f"设备模式: {'dev' if cfg.get('dev') else 'prod'}")
-        info.append(f"文件计数: {len(self._files)}")
+        info.append(f"设备模式: {'dev' if getattr(self, 'get_config', lambda: {})().get('dev') else 'prod'}")
+        info.append(f"文件计数: {len(getattr(self, '_files', []))}")
 
         # ── state.txt ──
         state = []
-        state.append(f"文件数: {len(self._files)}")
-        state.append(f"Undo栈: {len(_undo_stack) if '_undo_stack' in dir() else 'N/A'}")
+        state.append(f"文件数: {len(getattr(self, '_files', []))}")
+        state.append(f"Undo栈: {len(_undo_stack)}")
         state.append(f"更新状态: {json.dumps({k: str(v)[:100] for k,v in _UPDATE_STATE.items() if k != 'urls'}, ensure_ascii=False)}")
         # delta 覆盖目录状态
         delta_dir = os.path.expanduser('~/.config/renamer/delta')
