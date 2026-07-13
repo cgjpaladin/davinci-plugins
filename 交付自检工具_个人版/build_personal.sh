@@ -112,7 +112,7 @@ fi
 # ── 10. 打包 ──
 if $IS_UPDATE; then
     # 增量包：直接压源码目录（不含 Python 安装包）
-    ZIP="$SCRIPT_DIR/_build/update_latest.zip"
+    ZIP="$SCRIPT_DIR/_build/delivery_checker_update.zip"
     cd "$SCRIPT_DIR/_build" && zip -rq "$ZIP" "$(basename "$PKG")/"
     ls -lh "$ZIP"
     echo "📂 git push 后经 jsDelivr CDN 分发，插件内自动检测更新"
