@@ -76,29 +76,26 @@
     ]
   },
   "batch_renamer_win": {
-    "version": "3.7.11",
+    "version": "3.7.13",
+    "notes": "## v3.7.13\n\n📋 遇到问题？右下角点 📋，自动打包诊断文件发给作者\n🖥 新增 Windows 版，和 Mac 版功能完全一样\n📁 工作日志统一放到系统目录，不怕误删\n🐛 修了一处导出日志时报错的小问题",
+    "sha256": "a15437f221cd3622f4ac9c71960fd8137c87a5fa9d68718a3409ab88b9c99d49",
     "urls": [
-      "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_win.zip",
-      "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_win.zip",
-      "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_win.zip"
+      "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
+      "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
+      "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
-    "notes": "## v3.7.0\n\n🔄 自动更新——启动3秒检测，下载→重启一条龙\n🖱 右键文件 → 在 Explorer 中显示\n🪟 去除双重标题栏，界面更简洁",
     "history": [
       {
-        "version": "3.7.11",
-        "notes": "📊 表格版正式发布"
+        "version": "3.7.13",
+        "notes": "## v3.7.13\n\n📋 遇到问题？右下角点 📋，自动打包诊断文件发给作者\n🖥 新增 Windows 版，和 Mac 版功能完全一样\n📁 工作日志统一放到系统目录，不怕误删\n🐛 修了一处导出日志时报错的小问题"
+      },
+      {
+        "version": "3.7.12",
+        "notes": "## v3.7.12\n\n🔄 有新版本会自动提醒，点一下就能在线更新\n🖥 Mac 顶部菜单栏可以直接检查更新\n🔍 网络不好时有明确提示，下载失败自动重试"
       },
       {
         "version": "3.7.11",
-        "notes": "📂 归档路径：EP/V{ver}/compound · 🏷 版本号改名为制作批次"
-      },
-      {
-        "version": "3.7.11",
-        "notes": "📋 归档文件夹去制作方式 · 🐛 修复 TK 扫描正则"
-      },
-      {
-        "version": "3.7.11",
-        "notes": "📋 归档路径去制作方式，加 V 层级"
+        "notes": "## v3.7.11\n\n🛡️ 归档更聪明：重复文件只存一份，节省硬盘\n🔙 改错了随时撤销——改名、拖拽、归档都支持 Ctrl+Z\n🖱 拖拽排序不再抖动，手感更稳\n🖼 缩略图支持更多格式：gif、webp、tga、psd\n📊 表格版正式上线"
       }
     ]
   }
