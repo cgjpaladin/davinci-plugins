@@ -291,7 +291,7 @@ def download_update(product: str, save_path: str,
 
 
 def download_delta(save_path: str, progress_callback=None, timeout: float = 300.0) -> tuple:
-    """下载差分更新包 update_latest.zip（<3MB）。
+    """下载差分更新包（<200KB）。
     走 CDN 多链路，失败自动切换。"""
     try:
         from update_config import DOWNLOAD_URLS, MIN_DOWNLOAD_SIZE

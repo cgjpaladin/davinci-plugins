@@ -629,7 +629,7 @@ class RenamerAPI:
         threading.Thread(target=_run, daemon=True).start()
 
     def trigger_delta(self):
-        """下载差分更新包 update_latest.zip（<3MB）"""
+        """下载差分更新包（<200KB）"""
         global _UPDATE_STATE
         if not _UPDATE_STATE["available"]:
             return {"ok": False, "error": "没有可用更新"}
