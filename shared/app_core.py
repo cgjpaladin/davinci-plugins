@@ -905,6 +905,18 @@ class RenamerAPI:
             except: pass
             with zipfile.ZipFile(zip_path, 'r') as zf:
                 zf.extractall(delta_dir)
+            # 修补 delta HTML：防止 pywebview 首次加载慢导致自测误触发
+            for _hname in ['renamer_table.html', 'renamer_web.html']:
+                _hp = os.path.join(delta_dir, _hname)
+                if os.path.isfile(_hp):
+                    with open(_hp, 'r', encoding='utf-8') as _f:
+                        _h = _f.read()
+                    _old = 'setTimeout(() => { if(!window.pywebview) _runSelfTest(); }, 500);'
+                    if _old in _h:
+                        _h = _h.replace(_old, '// self-test skipped (pywebview)')
+                        with open(_hp, 'w', encoding='utf-8') as _f:
+                            _f.write(_h)
+                    break
             try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] extract done\n")
             except: pass
 

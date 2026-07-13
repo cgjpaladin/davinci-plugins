@@ -178,7 +178,7 @@ async function init(){
     });
   }, 500);
   // 自测（仅在无 pywebview 时运行）
-  setTimeout(() => { if(!window.pywebview) _runSelfTest(); }, 500);
+  setTimeout(() => { if(!window.pywebview) _runSelfTest(); }, 2000);
   _initTBodyClick();
   // 审查面板事件
   document.getElementById('reviewClose').addEventListener('click',closeReview);
