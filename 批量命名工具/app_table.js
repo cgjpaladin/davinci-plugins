@@ -1,4 +1,4 @@
-const APP_VERSION='3.7.11';
+const APP_VERSION='3.7.12';
 const APP_GIT_HASH='';
 const APP_BRANCH='';
 const APP_BUILD_TIME='';
@@ -57,6 +57,7 @@ function mock(m,...a){
           {path:'/mock/test06.mp4',basename:'C02_缺失字段_20260302_1402.mp4',ext:'.mp4',fields:{ep:'02',sc:'01',gr:'02',desc:'',author:'',method:'',ver:'',status:''},tags:[]},
         ],total:6,duplicates:0});break;
       case'debug_log':r('ok');break;
+      case'export_debug_package':toast('Mock: 日志导出仅在生产环境可用');r({ok:false,error:'Mock'});break;
       default:r({});
     }
   });
@@ -84,12 +85,22 @@ async function init(){
   window._fieldKeys=_allFields.filter(f=>f.key!=='tk'&&!(f.dv)).map(f=>f.key);
   window._fieldKeysAll=_allFields.filter(f=>f.key!=='tk').map(f=>f.key);
   window._fieldLabels={};_allFields.forEach(f=>{window._fieldLabels[f.key]=f.label});
-  dm.textContent = cfg.dev ? ('🔧 '+APP_VERSION) : '📋';
+  dm.textContent = cfg.dev ? ('🔧 '+APP_VERSION) : '📋 导出日志';
+  dm.title = '导出诊断日志';
   dm.onclick = () => {
-    window.pywebview.api.debug_log('').then(r => {
-      const text = (r.log||[]).join('\n');
-      if(text) navigator.clipboard.writeText(text).then(() => toast('已复制 '+r.log.length+' 条日志'));
-      else toast('无日志');
+    dm.textContent = '⏳ 导出中…';
+    call('export_debug_package').then(r => {
+      if(r && r.ok){
+        toast('✅ 已导出: '+r.name);
+        dm.textContent = '✅ 已导出';
+        setTimeout(() => { dm.textContent = cfg.dev ? ('🔧 '+APP_VERSION) : '📋 导出日志'; }, 3000);
+      } else {
+        toast('导出失败: '+(r?r.error:'未知'));
+        dm.textContent = cfg.dev ? ('🔧 '+APP_VERSION) : '📋 导出日志';
+      }
+    }).catch(e => {
+      toast('导出异常: '+e);
+      dm.textContent = cfg.dev ? ('🔧 '+APP_VERSION) : '📋 导出日志';
     });
   };
 

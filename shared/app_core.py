@@ -219,6 +219,148 @@ class RenamerAPI:
             return "ok"
         return {"log": list(self._dbg_buf)}
 
+    def export_debug_package(self):
+        """打包完整诊断信息 → 用户选择目录 → ZIP → Finder 定位"""
+        import zipfile, subprocess as _sp, socket, time, platform, tempfile
+        _real_stderr = getattr(sys, '__stderr__', sys.stderr)
+
+        # ── 选目录 ──
+        dest = ""
+        try:
+            r = _sp.run(
+                ["osascript", "-e",
+                 'POSIX path of (choose folder with prompt "选择导出位置")'],
+                capture_output=True, text=True, encoding="utf-8", timeout=120)
+            dest = r.stdout.strip()
+        except Exception as e:
+            _log.warning(f"export_debug: choose folder failed: {e}")
+        if not dest or not os.path.isdir(dest):
+            return {"ok": False, "error": "未选择目录"}
+
+        # ── ZIP 文件名 ──
+        now = time.localtime()
+        fp = ""
+        try:
+            from shared.license import get_machine_fingerprint
+            fp = "-" + get_machine_fingerprint()[:8]
+        except Exception:
+            pass
+        zip_name = f"batch-renamer-debug-{now.tm_mon:02d}{now.tm_mday:02d}-{now.tm_hour:02d}{now.tm_min:02d}{fp}.zip"
+        zip_path = os.path.join(dest, zip_name)
+
+        def _add_str(zf, name, lines):
+            zf.writestr(name, "\n".join(lines).encode("utf-8"))
+
+        # ── info.txt ──
+        info = []
+        info.append(f"产品: 批量命名工具")
+        info.append(f"版本: {_APP_VERSION}")
+        info.append(f"产品ID: {_PRODUCT_ID}")
+        info.append(f"系统: {platform.system()} {platform.release()}")
+        info.append(f"Python: {sys.version}")
+        info.append(f"主机名: {socket.gethostname()}")
+        info.append(f"app路径: {getattr(sys, '_MEIPASS', 'N/A')}")
+        info.append(f"时间: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        try:
+            from shared.license import get_machine_fingerprint
+            info.append(f"机器指纹: {get_machine_fingerprint()}")
+        except Exception:
+            info.append(f"机器指纹: N/A")
+        info.append(f"设备模式: {'dev' if cfg.get('dev') else 'prod'}")
+        info.append(f"文件计数: {len(self._files)}")
+
+        # ── state.txt ──
+        state = []
+        state.append(f"文件数: {len(self._files)}")
+        state.append(f"Undo栈: {len(_undo_stack) if '_undo_stack' in dir() else 'N/A'}")
+        state.append(f"更新状态: {json.dumps({k: str(v)[:100] for k,v in _UPDATE_STATE.items() if k != 'urls'}, ensure_ascii=False)}")
+        # delta 覆盖目录状态
+        delta_dir = os.path.expanduser('~/.config/renamer/delta')
+        if os.path.isdir(delta_dir):
+            state.append(f"delta目录: 存在")
+            try:
+                ver_file = os.path.join(delta_dir, 'version.txt')
+                if os.path.isfile(ver_file):
+                    with open(ver_file) as vf:
+                        state.append(f"delta版本: {vf.read().strip()}")
+            except Exception:
+                pass
+        else:
+            state.append(f"delta目录: 不存在")
+
+        # ── config.txt ──
+        config_lines = []
+        try:
+            from shared import update_config as _uc
+            config_lines.append(f"UPDATE_FILE: {_uc.UPDATE_FILE}")
+            config_lines.append(f"TIMEOUT_VERSION_CHECK: {_uc.TIMEOUT_VERSION_CHECK}")
+            for i, url in enumerate(_uc.DOWNLOAD_URLS):
+                config_lines.append(f"DOWNLOAD_URL[{i}]: {url}")
+        except Exception as e:
+            config_lines.append(f"config读取失败: {e}")
+
+        # ── network.txt ──
+        net = []
+        net.append(f"DNS: {socket.gethostbyname(socket.gethostname())}")
+        try:
+            r = _sp.run(["curl", "-sI", "--max-time", "8",
+                "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/version.json"],
+                capture_output=True, text=True, timeout=10)
+            net.append(f"GitHub raw: HTTP {r.returncode} (stdout {len(r.stdout)}B)")
+        except Exception as e:
+            net.append(f"GitHub raw: 不可达 ({e})")
+        try:
+            r = _sp.run(["curl", "-sI", "--max-time", "8",
+                "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/version.json"],
+                capture_output=True, text=True, timeout=10)
+            net.append(f"ghproxy: HTTP {r.returncode} (stdout {len(r.stdout)}B)")
+        except Exception as e:
+            net.append(f"ghproxy: 不可达 ({e})")
+
+        # ── 写 ZIP ──
+        try:
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                _add_str(zf, "info.txt", info)
+                _add_str(zf, "state.txt", state)
+                _add_str(zf, "config.txt", config_lines)
+                _add_str(zf, "network.txt", net)
+                # 内存调试日志
+                if self._dbg_buf:
+                    _add_str(zf, "debug_memory.log", self._dbg_buf)
+                # Python 日志文件（/tmp/renamer_web.log）
+                _log_file = os.path.join(tempfile.gettempdir(), "renamer_web.log")
+                if os.path.isfile(_log_file):
+                    try:
+                        zf.write(_log_file, "renamer_web.log")
+                    except Exception:
+                        pass
+                # ~/.workbuddy/logs/批量命名工具/
+                _wb_logs = os.path.expanduser("~/.workbuddy/logs/批量命名工具")
+                if os.path.isdir(_wb_logs):
+                    today = time.strftime("%Y-%m-%d")
+                    yesterday = time.strftime("%Y-%m-%d", time.localtime(time.time() - 86400))
+                    for f in sorted(os.listdir(_wb_logs)):
+                        if (today in f or yesterday in f) and (f.endswith(".log") or f.endswith(".jsonl")):
+                            try:
+                                zf.write(os.path.join(_wb_logs, f), f"logs/{f}")
+                            except Exception:
+                                pass
+                # 诊断日志文件（apply_delta / bottle_route）
+                for diag in ["/tmp/apply_delta.log", "/tmp/renamer_restart.log",
+                             "/tmp/bottle_route.log", "/tmp/_renamer_restart.sh"]:
+                    if os.path.isfile(diag):
+                        try:
+                            zf.write(diag, os.path.basename(diag))
+                        except Exception:
+                            pass
+            # Finder 定位
+            _sp.run(["open", "-R", zip_path], check=False)
+            _log.info(f"export_debug: saved {zip_path}")
+            return {"ok": True, "path": zip_path, "name": zip_name}
+        except Exception as e:
+            _log.warning(f"export_debug: zip failed: {e}")
+            return {"ok": False, "error": _err_human(e)}
+
     def _process_paths(self, paths_):
         _log.info(f"_process_paths: {len(paths_)} paths → scanning")
         MAX_FILES = 100
