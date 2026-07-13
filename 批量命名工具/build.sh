@@ -102,7 +102,7 @@ if [ -f "$FULL_ZIP" ]; then
   echo "✅ 全量包: $FULL_ZIP ($(du -h "$FULL_ZIP" | cut -f1)) SHA256=$SHA"
 fi
 
-# 差分（仅 shared/ Python 逻辑 + version.txt，<200KB，日常更新用）
+# 差分（仅核心更新文件 + version.txt，<200KB，日常更新用）
 DELTA_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/batch_renamer_update.zip"
 # 写入版本文件供运行时覆盖
 echo "$VERSION" > "$APP_OUT/Contents/Resources/version.txt"
@@ -110,10 +110,31 @@ echo "$VERSION" > "$APP_OUT/Contents/Resources/version.txt"
  zip -rq "$DELTA_ZIP" \
   "$HTML_FILE" \
   "version.txt" \
-  shared/ \
-  -x "shared/__pycache__/*" "shared/*.pyc" \
-     "shared/dftt_timecode/*" "shared/pypdf/*" \
-     "shared/naming.py" "shared/script_parser.py" \
+  shared/app_core.py \
+  shared/updater.py \
+  shared/update_config.py \
+  shared/logger.py \
+  shared/interface.py \
+  shared/env.py \
+  shared/_write_env.py \
+  shared/core.py \
+  shared/_qr.py \
+  shared/cross_platform.py \
+  shared/tk_dialogs.py \
+  shared/launcher_router.py \
+  shared/llm_providers.py \
+  shared/mappings.py \
+  shared/subtitle_state.py \
+  shared/ui/theme.json \
+  shared/ui/theme.py \
+  shared/timecode.py \
+  shared/naming_checks.py \
+  shared/naming_createone.py \
+  shared/secure_store.py \
+  shared/product_registry.py \
+  shared/deploy_config.py \
+  shared/http_fallback.py \
+  shared/brand_template.py \
   2>/dev/null)
 rm -f "$APP_OUT/Contents/Resources/version.txt"
 if [ -f "$DELTA_ZIP" ]; then

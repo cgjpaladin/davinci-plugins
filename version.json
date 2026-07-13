@@ -50,11 +50,12 @@
   "batch_renamer_mac": {
     "version": "3.7.12",
     "urls": [
-      "https://ghproxy.net/https://github.com/cgjpaladin/davinci-plugins/releases/download/batch_renamer-v3.7.1/batch_renamer_mac.zip",
-      "https://github.com/cgjpaladin/davinci-plugins/releases/download/batch_renamer-v3.7.1/batch_renamer_mac.zip"
+      "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
+      "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
+      "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
     "notes": "🔄 差分更新 + macOS原生菜单 + 非阻塞检测\n🔍 断网提示⚠ + 失败回滚 + 人话翻译\n🖥 原生菜单：关于 + 检查更新（PyObjC）",
-    "sha256": "7a1890d75582721f18de86295d6d68956ef49cd5a1838767383733addfba5a6a",
+    "sha256": "2b7b76fc8cfe6ef9c498b6044d820d60936fa437b3e89f6f46f0ee8fe2502c77",
     "history": [
       {
         "version": "3.7.12",
