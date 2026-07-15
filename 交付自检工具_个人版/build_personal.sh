@@ -64,7 +64,7 @@ python3 -c "import sys; sys.path.insert(0,'$PKG/交付自检工具'); from confi
 cp "$WS/shared"/{deploy_config,fusionscript_loader,log_writer,camera_detect,timecode,updater,update_config,license,_write_env,cross_platform,_qr}.py "$PKG/交付自检工具/shared/"
 
 # ── 4. pypdf ──
-cp -r "$WS/shared/pypdf" "$PKG/交付自检工具/shared/"
+cp -r "$WS/交付自检工具/pypdf" "$PKG/交付自检工具/pypdf/"
 
 # ── 5. dftt_timecode ──
 cp "$WS/shared/dftt_timecode"/{__init__,error,pattern}.py "$PKG/交付自检工具/shared/dftt_timecode/"
