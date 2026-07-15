@@ -166,13 +166,13 @@ async function init(){
     });
   };
 
-  // 使用教程按钮
+  // 使用手册按钮
   const mb = document.getElementById('manualBtn');
   if(mb){
-    mb.title = '使用教程';
+    mb.title = '使用手册';
     mb.onclick = () => {
       call('open_manual').then(r => {
-        if(!r || !r.ok){ toast('打开教程失败'); return; }
+        if(!r || !r.ok){ toast('打开手册失败'); return; }
         if(r.method === 'browser') return; // 浏览器已打开
         // 离线 QR 弹窗
         if(r.method === 'qr'){
@@ -180,14 +180,14 @@ async function init(){
           _dialogEl=document.createElement('div');_dialogEl.className='update-overlay show';
           _dialogEl.addEventListener('click',e=>{if(e.target===_dialogEl){_dialogEl.remove();_dialogEl=null;}});
           _dialogEl.innerHTML='<div class="update-dialog" style="text-align:center">'+
-            '<div class="up-title">📖 使用教程</div>'+
+            '<div class="up-title">📖 使用手册</div>'+
             '<div class="up-body" style="user-select:text;-webkit-user-select:text">当前离线，手机扫码查看：</div>'+
             '<img src="data:image/png;base64,'+r.qr+'" style="width:'+r.size+'px;height:'+r.size+'px;margin:12px auto;display:block">'+
             '<div class="up-actions"><button class="up-btn-cancel" onclick="if(_dialogEl){_dialogEl.remove();_dialogEl=null;}">关闭</button></div>'+
             '</div>';
           document.body.appendChild(_dialogEl);
         }
-      }).catch(e => toast('打开教程异常: '+e));
+      }).catch(e => toast('打开手册异常: '+e));
     };
   }
 
