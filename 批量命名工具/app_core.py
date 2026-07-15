@@ -12,7 +12,7 @@ from naming import (
     build_filename, parse_filename, build_folder,
     MEDIA_EXT, sanitize_text,
 )
-from shared.naming_checks import check_zero_byte, check_double_ext, check_size_anomaly
+from naming_checks import check_zero_byte, check_double_ext, check_size_anomaly
 
 import webview
 import logging

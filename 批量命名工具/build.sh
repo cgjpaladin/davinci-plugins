@@ -53,7 +53,7 @@ $SYSPY -m PyInstaller \
   --add-data "$HTML_BUNDLE:." \
   --add-data "app_core.py:." \
   --add-data "naming.py:." \
-  --add-data "../shared/naming_checks.py:shared/" \
+  --add-data "naming_checks.py:." \
   --add-data "../shared/_qr.py:shared/" \
   --add-data "../shared/license.py:shared/" \
   --add-data "../shared/updater.py:shared/" \
@@ -122,7 +122,7 @@ rm -f "$DELTA_ZIP"
   "version.txt" \
   app_core.py \
   naming.py \
-  shared/naming_checks.py \
+  naming_checks.py \
   shared/_qr.py \
   shared/license.py \
   shared/updater.py \
