@@ -1707,7 +1707,15 @@ for _c in CHECKS:
         )
     )
 dlg.On[BTN_START].Clicked = lambda ev: _start_check()
-dlg.On[BTN_CONFIG].Clicked = lambda ev: show_config_dialog(log_fn=_action_log, _main_itm=itm)
+dlg.On[BTN_CONFIG].Clicked = lambda ev: _safe_config()
+
+def _safe_config():
+    try:
+        show_config_dialog(log_fn=_action_log, _main_itm=itm)
+    except Exception as e:
+        import io, traceback
+        _tb = io.StringIO(); traceback.print_exc(file=_tb)
+        _action_log(f"❌ 配置页异常: {type(e).__name__}: {e}\n{_tb.getvalue()}")
 dlg.On[BTN_AI_TYPO].Clicked = lambda ev: _run_ai_typo()
 
 _ui_error_state = {"count": 0}
