@@ -24,9 +24,7 @@ if "%VARIANT%"=="table" (
     set APP_NAME=批量命名工具-卡片版
 )
 
-REM 从 version_info.txt 自动提取版本号（_splice.py 已同步 app_table.js → version_info.txt）
-for /f %%v in ('python -c "v=open('version_info.txt').read();import re;m=re.search(r'filevers=\((\d+),\s*(\d+),\s*(\d+),\s*\d+\)',v);print(f'{m[1]}.{m[2]}.{m[3]}')"') do set APP_VERSION=%%v
-echo 构建版本: %APP_VERSION%
+echo 构建: %APP_NAME%（版本号详见 EXE 属性 > 详细信息）
 
 REM 清理
 if exist build rmdir /s /q build
