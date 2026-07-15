@@ -1493,8 +1493,9 @@ def _start_check():
             _action_log(f"⚠ 结果持久化写入失败: {e}")
 
     except Exception as e:
-        _action_log(f"❌ 检查异常: {type(e).__name__}（详情已记录）")
-        import sys as _sys3, traceback; traceback.print_exc(file=_sys3.stderr)
+        import sys as _sys3, traceback, io
+        _tb = io.StringIO(); traceback.print_exc(file=_tb)
+        _action_log(f"❌ 检查异常: {type(e).__name__}: {e}\n{_tb.getvalue()}")
         itm[HINT_LB].Text = "❌ 检查失败，请重试"
     finally:
         _unlock_ui()
