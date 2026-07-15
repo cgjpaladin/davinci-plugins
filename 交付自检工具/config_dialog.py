@@ -31,6 +31,23 @@ def _validate_config_sections():
 _mask_ratio = None        # 遮幅宽高比（内存态：重启/切工程重置）
 _last_project_name = ""   # 检测工程切换
 _config_open = False  # 防配置窗口重复打开
+def _load_api_keys():
+    from secure_store import load_all, migrate_legacy
+    keys = load_all()
+    if not keys:
+        migrate_legacy()
+        keys = load_all()
+    if not keys:
+        return {}
+    return keys
+
+def _save_api_keys(keys):
+    from secure_store import save
+    for k, v in keys.items():
+        if v:
+            save(k, v)
+
+
 def _check_project_mask_reset():
     """检测工程切换：换工程则重置遮幅为未设置"""
     global _mask_ratio, _last_project_name

@@ -555,24 +555,6 @@ def _unlock_ui():
     if _ai_allowed: itm[BTN_AI_TYPO].Enabled = True
 
 # ── 凭证持久化（macOS Keychain，零明文落盘）──
-def _load_api_keys():
-    from secure_store import load_all, migrate_legacy
-    keys = load_all()
-    if not keys:
-        migrate_legacy()
-        keys = load_all()
-    if not keys:
-        return {}
-    return keys
-
-def _save_api_keys(keys):
-    from secure_store import save
-    for k, v in keys.items():
-        if v:
-            save(k, v)
-
-def _api_keys_path():  # 保留兼容旧调用
-    return os.path.join(_DATA_DIR, "api_keys.json")
 
 def _save_config_to_file():
     """保存当前配置到本地 JSON 文件"""
@@ -1727,7 +1709,7 @@ def _on_err_report(ev):
         return
     _lock_ui("导出日志")
     itm[BTN_ERR_SEND].Text = "⏳ 导出中..."
-    export_debug_package(itm, BTN_ERR_SEND, _ui_error_state, _action_log, _DATA_DIR, trial_days_left, _load_api_keys, version_string)
+    export_debug_package(itm, BTN_ERR_SEND, _ui_error_state, _action_log, _DATA_DIR, trial_days_left, _cfg._load_api_keys, version_string)
     _unlock_ui()
 
 def _log_activate_fail(code: str, detail: str):
