@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "33cb66f2ceb40f2be208d99236202a8758d32081d6c5bc230d8cd00c05f9b8de",
+    "sha256": "bb09726f5346cf17fd473b313e5ec89d4f0a0b8c21a8166c441ee01122e6f846",
     "notes": "## v2.6.1\n🧹 配置页更整洁，画面比例菜单不再字体重叠\n✨ 自定义宽高比也进了下拉菜单，不用再手动找",
     "history": [
       {
