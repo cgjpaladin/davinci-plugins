@@ -62,6 +62,7 @@ def _has_pil():
 THUMB_MAX = 100  # 缩略图批次上限
 _undo_stack = []  # list of lists: [[(old,new),...], [(old,new),...]]
 _window = None  # 存引用
+_archive_progress = {"current": 0, "total": 0, "percent": 0, "status": "", "done": True}
 
 
 def _err_human(e):
@@ -583,10 +584,139 @@ class RenamerAPI:
             return {"ok": True, "msg": "✓ (将新建文件夹)"}
         return {"ok": False, "msg": "✗ 父目录不存在"}
 
+    def get_archive_progress(self):
+        """JS 轮询归档进度，返回 {current, total, percent, status, done}"""
+        global _archive_progress
+        return dict(_archive_progress)
+
     def do_archive(self, files, dest):
-        import hashlib
+        global _archive_progress, _undo_stack
+        if not _archive_progress.get("done", True):
+            return {"ok": 0, "dup": 0, "fail": ["正在归档中，请等待完成"], "total": len(files), "archived": [], "stack_depth": len(_undo_stack)}
+        _archive_progress = {"current": 0, "total": len(files), "percent": 0, "status": "准备中…", "done": False}
         _log.info(f"do_archive: {len(files)} files, dest={dest}")
-        ok = 0; fail = []; dup = 0; dest = os.path.realpath(re.sub(r'^smb://[\d.]+/', '/Volumes/', str(dest).strip()))
+        ok = 0; fail = []; dup = 0; archived = []
+        try:
+            import hashlib
+            dest = os.path.realpath(re.sub(r'^smb://[\d.]+/', '/Volumes/', str(dest).strip()))
+            def _hash_file(p):
+                h = hashlib.sha256()
+                with open(p, 'rb') as fh:
+                    while True:
+                        chunk = fh.read(65536)
+                        if not chunk: break
+                        h.update(chunk)
+                return h.digest()
+            # 扫描目标文件夹去重
+            seen = {}
+            if os.path.isdir(dest):
+                _seen_count = 0
+                for root, dirs, filenames in os.walk(dest):
+                    for fn in filenames:
+                        if len(seen) >= 200: break
+                        if fn.endswith('.tmp'): continue
+                        fp = os.path.join(root, fn)
+                        try:
+                            sz = os.path.getsize(fp)
+                            if sz > 0:
+                                h = _hash_file(fp)
+                                if h not in seen: seen[h] = fp
+                        except OSError: pass
+                        _seen_count += 1
+                        if _seen_count % 20 == 0:
+                            _archive_progress["status"] = f"扫描 {len(seen)} 个已有文件…"
+            _archive_progress["status"] = "正在归档…"
+            for f in files:
+                fd = f.get("fields", {})
+                ext = f.get("ext", ".mp4")
+                target = build_folder(dest, type('E',(),{'fields':fd,'ext':ext})())
+                folder = os.path.dirname(target)
+                os.makedirs(folder, exist_ok=True)
+                try:
+                    max_tk = 0
+                    if os.path.isdir(folder):
+                        fd_copy = dict(fd); fd_copy['tk'] = '00'
+                        sample = build_filename(fd_copy)
+                        parts = sample.split('_Tk00_', 1)
+                        if len(parts) == 2:
+                            tk_prefix = parts[0] + '_Tk'
+                            for fn in os.listdir(folder):
+                                if fn.endswith('.tmp'): continue
+                                if not fn.startswith(tk_prefix): continue
+                                m = re.search(r'_Tk(0[1-9]|[1-9]\d)(?:_|\.mp4|\.mov|\.mxf|\.avi|\.mkv|$)', fn)
+                                if m:
+                                    max_tk = max(max_tk, int(m.group(1)))
+                    nxt = max_tk + 1
+                    if nxt > 99: fail.append(f'{fd.get("ep","?")}_{fd.get("sc","?")}: TK 已满(99)'); continue
+                    fd['tk'] = str(nxt).zfill(2)
+                    target = os.path.join(folder, build_filename(fd) + ext)
+                except Exception:
+                    fd['tk'] = '01'
+                    target = build_folder(dest, type('E',(),{'fields':fd,'ext':ext})())
+                try:
+                    if os.path.exists(target):
+                        orig_tk = fd.get('tk', '01')
+                        for n in range(int(orig_tk)+1, 100):
+                            fd['tk'] = str(n).zfill(2)
+                            alt = os.path.join(folder, build_filename(fd) + ext)
+                            if not os.path.exists(alt):
+                                target = alt; break
+                        else:
+                            fail.append(f'{os.path.basename(target)}: TK 已满(99)'); continue
+                    _archive_progress["status"] = f"验重: {os.path.basename(f.get('path',''))}"
+                    src_hash = _hash_file(f["path"])
+                    if src_hash in seen: dup += 1; continue
+                    _archive_progress["status"] = f"复制: {os.path.basename(f.get('path',''))}"
+                    tmp_target = target + '.tmp'
+                    shutil.copy2(f["path"], tmp_target)
+                    seen[src_hash] = target
+                    shutil.move(tmp_target, target)
+                    archived.append((f["path"], target))
+                    ok += 1
+                except Exception as e:
+                    fail.append(os.path.basename(f["path"]) + ": " + str(e))
+                processed = ok + dup + len(fail)
+                _archive_progress["current"] = processed
+                _archive_progress["percent"] = int(processed / len(files) * 100) if files else 100
+                _archive_progress["status"] = f"{processed}/{len(files)}  {os.path.basename(f.get('path',''))}"
+            if archived:
+                _undo_stack.append({"type": "archive", "pairs": archived})
+        except Exception:
+            pass
+        finally:
+            _archive_progress["done"] = True
+        # ── 归档后校验 ──
+        verify = {"missing": [], "size_mismatch": [], "tmp_orphans": [], "verified": 0}
+        if archived:
+            _archive_progress["status"] = "校验中…"
+            for src, dst in archived:
+                if os.path.isfile(dst):
+                    try:
+                        if os.path.getsize(dst) == os.path.getsize(src):
+                            verify["verified"] += 1
+                        else:
+                            verify["size_mismatch"].append(os.path.basename(dst))
+                    except OSError:
+                        verify["missing"].append(os.path.basename(dst))
+                else:
+                    # 可能被重命名为 .tmp 但 move 失败
+                    tmp_path = dst + '.tmp'
+                    if os.path.isfile(tmp_path):
+                        verify["tmp_orphans"].append(os.path.basename(tmp_path))
+                        try: os.rename(tmp_path, dst)
+                        except OSError: pass
+                        if os.path.isfile(dst):
+                            verify["verified"] += 1
+                        else:
+                            verify["missing"].append(os.path.basename(dst))
+                    else:
+                        verify["missing"].append(os.path.basename(dst))
+            if verify["verified"] != ok:
+                _log.warning(f"archive verify: {verify['verified']}/{ok} files confirmed")
+        return {"ok": ok, "dup": dup, "fail": fail, "total": len(files),
+                "archived": [{"old": src, "new": dst} for src, dst in archived],
+                "stack_depth": len(_undo_stack), "verify": verify}
+
         def _hash_file(p):
             h = hashlib.sha256()
             with open(p, 'rb') as fh:
@@ -1409,6 +1539,13 @@ def main():
                     '.bmp':'image/bmp','.gif':'image/gif','.webp':'image/webp','.tiff':'image/tiff','.tif':'image/tiff',
                     '.tga':'image/x-targa','.targa':'image/x-targa','.psd':'image/vnd.adobe.photoshop'}
         return static_file(os.path.basename(path), root=os.path.dirname(path), mimetype=mime_map.get(ext, 'application/octet-stream'))
+
+    @route('/archive_progress')
+    def serve_archive_progress():
+        """归档进度——Bottle HTTP 端点，不被 pywebview API 串行化阻塞"""
+        from bottle import response
+        response.content_type = 'application/json'
+        return json.dumps(_archive_progress)
 
     # 找空闲端口
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

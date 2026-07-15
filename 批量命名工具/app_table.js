@@ -18,6 +18,26 @@ let files=[], _firstDrop=true, sel=new Set(), methodDescMap={}, undoAvail=false,
 let _sortKey=null,_sortAsc=true;
 const _sortKeys={base:'basename',ep:'ep',sc:'sc',gr:'gr',tk:'tk',desc:'desc',method:'method',author:'author',ver:'ver',status:'status'};
 function applySort(){if(!_sortKey||!files.length)return;const key=_sortKeys[_sortKey]||_sortKey;if(key==='basename'){files.sort((a,b)=>(a.basename||'').localeCompare(b.basename||''));if(!_sortAsc)files.reverse();return}const s0=files[0].fields[key];const cmp=typeof s0==='string'?((a,b)=>(a.fields[key]||'').localeCompare(b.fields[key]||'')):((a,b)=>parseInt(a.fields[key]||0)-parseInt(b.fields[key]||0));files.sort((a,b)=>_sortAsc?cmp(a,b):cmp(b,a))}
+
+// 制作者字段过滤：仅允许中英文、数字，拦截一切符号（空格、换行、_、-、标点等）
+const _sanitizeAuthor = (v) => v.replace(/[^a-zA-Z0-9\u4e00-\u9fff\u3400-\u4dbf]/g, '');
+
+// 字段实时过滤注册表 — 表格和审查模式共用。返回过滤后的值，不返回则不过滤
+const FIELD_SANITIZE = {
+  author: _sanitizeAuthor,
+  desc:   (v) => v.replace(/_/g, ''),
+  ep:     (v) => v.replace(/[^\d]/g, ''),
+  sc:     (v) => v.replace(/[^\d]/g, ''),
+  gr:     (v) => v.replace(/[^\d]/g, ''),
+  ver:    (v) => { let r=v.replace(/[^\d.]/g,''); const d=r.indexOf('.'); if(d>=0)r=r.slice(0,d+1)+r.slice(d+1).replace(/\./g,''); return r; },
+};
+
+// 以下为 fallback 默认值，生产环境由 get_config 的 fields[] 覆盖
+const _FIELD_KEYS  = ['ep','sc','gr','desc','method','author','ver','status'];
+const _HEADER_KEYS = ['ep','sc','gr','tk','desc','method','author','ver','status'];
+const STATUS_OPTIONS = ['OK','KP','NG'];
+const METHOD_OPTIONS = ['智能分镜版','双轨版','角色专属版'];
+
 function reindex(){files.forEach((f,i)=>{f._idx=i})}
 function updSortIndicators(){
   const tr=document.querySelector('#fileList thead tr');if(!tr)return;
@@ -42,7 +62,7 @@ function mock(m,...a){
   return new Promise(r=>{
     const C={ep:'01',sc:'01',gr:'01',desc:'',author:'',method:'',ver:'01',status:'OK',tk:'01'};
     switch(m){
-      case'get_config':r({fields:[{key:'ep',label:'Ep 集数',def:'01',hint:'01'},{key:'sc',label:'Sc 场次',def:'01',hint:'01'},{key:'gr',label:'Gr 小场次',def:'01',hint:'01'},{key:'desc',label:'镜头描述',def:'',hint:'由制作方式决定'},{key:'method',label:'制作方式',def:'',dv:['请选择','智能分镜版','双轨版','角色专属版']},{key:'author',label:'制作者',def:'',hint:'请输入姓名'},{key:'ver',label:'制作批次',def:'01',hint:'01'},{key:'status',label:'通过情况',def:'',dv:['请选择','OK','KP','NG']}],defaults:{},method_desc_map:{'智能分镜版':{mode:'locked',value:'智能分镜'},'双轨版':{mode:'dropdown',values:['请选择','智能分镜','幽灵角色','空镜','请手动输入…']},'角色专属版':{mode:'dropdown',values:['请选择','智能分镜','请手动输入…']}},name_format:[{pfx:'Ep',key:'ep'},{pfx:'Sc',key:'sc'},{pfx:'Gr',key:'gr'},{pfx:'Tk',key:'tk'},{pfx:'',key:'desc'},{pfx:'',key:'method'},{pfx:'',key:'author'},{pfx:'v',key:'ver'},{pfx:'',key:'status'}],field_rules:[{trigger:'method',targets:['desc'],map:{'智能分镜版':{desc:{locked:'智能分镜'}},'双轨版':{desc:{dropdown:['请选择','智能分镜','幽灵角色','空镜','请手动输入…']}},'角色专属版':{desc:{dropdown:['请选择','智能分镜','请手动输入…']}}}}]});break;
+      case'get_config':r({fields:[{key:'ep',label:'Ep 集数',def:'01',hint:'01'},{key:'sc',label:'Sc 场次',def:'01',hint:'01'},{key:'gr',label:'Gr 小场次',def:'01',hint:'01'},{key:'desc',label:'镜头描述',def:'',hint:'由制作方式决定'},{key:'method',label:'制作方式',def:'',dv:['请选择','智能分镜版','双轨版','角色专属版']},{key:'author',label:'制作者',def:'',hint:'请输入姓名'},{key:'ver',label:'制作批次',def:'01',hint:'01'},{key:'status',label:'通过情况',def:'',dv:['请选择',...STATUS_OPTIONS]}],defaults:{},method_desc_map:{'智能分镜版':{mode:'locked',value:'智能分镜'},'双轨版':{mode:'dropdown',values:['请选择','智能分镜','幽灵角色','空镜','请手动输入…']},'角色专属版':{mode:'dropdown',values:['请选择','智能分镜','请手动输入…']}},name_format:[{pfx:'Ep',key:'ep'},{pfx:'Sc',key:'sc'},{pfx:'Gr',key:'gr'},{pfx:'Tk',key:'tk'},{pfx:'',key:'desc'},{pfx:'',key:'method'},{pfx:'',key:'author'},{pfx:'v',key:'ver'},{pfx:'',key:'status'}],field_rules:[{trigger:'method',targets:['desc'],map:{'智能分镜版':{desc:{locked:'智能分镜'}},'双轨版':{desc:{dropdown:['请选择','智能分镜','幽灵角色','空镜','请手动输入…']}},'角色专属版':{desc:{dropdown:['请选择','智能分镜','请手动输入…']}}}}]});break;
             case'validate_dest':r({ok:true,msg:'✓ 格式正确'});break;
       case'do_rename':r({ok:1,total:1,fail:[],renamed:[]});break;
       case'do_undo':r({ok:0,msg:'Mock: 无操作'});break;
@@ -83,9 +103,21 @@ async function init(){
     if(v.values)v.values.forEach(x=>{_reservedDesc.add(x)});
   }
   const _allFields=cfg.fields||[];
-  window._fieldKeys=_allFields.filter(f=>f.key!=='tk'&&!(f.dv)).map(f=>f.key);
   window._fieldKeysAll=_allFields.filter(f=>f.key!=='tk').map(f=>f.key);
+  window._headerKeys=_allFields.map(f=>f.key);  // 含 tk，用于表头渲染
   window._fieldLabels={};_allFields.forEach(f=>{window._fieldLabels[f.key]=f.label});
+
+  // 从 fields[] 派生选项，加字段时自动跟随（无需手动同步）
+  methodDescMap=cfg.method_desc_map||{};_nameFmt=cfg.name_format||[];
+  const _fdMethod=_allFields.find(f=>f.key==='method');
+  const _fdStatus=_allFields.find(f=>f.key==='status');
+  window.METHOD_OPTIONS=(_fdMethod?.dv||['智能分镜版','双轨版','角色专属版']).filter(v=>v!=='请选择');
+  window.STATUS_OPTIONS=(_fdStatus?.dv||['OK','KP','NG']).filter(v=>v!=='请选择');
+
+  // 审查面板字段：排除方法联动字段（desc/method）和专用 UI 字段（tk/status）
+  window._REVIEW_FIELDS=_allFields.filter(f=>!['desc','method','tk','status'].includes(f.key));
+
+  // 收集所有预置镜头描述值供碰撞检测
   dm.textContent = cfg.dev ? ('🔧 '+APP_VERSION) : '📋 导出日志';
   dm.title = '导出诊断日志';
   dm.onclick = () => {
@@ -182,9 +214,7 @@ async function init(){
   _initTBodyClick();
   // 审查面板事件
   document.getElementById('reviewClose').addEventListener('click',closeReview);
-  document.getElementById('rsOK').addEventListener('click',()=>setReviewStatus('OK'));
-  document.getElementById('rsKP').addEventListener('click',()=>setReviewStatus('KP'));
-  document.getElementById('rsNG').addEventListener('click',()=>setReviewStatus('NG'));
+  STATUS_OPTIONS.forEach(s=>{const btn=document.getElementById('rs'+s);if(btn)btn.addEventListener('click',()=>setReviewStatus(s))});
   document.getElementById('reviewPrev').addEventListener('click',()=>navReview(-1));
   document.getElementById('reviewNext').addEventListener('click',()=>navReview(1));
   // 点击遮罩关闭
@@ -296,7 +326,7 @@ function renderList(force){
       tr.className = ''; tr.dataset.index = i; tr.dataset.path = f.path;
       if(sel.has(i)) tr.classList.add('sel');
       const ff = {...f.fields, tk: buildTK(i)};
-      const fieldKeys = window._fieldKeysAll || ['ep','sc','gr','desc','method','author','ver','status'];
+      const fieldKeys = window._fieldKeysAll || _FIELD_KEYS;
       const ready = fieldKeys.every(k => ff[k]);
       tr.classList.add(ready?'rdy':'mis');
       if(f.archived) tr.classList.add('archived');
@@ -317,7 +347,7 @@ function _buildRow(f,i){
   const tr = document.createElement('tr');
   tr.dataset.index = i; tr.dataset.path = f.path;
   const ff = {...f.fields, tk: buildTK(i)};
-  const fieldKeys = window._fieldKeysAll || ['ep','sc','gr','desc','method','author','ver','status'];
+  const fieldKeys = window._fieldKeysAll || _FIELD_KEYS;
   const nFields = fieldKeys.length;
   const ready = fieldKeys.every(k => ff[k]);
   if(sel.has(i)) tr.classList.add('sel');
@@ -355,7 +385,7 @@ function _buildRow(f,i){
   }
   tr.appendChild(tdThumb);
 
-  for(const key of (window._headerKeys||['ep','sc','gr','tk','desc','method','author','ver','status'])){
+  for(const key of (window._headerKeys||_HEADER_KEYS)){
     tr.appendChild(buildCellTD(key, ff, i));
   }
 
@@ -370,7 +400,7 @@ function _buildRow(f,i){
   }
   if(!ready){
     const lb={ep:'Ep',sc:'Sc',gr:'Gr',desc:'描述',author:'作者',method:'方式',ver:'版本',status:'通过'};
-    for(const k of ['ep','sc','gr','desc','author','method','ver','status']){
+    for(const k of _FIELD_KEYS){
       if(!ff[k]) tooltips.push('✎缺失: '+lb[k]);
     }
   }
@@ -636,7 +666,7 @@ function activateEdit(td, key, i){
 
   if(key === 'method'){
     el = document.createElement('select');
-    const opts = ['请选择','智能分镜版','双轨版','角色专属版'];
+    const opts = ['请选择', ...(window.METHOD_OPTIONS || METHOD_OPTIONS)];
     opts.forEach(m => {
       const o = document.createElement('option'); o.value = m === '请选择' ? '' : m; o.textContent = m;
       if(m === oldVal) o.selected = true;
@@ -644,7 +674,7 @@ function activateEdit(td, key, i){
     });
   } else if(key === 'status'){
     el = document.createElement('select');
-    ['OK','KP','NG',''].forEach(s => {
+    STATUS_OPTIONS.concat(['']).forEach(s => {
       const o = document.createElement('option'); o.value = s; o.textContent = s || '—';
       if(s === oldVal) o.selected = true;
       el.appendChild(o);
@@ -679,8 +709,8 @@ function activateEdit(td, key, i){
     }
   } else {
     el = document.createElement('input'); el.type = 'text'; el.value = oldVal;
-    if(['ep','sc','gr','ver'].includes(key)) el.setAttribute('inputmode','numeric');
-    if(key === 'author') el.placeholder = '请输入姓名';
+    if(DIGIT_STRICT[key]) el.setAttribute('inputmode','numeric');
+    if(key === 'author') el.placeholder = '中英文、数字';
   }
 
   td.classList.add('editing');
@@ -689,11 +719,12 @@ function activateEdit(td, key, i){
   if(el.tagName === 'INPUT' && !el.readOnly){ el.focus(); el.select(); }
   else { el.focus(); }
 
-  // 制作者：实时过滤非中文
-  if(key === 'author'){
+  // 实时过滤：查注册表，只对定义了规则的字段生效
+  const sanitizer = FIELD_SANITIZE[key];
+  if (sanitizer) {
     el.addEventListener('input', () => {
       const pos = el.selectionStart;
-      el.value = el.value.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g, '');
+      el.value = sanitizer(el.value);
       el.selectionStart = el.selectionEnd = Math.min(pos, el.value.length);
     });
   }
@@ -735,8 +766,8 @@ function activateEdit(td, key, i){
     el.remove(); // 物理销毁编辑控件，杜绝残留
     td.classList.remove('editing');
     let finalVal = v;
-    if(key === 'author') finalVal = v.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g, '');
-    if(key === 'desc') finalVal = v.replace(/_/g, '');
+    // 字段过滤：统一查注册表
+    if (FIELD_SANITIZE[key]) finalVal = FIELD_SANITIZE[key](finalVal);
     if(key === 'desc' && finalVal && !isSelect) _checkDescCollision(finalVal);
 
     const isMulti = sel.size > 1;
@@ -807,7 +838,7 @@ function activateEdit(td, key, i){
   }
 }
 function updCount(){
-  const keys=window._fieldKeysAll||['ep','sc','gr','desc','method','author','ver','status'];
+  const keys=window._fieldKeysAll||_FIELD_KEYS;
   let ok2=0;files.forEach(f=>{const ff=f.fields;if(keys.every(k=>ff[k]))ok2++});document.getElementById('fileCount').innerHTML=`文件列表 · <span style="color:var(--green)">${ok2}</span>/${files.length} 就绪  ·  选中 ${sel.size}`;
 }
 
@@ -815,7 +846,7 @@ function updButtons(){
   const hf=files.length>0,hs=sel.size>0,fd=getFields(),dest=document.getElementById('destInput').value.trim();
   // af: 用文件实际数据算（不用 inspector，避免混合态误判）
   let af=true;
-  if(hs){for(const i of sel){const ff=files[i].fields;let ok=true;for(const k of (window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'])){if(!ff[k]){ok=false;break}}if(!ok){af=false;break}}}
+  if(hs){for(const i of sel){const ff=files[i].fields;let ok=true;for(const k of (window._fieldKeysAll||_FIELD_KEYS)){if(!ff[k]){ok=false;break}}if(!ok){af=false;break}}}
   document.getElementById('btnRename').disabled=!(hs&&af);
   document.getElementById('btnArchive').disabled=!(hs&&af&&dest);
   document.getElementById('btnUndo').disabled=!undoAvail;
@@ -824,12 +855,12 @@ function updButtons(){
   // 全就绪
   if(hs&&af){dot.style.background='var(--green)';setStatus('字段齐全，可以重命名');call('debug_log',`updButtons: GREEN hs=${hs} af=${af}`);return}
   // 全部就绪但未选中 → 绿色
-  let allOk=0;const fks=window._fieldKeysAll||['ep','sc','gr','desc','method','author','ver','status'];files.forEach(f=>{const ff=f.fields;if(fks.every(k=>ff[k]))allOk++});
+  let allOk=0;const fks=window._fieldKeysAll||_FIELD_KEYS;files.forEach(f=>{const ff=f.fields;if(fks.every(k=>ff[k]))allOk++});
   if(allOk===files.length&&files.length>0){dot.style.background='var(--green)';setStatus('全部就绪 · 选中文件后重命名');call('debug_log',`updButtons: ALL-GREEN ok=${allOk}/${files.length}`);return}
   // 混合态标注（与缺失区分）
   const missing=[];
   const _lbs=window._fieldLabels||{};
-  for(const k of (window._fieldKeysAll||['ep','sc','gr','desc','author','method','ver','status'])){if(!fd[k])missing.push(_lbs[k]||k)}
+  for(const k of (window._fieldKeysAll||_FIELD_KEYS)){if(!fd[k])missing.push(_lbs[k]||k)}
   // 检查警告
   let warn=[];
   for(const t of files){if(t.tags&&t.tags.length)warn.push(...t.tags)}
@@ -955,23 +986,60 @@ async function doArchive(){
   const srt=[...sel].sort((a,b)=>a-b);
   const sfs=srt.map((i,p)=>{const f={...files[i]};f.fields={...f.fields,tk:buildTK(i)};return f});
   if(!await showDialog('确认归档',`确认归档 ${sfs.length} 个文件到?\n${dest}/EP${sfs[0].fields.ep||'??'}/SC${sfs[0].fields.sc||'??'}/...`))return;
+  
+  // 进度条
+  let _pOverlay=document.createElement('div');
+  _pOverlay.className='update-overlay show';
+  _pOverlay.innerHTML='<div class="update-dialog" style="max-width:360px;text-align:center">'+
+    '<div class="up-title">📂 归档中…</div>'+
+    '<div style="margin:8px 0;font-size:12px;color:var(--text-dim)" id="_pStatus">准备中…</div>'+
+    '<div style="background:var(--surface2);border-radius:4px;height:6px;overflow:hidden;margin:8px 0">'+
+      '<div id="_pBar" style="background:#448;height:100%;width:0%;transition:width .2s"></div>'+
+    '</div>'+
+    '<div id="_pPct" style="font-size:11px;color:var(--text-dim)">0%</div>'+
+  '</div>';
+  document.body.appendChild(_pOverlay);
+  
+  let _pDone=false;
+  const _pTimer=setInterval(async ()=>{
+    try{
+      const resp=await fetch('/archive_progress');
+      const p=await resp.json();
+      if(p){
+        document.getElementById('_pBar').style.width=p.percent+'%';
+        document.getElementById('_pPct').textContent=p.percent+'%';
+        document.getElementById('_pStatus').textContent=p.status||'';
+        if(p.done){_pDone=true;clearInterval(_pTimer);setTimeout(()=>{_pOverlay.remove()},600)}
+      }
+    }catch(e){}
+  },300);
+  
   call('debug_log','archive: starting');
   const r=await call('do_archive',sfs,dest);
-  call('debug_log','archive: result='+JSON.stringify({ok:r.ok,total:r.total,dup:r.dup||0,fail:r.fail}));
+  call('debug_log','archive: result='+JSON.stringify({ok:r.ok,total:r.total,dup:r.dup||0,fail:r.fail,verify:r.verify}));
+  
+  if(!_pDone){clearInterval(_pTimer);_pOverlay.remove()}
   if(r.ok>0){
-    // 标记已归档
     srt.forEach(i => { files[i].archived = true; });
     sel.clear();
     undoAvail = true;
   }
-  let m=`归档完成 ${r.ok} 个`;if(r.dup>0)m+=` · ${r.dup} 个重复已跳过`;if(r.fail&&r.fail.length>0)m+=` · ${r.fail.length} 失败`;toast(m);result(m);
+  let m=`归档完成 ${r.ok} 个`;if(r.dup>0)m+=` · ${r.dup} 个重复已跳过`;if(r.fail&&r.fail.length>0)m+=` · ${r.fail.length} 失败`;
+  if(r.verify){
+    const v=r.verify;
+    if(v.missing&&v.missing.length>0)m+=` · ⚠ ${v.missing.length} 个丢失`;
+    if(v.size_mismatch&&v.size_mismatch.length>0)m+=` · ⚠ ${v.size_mismatch.length} 个大小异常`;
+    if(v.tmp_orphans&&v.tmp_orphans.length>0)m+=` · ⚠ ${v.tmp_orphans.length} 个残片已修复`;
+    if(v.verified!==r.ok)m+=` (${v.verified}/${r.ok} 已确认)`;
+  }
+  toast(m);result(m);
   renderList();updButtons();
 }
 // ═══ Excel 导出 ═══
 async function exportExcel(){
   if(files.length===0){toast('无文件可导出');return}
   toast('生成中…');call('debug_log','exportExcel: '+files.length+' files');
-  const fieldKeys=window._fieldKeysAll||['ep','sc','gr','desc','method','author','ver','status'];
+  const fieldKeys=window._fieldKeysAll||_FIELD_KEYS;
   const rows=files.map((f,i)=>{
     const ff=f.fields;
     const row={ext:f.ext||'',thumb:_thumbs[f.path]||''};
@@ -1078,12 +1146,17 @@ const _VIDEO_EXT=new Set(['.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mt
 const _IMG_EXT=new Set(['.jpg','.jpeg','.png','.bmp','.tiff','.tif','.gif','.webp']);
 function _isVideo(ext){return _VIDEO_EXT.has((ext||'').toLowerCase())}
 
+// 审查模式文件名 — 从 get_config.name_format 生成，加字段时自动跟随
+function _buildReviewTitle(ff,tk){
+  return (_nameFmt||[]).map(({pfx,key}) => pfx + (key==='tk' ? tk : (ff[key]||(pfx?'__':'')))).join('_');
+}
+
 async function openReview(i){
   call('debug_log',`openReview: START i=${i} file=${files[i]?.basename}`);
   if(_vidCheckTimeout){clearTimeout(_vidCheckTimeout);_vidCheckTimeout=null}
   _reviewIdx=i;const f=files[i];const ff=f.fields;const isVideo=_isVideo(f.ext);
   const tk=buildTK(i);
-  document.getElementById('reviewFilename').textContent=`Ep${ff.ep||'__'}_Sc${ff.sc||'__'}_Gr${ff.gr||'__'}_Tk${tk}_${ff.desc||''}_${ff.method||''}_${ff.author||'__'}_v${ff.ver||'__'}_${ff.status||'__'}`;
+  document.getElementById('reviewFilename').textContent=_buildReviewTitle(ff,tk);
   const video=document.getElementById('reviewVideo');video.removeAttribute('src');
   const img=document.getElementById('reviewImage');img.removeAttribute('src');
   if(_mediaBlobUrl){URL.revokeObjectURL(_mediaBlobUrl);_mediaBlobUrl=null}
@@ -1156,7 +1229,7 @@ async function navReview(dir){
   call('debug_log',`navReview: dir=${dir} from=${_reviewIdx} to=${next}`);
   _reviewIdx=next;const f=files[next];const ff=f.fields;const isVideo=_isVideo(f.ext);
   const tk=buildTK(next);
-  document.getElementById('reviewFilename').textContent=`Ep${ff.ep||'__'}_Sc${ff.sc||'__'}_Gr${ff.gr||'__'}_Tk${tk}_${ff.desc||''}_${ff.method||''}_${ff.author||'__'}_v${ff.ver||'__'}_${ff.status||'__'}`;
+  document.getElementById('reviewFilename').textContent=_buildReviewTitle(ff,tk);
   const video=document.getElementById('reviewVideo');video.pause();video.removeAttribute('src');
   const img=document.getElementById('reviewImage');img.removeAttribute('src');
   if(_mediaBlobUrl){URL.revokeObjectURL(_mediaBlobUrl);_mediaBlobUrl=null}
@@ -1179,10 +1252,19 @@ async function navReview(dir){
 function buildReviewFields(ff,isVideo){
   const container=document.getElementById('reviewFields');container.innerHTML='';
   container.style.gridTemplateColumns='repeat(4,1fr)';
-  const fields=[
-    [{key:'ep',label:'Ep',w:1,attr:'inputmode=numeric maxlength=3'},{key:'sc',label:'Sc',w:1,attr:'inputmode=numeric maxlength=2'},{key:'gr',label:'Gr',w:1,attr:'inputmode=numeric maxlength=2'},{key:'ver',label:'V',w:1,attr:'inputmode=numeric maxlength=2'}],
-    [{key:'author',label:'制作者',w:2,attr:'placeholder=\"请输入姓名\"'}],
-  ];
+
+  // 从 get_config.fields 自动生成布局（排除 desc/method/tk）
+  const rvf = window._REVIEW_FIELDS || []; const labels = window._fieldLabels || {};
+  const rows = [[], []];
+  rvf.forEach(fd => {
+    const isDigit = !!DIGIT_STRICT[fd.key];  // 有严格校验 → 数字小字段
+    const w = isDigit ? 1 : 2;
+    const attr = isDigit
+      ? `inputmode=numeric maxlength=${fd.key==='ep'?3:2}`
+      : `placeholder="${labels[fd.key]||fd.key}"`;
+    (w === 1 ? rows[0] : rows[1]).push({...fd, w, attr, label: labels[fd.key] || fd.key});
+  });
+  const fields = rows.filter(r => r.length > 0);
   const initCfg=methodDescMap[ff.method||'']||{mode:'text',hint:'请先选择制作方式',readonly:true};
   // desc 重建函数（三种模式：locked / dropdown / text）
   function _buildDesc(cfg,oldVal){
@@ -1204,7 +1286,7 @@ function buildReviewFields(ff,isVideo){
         if(sel.value==='__free__'){
           const inp=document.createElement('input');inp.type='text';inp.placeholder='输入镜头描述';inp.value='';
           inp.style.cssText='width:100%;background:#2a2a2a;border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:12px;font-family:var(--font-mono);box-sizing:border-box';
-          inp.addEventListener('input',()=>{const v=inp.value.replace(/_/g,'');inp.value=v;files[_reviewIdx].fields.desc=v;updateReviewTitle()});
+          inp.addEventListener('input',()=>{const v=FIELD_SANITIZE.desc(inp.value);inp.value=v;files[_reviewIdx].fields.desc=v;updateReviewTitle()});
           sel.replaceWith(inp);inp.focus();
         }else{files[_reviewIdx].fields.desc=sel.value==='请选择'?'':sel.value;updateReviewTitle()}
       });
@@ -1213,7 +1295,7 @@ function buildReviewFields(ff,isVideo){
       const ip=document.createElement('input');ip.type='text';ip.placeholder=cfg.hint||'输入镜头描述';ip.value=oldVal;
       ip.style.cssText='width:100%;background:#2a2a2a;border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:12px;font-family:var(--font-mono);box-sizing:border-box';
       if(cfg.readonly){ip.readOnly=true}
-      else{ip.addEventListener('input',()=>{const v=ip.value.replace(/_/g,'');ip.value=v;files[_reviewIdx].fields.desc=v})}
+      else{ip.addEventListener('input',()=>{const v=FIELD_SANITIZE.desc(ip.value);ip.value=v;files[_reviewIdx].fields.desc=v})}
       dw.appendChild(ip);
     }
     return dw;
@@ -1224,7 +1306,7 @@ function buildReviewFields(ff,isVideo){
   const mWrap=document.createElement('div');mWrap.className='rf-full';
   const mLb=document.createElement('label');mLb.textContent='制作方式';mWrap.appendChild(mLb);
   const mSel=document.createElement('select');mSel.style.cssText='width:100%;background:#2a2a2a;border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:12px;font-family:var(--font-mono);box-sizing:border-box';
-  ['请选择','智能分镜版','双轨版','角色专属版'].forEach(m=>{const o=document.createElement('option');o.value=m==='请选择'?'':m;o.textContent=m;if(m===ff.method)o.selected=true;mSel.appendChild(o)});
+  ['请选择', ...(window.METHOD_OPTIONS || METHOD_OPTIONS)].forEach(m=>{const o=document.createElement('option');o.value=m==='请选择'?'':m;o.textContent=m;if(m===ff.method)o.selected=true;mSel.appendChild(o)});
   mWrap.appendChild(mSel);
   mSel.addEventListener('change',()=>{
     const nm=mSel.value;files[_reviewIdx].fields.method=nm;
@@ -1244,10 +1326,22 @@ function buildReviewFields(ff,isVideo){
     if(fd.attr){const attrs=fd.attr.split(' ');attrs.forEach(a=>{const[ak,av]=a.split('=');if(av)ip.setAttribute(ak,av.replace(/\"/g,''));else ip.setAttribute(ak,'')})}
     wrap.appendChild(ip);container.appendChild(wrap);
     const key=fd.key;
-    if(key==='author'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\u4e00-\u9fff\u3400-\u4dbf]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
-    else if(key==='ver'){ip.addEventListener('input',()=>{const pos=ip.selectionStart;let v=ip.value.replace(/[^\d.]/g,'');const d=v.indexOf('.');if(d>=0)v=v.slice(0,d+1)+v.slice(d+1).replace(/\./g,'');ip.value=v;ip.selectionStart=ip.selectionEnd=Math.min(pos,v.length);files[_reviewIdx].fields[key]=v;updateReviewTitle()})}
-    else if(['ep','sc','gr'].includes(key)){ip.addEventListener('input',()=>{const pos=ip.selectionStart;ip.value=ip.value.replace(/[^\d]/g,'');ip.selectionStart=ip.selectionEnd=Math.min(pos,ip.value.length);files[_reviewIdx].fields[key]=ip.value;updateReviewTitle()})}
-    else{ip.addEventListener('input',()=>{files[_reviewIdx].fields[key]=ip.value.trim();updateReviewTitle()})}
+    // 实时过滤：查注册表
+    const sanitizer = FIELD_SANITIZE[key];
+    if (sanitizer) {
+      ip.addEventListener('input', () => {
+        const pos = ip.selectionStart;
+        ip.value = sanitizer(ip.value);
+        ip.selectionStart = ip.selectionEnd = Math.min(pos, ip.value.length);
+        files[_reviewIdx].fields[key] = ip.value.trim();
+        updateReviewTitle();
+      });
+    } else {
+      ip.addEventListener('input', () => {
+        files[_reviewIdx].fields[key] = ip.value.trim();
+        updateReviewTitle();
+      });
+    }
     const sr=DIGIT_STRICT[key];
     const updFill=()=>{const v=ip.value.trim();if(v)ip.classList.add('rf-filled');else ip.classList.remove('rf-filled');updateReviewMeta()};
     ip.addEventListener('input',updFill);ip.addEventListener('blur',updFill);
@@ -1264,19 +1358,17 @@ function buildReviewFields(ff,isVideo){
 
 function highlightStatusBtn(st){
   document.querySelectorAll('.review-status button').forEach(b=>b.classList.remove('active'));
-  if(st==='OK')document.getElementById('rsOK').classList.add('active');
-  else if(st==='KP')document.getElementById('rsKP').classList.add('active');
-  else if(st==='NG')document.getElementById('rsNG').classList.add('active');
+  STATUS_OPTIONS.forEach(s=>{if(st===s){const btn=document.getElementById('rs'+s);if(btn)btn.classList.add('active')}});
 }
 function updateReviewTitle(){
   if(_reviewIdx<0)return;
   const ff=files[_reviewIdx].fields;const tk=buildTK(_reviewIdx);
-  document.getElementById('reviewFilename').textContent=`Ep${ff.ep||'__'}_Sc${ff.sc||'__'}_Gr${ff.gr||'__'}_Tk${tk}_${ff.desc||''}_${ff.method||''}_${ff.author||'__'}_v${ff.ver||'__'}_${ff.status||'__'}`;
+  document.getElementById('reviewFilename').textContent=_buildReviewTitle(ff,tk);
 }
 function updateReviewMeta(){
   if(_reviewIdx<0)return;
   const ff=files[_reviewIdx].fields;
-  const keys=window._fieldKeysAll||['ep','sc','gr','desc','method','author','ver','status'];
+  const keys=window._fieldKeysAll||_FIELD_KEYS;
   const filled=keys.filter(k=>ff[k]).length;
   const total=keys.length;
   const el=document.getElementById('reviewMeta');
