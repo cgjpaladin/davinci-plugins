@@ -1588,7 +1588,7 @@ print(result[0])
                 c.AddItem(p)
             c.Text = _smb_paths_cache[0]
         else:
-            c.Text = "（未配置，路径检测将跳过）"
+            c.Text = "未配置：路径检测将被跳过"
 
     _smb_add_busy = False
     def _add_smb_path(ev):
