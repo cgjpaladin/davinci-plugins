@@ -124,6 +124,7 @@ echo "$VERSION" > "$APP_OUT/Contents/Resources/version.txt"
   shared/launcher_router.py \
   shared/llm_providers.py \
   shared/mappings.py \
+  shared/naming.py \
   shared/subtitle_state.py \
   shared/ui/theme.json \
   shared/ui/theme.py \
