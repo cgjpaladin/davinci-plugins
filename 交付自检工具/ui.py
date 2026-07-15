@@ -585,6 +585,8 @@ _clamp_value = DEFAULT_CLAMP_THRESHOLD
 _video_clamp_threshold = 2  # 视频夹帧阈值（帧）
 _black_frame_sec = DEFAULT_BLACK_FRAME_SEC
 _censor_subs = {"base": True, "en": True, "bw": True, "bw_sms": True}
+DEFAULT_MASK_RATIO = "1.77"
+_mask_ratio = DEFAULT_MASK_RATIO  # 遮幅宽高比（用户手动输入）
 _checking = False
 _BUSY = False
 _config_open = False  # 防配置窗口重复打开
@@ -637,6 +639,7 @@ def _save_config_to_file():
             "video_clamp_threshold": _video_clamp_threshold,
             "black_frame_sec": _black_frame_sec,
             "censor_subs": _censor_subs,
+            "mask_ratio": _mask_ratio,
         }
         with open(_CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -645,7 +648,7 @@ def _save_config_to_file():
 
 def _load_config_from_file():
     """从本地 JSON 加载配置，文件不存在则跳过"""
-    global _track_values, _clamp_value, _video_clamp_threshold, _black_frame_sec, _censor_subs
+    global _track_values, _clamp_value, _video_clamp_threshold, _black_frame_sec, _censor_subs, _mask_ratio
     if not os.path.isfile(_CONFIG_FILE):
         return
     try:
@@ -656,7 +659,8 @@ def _load_config_from_file():
         _video_clamp_threshold = data.get("video_clamp_threshold", _video_clamp_threshold)
         _black_frame_sec = data.get("black_frame_sec", _black_frame_sec)
         _censor_subs = data.get("censor_subs", _censor_subs)
-        _action_log(f"📂 加载配置: 轨道={_track_values} 夹帧={_clamp_value} 黑帧={_black_frame_sec}s")
+        _mask_ratio = data.get("mask_ratio", _mask_ratio)
+        _action_log(f"📂 加载配置: 轨道={_track_values} 夹帧={_clamp_value} 黑帧={_black_frame_sec}s 遮幅={_mask_ratio}")
     except Exception as e:
         _action_log(f"⚠ 读取配置失败: {e}")
 
@@ -940,6 +944,7 @@ CONFIG_SECTIONS = [
     {"id": "deepseek_key",   "label": "DeepSeek API Key", "type": "api_key"},
     {"id": "feishu_app_id",  "label": "飞书 App ID", "type": "api_key"},
     {"id": "feishu_secret",  "label": "飞书 App Secret", "type": "api_key"},
+    {"id": "mask_ratio",     "label": "画面遮幅宽高比", "type": "mask_ratio"},
     {"id": "smb_paths",      "label": "脱机素材检测路径（可多选）", "type": "smb_paths"},
     {"id": "censor_personal", "label": "个人词典", "type": "censor_personal"},
 ]
@@ -970,6 +975,24 @@ def _build_censor_personal():
         ]),
     ]
 
+_MASK_PRESETS = ["1", "1.33", "1.66", "1.77", "1.85", "2.0", "2.35", "2.39", "2.40"]
+
+def _build_mask_ratio():
+    """遮幅宽高比：下拉预设 + 自定义输入"""
+    return [
+        ui.Label({"Text": "DaVinci API 无法自动读取遮幅，请手动设置画面宽高比。",
+                  "StyleSheet": "color:rgb(140,140,140);font-size:11px", "Weight": 0}),
+        ui.VGap(SPACE_SM),
+        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
+            ui.ComboBox({"ID": "cfg_mask_preset", "Text": "", "Weight": 1}),
+            ui.Label({"ID": "cfg_mask_custom_lbl", "Text": "自定义",
+                      "StyleSheet": "color:rgb(140,140,140);font-size:13px", "Weight": 0}),
+            ui.LineEdit({"ID": "cfg_mask_custom", "Text": "",
+                         "StyleSheet": "font-size:12px",
+                         "MinimumSize": [60, 0], "Weight": 0}),
+        ]),
+    ]
+
 def _build_smb_paths():
     """服务器素材路径配置：ComboBox 选择 + 添加/删除按钮"""
     return [
@@ -985,6 +1008,7 @@ def _build_smb_paths():
 
 _SECTION_BUILDERS = {
     "api_key":          _build_api_key_input,
+    "mask_ratio":       _build_mask_ratio,
     "smb_paths":        _build_smb_paths,
     "censor_personal":  _build_censor_personal,
 }
@@ -1231,6 +1255,15 @@ def _show_config_dialog():
                     _action_log(f"⚠ 路径保存失败: {e}")
             elif t == "censor_personal":
                 pass
+            elif t == "mask_ratio":
+                global _mask_ratio
+                val = cfg["cfg_mask_custom"].Text.strip() or cfg["cfg_mask_preset"].CurrentText
+                try:
+                    float(val)  # 验证是否为有效数字
+                    _mask_ratio = val
+                    _action_log(f"🎬 遮幅宽高比: {_mask_ratio}")
+                except ValueError:
+                    _action_log(f"⚠ 遮幅值无效(需为数字): {val}")
         if err or _validation_err:
             if err: _action_log(f"⚠ {err}")
             try:
@@ -1572,6 +1605,21 @@ print(result[0])
         _refresh_smb_paths_combo()
     except Exception:
         _smb_paths_cache = []
+
+    # 初始化遮幅宽高比 ComboBox
+    try:
+        combo = cfg["cfg_mask_preset"]
+        for p in _MASK_PRESETS:
+            combo.AddItem(p)
+        # 选中当前值或预设
+        if _mask_ratio in _MASK_PRESETS:
+            combo.Text = _mask_ratio
+            cfg["cfg_mask_custom"].Text = ""
+        else:
+            combo.Text = _MASK_PRESETS[-1] if _MASK_PRESETS else "2.35"
+            cfg["cfg_mask_custom"].Text = _mask_ratio
+    except Exception:
+        _action_log("⚠ 遮幅选项初始化失败")
 
     config_dlg.Show()
     config_dlg.RecalcLayout()
