@@ -42,7 +42,13 @@ python -m PyInstaller ^
   --name "%APP_NAME%" ^
   --icon app_icon.ico --version-file version_info.txt ^
   --add-data "%HTML_BUNDLE%;." ^
-  --add-data "..\shared;shared" ^
+  --add-data "..\shared\app_core.py;shared/" ^
+  --add-data "..\shared\naming.py;shared/" ^
+  --add-data "..\shared\naming_checks.py;shared/" ^
+  --add-data "..\shared\_qr.py;shared/" ^
+  --add-data "..\shared\license.py;shared/" ^
+  --add-data "..\shared\updater.py;shared/" ^
+  --add-data "..\shared\update_config.py;shared/" ^
   --add-binary "ffmpeg.exe;." ^
   --hidden-import webview ^
   --hidden-import webview.platforms.edgechromium ^

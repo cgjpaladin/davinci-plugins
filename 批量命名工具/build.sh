@@ -26,9 +26,10 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "================"
 fi
 
-# 自动 commit
+# 自动 commit（只含源码，排除构建产物）
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  git add -A && git commit -m "build: $(date '+%H:%M')" 2>/dev/null || true
+  git add -- . ':!*.zip' ':!ziVT0nKa' ':!批量命名工具/dist/' ':!批量命名工具/_build/' ':!批量命名工具/dist_build/' ':!batch_renamer_mac.zip' 2>/dev/null
+  git commit -m "build: $(date '+%H:%M')" 2>/dev/null || true
 fi
 
 # Node 语法检查
@@ -41,6 +42,16 @@ python3 _splice.py "$VARIANT"
 
 # 打包到临时 dist（每次 mktemp 全新目录，零删除）
 BUILD_DIST=$(mktemp -d /tmp/renamer_build_XXXXXX)
+
+# 构建隔离：临时替换 shared/ 目录为仅含批量命名所需的 7 个文件
+SHARED_NEEDED="app_core naming naming_checks _qr license updater update_config"
+SHARED_TMP=$(mktemp -d /tmp/shared_clean_XXXXXX)
+trap "rm -rf $SHARED_TMP" EXIT
+for m in $SHARED_NEEDED; do cp "../shared/${m}.py" "$SHARED_TMP/"; done
+# 挪走源码 shared/ → 用干净版替换（构建完自动恢复）
+mv ../shared ../_shared_backup
+mv "$SHARED_TMP" ../shared
+
 $SYSPY -m PyInstaller \
   --onedir --windowed \
   --strip --noupx \
@@ -49,7 +60,13 @@ $SYSPY -m PyInstaller \
   --name "批量命名工具" \
   --icon app_icon.icns \
   --add-data "$HTML_BUNDLE:." \
-  --add-data "../shared:shared" \
+  --add-data "../shared/app_core.py:shared/" \
+  --add-data "../shared/naming.py:shared/" \
+  --add-data "../shared/naming_checks.py:shared/" \
+  --add-data "../shared/_qr.py:shared/" \
+  --add-data "../shared/license.py:shared/" \
+  --add-data "../shared/updater.py:shared/" \
+  --add-data "../shared/update_config.py:shared/" \
   --add-binary "$(which ffmpeg || echo /opt/homebrew/bin/ffmpeg):." \
   --add-binary "$(which ffprobe || echo /opt/homebrew/bin/ffprobe):." \
   --collect-data webview \
@@ -64,13 +81,19 @@ $SYSPY -m PyInstaller \
   --hidden-import openpyxl.drawing.image \
   --hidden-import openpyxl.utils.units \
   --collect-all openpyxl \
+  $EXCLUDES \
   --noconfirm \
   renamer_web.py
 
-# 清除旧构建 → ditto 新构建（ditto 原子替换，不嵌套，不多删）
+# 清除旧构建 → ditto 新构建（需先 rm -rf，ditto 只合并不删除旧文件）
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_OUT="$SCRIPT_DIR/dist/$APP_NAME.app"
+rm -rf "$APP_OUT"
 ditto "$BUILD_DIST/批量命名工具.app" "$APP_OUT" 2>/dev/null && echo "✅ $APP_NAME.app → dist/"
+
+# 恢复源码 shared/ 目录
+rm -rf ../shared && mv ../_shared_backup ../shared
+rm -rf "$SHARED_TMP"
 
 set +e  # 后续步骤可容忍失败（PlistBuddy 可能在 CI 不可用）
 
@@ -106,36 +129,18 @@ fi
 DELTA_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/batch_renamer_update.zip"
 # 写入版本文件供运行时覆盖
 echo "$VERSION" > "$APP_OUT/Contents/Resources/version.txt"
+rm -f "$DELTA_ZIP"
 (cd "$APP_OUT/Contents/Resources" && \
  zip -rq "$DELTA_ZIP" \
   "$HTML_FILE" \
   "version.txt" \
   shared/app_core.py \
+  shared/naming.py \
+  shared/naming_checks.py \
+  shared/_qr.py \
+  shared/license.py \
   shared/updater.py \
   shared/update_config.py \
-  shared/logger.py \
-  shared/interface.py \
-  shared/env.py \
-  shared/_write_env.py \
-  shared/core.py \
-  shared/_qr.py \
-  shared/cross_platform.py \
-  shared/tk_dialogs.py \
-  shared/launcher_router.py \
-  shared/llm_providers.py \
-  shared/mappings.py \
-  shared/naming.py \
-  shared/subtitle_state.py \
-  shared/ui/theme.json \
-  shared/ui/theme.py \
-  shared/timecode.py \
-  shared/naming_checks.py \
-  shared/naming_createone.py \
-  shared/secure_store.py \
-  shared/product_registry.py \
-  shared/deploy_config.py \
-  shared/http_fallback.py \
-  shared/brand_template.py \
   2>/dev/null)
 rm -f "$APP_OUT/Contents/Resources/version.txt"
 if [ -f "$DELTA_ZIP" ]; then
