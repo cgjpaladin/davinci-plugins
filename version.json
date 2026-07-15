@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "edce1f23e129b2c4e60649c527d49f432b17b51dd752fda815ab1c16b0774501",
+    "sha256": "29096b4931975d5dad65a4ba88d654bde74946134ef8f43b1ccebfffe2e900ab",
     "notes": "## v2.5.14\n\n📋 诊断报告中文名，一键导出更容易找到\n🔄 更新系统解耦，不再与其他产品冲突\n📁 日志迁移到系统标准目录，不怕误删\n🖥 Windows 文件夹选择支持",
     "history": [
       {
