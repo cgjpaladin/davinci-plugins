@@ -137,7 +137,7 @@ class RenamerAPI:
                     for ss in ('00:00:01', '00:00:00.1'):
                         subprocess.run(
                             [ffmpeg, '-y', '-ss', ss, '-i', p, '-vframes', '1',
-                             '-vf', 'scale=THUMB_SIZE:THUMB_SIZE:force_original_aspect_ratio=decrease',
+                             '-vf', f'scale={THUMB_SIZE}:{THUMB_SIZE}:force_original_aspect_ratio=decrease',
                              '-q:v', '8', tmp.name],
                             **kw
                         )
