@@ -1570,7 +1570,9 @@ print(result[0])
     # ── 遮幅："自定义…"选项才显示标签+输入框 ──
     _CUSTOM_IDX = len(_MASK_PRESETS) + 1
     def _toggle_custom_visible():
-        is_custom = combo.CurrentIndex == _CUSTOM_IDX
+        idx = combo.CurrentIndex
+        is_custom = idx == _CUSTOM_IDX
+        _action_log(f"🎬 mask_toggle: idx={idx} custom_idx={_CUSTOM_IDX} show={is_custom}")
         cfg["cfg_mask_custom_lbl"].Visible = is_custom
         cfg["cfg_mask_custom"].Visible = is_custom
     _toggle_custom_visible()
