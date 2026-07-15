@@ -115,6 +115,10 @@ fi
 DELTA_ZIP="$HOME/WorkBuddy/达芬奇插件工坊/batch_renamer_update.zip"
 # 写入版本文件供运行时覆盖
 echo "$VERSION" > "$APP_OUT/Contents/Resources/version.txt"
+# 兼容旧 launcher（v3.7.x 的 from shared.app_core import main）→ delta shared/ 也放一份
+cp "$APP_OUT/Contents/Resources/app_core.py" "$APP_OUT/Contents/Resources/shared/app_core.py"
+cp "$APP_OUT/Contents/Resources/naming.py" "$APP_OUT/Contents/Resources/shared/naming.py"
+
 rm -f "$DELTA_ZIP"
 (cd "$APP_OUT/Contents/Resources" && \
  zip -rq "$DELTA_ZIP" \
@@ -127,8 +131,11 @@ rm -f "$DELTA_ZIP"
   shared/license.py \
   shared/updater.py \
   shared/update_config.py \
+  shared/app_core.py \
+  shared/naming.py \
   2>/dev/null)
 rm -f "$APP_OUT/Contents/Resources/version.txt"
+rm -f "$APP_OUT/Contents/Resources/shared/app_core.py" "$APP_OUT/Contents/Resources/shared/naming.py"
 if [ -f "$DELTA_ZIP" ]; then
   DSHA=$(shasum -a 256 "$DELTA_ZIP" | cut -d' ' -f1)
   echo "✅ 差分包: $DELTA_ZIP ($(du -h "$DELTA_ZIP" | cut -f1)) SHA256=$DSHA"
