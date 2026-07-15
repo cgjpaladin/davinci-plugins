@@ -1139,8 +1139,9 @@ def _exposed_ranges(clip_start, clip_end, cover_intervals):
     return exposed
 
 
-def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_log=None) -> list:
-    """检测视频轨可见片段的黑边：缩放不足、位移、旋转导致的未覆盖区域。"""
+def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_log=None, mask_ratio=None) -> list:
+    """检测视频轨可见片段的黑边：缩放不足、位移、旋转导致的未覆盖区域。
+    mask_ratio: 用户手动设置的画面宽高比（如 2.35），用于排除有意的遮幅黑边。"""
     import math
     issues = []
     video_count = timeline.GetTrackCount("video")
@@ -1173,6 +1174,20 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_l
             reason="请检查项目设置中的时间线分辨率是否正常")]
 
     smpte = _get_smpte(fps)
+    # ── 遮幅：用户设了宽高比 → 计算有效画面区域，排除有意的上下遮幅 ──
+    _masked_t = 0
+    _masked_b = timeline_h
+    if mask_ratio:
+        try:
+            _mr = float(mask_ratio)
+            if _mr > 0:
+                _content_h = timeline_w / _mr  # 有效画面高度
+                _bar_h = (timeline_h - _content_h) / 2.0
+                if _bar_h > 1:  # 遮幅高度 > 1px 才启用
+                    _masked_t = _bar_h
+                    _masked_b = timeline_h - _bar_h
+        except (ValueError, TypeError):
+            pass
     # 先收集所有轨上所有片段的时间范围（用于覆盖判定）
     all_ranges = {}  # track_index → [(start, end), ...]
     for vi in range(1, video_count + 1):
@@ -1242,11 +1257,13 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_l
                     and abs(cx - timeline_w/2) < 0.5 and abs(cy - timeline_h/2) < 0.5
                     and rot_360 % 180 < 1.0):
                     continue
-            # 统一角检测（覆盖近轴 + 非近轴）
+            # 统一角检测（覆盖近轴 + 非近轴）。遮幅模式下检测有效画面区域而非全画布
             cos_r_raw = math.cos(rot); sin_r_raw = math.sin(rot)
             hw, hh = eff_w / 2.0, eff_h / 2.0
             has_gap = False
-            for tx, ty in [(0, 0), (timeline_w, 0), (timeline_w, timeline_h), (0, timeline_h)]:
+            _canvas_corners = [(0, _masked_t), (timeline_w, _masked_t),
+                               (timeline_w, _masked_b), (0, _masked_b)]
+            for tx, ty in _canvas_corners:
                 dx, dy = tx - cx, ty - cy
                 lx = dx * cos_r_raw + dy * sin_r_raw
                 ly = -dx * sin_r_raw + dy * cos_r_raw

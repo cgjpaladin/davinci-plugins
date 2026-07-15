@@ -144,14 +144,12 @@ def _validate_field_map():
 _validate_field_map()
 del _validate_field_map
 
-
 def _col_index(key):
     """根据 key 找在启用列中的索引（用于跳转等）"""
     for i, c in enumerate(_ENABLED_COLS):
         if c["key"] == key:
             return i
     return -1
-
 
 def _setup_tree_header(tree):
     """根据启用的列设置树列表头"""
@@ -162,18 +160,15 @@ def _setup_tree_header(tree):
     for i, col in enumerate(_ENABLED_COLS):
         tree.ColumnWidth[i] = col["width"]
 
-
 def _set_row(row, data):
     """根据启用的列 + data 字典填充一行"""
     for i, col in enumerate(_ENABLED_COLS):
         row.Text[i] = data.get(col["key"], "")
 
-
 def _set_row_texts(row, *texts):
     """直接按列位置设文本（用于标题行等）"""
     for i, t in enumerate(texts):
         row.Text[i] = t
-
 
 # ═══════════════════════════════════════════
 # ═══════════════════════════════════════════
@@ -322,7 +317,6 @@ def _run_fw_check(timeline, fps, **_kw):
         results.append({"status": "pass", "detail": "无全角字符", "is_summary": True})
     return results
 
-
 def _run_fragment_check(timeline, fps, **_kw):
     """片段状态（启用/禁用）"""
     return check_disabled_items(timeline, fps, io_range=_kw.get("io_range"))
@@ -333,7 +327,7 @@ def _run_black_frame_check(timeline, fps, **_kw):
 
 def _run_black_border_check(timeline, fps, **_kw):
     """黑边"""
-    return check_black_borders(timeline, project=_kw.get("project"), fps=fps, io_range=_kw.get("io_range"))
+    return check_black_borders(timeline, project=_kw.get("project"), fps=fps, io_range=_kw.get("io_range"), mask_ratio=_mask_ratio)
 
 def _run_speed_check(timeline, fps, **_kw):
     """变速"""
@@ -585,8 +579,8 @@ _clamp_value = DEFAULT_CLAMP_THRESHOLD
 _video_clamp_threshold = 2  # 视频夹帧阈值（帧）
 _black_frame_sec = DEFAULT_BLACK_FRAME_SEC
 _censor_subs = {"base": True, "en": True, "bw": True, "bw_sms": True}
-DEFAULT_MASK_RATIO = "1.77"
-_mask_ratio = DEFAULT_MASK_RATIO  # 遮幅宽高比（用户手动输入）
+_mask_ratio = None        # 遮幅宽高比（内存态：重启/切工程重置）
+_last_project_name = ""   # 检测工程切换
 _checking = False
 _BUSY = False
 _config_open = False  # 防配置窗口重复打开
@@ -639,7 +633,6 @@ def _save_config_to_file():
             "video_clamp_threshold": _video_clamp_threshold,
             "black_frame_sec": _black_frame_sec,
             "censor_subs": _censor_subs,
-            "mask_ratio": _mask_ratio,
         }
         with open(_CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -648,7 +641,7 @@ def _save_config_to_file():
 
 def _load_config_from_file():
     """从本地 JSON 加载配置，文件不存在则跳过"""
-    global _track_values, _clamp_value, _video_clamp_threshold, _black_frame_sec, _censor_subs, _mask_ratio
+    global _track_values, _clamp_value, _video_clamp_threshold, _black_frame_sec, _censor_subs
     if not os.path.isfile(_CONFIG_FILE):
         return
     try:
@@ -659,10 +652,25 @@ def _load_config_from_file():
         _video_clamp_threshold = data.get("video_clamp_threshold", _video_clamp_threshold)
         _black_frame_sec = data.get("black_frame_sec", _black_frame_sec)
         _censor_subs = data.get("censor_subs", _censor_subs)
-        _mask_ratio = data.get("mask_ratio", _mask_ratio)
-        _action_log(f"📂 加载配置: 轨道={_track_values} 夹帧={_clamp_value} 黑帧={_black_frame_sec}s 遮幅={_mask_ratio}")
+        _action_log(f"📂 加载配置: 轨道={_track_values} 夹帧={_clamp_value} 黑帧={_black_frame_sec}s")
     except Exception as e:
         _action_log(f"⚠ 读取配置失败: {e}")
+
+def _check_project_mask_reset():
+    """检测工程切换：换工程则重置遮幅为未设置"""
+    global _mask_ratio, _last_project_name
+    try:
+        resolve = bmd.scriptapp('Resolve')
+        if resolve:
+            project = resolve.GetProjectManager().GetCurrentProject()
+            if project:
+                name = project.GetName()
+                if name != _last_project_name:
+                    _last_project_name = name
+                    _mask_ratio = None
+                    _action_log(f"🎬 工程切换: {name} — 遮幅已重置")
+    except Exception:
+        pass
 
 # ═══════════════════════════════════════════
 # 日志系统（统一 log_writer 模块）
@@ -689,7 +697,6 @@ def _action_log(msg: str):
         _UI_ERROR_COUNT += 1
         try: _update_err_counter()
         except Exception: pass  # noop: 配置写入失败不影响主流程
-
 
 # ═══════════════════════════════════════════
 # UI 布局
@@ -931,7 +938,6 @@ def _render_group(group_name, sections, tree, parent_group=""):
                 _set_row(row, row_data)
                 tree.AddTopLevelItem(row)
 
-
 # ═══════════════════════════════════════════
 # 配置弹窗（注册表驱动 — 加/删/调顺序只改 CONFIG_SECTIONS）
 # ═══════════════════════════════════════════
@@ -948,7 +954,6 @@ CONFIG_SECTIONS = [
     {"id": "smb_paths",      "label": "脱机素材检测路径（可多选）", "type": "smb_paths"},
     {"id": "censor_personal", "label": "个人词典", "type": "censor_personal"},
 ]
-
 
 def _build_api_key_input(sid, label):
     """Label 显示当前值 + 编辑按钮（弹系统输入框防 IME 崩溃）"""
@@ -976,6 +981,7 @@ def _build_censor_personal():
     ]
 
 _MASK_PRESETS = ["1", "1.33", "1.66", "1.77", "1.85", "2.0", "2.35", "2.39", "2.40"]
+_MASK_UNSET = "（未设置）"
 
 def _build_mask_ratio():
     """遮幅宽高比：下拉预设 + 自定义输入"""
@@ -1048,20 +1054,20 @@ def _format_trial(days: int, fp: str = "") -> str:
         return f"试用剩余 {days} 天{suffix}"
     return f"试用剩余 0 天{suffix}"
 
-
 def _show_config_dialog():
     """打开配置窗口"""
     global _config_open
     if _config_open:
         return
     _config_open = True
+    _check_project_mask_reset()  # 切工程则重置遮幅
     CONFIG_WIN_ID = "com.myjc.delivery_checker_config"
 
     config_disp = bmd.UIDispatcher(fu.UIManager)
 
     # ── 从注册表生成布局（个人版过滤）──
     _is_personal = bool(os.environ.get("WORKBUDDY_PERSONAL"))
-    _sections = CONFIG_SECTIONS if _is_personal else [s for s in CONFIG_SECTIONS if s["id"] in ("censor_personal", "smb_paths")]
+    _sections = CONFIG_SECTIONS if _is_personal else [s for s in CONFIG_SECTIONS if s["id"] in ("mask_ratio", "censor_personal", "smb_paths")]
     body_widgets = []
     # 授权区（仅个人版，三行固定布局）
     if _is_personal:
@@ -1257,13 +1263,32 @@ def _show_config_dialog():
                 pass
             elif t == "mask_ratio":
                 global _mask_ratio
-                val = cfg["cfg_mask_custom"].Text.strip() or cfg["cfg_mask_preset"].CurrentText
+                preset = cfg["cfg_mask_preset"].CurrentText
+                custom = cfg["cfg_mask_custom"].Text.strip()
+                if preset == _MASK_UNSET:
+                    _mask_ratio = None
+                    _action_log("🎬 遮幅已清除（未设置）")
+                    continue
+                if preset in _MASK_PRESETS:
+                    val = preset
+                elif custom:
+                    val = custom
+                else:
+                    _mask_ratio = None
+                    _action_log("🎬 遮幅已清除（未设置）")
+                    continue
                 try:
-                    float(val)  # 验证是否为有效数字
+                    fv = float(val)
+                    if fv <= 0:
+                        err = err or "遮幅值必须大于 0"
+                        continue
+                    if fv > 100:
+                        err = err or "遮幅值过大（≤100）"
+                        continue
                     _mask_ratio = val
                     _action_log(f"🎬 遮幅宽高比: {_mask_ratio}")
                 except ValueError:
-                    _action_log(f"⚠ 遮幅值无效(需为数字): {val}")
+                    err = err or f"遮幅值无效: {val}（需为数字，如 2.35）"
         if err or _validation_err:
             if err: _action_log(f"⚠ {err}")
             try:
@@ -1607,26 +1632,37 @@ print(result[0])
         _smb_paths_cache = []
 
     # 初始化遮幅宽高比 ComboBox
+    
     try:
         combo = cfg["cfg_mask_preset"]
+        
+        combo.AddItem(_MASK_UNSET)
+        
         for p in _MASK_PRESETS:
             combo.AddItem(p)
-        # 选中当前值或预设
-        if _mask_ratio in _MASK_PRESETS:
-            combo.Text = _mask_ratio
+        
+        if _mask_ratio is None:
+            combo.SetCurrentIndex(0)
             cfg["cfg_mask_custom"].Text = ""
+            _action_log(f"🎬 mask_init: state=None idx=0")
+        elif _mask_ratio in _MASK_PRESETS:
+            idx = _MASK_PRESETS.index(_mask_ratio) + 1
+            combo.SetCurrentIndex(idx)
+            cfg["cfg_mask_custom"].Text = ""
+            _action_log(f"🎬 mask_init: state=preset({_mask_ratio}) idx={idx}")
         else:
-            combo.Text = _MASK_PRESETS[-1] if _MASK_PRESETS else "2.35"
+            combo.SetCurrentIndex(len(_MASK_PRESETS))
             cfg["cfg_mask_custom"].Text = _mask_ratio
-    except Exception:
-        _action_log("⚠ 遮幅选项初始化失败")
+            _action_log(f"🎬 mask_init: state=custom({_mask_ratio})")
+    except Exception as _e:
+        import traceback
+        _action_log(f"⚠ 遮幅初始化失败: {_e}\n{traceback.format_exc()}")
 
     config_dlg.Show()
     config_dlg.RecalcLayout()
     config_disp.RunLoop()
     config_dlg.Hide()
     _config_open = False
-
 
 # ═══════════════════════════════════════════
 # 结果处理
@@ -1667,7 +1703,6 @@ def _process_result(r, rows_list):
         cols["reason"]:   r.get("reason", ""),
     })
     return r["status"] == "fail", r["status"] == "warn", False
-
 
 # ═══════════════════════════════════════════
 # AI 校对
@@ -1739,8 +1774,6 @@ def _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
         for old in existing[:-20]:
             os.remove(os.path.join(session_dir, old))
 
-
-
 def _run_ai_typo():
     """一步到位：下载剧本 → 解析 → 集号匹配 → LLM 校对（含剧集一致性检测）。"""
     global _checking
@@ -1759,7 +1792,6 @@ def _run_ai_typo():
     itm["lbl_gate_warn"].Visible = False
     _action_log("🧹 已清提示+分类+结果树+门控警告")
     _lock_ui("检查中")
-
 
     def _stop(msg):
         itm[HINT_LB].Text = msg
@@ -2028,7 +2060,6 @@ def _run_ai_typo():
         _unlock_ui()
         _checking = False
         itm[BTN_START].Enabled = True; itm[BTN_AI_TYPO].Enabled = _ai_allowed
-
 
 # ═══════════════════════════════════════════
 # 开始检查
@@ -2376,7 +2407,6 @@ def _start_check():
         _unlock_ui()
         _checking = False
 
-
 # ═══════════════════════════════════════════
 # 结果点击 → 跳转播放头
 # ═══════════════════════════════════════════
@@ -2410,14 +2440,12 @@ def _on_result_click(ev):
     except Exception as e:
         _action_log(f"⚠ 跳转失败: {e}")
 
-
 # ═══════════════════════════════════════════
 # 窗口事件
 # ═══════════════════════════════════════════
 
 def _on_show(ev):
     pass  # 初始化放在 main() 里，Show 事件在子进程模式下不可靠
-
 
 def _init_connection():
     """初始化达芬奇连接，设置按钮状态"""
@@ -2452,14 +2480,11 @@ def _init_connection():
         _action_log(f"❌ 初始化失败: {e}")
         itm[HINT_LB].Text = f"❌ 初始化失败: {e}"
 
-
 def _on_close(ev):
     global _checking
     _checking = False
     _action_log("窗口关闭")
     disp.ExitLoop()
-
-
 
 # ═══════════════════════════════════════════
 # 事件绑定
@@ -2507,7 +2532,6 @@ def _log_activate_fail(code: str, detail: str):
             f.write(record + "\n")
     except Exception:
         pass
-
 
 def _export_debug_package():
     """打包完整诊断信息 → 用户选择目录 → zip → Finder 弹出"""
@@ -2965,7 +2989,6 @@ def _generate_win_update_bat(plugin_root):
         _f.write(_content)
     return _bat
 
-
 def _read_update_result():
     _p = os.path.join(os.environ.get("PROGRAMDATA", "C:\\ProgramData"), "deli_update_result.txt")
     try:
@@ -2973,7 +2996,6 @@ def _read_update_result():
             return _f.read().strip()
     except Exception:
         return None
-
 
 def _run_elevated_windows(bat_path, plugin_root):
     """以管理员身份运行 bat（弹一次 UAC），等价 Mac 输密码。返回进程退出码。"""
@@ -3025,7 +3047,6 @@ def _run_elevated_windows(bat_path, plugin_root):
     ctypes.windll.kernel32.GetExitCodeProcess(_hproc, byref(_ec))
     ctypes.windll.kernel32.CloseHandle(_hproc)
     return _ec.value
-
 
 def _do_update_sync(progress_callback=None):
     """同步下载 + 安装 — 每步写日志方便远程监控。progress_callback(downloaded, total)"""
@@ -3284,7 +3305,6 @@ dlg.On[TREE_RESULT].ItemDoubleClicked = _on_result_click
 dlg.On[WIN_ID].Show = _on_show
 dlg.On[WIN_ID].Close = _on_close
 
-
 # ═══════════════════════════════════════════
 # 启动入口
 # ═══════════════════════════════════════════
@@ -3393,7 +3413,7 @@ def main():
                     import tempfile as _tmp_fc
                     _fc_result_path = os.path.join(_tmp_fc.gettempdir(), f"dv_fc_{os.getpid()}.json")
                     try:
-                        _shared_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shared")
+                        _shared_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "shared")
                         _script_dir = os.path.dirname(os.path.abspath(__file__))
                         _check_code = f'''import sys,json,os
 sys.path.insert(0,r"{_shared_dir}")
@@ -3470,7 +3490,7 @@ except Exception as e:
     _update_result_path = os.path.join(_tmp.gettempdir(), f"dv_update_{os.getpid()}.json")
     _subp = None
     try:
-        _shared_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shared")
+        _shared_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "shared")
         _check_code = f'''import sys,json,time
 sys.path.insert(0,"{_shared_dir}")
 from updater import check
@@ -3555,7 +3575,6 @@ with open(sys.argv[2],"w") as f:json.dump(r,f)
     # os._exit 跳过 C++ 全局析构，避免 fusionscript.so 的
     # ReusePoolManager::~ReusePoolManager SIGSEGV（DaVinci 20.3.2 已知 bug）
     os._exit(0)
-
 
 if __name__ == "__main__":
     main()
