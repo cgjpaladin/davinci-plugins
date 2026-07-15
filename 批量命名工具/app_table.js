@@ -920,7 +920,17 @@ async function doRename(){
   const msg=sfs.length===1?`确认重命名?\n${sfs[0].basename}\n→ ${nm}`:`确认重命名 ${sfs.length} 个?\n${buildName(sfs[0].fields)+sfs[0].ext}\n  ...\n${buildName(sfs[sfs.length-1].fields)+sfs[sfs.length-1].ext}`;
   if(!await showDialog('确认重命名',msg))return;
   call('debug_log','rename: starting '+sfs.length+' files');
+  // 进度条
+  let _rnDone=false; const _rnOverlay=showProgressOverlay('重命名中…');
+  const _rnTimer=setInterval(async()=>{
+    if(_rnDone){clearInterval(_rnTimer);return}
+    try{
+      const p=await (await fetch('/rename_progress')).json();
+      if(p){_rnOverlay.querySelector('#_pPct').textContent=p.percent+'%';_rnOverlay.querySelector('#_pBar').style.width=p.percent+'%';_rnOverlay.querySelector('#_pStatus').textContent=p.status||'';if(p.done){_rnDone=true;clearInterval(_rnTimer)}}
+    }catch(ex){}
+  },300);
   const r=await call('do_rename',sfs);
+  if(!_rnDone){clearInterval(_rnTimer);_rnOverlay.remove()}
   call('debug_log','rename: ok='+r.ok+' fail='+(r.fail||[]).length+' depth='+(r.stack_depth||0));
   if(r.ok>0){undoAvail=true;
     r.renamed.forEach(rn=>{const f=files.find(x=>x.path===rn.old_path);if(f){f.path=rn.new_path;f.basename=rn.new_path.replace(/^.*[/\\]/,'')}});

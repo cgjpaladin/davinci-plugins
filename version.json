@@ -59,7 +59,7 @@
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
     "notes": "## v3.7.15\n\n📂 归档有进度条了，文件多的时候不用干等\n✅ 归档完成自动校验，少文件或损坏立刻告诉你\n🛡️ 增量更新更可靠，不会再退回旧版本\n🐛 修复了大量其他 bug",
-    "sha256": "ae7fde921c374ef3f3cad7e18cfa1356ba4a9ea9b576bbdd683a5674ff054e21",
+    "sha256": "6969cfd721d6910a75214ae8d451d76048d0e753accc03e3582c52670a010c8e",
     "history": [
       {
         "version": "3.7.15",
@@ -86,7 +86,7 @@
   "batch_renamer_win": {
     "version": "3.7.15",
     "notes": "## v3.7.15\n\n📂 归档有进度条了，文件多的时候不用干等\n✅ 归档完成自动校验，少文件或损坏立刻告诉你\n🛡️ 增量更新更可靠，不会再退回旧版本\n🐛 修复了大量其他 bug",
-    "sha256": "ae7fde921c374ef3f3cad7e18cfa1356ba4a9ea9b576bbdd683a5674ff054e21",
+    "sha256": "6969cfd721d6910a75214ae8d451d76048d0e753accc03e3582c52670a010c8e",
     "urls": [
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",

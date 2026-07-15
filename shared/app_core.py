@@ -25,7 +25,7 @@ try:
     else:
         _log_dir = os.path.join(os.path.expanduser("~"), "Library", "Logs", "批量命名工具")
     os.makedirs(_log_dir, exist_ok=True)
-    _hdlr = logging.FileHandler(os.path.join(_log_dir, "renamer.log"))
+    _hdlr = logging.FileHandler(os.path.join(_log_dir, "renamer.log"), encoding="utf-8")
     _hdlr.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
     _log.addHandler(_hdlr)
 except Exception:
@@ -63,6 +63,7 @@ THUMB_MAX = 100  # 缩略图批次上限
 _undo_stack = []  # list of lists: [[(old,new),...], [(old,new),...]]
 _window = None  # 存引用
 _archive_progress = {"current": 0, "total": 0, "percent": 0, "status": "", "done": True}
+_rename_progress = {"current": 0, "total": 0, "percent": 0, "status": "", "done": True}
 
 
 def _err_human(e):
@@ -262,21 +263,24 @@ class RenamerAPI:
         return {"log": list(self._dbg_buf)}
 
     def export_debug_package(self):
-        """打包完整诊断信息 → 用户选择目录 → ZIP → Finder/Explorer 定位"""
+        """打包完整诊断信息 → 用户选择目录 → ZIP"""
         import zipfile, subprocess as _sp, socket, time, platform
         is_win = sys.platform == "win32"
-        _CF = _sp.CREATE_NO_WINDOW if is_win else 0  # 隐藏控制台黑框
+        _CF = _sp.CREATE_NO_WINDOW if is_win else 0
+        if is_win:
+            _SI = _sp.STARTUPINFO(dwFlags=_sp.STARTF_USESHOWWINDOW, wShowWindow=0)
+        else:
+            _SI = None
 
         # ── 选目录 ──
         dest = ""
         try:
             if is_win:
-                ps_code = ('Add-Type -AssemblyName System.Windows.Forms; '
-                           '$f = New-Object System.Windows.Forms.FolderBrowserDialog; '
-                           '$f.Description = "选择导出位置"; $f.ShowDialog(); $f.SelectedPath')
-                r = _sp.run(["powershell", "-NoProfile", "-Command", ps_code],
-                            capture_output=True, text=True, timeout=120, creationflags=_CF)
-                dest = r.stdout.strip() if r.returncode == 0 else ""
+                import tkinter.filedialog as _tkfd, tkinter as _tk
+                _root = _tk.Tk(); _root.withdraw(); _root.attributes('-topmost', True)
+                dest = _tkfd.askdirectory(title="选择导出位置") or ""
+                try: _root.destroy()
+                except: pass
             else:
                 r = _sp.run(
                     ["osascript", "-e",
@@ -351,25 +355,20 @@ class RenamerAPI:
         except Exception as e:
             config_lines.append(f"config读取失败: {e}")
 
-        # ── network.txt ──
-        net = []
-        net.append(f"DNS: {socket.gethostbyname(socket.gethostname())}")
-        try:
-            r = _sp.run(["curl", "-sI", "--max-time", "3",
-                "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/version.json"],
-                capture_output=True, text=True, timeout=5,
-                creationflags=_CF)
-            net.append(f"GitHub raw: HTTP {r.returncode} (stdout {len(r.stdout)}B)")
-        except Exception as e:
-            net.append(f"GitHub raw: 不可达 ({e})")
-        try:
-            r = _sp.run(["curl", "-sI", "--max-time", "3",
-                "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/version.json"],
-                capture_output=True, text=True, timeout=5,
-                creationflags=_CF)
-            net.append(f"ghproxy: HTTP {r.returncode} (stdout {len(r.stdout)}B)")
-        except Exception as e:
-            net.append(f"ghproxy: 不可达 ({e})")
+        # ── network.txt（并行检测，不阻塞导出）──
+        net = [f"DNS: {socket.gethostbyname(socket.gethostname())}"]
+        def _curl_check(label, url):
+            try:
+                r = _sp.run(["curl", "-sI", "--connect-timeout", "2", "--max-time", "3", url],
+                            capture_output=True, text=True, timeout=5,
+                            creationflags=_CF, startupinfo=_SI)
+                net.append(f"{label}: HTTP {r.returncode}")
+            except Exception:
+                net.append(f"{label}: 不可达")
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            ex.submit(_curl_check, "GitHub raw", "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/version.json")
+            ex.submit(_curl_check, "ghproxy", "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/version.json")
 
         # ── 写 ZIP ──
         try:
@@ -408,11 +407,6 @@ class RenamerAPI:
                             zf.write(diag_path, diag)
                         except Exception:
                             pass
-            # 定位文件
-            if is_win:
-                _sp.run(["explorer", "/select,", zip_path], check=False)
-            else:
-                _sp.run(["open", "-R", zip_path], check=False)
             _log.info(f"export_debug: saved {zip_path}")
             return {"ok": True, "path": zip_path, "name": zip_name}
         except Exception as e:
@@ -514,27 +508,37 @@ class RenamerAPI:
         return {"files":files,"total":len(files),"duplicates":duplicates,"skipped":skipped,"subdirs_skipped":subdirs,"truncated":truncated,"max":MAX_FILES}
 
     def do_rename(self, files):
-        global _undo_stack
+        global _undo_stack, _rename_progress
+        _rename_progress = {"current": 0, "total": len(files), "percent": 0, "status": "重命名中…", "done": False}
         ok = 0; fail = []; batch = []; renamed = []
         _log.info(f"do_rename: {len(files)} files")
-        for f in files:
-            p = f["path"]
-            d = os.path.dirname(p)
-            ext = os.path.splitext(os.path.basename(p))[1]
-            nm = build_filename(f["fields"]) + ext
-            np = os.path.join(d, nm)
-            if os.path.exists(np) and os.path.normcase(np) != os.path.normcase(p):
-                fail.append(os.path.basename(p) + " → 已存在")
-                _log.warning(f"  rename collision: {os.path.basename(p)} → {os.path.basename(np)}")
-                continue
-            try:
-                os.rename(p, np)
-                batch.append((p, np))
-                renamed.append({"old_path": p, "new_path": np})
-                _log.debug(f"  ✓ {os.path.basename(p)} → {os.path.basename(np)}")
-                ok += 1
-            except Exception as e:
-                fail.append(os.path.basename(p) + ": " + str(e))
+        try:
+            for f in files:
+                p = f["path"]
+                d = os.path.dirname(p)
+                ext = os.path.splitext(os.path.basename(p))[1]
+                nm = build_filename(f["fields"]) + ext
+                np = os.path.join(d, nm)
+                if os.path.exists(np) and os.path.normcase(np) != os.path.normcase(p):
+                    fail.append(os.path.basename(p) + " → 已存在")
+                    _log.warning(f"  rename collision: {os.path.basename(p)} → {os.path.basename(np)}")
+                    continue
+                try:
+                    os.rename(p, np)
+                    batch.append((p, np))
+                    renamed.append({"old_path": p, "new_path": np})
+                    _log.debug(f"  ✓ {os.path.basename(p)} → {os.path.basename(np)}")
+                    ok += 1
+                except Exception as e:
+                    fail.append(os.path.basename(p) + ": " + str(e))
+                processed = ok + len(fail)
+                _rename_progress["current"] = processed
+                _rename_progress["percent"] = int(processed / len(files) * 100) if files else 100
+                _rename_progress["status"] = f"{processed}/{len(files)}  {os.path.basename(p)}"
+        except Exception:
+            pass
+        finally:
+            _rename_progress["done"] = True
         if files:
             sv = {k: v for k, v in files[0]["fields"].items() if k != "tk"}
             try:
@@ -591,6 +595,11 @@ class RenamerAPI:
         """JS 轮询归档进度，返回 {current, total, percent, status, done}"""
         global _archive_progress
         return dict(_archive_progress)
+
+    def get_rename_progress(self):
+        """JS 轮询重命名进度"""
+        global _rename_progress
+        return dict(_rename_progress)
 
     def do_archive(self, files, dest):
         global _archive_progress, _undo_stack
@@ -1549,6 +1558,12 @@ def main():
         from bottle import response
         response.content_type = 'application/json'
         return json.dumps(_archive_progress)
+
+    @route('/rename_progress')
+    def serve_rename_progress():
+        from bottle import response
+        response.content_type = 'application/json'
+        return json.dumps(_rename_progress)
 
     # 找空闲端口
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
