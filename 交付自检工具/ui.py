@@ -933,9 +933,6 @@ CONFIG_SECTIONS = [
     {"id": "censor_personal", "label": "个人词典", "type": "censor_personal",       "builder": _build_censor_personal},
 ]
 
-_validate_config_sections()
-del _validate_config_sections
-
 # ── 分隔符 ──
 def _sep():
     return ui.Label({"Text": "─" * 48, "Weight": 0,
