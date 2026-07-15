@@ -74,10 +74,12 @@ if '--dry-run' in sys.argv:
     result = subprocess.run([_PYTHON, '-c',
         f'import sys; sys.path.insert(0,"{os.path.dirname(_UI_SCRIPT)}"); '
         f'sys.path.insert(0,"{os.path.dirname(_UI_SCRIPT)}/../shared"); '
-        f'import config; print(config.version_string())'
+        f'import config; print(config.version_string()); '
+        f'import check_core as cc; assert cc._TAIL_KW == ("未完待续","定格转场","全剧终")'
     ], capture_output=True, text=True, timeout=10)
     if result.returncode == 0:
         checks.append(("模块导入", True, result.stdout.strip()))
+        checks.append(("check_core", True, "导入+常量校验通过"))
     else:
         checks.append(("模块导入", False, result.stderr.strip()[:60]))
     ok = all(c[1] for c in checks)

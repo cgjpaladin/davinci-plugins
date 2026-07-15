@@ -80,6 +80,31 @@ if [ -n "$CHECK_FILES" ]; then
 fi
 [ $SYNTAX_FAIL -eq 0 ] && echo "  ✅ 语法无误"
 
+# ── Import 级冒烟 + DRY 回归 + CHANGELOG ──
+echo "  🔍 检查: check_core import 完整性..."
+SMOKE_FAIL=0
+python3 -c "import sys; sys.path.insert(0,'$SHARED_DIR'); sys.path.insert(0,'$DELIVERY_DIR'); from check_core import _TAIL_KW,_check_track_empty,_make_result,_get_smpte; assert _TAIL_KW==('未完待续','定格转场','全剧终')" 2>/dev/null || { echo "  ❌ check_core 模块无法导入"; SMOKE_FAIL=1; }
+[ $SMOKE_FAIL -eq 0 ] && echo "  ✅ check_core import 通过"
+[ $SMOKE_FAIL -ne 0 ] && FAIL=1
+
+echo "  🔍 检查: DRY 回归..."
+DRY_FAIL=0
+SMPTE_COUNT=$(grep -c "SMPTE()" "$DELIVERY_DIR/check_core.py" 2>/dev/null || echo 1)
+[ "$SMPTE_COUNT" -eq 1 ] || { echo "  ❌ check_core.py 有 $SMPTE_COUNT 处 SMPTE() 绕过（应为1）"; DRY_FAIL=1; }
+grep -q "_SECTION_BUILDERS" "$DELIVERY_DIR/ui.py" 2>/dev/null && { echo "  ❌ ui.py 仍有 _SECTION_BUILDERS"; DRY_FAIL=1; }
+grep -q "_make_result_passthrough" "$DELIVERY_DIR/ui.py" 2>/dev/null && { echo "  ❌ ui.py 仍有 _make_result_passthrough"; DRY_FAIL=1; }
+[ $DRY_FAIL -eq 0 ] && echo "  ✅ DRY 无回归" || FAIL=1
+
+echo "  🔍 检查: CHANGELOG 版本..."
+VER=$(grep "__version__" "$DELIVERY_DIR/config.py" | head -1 | grep -oE "[0-9]+\\.[0-9]+\\.[0-9]+")
+if grep -q "## v$VER" "$DELIVERY_DIR/CHANGELOG.md" 2>/dev/null; then
+    echo "  ✅ CHANGELOG 已更新 v$VER"
+else
+    echo "  ❌ CHANGELOG.md 缺少 v$VER 条目"
+    FAIL=1
+fi
+
+
 # ── 1. 禁止 pip 第三方包 ──
 echo "  🔍 检查: 打进去不装上去（禁止运行时 pip 导入）..."
 BANNED_IMPORTS=(
