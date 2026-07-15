@@ -124,6 +124,7 @@ async function init(){
       const btn=document.createElement('button');
       btn.className='rs-'+s.toLowerCase();btn.id='rs'+s;btn.textContent=s;
       btn.title=STATUS_TOOLTIPS[s]||s;
+      btn.addEventListener('click',()=>setReviewStatus(s));  // ⚠️ 事件绑定必须在此处，不能等DOM初始化
       _rsContainer.appendChild(btn);
     });
   }
