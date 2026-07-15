@@ -911,8 +911,9 @@ class RenamerAPI:
                 if os.path.isfile(_hp):
                     with open(_hp, 'r', encoding='utf-8') as _f:
                         _h = _f.read()
-                    _old = 'setTimeout(() => { if(!window.pywebview) _runSelfTest(); }, 500);'
-                    if _old in _h:
+                    # 匹配任意超时值的自测触发（500/2000 均覆盖）
+                    _old = _h[_h.find('setTimeout'):_h.find('_runSelfTest();')+16] if '_runSelfTest' in _h and 'setTimeout' in _h else ''
+                    if _old and 'pywebview' in _old:
                         _h = _h.replace(_old, '// self-test skipped (pywebview)')
                         with open(_hp, 'w', encoding='utf-8') as _f:
                             _f.write(_h)
