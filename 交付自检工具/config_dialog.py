@@ -13,6 +13,13 @@ from license_ui import trial_days_left, format_trial
 
 import os, subprocess, time, socket, json
 
+# ── 主窗口控件 ID ──
+TRIAL_LB = "trial_lb"
+BTN_AI_TYPO = "btn_ai_typo"
+HINT_LB = "hint_lb"
+
+CONFIG_WIDGETS = {}
+
 
 def _validate_config_sections():
     """CONFIG_SECTIONS 注册表校验：builder 可调用 + type 有 saver"""
