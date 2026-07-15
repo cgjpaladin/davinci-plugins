@@ -85,6 +85,9 @@ echo "  🔍 检查: check_core import 完整性..."
 SMOKE_FAIL=0
 python3 -c "import sys; sys.path.insert(0,'$SHARED_DIR'); sys.path.insert(0,'$DELIVERY_DIR'); from check_core import _TAIL_KW,_check_track_empty,_make_result,_get_smpte; assert _TAIL_KW==('未完待续','定格转场','全剧终')" 2>/dev/null || { echo "  ❌ check_core 模块无法导入"; SMOKE_FAIL=1; }
 [ $SMOKE_FAIL -eq 0 ] && echo "  ✅ check_core import 通过"
+
+# ui.py 模块级冒烟（绕过 DaVinci）
+python3 "$GIT_ROOT/tools/smoke_import.py" 2>/dev/null && echo "  ✅ ui.py 模块级代码通过" || { echo "  ❌ ui.py 模块级代码异常"; SMOKE_FAIL=1; }
 [ $SMOKE_FAIL -ne 0 ] && FAIL=1
 
 echo "  🔍 检查: DRY 回归..."
