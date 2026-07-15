@@ -145,6 +145,7 @@ def _build_auth_section():
 
 def show_config_dialog(log_fn=None, _main_itm=None):
     """打开配置窗口"""
+    global _config_open
     if _config_open:
         return
     _config_open = True
