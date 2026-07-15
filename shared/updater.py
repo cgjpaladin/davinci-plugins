@@ -157,6 +157,8 @@ def check(product: str, current_version: str,
             "notes": notes,
             "sha256": latest_info.get("sha256"),
             "force": latest_info.get("force", False),
+            "requires_full_install": latest_info.get("requires_full_install", False),
+            "full_install_url": latest_info.get("full_install_url", ""),
         }
         if on_update_found:
             try:
