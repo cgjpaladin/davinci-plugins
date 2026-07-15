@@ -36,8 +36,10 @@ const FIELD_SANITIZE = {
 const _FIELD_KEYS  = ['ep','sc','gr','desc','method','author','ver','status'];
 const _HEADER_KEYS = ['ep','sc','gr','tk','desc','method','author','ver','status'];
 const STATUS_OPTIONS = ['OK','KP','NG'];
-const STATUS_TOOLTIPS = {OK:'通过 — 素材合格', KP:'需修改 — 保留待改', NG:'不合格 — 标记废弃'};
+const STATUS_TOOLTIPS = {OK:'通过 — 素材合格', KP:'备选', NG:'不合格 — 标记废弃'};
 const METHOD_OPTIONS = ['智能分镜版','双轨版','角色专属版'];
+const HINT_NO_METHOD = HINT_NO_METHOD;  // 未选择制作方式时的提示
+const HINT_DESC = HINT_DESC;           // 镜头描述输入框占位
 
 function reindex(){files.forEach((f,i)=>{f._idx=i})}
 function updSortIndicators(){
@@ -269,7 +271,7 @@ function getFields(){
 let _reservedDesc=new Set();
 function onMethodChange(oldMethod, newMethod, ri){
   const m = newMethod;
-  const cfg=methodDescMap[m]||{mode:'text',hint:'请先选择制作方式'};
+  const cfg=methodDescMap[m]||{mode:'text',hint:HINT_NO_METHOD};
   const rows = sel.size > 0 ? [...sel] : (ri !== undefined ? [ri] : []);
   const changedRows = rows.filter(r => files[r] && files[r].fields.method === oldMethod && oldMethod !== m);
   call('debug_log',`onMethodChange: rows=${rows.length} sel=${sel.size} changed=${changedRows.length} old='${oldMethod||'(空)'}' new='${m||'(空)'}'`);
@@ -646,7 +648,7 @@ function buildCellTD(key, ff, i){
     const method = files[i].fields.method || '';
     const cfg = methodDescMap[method];
     if(!cfg){
-      const s = document.createElement('span'); s.textContent = '请先选择制作方式';
+      const s = document.createElement('span'); s.textContent = HINT_NO_METHOD;
       td.appendChild(s);
       td.classList.add('readonly','empty');
       return td;
@@ -702,7 +704,7 @@ function activateEdit(td, key, i){
     });
   } else if(key === 'desc'){
     const method = files[i].fields.method || '';
-    const cfg = methodDescMap[method] || {mode:'text',hint:'输入镜头描述'};
+    const cfg = methodDescMap[method] || {mode:'text',hint:HINT_DESC};
     if(cfg.mode === 'locked'){
       el = document.createElement('input'); el.type = 'text'; el.value = cfg.value || ''; el.readOnly = true;
     } else if(cfg.mode === 'dropdown'){
@@ -726,7 +728,7 @@ function activateEdit(td, key, i){
       }
     } else {
       el = document.createElement('input'); el.type = 'text'; el.value = oldVal;
-      el.placeholder = cfg.hint || '输入镜头描述';
+      el.placeholder = cfg.hint || HINT_DESC;
     }
   } else {
     el = document.createElement('input'); el.type = 'text'; el.value = oldVal;
@@ -824,7 +826,7 @@ function activateEdit(td, key, i){
           // 自由输入 → 切换为 input
           el.remove();
           const input = document.createElement('input');
-          input.type = 'text'; input.placeholder = '输入镜头描述';
+          input.type = 'text'; input.placeholder = HINT_DESC;
           input.value = (oldVal === '请手动输入…' || oldVal === '请选择') ? '' : oldVal;
           td.appendChild(input);
           input.focus(); input.select();
@@ -1297,7 +1299,7 @@ function buildReviewFields(ff,isVideo){
     (w === 1 ? rows[0] : rows[1]).push({...fd, w, attr, label: labels[fd.key] || fd.key});
   });
   const fields = rows.filter(r => r.length > 0);
-  const initCfg=methodDescMap[ff.method||'']||{mode:'text',hint:'请先选择制作方式',readonly:true};
+  const initCfg=methodDescMap[ff.method||'']||{mode:'text',hint:HINT_NO_METHOD,readonly:true};
   // desc 重建函数（三种模式：locked / dropdown / text）
   function _buildDesc(cfg,oldVal){
     oldVal=oldVal||'';
@@ -1316,7 +1318,7 @@ function buildReviewFields(ff,isVideo){
       if(oldVal==='请手动输入…')fo.selected=true;sel.appendChild(fo);
       sel.addEventListener('change',()=>{
         if(sel.value==='__free__'){
-          const inp=document.createElement('input');inp.type='text';inp.placeholder='输入镜头描述';inp.value='';
+          const inp=document.createElement('input');inp.type='text';inp.placeholder=HINT_DESC;inp.value='';
           inp.style.cssText='width:100%;background:#2a2a2a;border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:12px;font-family:var(--font-mono);box-sizing:border-box';
           inp.addEventListener('input',()=>{const v=FIELD_SANITIZE.desc(inp.value);inp.value=v;files[_reviewIdx].fields.desc=v;updateReviewTitle()});
           sel.replaceWith(inp);inp.focus();
@@ -1324,7 +1326,7 @@ function buildReviewFields(ff,isVideo){
       });
       dw.appendChild(sel);files[_reviewIdx].fields.desc=oldVal==='请选择'?'':oldVal;
     }else{
-      const ip=document.createElement('input');ip.type='text';ip.placeholder=cfg.hint||'输入镜头描述';ip.value=oldVal;
+      const ip=document.createElement('input');ip.type='text';ip.placeholder=cfg.hint||HINT_DESC;ip.value=oldVal;
       ip.style.cssText='width:100%;background:#2a2a2a;border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:4px;font-size:12px;font-family:var(--font-mono);box-sizing:border-box';
       if(cfg.readonly){ip.readOnly=true}
       else{ip.addEventListener('input',()=>{const v=FIELD_SANITIZE.desc(ip.value);ip.value=v;files[_reviewIdx].fields.desc=v})}
@@ -1342,7 +1344,7 @@ function buildReviewFields(ff,isVideo){
   mWrap.appendChild(mSel);
   mSel.addEventListener('change',()=>{
     const nm=mSel.value;files[_reviewIdx].fields.method=nm;
-    const cfg=methodDescMap[nm]||{mode:'text',hint:'请先选择制作方式',readonly:true};
+    const cfg=methodDescMap[nm]||{mode:'text',hint:HINT_NO_METHOD,readonly:true};
     // 对齐 onMethodChange：非 locked 模式清 desc
     if(cfg.mode!=='locked')files[_reviewIdx].fields.desc='';
     const oldWrap=document.getElementById('reviewDescWrap');
