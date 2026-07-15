@@ -6,7 +6,7 @@ import os, sys, json, statistics, io as _sys_io
 from urllib.parse import unquote
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from shared.naming_createone import (
+from naming_createone import (
     FIELD_CONFIG,
     build_filename, parse_filename,
     MEDIA_EXT, VIDEO_EXT, IMAGE_EXT, ext_to_type,
@@ -25,7 +25,7 @@ try:
     _hdlr.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
     _log.addHandler(_hdlr)
 except Exception:
-    pass
+    import traceback; traceback.print_exc(file=sys.stderr)
 
 _BASE_DIR = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
 _SHARED_DIR = os.path.join(_BASE_DIR, 'shared')
@@ -40,7 +40,7 @@ if os.path.exists(CFG_FILE):
         with open(CFG_FILE, "r", encoding="utf-8") as f:
             _saved_defaults = json.load(f)
     except Exception:
-        pass
+        import traceback; traceback.print_exc(file=sys.stderr)
 
 THUMB_MAX = 100
 _undo_stack = []
@@ -85,7 +85,7 @@ class RenamerAPI:
                         from PIL import ImageOps
                         img = ImageOps.exif_transpose(img)
                     except Exception:
-                        pass
+                        pass  # 方向纠正失败不影响缩略图生成
                     img.thumbnail((120, 120), Image.LANCZOS)
                     if img.mode in ('RGBA', 'P'):
                         img = img.convert('RGB')
@@ -169,6 +169,7 @@ class RenamerAPI:
                 if os.path.isfile(fp):
                     paths.append(os.path.realpath(fp))
         except Exception:
+            _log.warning(f"add_files_dialog listdir failed: {folder}")
             pass
         return self._process_paths(paths)
 
@@ -252,7 +253,9 @@ class RenamerAPI:
                             else: no_parse_count += 1
                             files.append({"path":fp,"basename":os.path.basename(fp),"ext":ext2,"fields":fields,"fp":fp_key2})
                         elif os.path.isdir(fp): subdirs += 1
-                except Exception: pass
+                except Exception:
+                    _log.warning(f"  skip {os.path.basename(p)}: processing failed", exc_info=True)
+                    continue
 
         _log.info(f"_process_paths: {len(files)} files, {parsed_count} parsed, {no_parse_count} raw, {duplicates} dup, {skipped} skipped")
         files.sort(key=lambda f: f["basename"])
@@ -307,7 +310,7 @@ class RenamerAPI:
                 global _saved_defaults
                 _saved_defaults = sv
             except Exception:
-                pass
+                _log.warning("save_defaults failed", exc_info=True)
         if batch:
             _undo_stack.append({"type": "rename", "pairs": [(op, np) for op, np in batch]})
         _log.info(f"do_rename: {ok} ok, stack_depth={len(_undo_stack)}")
@@ -328,7 +331,7 @@ class RenamerAPI:
                 renamed.append({"old_path": np, "new_path": op})
                 ud += 1
             except Exception:
-                pass
+                _log.warning(f"undo rename failed: {np} → {op}", exc_info=True)
         _log.info(f"do_undo: {ud}/{len(pairs)} reversed, remaining: {len(_undo_stack)}")
         return {"ok": ud, "msg": f"已撤销 {ud} 个", "remaining": len(_undo_stack), "renamed": renamed}
 
@@ -594,7 +597,8 @@ if __name__ == "__main__":
                             sfp = os.path.realpath(os.path.join(fp, sf))
                             if os.path.isfile(sfp):
                                 paths.append(sfp)
-                    except Exception: pass
+                    except Exception:
+                        _log.warning(f"subdir list failed: {fp}", exc_info=True)
             if not paths: return
             _log.info(f"DOM drop: {len(paths)} items")
             result = api._process_paths(paths)

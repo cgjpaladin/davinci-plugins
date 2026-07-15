@@ -2,7 +2,7 @@
 import os, sys, tempfile, shutil
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from shared.naming_createone import build_filename, FIELD_CONFIG, parse_filename, FILENAME_RE, ext_to_type
+from naming_createone import build_filename, FIELD_CONFIG, parse_filename, FILENAME_RE, ext_to_type
 
 passed = 0
 failed = 0
