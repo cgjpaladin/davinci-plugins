@@ -283,7 +283,7 @@ class RenamerAPI:
                 _root = _tk.Tk(); _root.withdraw(); _root.attributes('-topmost', True)
                 dest = _tkfd.askdirectory(title="选择导出位置") or ""
                 try: _root.destroy()
-                except: pass
+                except Exception: pass
             else:
                 r = _sp.run(
                     ["osascript", "-e",
@@ -443,7 +443,8 @@ class RenamerAPI:
                 try:
                     import hashlib
                     st = os.stat(p)
-                    fp_key = f"{st.st_size}:{hashlib.md5(open(p,'rb').read(4096)).hexdigest()}"
+                    with open(p, 'rb') as _f:
+                        fp_key = f"{st.st_size}:{hashlib.md5(_f.read(4096)).hexdigest()}"
                 except OSError:
                     fp_key = p  # fallback to path
                 if fp_key in seen_fp: duplicates += 1; continue
@@ -469,7 +470,8 @@ class RenamerAPI:
                             if fp in {x["path"] for x in files}: duplicates += 1; continue
                             try:
                                 st = os.stat(fp)
-                                fp_key2 = f"{st.st_size}:{hashlib.md5(open(fp,'rb').read(4096)).hexdigest()}"
+                                with open(fp, 'rb') as _f2:
+                                    fp_key2 = f"{st.st_size}:{hashlib.md5(_f2.read(4096)).hexdigest()}"
                             except OSError:
                                 fp_key2 = fp
                             if fp_key2 in {x.get("fp","") for x in files}: duplicates += 1; continue
