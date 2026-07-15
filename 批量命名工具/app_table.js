@@ -995,11 +995,34 @@ async function loadThumbs(){
   call('debug_log','loadThumbs: '+paths.length+' files');
   const r=await call('generate_thumbnails',paths);
   call('debug_log','loadThumbs done: '+(r?r.total:0)+' thumbs');
+  if(r&&r.thumbs){
+    for(const [p,t] of Object.entries(r.thumbs)){
+      _thumbs[p]=t;
+      const rows=document.querySelectorAll('[data-path]');
+      for(let i=0;i<rows.length;i++){
+        if(rows[i].dataset.path===p){
+          let thumbEl=rows[i].querySelector('.cell-thumb');
+          if(thumbEl&&thumbEl.tagName==='DIV'){
+            const img=document.createElement('img');
+            img.className='cell-thumb';img.src=t;img.alt='';
+            thumbEl.replaceWith(img);
+          }else if(thumbEl){
+            thumbEl.src=t;
+          }
+          break;
+        }
+      }
+    }
+  }
 }
 
 function setThumb(path,thumb){
   _thumbs[path]=thumb;
-  const el=document.querySelector(`[data-path="${CSS.escape(path)}"]`);
+  const rows=document.querySelectorAll('[data-path]');
+  let el=null;
+  for(let i=0;i<rows.length;i++){
+    if(rows[i].dataset.path===path){el=rows[i];break}
+  }
   if(!el)return;
   let thumbEl=el.querySelector('.cell-thumb');
   if(thumbEl&&thumbEl.tagName==='DIV'){

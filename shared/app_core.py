@@ -83,7 +83,7 @@ class RenamerAPI:
         return {"path": ""}
 
     def generate_thumbnails(self, paths):
-        """视频用 ffmpeg 抽帧，图片用 Pillow 缩略"""
+        """视频用 ffmpeg 抽帧，图片用 Pillow 缩略。返回 {thumbs: {path: base64}, total: N}"""
         import subprocess, base64, tempfile, shutil, sys as _sys, json
         ffmpeg = shutil.which("ffmpeg")
         if not ffmpeg:
@@ -99,7 +99,7 @@ class RenamerAPI:
         if not ffmpeg: ffmpeg = 'ffmpeg'
         IMG_EXT = {'.jpg','.jpeg','.png','.bmp','.tiff','.tif','.gif','.webp','.tga','.targa','.psd'}
         _log.info(f"generate_thumbnails: {len(paths)} files, ffmpeg={ffmpeg} PIL={'ok' if _has_pil() else 'MISSING'}")
-        total = 0
+        thumbs = {}; total = 0
         for p in paths[:THUMB_MAX]:
             try:
                 ext = os.path.splitext(p)[1].lower()
@@ -109,7 +109,6 @@ class RenamerAPI:
                         continue
                     from PIL import Image
                     img = Image.open(p)
-                    # EXIF 自变换
                     try:
                         from PIL import ImageOps
                         img = ImageOps.exif_transpose(img)
@@ -122,12 +121,9 @@ class RenamerAPI:
                     buf = BytesIO()
                     img.save(buf, format='JPEG', quality=80)
                     b64 = base64.b64encode(buf.getvalue()).decode()
-                    thumb = f"data:image/jpeg;base64,{b64}"
-                    if _window:
-                        _window.evaluate_js(f"setThumb({json.dumps(p)},{json.dumps(thumb)})")
+                    thumbs[p] = f"data:image/jpeg;base64,{b64}"
                     total += 1
                 else:
-                    # 视频：ffmpeg 抽帧
                     tmp = tempfile.NamedTemporaryFile(suffix='.jpg', delete=False)
                     tmp.close()
                     kw = dict(capture_output=True, timeout=8)
@@ -145,9 +141,7 @@ class RenamerAPI:
                     if os.path.isfile(tmp.name) and os.path.getsize(tmp.name) > 100:
                         with open(tmp.name, 'rb') as f:
                             b64 = base64.b64encode(f.read()).decode()
-                        thumb = f"data:image/jpeg;base64,{b64}"
-                        if _window:
-                            _window.evaluate_js(f"setThumb({json.dumps(p)},{json.dumps(thumb)})")
+                        thumbs[p] = f"data:image/jpeg;base64,{b64}"
                         total += 1
                     try: os.unlink(tmp.name)
                     except OSError: pass
@@ -156,7 +150,7 @@ class RenamerAPI:
                 try: os.unlink(tmp.name)
                 except OSError: pass
         _log.info(f"generate_thumbnails done: {total} thumbs")
-        return {"thumbs": {}, "total": total}
+        return {"thumbs": thumbs, "total": total}
 
     def get_config(self):
         fmt = []
@@ -357,17 +351,17 @@ class RenamerAPI:
         net = []
         net.append(f"DNS: {socket.gethostbyname(socket.gethostname())}")
         try:
-            r = _sp.run(["curl", "-sI", "--max-time", "8",
+            r = _sp.run(["curl", "-sI", "--max-time", "3",
                 "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/version.json"],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True, text=True, timeout=5,
                 creationflags=_CF)
             net.append(f"GitHub raw: HTTP {r.returncode} (stdout {len(r.stdout)}B)")
         except Exception as e:
             net.append(f"GitHub raw: 不可达 ({e})")
         try:
-            r = _sp.run(["curl", "-sI", "--max-time", "8",
+            r = _sp.run(["curl", "-sI", "--max-time", "3",
                 "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/version.json"],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True, text=True, timeout=5,
                 creationflags=_CF)
             net.append(f"ghproxy: HTTP {r.returncode} (stdout {len(r.stdout)}B)")
         except Exception as e:
@@ -872,7 +866,7 @@ class RenamerAPI:
         import tempfile
         global _UPDATE_STATE
         try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] apply_delta called, ready={_UPDATE_STATE.get('ready')}, zip={'yes' if _UPDATE_STATE.get('zip_path') else 'no'}\n")
-        except: pass
+        except Exception: pass
         if not _UPDATE_STATE.get("ready"):
             return {"ok": False, "error": "更新包未就绪"}
         try:
@@ -892,7 +886,7 @@ class RenamerAPI:
                     if p.endswith('.app'): app_path = p; break
                     p = os.path.dirname(p)
             try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] fram={fram_dir}, res={res_dir}, app={app_path}\n")
-            except: pass
+            except Exception: pass
 
             import zipfile, tempfile, shutil as _sh, subprocess as _sp
             zip_path = _UPDATE_STATE["zip_path"]
@@ -902,7 +896,7 @@ class RenamerAPI:
                 _sh.rmtree(delta_dir, ignore_errors=True)
             os.makedirs(delta_dir, exist_ok=True)
             try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] extracting to {delta_dir}\n")
-            except: pass
+            except Exception: pass
             with zipfile.ZipFile(zip_path, 'r') as zf:
                 zf.extractall(delta_dir)
             # 修补 delta HTML：防止 pywebview 首次加载慢导致自测误触发
@@ -919,11 +913,11 @@ class RenamerAPI:
                             _f.write(_h)
                     break
             try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] extract done\n")
-            except: pass
+            except Exception: pass
 
         except Exception as zip_err:
             try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] ERROR: {zip_err}\n")
-            except: pass
+            except Exception: pass
             return {"ok": False, "error": _err_human(zip_err)}
 
         # 解压后检查版本：delta 版本不能低于当前版本（防止旧代码覆盖新修复）
@@ -982,7 +976,7 @@ class RenamerAPI:
         if not is_win:
             os.chmod(script_path, 0o755)
         try: open(os.path.join(tempfile.gettempdir(), 'apply_delta.log'),'a',encoding='utf-8').write(f"[{datetime.now():%H:%M:%S}] launching restart via {script_path}\n")
-        except: pass
+        except Exception: pass
         _sp.Popen(['/bin/bash', script_path] if sys.platform == 'darwin' else ['cmd', '/c', script_path],
             start_new_session=True, stdout=_sp.DEVNULL, stderr=_sp.DEVNULL,
             creationflags=_sp.CREATE_NO_WINDOW if is_win else 0)
@@ -1385,6 +1379,7 @@ def _setup_native_menu_cocoa():
 
 def main():
     """应用入口，由 launcher 调用"""
+    global _window
     import threading, socket
     from bottle import route, run, static_file
 
@@ -1395,10 +1390,10 @@ def main():
         # 优先加载 delta 覆盖的 HTML
         if os.path.isfile(os.path.join(_DELTA_HTML, HTML_FILE_NAME)):
             try: open(os.path.join(tempfile.gettempdir(), 'bottle_route.log'),'w',encoding='utf-8').write(f"serving delta HTML, version={_APP_VERSION}\n")
-            except: pass
+            except Exception: pass
             return static_file(HTML_FILE_NAME, root=_DELTA_HTML)
         try: open(os.path.join(tempfile.gettempdir(), 'bottle_route.log'),'w',encoding='utf-8').write(f"serving bundled HTML, version={_APP_VERSION}\n")
-        except: pass
+        except Exception: pass
         return static_file(HTML_FILE_NAME, root=_BASE_DIR)
 
     @route('/media')
@@ -1452,28 +1447,31 @@ def main():
     def _bind_drop():
         from webview.dom import DOMEventHandler
         def _on_drop(e):
-            files = e['dataTransfer']['files']
-            paths = []
-            for f in files:
-                fp = f.get('pywebviewFullPath', '')
-                if not fp: continue
-                if os.path.isfile(fp):
-                    paths.append(os.path.realpath(fp))
-                elif os.path.isdir(fp):
-                    try:
-                        for sf in sorted(os.listdir(fp)):
-                            sfp = os.path.realpath(os.path.join(fp, sf))
-                            if os.path.isfile(sfp):
-                                paths.append(sfp)
-                    except Exception: pass
-            if not paths: return
-            _log.info(f"DOM drop: {len(paths)} items [{', '.join(os.path.basename(p) for p in paths[:5])}{'...' if len(paths)>5 else ''}]")
-            result = api._process_paths(paths)
-            duplicates = result.get('duplicates', 0)
-            if duplicates and not result.get('files'):
-                _window.evaluate_js(f'toast("全部重复 · {duplicates} 个已跳过")')
-            else:
-                _window.evaluate_js(f"onDropResult({json.dumps(result)})")
+            try:
+                files = e['dataTransfer']['files']
+                paths = []
+                for f in files:
+                    fp = f.get('pywebviewFullPath', '')
+                    if not fp: continue
+                    if os.path.isfile(fp):
+                        paths.append(os.path.realpath(fp))
+                    elif os.path.isdir(fp):
+                        try:
+                            for sf in sorted(os.listdir(fp)):
+                                sfp = os.path.realpath(os.path.join(fp, sf))
+                                if os.path.isfile(sfp):
+                                    paths.append(sfp)
+                        except Exception: pass
+                if not paths: return
+                _log.info(f"DOM drop: {len(paths)} items [{', '.join(os.path.basename(p) for p in paths[:5])}{'...' if len(paths)>5 else ''}]")
+                result = api._process_paths(paths)
+                duplicates = result.get('duplicates', 0)
+                js_code = f'toast("全部重复 · {duplicates} 个已跳过")' if (duplicates and not result.get('files')) else f"onDropResult({json.dumps(result)})"
+                _log.info(f"DOM drop: evaluate_js len={len(js_code)} hasWindow={_window is not None}")
+                _window.evaluate_js(js_code)
+                _log.info(f"DOM drop: evaluate_js done")
+            except Exception as _ex:
+                _log.error(f"DOM drop handler error: {_ex}", exc_info=True)
 
         _window.dom.document.events.dragover += DOMEventHandler(lambda e: e, prevent_default=True)
         _window.dom.document.events.drop += DOMEventHandler(_on_drop, prevent_default=True, stop_propagation=True)

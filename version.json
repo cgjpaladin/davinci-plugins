@@ -59,7 +59,7 @@
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
     "notes": "## v3.7.13\n\n📋 遇到问题？右下角点 📋，自动打包诊断文件发给作者\n🖥 新增 Windows 版，和 Mac 版功能完全一样\n📁 工作日志统一放到系统目录，不怕误删\n🐛 修了一处导出日志时报错的小问题",
-    "sha256": "cc40939b3b4fd2c3dd1e8bffa165d40478fa9c0d42260582d80365e39c008a71",
+    "sha256": "bbedce94c79669d9b8aba65c14c7dfd24aea69e1f421a487e28174a3b0ba5d82",
     "history": [
       {
         "version": "3.7.13",
@@ -78,7 +78,7 @@
   "batch_renamer_win": {
     "version": "3.7.14",
     "notes": "## v3.7.13\n\n📋 遇到问题？右下角点 📋，自动打包诊断文件发给作者\n🖥 新增 Windows 版，和 Mac 版功能完全一样\n📁 工作日志统一放到系统目录，不怕误删\n🐛 修了一处导出日志时报错的小问题",
-    "sha256": "cc40939b3b4fd2c3dd1e8bffa165d40478fa9c0d42260582d80365e39c008a71",
+    "sha256": "bbedce94c79669d9b8aba65c14c7dfd24aea69e1f421a487e28174a3b0ba5d82",
     "urls": [
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
