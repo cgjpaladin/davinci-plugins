@@ -32,3 +32,4 @@ tools/_wsl.py
 批量命名工具/dist_build/
 .build_cache/
 shared/logs/
+AI去字幕/logs/
