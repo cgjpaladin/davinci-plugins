@@ -30,6 +30,9 @@ import time
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
+# Windows subprocess 无黑窗
+_CF = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
 # ═══════════════════════════════════════════
 # 配置
 # ═══════════════════════════════════════════
@@ -97,7 +100,7 @@ def _get_stats() -> dict:
     if sys.platform == "darwin":
         try:
             _r = subprocess.run(["sw_vers", "-productVersion"],
-                               capture_output=True, text=True, timeout=3)
+                               capture_output=True, text=True, timeout=3, creationflags=_CF)
             os_ver = "macOS " + _r.stdout.strip()
         except Exception:
             pass
@@ -117,7 +120,7 @@ def _get_stats() -> dict:
                 ["defaults", "read",
                  "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Info.plist",
                  "CFBundleShortVersionString"],
-                capture_output=True, text=True, timeout=3)
+                capture_output=True, text=True, timeout=3, creationflags=_CF)
             resolve_ver = _r.stdout.strip()
         except Exception:
             pass
@@ -141,7 +144,7 @@ def _get_stats() -> dict:
             try:
                 for u in ("https://ifconfig.me", "https://api.ipify.org", "https://ip.sb"):
                     r = subprocess.run(["curl", "-s", "-m", "3", u],
-                                       capture_output=True, text=True, timeout=5)
+                                       capture_output=True, text=True, timeout=5, creationflags=_CF)
                     if r.returncode == 0 and r.stdout.strip():
                         _ip_result[0] = r.stdout.strip()
                         return
@@ -151,7 +154,7 @@ def _get_stats() -> dict:
                 if _ip_result[0]:
                     r = subprocess.run(["curl", "-s", "-m", "3",
                         f"http://ip-api.com/json/{_ip_result[0]}?lang=zh-CN&fields=country,regionName,city"],
-                        capture_output=True, text=True, timeout=5)
+                        capture_output=True, text=True, timeout=5, creationflags=_CF)
                     if r.returncode == 0:
                         j = __import__("json").loads(r.stdout)
                         parts = [j.get("country",""), j.get("regionName",""), j.get("city","")]
@@ -202,7 +205,7 @@ def get_machine_fingerprint() -> str:
         try:
             result = subprocess.run(
                 ["ioreg", "-a", "-rd1", "-c", "IOPlatformExpertDevice"],
-                capture_output=True, timeout=5)
+                capture_output=True, timeout=5, creationflags=_CF)
             plist_data = plistlib.loads(result.stdout)
             ioreg_uuid = (plist_data[0] if isinstance(plist_data, list) and plist_data else plist_data).get("IOPlatformUUID", "")
             raw_parts.append(ioreg_uuid)
@@ -212,7 +215,7 @@ def get_machine_fingerprint() -> str:
         try:
             result = subprocess.run(
                 ["diskutil", "info", "/"],
-                capture_output=True, text=True, timeout=5)
+                capture_output=True, text=True, timeout=5, creationflags=_CF)
             for line in result.stdout.splitlines():
                 if "Volume UUID:" in line:
                     raw_parts.append(line.split(":", 1)[1].strip())
@@ -227,7 +230,7 @@ def get_machine_fingerprint() -> str:
         try:
             result = subprocess.run(
                 ["wmic", "baseboard", "get", "serialnumber"],
-                capture_output=True, text=True, timeout=5)
+                capture_output=True, text=True, timeout=5, creationflags=_CF)
             lines = [l.strip() for l in result.stdout.splitlines() if l.strip() and l.strip() != "SerialNumber"]
             if lines:
                 raw_parts.append(lines[0])
@@ -238,7 +241,7 @@ def get_machine_fingerprint() -> str:
             result = subprocess.run(
                 ["wmic", "diskdrive", "where", "MediaType='Fixed hard disk media'",
                  "get", "SerialNumber"],
-                capture_output=True, text=True, timeout=5)
+                capture_output=True, text=True, timeout=5, creationflags=_CF)
             lines = [l.strip() for l in result.stdout.splitlines() if l.strip() and l.strip() != "SerialNumber"]
             if lines:
                 raw_parts.append(lines[0])
@@ -349,7 +352,7 @@ def _post_to_backend(endpoint: str, data: dict, timeout: int = 10) -> Tuple[bool
                  "-H", f"Content-Type: application/json",
                  "-H", f"User-Agent: DaVinciPlugin/2.2",
                  "-d", req_data.decode("utf-8"), url],
-                capture_output=True, text=True, timeout=timeout + 5)
+                capture_output=True, text=True, timeout=timeout + 5, creationflags=_CF)
             if r.returncode == 0:
                 return True, json.loads(r.stdout)
             last_err = r.stderr.strip() or f"exit {r.returncode}"

@@ -18,11 +18,15 @@ if errorlevel 1 (
 
 if "%VARIANT%"=="table" (
     set HTML_BUNDLE=_build\renamer_table.html
-    set APP_NAME=批量命名工具-v3.7.13
+    set APP_NAME=批量命名工具
 ) else (
     set HTML_BUNDLE=_build\renamer_web.html
-    set APP_NAME=批量命名工具-卡片版-v3.7.13
+    set APP_NAME=批量命名工具-卡片版
 )
+
+REM 从 version_info.txt 自动提取版本号（_splice.py 已同步 app_table.js → version_info.txt）
+for /f %%v in ('python -c "v=open('version_info.txt').read();import re;m=re.search(r'filevers=\((\d+),\s*(\d+),\s*(\d+),\s*\d+\)',v);print(f'{m[1]}.{m[2]}.{m[3]}')"') do set APP_VERSION=%%v
+echo 构建版本: %APP_VERSION%
 
 REM 清理
 if exist build rmdir /s /q build

@@ -340,7 +340,7 @@ class RenamerAPI:
             try:
                 ver_file = os.path.join(delta_dir, 'version.txt')
                 if os.path.isfile(ver_file):
-                    with open(ver_file) as vf:
+                    with open(ver_file, encoding='utf-8') as vf:
                         state.append(f"delta版本: {vf.read().strip()}")
             except Exception:
                 pass
