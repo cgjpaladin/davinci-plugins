@@ -22,15 +22,41 @@ _warn(){ echo "  ⚠️  $1"; }
 _fail(){ echo "  ❌ $1"; exit 1; }
 
 # ═══════════════════════════════════════
-# 预检（所有模式共用）
+# 硬性预检 — 所有模式必过
 # ═══════════════════════════════════════
 _precheck() {
-  [ -d "$DESKTOP_APP" ] || _fail "桌面 app 不存在：$DESKTOP_APP（先跑 bash publish.sh app）"
-  python3 -c "import py_compile; py_compile.compile('$WS/shared/app_core.py', doraise=True)" 2>&1 \
-    || _fail "app_core.py 编译失败"
+  echo "🔍 预检…"
+
+  # 1. Python import 验证（mock webview 后完整加载）
+  python3 -c "
+import sys,types; sys.path.insert(0,'$WS/shared')
+wv=types.ModuleType('webview'); sys.modules['webview']=wv
+from app_core import RenamerAPI, _LOG_NAME; api=RenamerAPI()
+cfg=api.get_config()
+assert len(cfg['video_formats'])>0 and len(cfg['image_formats'])>0
+" 2>&1 || _fail "Python import 崩溃（常量后定义先用？）"
+
+  # 2. Python AST
+  python3 -c "import py_compile; py_compile.compile('$WS/shared/app_core.py', doraise=True)" \
+    || _fail "app_core.py 语法错误"
+
+  # 3. JS syntax
   node --check "$SCRIPT_DIR/app_table.js" 2>&1 \
     || _fail "app_table.js 语法错误"
-  _ok "编译检查 v$VERSION"
+
+  # 4. JS 自引用常量检测
+  python3 -c "
+import re; js=open('$SCRIPT_DIR/app_table.js').read()
+for m in re.finditer(r'const (\w+)\s*=\s*\1\s*[;\n]', js):
+    print(f'SELF-REF: {m.group(1)} = {m.group(1)}'); exit(1)
+" 2>&1 || _fail "JS 有自引用常量 (const X=X)"
+
+  # 5. _LOG_NAME 定义在 logger 初始化之前
+  _ln_line=$(grep -n '_LOG_NAME' "$WS/shared/app_core.py" | head -1 | cut -d: -f1)
+  _log_line=$(grep -n '_hdlr = logging.FileHandler' "$WS/shared/app_core.py" | cut -d: -f1)
+  [ "$_ln_line" -lt "$_log_line" ] || _fail "_LOG_NAME (L$_ln_line) 定义在 logger 初始化 (L$_log_line) 之后"
+
+  _ok "预检 v$VERSION"
 }
 
 # ═══════════════════════════════════════
