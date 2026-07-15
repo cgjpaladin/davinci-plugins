@@ -68,6 +68,7 @@ from check_core import (check_track_structure, check_subtitle_clamping, check_di
                           _get_smpte, _make_result,
                           check_path_location, check_offline_clips)
 from export_debug import export_debug_package
+from license_ui import trial_days_left, format_trial
 
 # ═══════════════════════════════════════════
 # 常量
@@ -666,10 +667,6 @@ def _load_config_from_file():
     except Exception as e:
         _action_log(f"⚠ 读取配置失败: {e}")
 
-def _trial_days_left(trial_start_ordinal):
-    """试用剩余天数（从 ordinal 日期算起，共 30 天）"""
-    from datetime import date
-    return max(0, 30 - (date.today() - date.fromordinal(trial_start_ordinal)).days)
 
 def _check_project_mask_reset():
     """检测工程切换：换工程则重置遮幅为未设置"""
@@ -1047,14 +1044,6 @@ def _build_auth_section():
         _sep(),
     ]
 
-# ── 试用文本统一格式 ──
-def _format_trial(days: int, fp: str = "") -> str:
-    if days > 10:
-        return f"试用剩余 {days} 天"
-    suffix = f"  |  请联系购买: 微信 paladinpp / B站 电影裁缝Bryan  |  ID: {fp}" if fp else "  |  请联系购买: 微信 paladinpp / B站 电影裁缝Bryan"
-    if days > 0:
-        return f"试用剩余 {days} 天{suffix}"
-    return f"试用剩余 0 天{suffix}"
 
 def _show_config_dialog():
     """打开配置窗口"""
@@ -1131,7 +1120,7 @@ def _show_config_dialog():
                 tsd = p.get("trial_start_date")
                 if tsd:
                     from datetime import date as _dt
-                    d = _trial_days_left(tsd)
+                    d = trial_days_left(tsd)
                 else:
                     d = 30
                 cfg["cfg_auth_status"].Text = f"⏳ 试用剩余 {d} 天  |  ¥99 永久授权"
@@ -1465,12 +1454,12 @@ print(result[0])
                     tsd = p.get("trial_start_date")
                     if tsd:
                         from datetime import date as _dt
-                        d = _trial_days_left(tsd)
+                        d = trial_days_left(tsd)
                     elif p.get("expire_time"):
                         d = max(0, (p["expire_time"] - int(time.time())) // 86400)
                     else:
                         d = 30
-                    itm[TRIAL_LB].Text = _format_trial(d, p.get("machine_fingerprint", "")[:8])
+                    itm[TRIAL_LB].Text = format_trial(d, p.get("machine_fingerprint", "")[:8])
                     cfg["cfg_auth_status"].Text = f"⏳ 试用剩余 {d} 天"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(200,180,60);font-size:12px"
                     cfg["cfg_activate_btn"].Enabled = True
@@ -1783,7 +1772,7 @@ def _run_ai_typo():
         return
     if not _ai_allowed:
         fp = (_cred or {}).get("payload", {}).get("machine_fingerprint", "")[:8]
-        itm[TRIAL_LB].Text = _format_trial(0, fp)
+        itm[TRIAL_LB].Text = format_trial(0, fp)
         return
     _checking = True
     itm[HINT_LB].Text = ""
@@ -2095,7 +2084,7 @@ def _start_check():
         if _r and isinstance(_r, dict) and _r.get("ok") is False:
             _ai_allowed = False; _trial_expired = True
             _action_log(f"License 吊销: {_r.get('msg')}")
-            itm[TRIAL_LB].Text = _format_trial(0)
+            itm[TRIAL_LB].Text = format_trial(0)
             itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
             itm[BTN_AI_TYPO].Enabled = False
     
@@ -3166,14 +3155,14 @@ def main():
                             text = "试用权限异常，请联系裁缝老师"
                             _ai_allowed = False
                         else:
-                            d = _trial_days_left(tsd)
-                            text = _format_trial(d)
+                            d = trial_days_left(tsd)
+                            text = format_trial(d)
                             _ai_allowed = d > 0
                             if not _ai_allowed:
                                 _trial_expired = True
                     else:
                         d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                        text = _format_trial(d)
+                        text = format_trial(d)
                         _ai_allowed = d > 0
                         if not _ai_allowed:
                             _trial_expired = True
@@ -3211,10 +3200,10 @@ except Exception as e:
                         tsd = p.get("trial_start_date")
                         if tsd:
                             from datetime import date as _dt_date
-                            d = _trial_days_left(tsd)
+                            d = trial_days_left(tsd)
                         else:
                             d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
-                        text = _format_trial(d)
+                        text = format_trial(d)
                         _ai_allowed = d > 0
                     else:
                         text = msg
@@ -3232,7 +3221,7 @@ except Exception as e:
             fp = (_cred or {}).get("payload", {}).get("machine_fingerprint", "")
             fp_short = fp[:8] if fp else ""
             if _trial_expired:
-                itm[TRIAL_LB].Text = _format_trial(0, fp_short)
+                itm[TRIAL_LB].Text = format_trial(0, fp_short)
             else:
                 itm[TRIAL_LB].Text = f"{itm[TRIAL_LB].Text}  |  ID: {fp_short}" if fp_short else itm[TRIAL_LB].Text
             if not _cred:
@@ -3337,7 +3326,7 @@ with open(sys.argv[2],"w") as f:json.dump(r,f)
         if _r and isinstance(_r, dict) and _r.get("ok") is False:
             _ai_allowed = False; _trial_expired = True
             _action_log(f"License 吊销: {_r.get('msg')}")
-            itm[TRIAL_LB].Text = _format_trial(0)
+            itm[TRIAL_LB].Text = format_trial(0)
             itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"
             itm[BTN_AI_TYPO].Enabled = False
 
