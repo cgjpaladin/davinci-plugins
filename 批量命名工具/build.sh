@@ -145,3 +145,6 @@ fi
 find "$APP_OUT" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null
 DESKTOP_APP="$HOME/Desktop/$APP_NAME.app"
 ditto "$APP_OUT" "$DESKTOP_APP" 2>/dev/null && echo "✅ 桌面: $DESKTOP_APP"
+
+# 清除本地 delta 缓存，避免旧版文件覆盖新 bundle（同版本号不触发自动清理）
+rm -rf ~/.config/renamer/delta 2>/dev/null
