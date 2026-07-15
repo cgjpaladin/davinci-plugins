@@ -1,4 +1,4 @@
-const APP_VERSION='3.7.14';
+const APP_VERSION='3.7.15';
 const APP_GIT_HASH='';
 const APP_BRANCH='';
 const APP_BUILD_TIME='';
