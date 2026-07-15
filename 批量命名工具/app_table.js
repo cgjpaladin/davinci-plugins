@@ -829,10 +829,12 @@ function activateEdit(td, key, i){
       window._activeCancel = cancel;
       el.addEventListener('keydown', e => {
         if(e.key === 'Tab'){ e.preventDefault(); el.blur(); commit(false);
-          const td0 = el.closest('td'); const tr0 = td0.parentElement;
-          const cells0 = [...tr0.querySelectorAll('td[data-key]')].filter(c => c.dataset.key !== 'tk' && !c.classList.contains('status-col'));
-          const idx0 = cells0.indexOf(td0);
-          if(idx0 >= 0){ activateEdit(cells0[(idx0 + 1) % cells0.length], cells0[(idx0 + 1) % cells0.length].dataset.key, i); }
+          const fks = window._fieldKeysAll || _FIELD_KEYS;
+          const ki = fks.indexOf(key); const nk = fks[(ki + 1) % fks.length];
+          setTimeout(() => {
+            const row = document.querySelector(`#fileTable tbody tr:nth-child(${i + 1})`);
+            if(row){ const nextTd = row.querySelector(`td[data-key="${nk}"]`); if(nextTd) activateEdit(nextTd, nk, i); }
+          }, 20);
         }
         if(e.key === 'Escape'){ el.value = oldVal; cancel(); }
       });
@@ -854,10 +856,12 @@ function activateEdit(td, key, i){
             if(e.key === 'Enter'){ e.preventDefault(); window._activeCancel = null; commit(false); }
             if(e.key === 'Escape'){ input.value = oldVal; window._activeCancel = null; commit(true); }
             if(e.key === 'Tab'){ e.preventDefault(); window._activeCancel = null; commit(false);
-              const td2 = input.closest('td'); const tr2 = td2.parentElement;
-              const cells2 = [...tr2.querySelectorAll('td[data-key]')].filter(c => c.dataset.key !== 'tk' && !c.classList.contains('status-col'));
-              const idx2 = cells2.indexOf(td2);
-              if(idx2 >= 0){ activateEdit(cells2[(idx2 + 1) % cells2.length], cells2[(idx2 + 1) % cells2.length].dataset.key, i); }
+              const fks = window._fieldKeysAll || _FIELD_KEYS;
+              const ki = fks.indexOf(key); const nk = fks[(ki + 1) % fks.length];
+              setTimeout(() => {
+                const row = document.querySelector(`#fileTable tbody tr:nth-child(${i + 1})`);
+                if(row){ const nextTd = row.querySelector(`td[data-key="${nk}"]`); if(nextTd) activateEdit(nextTd, nk, i); }
+              }, 20);
             }
           });
           input.addEventListener('blur', () => {
@@ -876,10 +880,12 @@ function activateEdit(td, key, i){
       if(e.key === 'Enter'){ e.preventDefault(); window._activeCancel = null; commit(false); }
       if(e.key === 'Escape'){ el.value = oldVal; window._activeCancel = null; commit(true); }
       if(e.key === 'Tab'){ e.preventDefault(); window._activeCancel = null; commit(false);
-        const td = el.closest('td'); const tr = td.parentElement;
-        const cells2 = [...tr.querySelectorAll('td[data-key]')].filter(c => c.dataset.key !== 'tk' && !c.classList.contains('status-col'));
-        const idx2 = cells2.indexOf(td);
-        if(idx2 >= 0){ activateEdit(cells2[(idx2 + 1) % cells2.length], cells2[(idx2 + 1) % cells2.length].dataset.key, i); }
+        const fks = window._fieldKeysAll || _FIELD_KEYS;
+        const ki = fks.indexOf(key); const nk = fks[(ki + 1) % fks.length];
+        setTimeout(() => {
+          const row = document.querySelector(`#fileTable tbody tr:nth-child(${i + 1})`);
+          if(row){ const nextTd = row.querySelector(`td[data-key="${nk}"]`); if(nextTd) activateEdit(nextTd, nk, i); }
+        }, 20);
       }
     });
     el.addEventListener('blur', () => {
