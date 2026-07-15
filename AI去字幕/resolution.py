@@ -10,7 +10,7 @@
 
 import math
 
-from shared.mappings import RESOLUTION_MAPPING, PAR_MAPPING
+from mappings import RESOLUTION_MAPPING, PAR_MAPPING
 
 
 def parse(res_str: str) -> tuple:

@@ -524,8 +524,6 @@ def _validate_checks():
 _validate_checks()
 del _validate_checks  # 用完即焚，不污染命名空间
 
-# 全局状态
-# ═══════════════════════════════════════════
 _track_values = [DEFAULT_SUBTITLE_TRACKS, DEFAULT_VIDEO_TRACKS, DEFAULT_AUDIO_TRACKS]
 _clamp_value = DEFAULT_CLAMP_THRESHOLD
 _video_clamp_threshold = 2  # 视频夹帧阈值（帧）
@@ -935,6 +933,8 @@ CONFIG_SECTIONS = [
     {"id": "censor_personal", "label": "个人词典", "type": "censor_personal",       "builder": _build_censor_personal},
 ]
 
+_validate_config_sections()
+del _validate_config_sections
 
 # ── 分隔符 ──
 def _sep():
