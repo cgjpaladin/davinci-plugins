@@ -33,7 +33,6 @@ py -3.11 -m PyInstaller ^
   --icon app_icon.ico ^
   --version-file version_info.txt ^
   --add-data "%HTML_BUNDLE%;." ^
-  --add-data "..\shared\naming_checks.py;shared/naming_checks.py" ^
   --add-binary "ffmpeg.exe;." ^
   --collect-data webview ^
   --hidden-import webview ^

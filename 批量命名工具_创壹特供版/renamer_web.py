@@ -14,7 +14,7 @@ from naming_createone import (
     build_filename, parse_filename,
     MEDIA_EXT, VIDEO_EXT, IMAGE_EXT, ext_to_type,
 )
-from shared.naming_checks import check_zero_byte, check_double_ext
+from naming_checks import check_zero_byte, check_double_ext
 
 # 文件对话框过滤器（从 MEDIA_EXT 自动生成）
 _DIALOG_FILTER = "媒体文件 (" + ";".join(sorted(e.replace(".","*.") for e in MEDIA_EXT)) + ")"

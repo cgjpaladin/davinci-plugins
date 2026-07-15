@@ -9,12 +9,11 @@
 解压 zip 后保持层级不变：
 ```
 某个文件夹/
-├── shared/
-│   └── naming_checks.py        ← 创壹引用（文件质量检测）
 └── 批量命名工具_创壹特供版/
     ├── build_win.bat           ← 双击运行
     ├── renamer_web.py
     ├── naming_createone.py     ← 创壹专用命名规则
+    ├── naming_checks.py        ← 文件质量检测
     ├── app.js / app.css / renamer_web.html
     ├── _splice.py
     ├── version_info.txt        ← exe 元数据（splice 自动生成，改 APP_VERSION 即可）

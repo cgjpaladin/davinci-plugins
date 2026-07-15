@@ -34,7 +34,6 @@ $SYSPY -m PyInstaller \
   --name "批量命名工具-创壹特供版" \
   --icon app_icon.icns \
   --add-data "$HTML_BUNDLE:." \
-  --add-data "../shared/naming_checks.py:shared/naming_checks.py" \
   --add-binary "$(which ffmpeg || echo /opt/homebrew/bin/ffmpeg):." \
   --add-binary "$(which ffprobe || echo /opt/homebrew/bin/ffprobe):." \
   --collect-data webview \
@@ -77,7 +76,7 @@ fi
 #   --onefile --noconsole --clean --strip --noupx \
 #   --name "批量命名工具-创壹特供版-v1.1" \
 #   --icon app_icon.ico --version-file version_info.txt \
-#   --add-data "_build/renamer_web.html;." --add-data "naming_checks.py;shared/naming_checks.py" \
+#   --add-data "_build/renamer_web.html;." \
 #   --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." \
 #   --hidden-import webview --hidden-import webview.platforms.edgechromium \
 #   --hidden-import clr --hidden-import bottle \
