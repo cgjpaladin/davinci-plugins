@@ -880,9 +880,11 @@ def _show_config_dialog():
     CONFIG_WIN_ID = "com.myjc.delivery_checker_config"
 
     config_disp = bmd.UIDispatcher(fu.UIManager)
+    _action_log("🪟 config_disp OK")
 
     # ── 从注册表生成布局（个人版过滤）──
     _is_personal = IS_PERSONAL
+    _action_log("🪟 sections OK")
     _sections = CONFIG_SECTIONS if _is_personal else [s for s in CONFIG_SECTIONS if s["id"] not in ("deepseek_key", "feishu_app_id", "feishu_secret")]
     body_widgets = []
     # 授权区（仅个人版，三行固定布局）
@@ -1474,6 +1476,7 @@ print(result[0])
         import traceback
         _action_log(f"⚠ 遮幅初始化失败: {_e}\n{traceback.format_exc()}")
 
+    _action_log("🪟 show OK")
     config_dlg.Show()
     _config_open = True  #  对话框真正打开后再标已打开
     config_dlg.RecalcLayout()
