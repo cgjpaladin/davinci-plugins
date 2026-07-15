@@ -54,6 +54,8 @@ python -m PyInstaller ^
   --hidden-import openpyxl ^
   --hidden-import openpyxl.utils ^
   --hidden-import openpyxl.drawing.image ^
+  --hidden-import tkinter ^
+  --hidden-import tkinter.filedialog ^
   --collect-all webview ^
   --collect-all clr ^
   --collect-all bottle ^
