@@ -17,6 +17,7 @@ import os
 import re
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_TAIL_KW = ("未完待续", "定格转场", "全剧终")
 
 # ── 缓存：避免重复 IPC ──
 _items_cache: dict = {}
@@ -176,8 +177,15 @@ def _make_result(status, track="", timecode="", detail="", reason="", is_summary
             "detail": detail, "reason": reason, "is_summary": is_summary}
 
 
+def _check_track_empty(count, track_label):
+    """轨道为空时返回 fail summary，否则返回 None"""
+    if count == 0:
+        return [_make_result("fail", detail=f"无{track_label}轨道", is_summary=True)]
+    return None
+
 def _check_track_details(timeline, track_type, prefix, preset_list, results):
     """通用轨道详情检查：名称 + 启用（+ 子类型如果有）。
+
 
     preset_list 每项: {"name": str, "enabled": bool, "subtype": str (optional)}
     只检查实际存在的轨道——缺失轨由数量总览行覆盖，不重复列出。
@@ -471,8 +479,8 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
     invalid_intervals = []    # 无效覆盖: [(start, end, reason, track, name)]
     video_count = timeline.GetTrackCount("video")
 
-    if video_count == 0:
-        return [_make_result("fail", detail="无视频轨道", is_summary=True)]
+    empty = _check_track_empty(video_count, "视频")
+    if empty: return empty
 
     for vi in range(1, video_count + 1):
         items = _get_items(timeline, "video", vi)
@@ -579,9 +587,7 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
             detail="黑帧: 全部通过",
             is_summary=True)]
 
-    smpte = SMPTE()
-    smpte.fps = fps
-    smpte.df = False
+    smpte = _get_smpte(fps)
 
     results = [_make_result("fail",
         detail=f"黑帧: {len(gaps)} 处",
@@ -641,9 +647,7 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
             if not ch_map:
                 continue
 
-            smpte = SMPTE()
-            smpte.fps = fps
-            smpte.df = False
+            smpte = _get_smpte(fps)
             tc = smpte.gettc(start_frame)
 
             tm = ch_map.get("track_mapping", {})
@@ -735,8 +739,8 @@ def check_subtitle_glyph(timeline, fps=25.0, io_range=None) -> list:
 
     issues = []
     subtitle_count = timeline.GetTrackCount("subtitle")
-    if subtitle_count == 0:
-        return [_make_result("fail", detail="无字幕轨道", is_summary=True)]
+    empty = _check_track_empty(subtitle_count, "字幕")
+    if empty: return empty
 
     smpte = _get_smpte(fps)
 
@@ -774,17 +778,15 @@ def check_subtitle_linebreak(timeline, fps=25.0, io_range=None) -> list:
     """
     issues = []
     subtitle_count = timeline.GetTrackCount("subtitle")
-    if subtitle_count == 0:
-        return [_make_result("fail", detail="无字幕轨道", is_summary=True)]
+    empty = _check_track_empty(subtitle_count, "字幕")
+    if empty: return empty
 
     try:
         cpl = int(timeline.GetSetting().get("limitSubtitleCPL", 0))
     except Exception:
         cpl = 0
 
-    smpte = SMPTE()
-    smpte.fps = fps
-    smpte.df = False
+    smpte = _get_smpte(fps)
 
     for si in range(1, 2):  # 仅 ST1（主力字幕轨）
         items = _get_items(timeline, "subtitle", si)
@@ -893,8 +895,8 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn
 
     issues = []
     subtitle_count = timeline.GetTrackCount("subtitle")
-    if subtitle_count == 0:
-        return [_make_result("fail", detail="无字幕轨道", is_summary=True)]
+    empty = _check_track_empty(subtitle_count, "字幕")
+    if empty: return empty
 
     smpte = _get_smpte(fps)
     for si in range(1, 2):  # 仅 ST1（主力字幕轨）
@@ -1145,8 +1147,8 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_l
     import math
     issues = []
     video_count = timeline.GetTrackCount("video")
-    if video_count == 0:
-        return [_make_result("fail", detail="无视频轨道", is_summary=True)]
+    empty = _check_track_empty(video_count, "视频")
+    if empty: return empty
 
     # ── 取时间线分辨率（三层兜底，取不到就放弃）──
     timeline_w = timeline_h = 0
@@ -1272,7 +1274,7 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_l
             if not has_gap: continue
             name = _get_clip_name(it)
             # 跳过特殊片段（定场/转场/结尾画面）
-            if any(kw in name for kw in ("未完待续", "定格转场", "全剧终")):
+            if any(kw in name for kw in _TAIL_KW):
                 continue
             for exp_s, exp_e in exposed_ranges:
                 tc = smpte.gettc(exp_s)
@@ -1290,8 +1292,8 @@ def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> li
     """检测视频轨片段变速问题：慢放但未使用光流或帧混合。"""
     issues = []
     video_count = timeline.GetTrackCount("video")
-    if video_count == 0:
-        return [_make_result("fail", detail="无视频轨道", is_summary=True)]
+    empty = _check_track_empty(video_count, "视频")
+    if empty: return empty
     for vi in range(1, video_count + 1):
         items = _get_items(timeline, "video", vi)
         if not items: continue
@@ -1331,7 +1333,7 @@ def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> li
                     except Exception:
                         pass
                 name = _get_clip_name(it)
-                if any(kw in name for kw in ("未完待续", "定格转场", "全剧终")):
+                if any(kw in name for kw in _TAIL_KW):
                     continue
                 smpte = _get_smpte(project_fps)
                 tc = smpte.gettc(_get_cached(it, "start", 0))
@@ -1349,8 +1351,8 @@ def check_video_clamping(timeline, threshold_frames=1, fps=25.0, io_range=None, 
     """检测视频轨夹帧：启用的视频片段时长 ≤ X 帧。"""
     issues = []
     video_count = timeline.GetTrackCount("video")
-    if video_count == 0:
-        return [_make_result("fail", detail="无视频轨道", is_summary=True)]
+    empty = _check_track_empty(video_count, "视频")
+    if empty: return empty
     smpte = _get_smpte(fps)
     checked = 0
     for vi in range(1, video_count + 1):
@@ -1716,7 +1718,6 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None, debug_log=Non
             detail=f"视频轨数 {video_count}≠{len(VIDEO_TRACK_PRESET)}，跳过视频越轨检测",
             is_summary=True)]
     _cam_cache = {}   # mp_unique_id → bool: 是否为实拍素材
-    _tail_kw = ("未完待续", "定格转场", "全剧终")
     issues = []
 
     # ── ① 实拍素材不得在 V4/V5 ──
@@ -1765,7 +1766,7 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None, debug_log=Non
             if _get_cached(it, "enabled", True) is False:
                 continue
             name = _get_clip_name(it)
-            if not any(kw in name for kw in _tail_kw):
+            if not any(kw in name for kw in _TAIL_KW):
                 continue
 
             smpte = _get_smpte(fps)

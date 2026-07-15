@@ -39,6 +39,7 @@ _smb_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _smb_root not in sys.path and not os.environ.get("WORKBUDDY_PERSONAL"):
     sys.path.insert(0, _smb_root)
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_CENSOR_PERSONAL_CSV = _CENSOR_PERSONAL_CSV
 
 from fusionscript_loader import bmd
 fu = bmd.scriptapp("Fusion")
@@ -61,6 +62,11 @@ from config import (
 from check_core import (check_track_structure, check_subtitle_clamping, check_disabled_items,
                           check_black_frames, check_audio_mono, check_timeline_settings,
                           check_through_edits, check_tailboard, check_coloring_markers,
+                          check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
+                          check_subtitle_track, check_audio_pre_post, check_shot_transitions,
+                          check_camera_on_high_tracks, check_audio_ducking, check_audio_dynamics,
+                          check_audio_loudness,
+                          _get_smpte, _make_result,
                           check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
                           check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
                           check_color, check_camera_on_high_tracks, check_audio_color_tracks,
@@ -304,8 +310,7 @@ def _run_fw_check(timeline, fps, **_kw):
             if fw_chars:
                 fixed = text.translate(fw_to_hw)
                 if fixed != text:
-                    from timecode import SMPTE
-                    s = SMPTE(); s.fps = float(fps); s.df = False
+                    s = _get_smpte(fps)
                     tc = s.gettc(int(it.GetStart()))
                     results.append({"status": "fail", "track": "ST1",
                                     "timecode": tc,
@@ -388,7 +393,7 @@ def _run_censor_system(timeline, fps, **_kw):
     ]
     # 加载个人词典白名单
     whitelist_path = None
-    personal_csv = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
+    personal_csv = _CENSOR_PERSONAL_CSV
     white_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
     try:
         if os.path.isfile(personal_csv):
@@ -432,7 +437,7 @@ def _run_censor_system(timeline, fps, **_kw):
     # 过滤个人词典已覆盖的词
     personal_words = set()
     if _kw.get("personal_enabled"):
-        personal_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
+        personal_path = _CENSOR_PERSONAL_CSV
         if os.path.isfile(personal_path):
             with open(personal_path, "r", encoding="utf-8") as f:
                 for line in f:
@@ -449,7 +454,7 @@ def _run_censor_system(timeline, fps, **_kw):
 def _run_censor_personal(timeline, fps, **_kw):
     """个人词典（黑名单+白名单）"""
     import tempfile, csv
-    csv_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
+    csv_path = _CENSOR_PERSONAL_CSV
     black_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
     white_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8")
     try:
@@ -487,11 +492,6 @@ def _run_censor_personal(timeline, fps, **_kw):
         try: os.unlink(white_tmp.name)
         except Exception: pass
 
-def _make_result_passthrough(status, track="", timecode="", detail="", reason="", is_summary=False):
-    """同 check_core._make_result 格式，避免跨模块循环导入。"""
-    return {"status": status, "track": track, "timecode": timecode,
-            "detail": detail, "reason": reason, "is_summary": is_summary}
-
 def _filter_covered(results, personal_words):
     """过滤掉个人词典已覆盖的违禁词。保留汇总行，移除被覆盖的详情行。"""
     kept = [results[0]]  # 保留汇总行
@@ -506,9 +506,9 @@ def _filter_covered(results, personal_words):
     if removed:
         total = len(kept) - 1
         if total == 0:
-            kept[0] = _make_result_passthrough("pass", detail="系统违禁词典: 无违禁词 (已由个人词典覆盖)", is_summary=True)
+            kept[0] = _make_result("pass", detail="系统违禁词典: 无违禁词 (已由个人词典覆盖)", is_summary=True)
         else:
-            kept[0] = _make_result_passthrough("fail",
+            kept[0] = _make_result("fail",
                 detail=f"系统违禁词典: {total} 处  (个人词典覆盖 {removed} 处)", is_summary=True)
     return kept
 CHECKS = [
@@ -655,6 +655,11 @@ def _load_config_from_file():
         _action_log(f"📂 加载配置: 轨道={_track_values} 夹帧={_clamp_value} 黑帧={_black_frame_sec}s")
     except Exception as e:
         _action_log(f"⚠ 读取配置失败: {e}")
+
+def _trial_days_left(trial_start_ordinal):
+    """试用剩余天数（从 ordinal 日期算起，共 30 天）"""
+    from datetime import date
+    return max(0, 30 - (date.today() - date.fromordinal(trial_start_ordinal)).days)
 
 def _check_project_mask_reset():
     """检测工程切换：换工程则重置遮幅为未设置"""
@@ -938,23 +943,6 @@ def _render_group(group_name, sections, tree, parent_group=""):
                 _set_row(row, row_data)
                 tree.AddTopLevelItem(row)
 
-# ═══════════════════════════════════════════
-# 配置弹窗（注册表驱动 — 加/删/调顺序只改 CONFIG_SECTIONS）
-# ═══════════════════════════════════════════
-
-# ── 配置项注册表（顺序 = UI 从上到下）──
-# 加新项：末尾加一个 dict（id / label / type），然后补对应的 _build_xxx 和 _save_xxx
-# 调顺序：移动 dict 位置
-# 删项：删 dict + 删对应的 _build_xxx / _save_xxx
-CONFIG_SECTIONS = [
-    {"id": "deepseek_key",   "label": "DeepSeek API Key", "type": "api_key"},
-    {"id": "feishu_app_id",  "label": "飞书 App ID", "type": "api_key"},
-    {"id": "feishu_secret",  "label": "飞书 App Secret", "type": "api_key"},
-    {"id": "mask_ratio",     "label": "画面遮幅宽高比", "type": "mask_ratio"},
-    {"id": "smb_paths",      "label": "脱机素材检测路径（可多选）", "type": "smb_paths"},
-    {"id": "censor_personal", "label": "个人词典", "type": "censor_personal"},
-]
-
 def _build_api_key_input(sid, label):
     """Label 显示当前值 + 编辑按钮（弹系统输入框防 IME 崩溃）"""
     is_secret = "secret" in sid or "key" in sid
@@ -1012,12 +1000,14 @@ def _build_smb_paths():
         ]),
     ]
 
-_SECTION_BUILDERS = {
-    "api_key":          _build_api_key_input,
-    "mask_ratio":       _build_mask_ratio,
-    "smb_paths":        _build_smb_paths,
-    "censor_personal":  _build_censor_personal,
-}
+CONFIG_SECTIONS = [
+    {"id": "deepseek_key",   "label": "DeepSeek API Key", "type": "api_key",       "builder": _build_api_key_input},
+    {"id": "feishu_app_id",  "label": "飞书 App ID", "type": "api_key",            "builder": _build_api_key_input},
+    {"id": "feishu_secret",  "label": "飞书 App Secret", "type": "api_key",        "builder": _build_api_key_input},
+    {"id": "mask_ratio",     "label": "画面遮幅宽高比", "type": "mask_ratio",      "builder": _build_mask_ratio},
+    {"id": "smb_paths",      "label": "脱机素材检测路径（可多选）", "type": "smb_paths", "builder": _build_smb_paths},
+    {"id": "censor_personal", "label": "个人词典", "type": "censor_personal",       "builder": _build_censor_personal},
+]
 
 # ── 分隔符 ──
 def _sep():
@@ -1066,7 +1056,7 @@ def _show_config_dialog():
     config_disp = bmd.UIDispatcher(fu.UIManager)
 
     # ── 从注册表生成布局（个人版过滤）──
-    _is_personal = bool(os.environ.get("WORKBUDDY_PERSONAL"))
+    _is_personal = IS_PERSONAL
     _sections = CONFIG_SECTIONS if _is_personal else [s for s in CONFIG_SECTIONS if s["id"] not in ("deepseek_key", "feishu_app_id", "feishu_secret")]
     body_widgets = []
     # 授权区（仅个人版，三行固定布局）
@@ -1075,7 +1065,7 @@ def _show_config_dialog():
     # CONFIG_SECTIONS 各区域
     for section in _sections:
         sec_widgets = [_sec(section["label"])]
-        builder = _SECTION_BUILDERS.get(section["type"])
+        builder = section.get("builder")
         if builder:
             if section["type"] == "api_key":
                 sec_widgets.extend(builder(section["id"], section["label"]))
@@ -1129,7 +1119,7 @@ def _show_config_dialog():
                 tsd = p.get("trial_start_date")
                 if tsd:
                     from datetime import date as _dt
-                    d = max(0, 30 - (_dt.today() - _dt.fromordinal(tsd)).days)
+                    d = _trial_days_left(tsd)
                 else:
                     d = 30
                 cfg["cfg_auth_status"].Text = f"⏳ 试用剩余 {d} 天  |  ¥99 永久授权"
@@ -1463,7 +1453,7 @@ print(result[0])
                     tsd = p.get("trial_start_date")
                     if tsd:
                         from datetime import date as _dt
-                        d = max(0, 30 - (_dt.today() - _dt.fromordinal(tsd)).days)
+                        d = _trial_days_left(tsd)
                     elif p.get("expire_time"):
                         d = max(0, (p["expire_time"] - int(time.time())) // 86400)
                     else:
@@ -1558,7 +1548,7 @@ print(result[0])
             except Exception: pass
 
     # ── 编辑违禁词 ──
-    censor_path = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
+    censor_path = _CENSOR_PERSONAL_CSV
     def _edit_censor(ev):
         import subprocess
         from check_core import clear_censor_cache
@@ -1982,10 +1972,7 @@ def _run_ai_typo():
         # AI 有结果才追加 corrections
         _action_log(f"🎨 corrections={len(corrections)}")
         if corrections:
-            from timecode import SMPTE
-            smpte = SMPTE()
-            smpte.fps = float(timeline.GetSetting("timelineFrameRate") or 25)
-            smpte.df = False
+            smpte = _get_smpte(float(timeline.GetSetting("timelineFrameRate") or 25))
 
             for c in corrections:
                 idx = c['index'] - 1
@@ -2004,10 +1991,7 @@ def _run_ai_typo():
         _render_err = None
         if direct_rows or ai_rows:
             try:
-                from timecode import SMPTE as _SMPTE
-                _s = _SMPTE()
-                _s.fps = float(timeline.GetSetting("timelineFrameRate") or 25)
-                _s.df = False
+                _s = _get_smpte(float(timeline.GetSetting("timelineFrameRate") or 25))
                 direct_rows.sort(key=lambda r: _s.getframes(r.get("tc") or "00:00:00:00"))
                 ai_rows.sort(key=lambda r: _s.getframes(r.get("tc") or "00:00:00:00"))
                 for r in direct_rows + ai_rows:
@@ -2265,7 +2249,7 @@ def _start_check():
                 import sys as _sys
                 traceback.print_exc(file=_sys.stderr)
                 # 返回 warn 而非空列表，让用户看到此项不可用
-                all_results = [_make_result_passthrough("warn",
+                all_results = [_make_result("warn",
                     detail=f"{check['section']}: 检查不可用",
                     reason="可能是达芬奇版本不支持此 API，请升级或关闭此检查",
                     is_summary=True)]
@@ -2619,7 +2603,7 @@ def _export_debug_package():
             tsd = p.get("trial_start_date", None)
             if tsd:
                 from datetime import date as _dt
-                d = max(0, 30 - (_dt.today() - _dt.fromordinal(tsd)).days)
+                d = _trial_days_left(tsd)
                 license_lines.append(f"trial_start_date: ordinal={tsd} 剩余={d}天")
             else:
                 license_lines.append("trial_start_date: 缺失")
@@ -3395,7 +3379,7 @@ def main():
                             text = "试用权限异常，请联系裁缝老师"
                             _ai_allowed = False
                         else:
-                            d = max(0, 30 - elapsed)
+                            d = _trial_days_left(tsd)
                             text = _format_trial(d)
                             _ai_allowed = d > 0
                             if not _ai_allowed:
@@ -3440,7 +3424,7 @@ except Exception as e:
                         tsd = p.get("trial_start_date")
                         if tsd:
                             from datetime import date as _dt_date
-                            d = max(0, 30 - (_dt_date.today() - _dt_date.fromordinal(tsd)).days)
+                            d = _trial_days_left(tsd)
                         else:
                             d = max(0, (p.get("expire_time", 0) - int(time.time())) // 86400)
                         text = _format_trial(d)
