@@ -180,61 +180,14 @@ def _set_row_texts(row, *texts):
 # ═══════════════════════════════════════════
 
 # ── 设计参数（改皮肤只改这里） ──
-FONT_H1 = "font-size:13px"       # 标题
-FONT_H2 = "font-size:15px"       # 加粗标题
-FONT_BODY = "font-size:12px"     # 正文
-FONT_SM = "font-size:11px"       # 小字（按钮/提示）
-FONT_XS = "font-size:10px"       # 超小字（脚注）
-FONT_DIV = "font-size:18px"      # 分割线
-FONT_BOLD = "font-weight:bold"   # 加粗
-
-SPACE_NONE = 0
-SPACE_TIGHT = 2
-SPACE_COMPACT = 3
-SPACE_SM = 4
-SPACE_NORMAL = 6
-SPACE_RELAXED = 8
-SPACE_WIDE = 10
-
-SIZE_BTN_H = 20                  # 小按钮高
-SIZE_BTN_SM_W = 28               # 小按钮宽
-SIZE_BTN_MD_W = 60               # 中按钮宽
-SIZE_BTN_LG_W = 84               # 大按钮宽
-SIZE_BTN_XL_W = 100              # 超宽按钮
-SIZE_BTN_XL_H = 95               # 超宽按钮高
-SIZE_TOGGLE = [44, 22]           # 分组切换
-SIZE_LINE_H = 22                 # 行高
-SIZE_CHECK_W = 28                # 复选框宽
-SIZE_GAP_TINY = [8, 0]           # 微小间隙
-SIZE_GAP_SM = [20, 0]            # 小间隙
-
-PAD_BTN = "padding:2px 8px"
-PAD_PANEL = "padding:4px 10px"
-PAD_PANEL_WIDE = "padding:4px 12px"
-
-RAD_BTN = "3px"                  # 按钮圆角
-RAD_PANEL = "4px"                # 面板圆角
-# ── 分割线 ──
-DIVIDER_BARS = 6                 # 竖线字符数
-
-# ── 复合样式 ──
-STYLE_HEADING = f"{FONT_H1};{FONT_BOLD};color:#ccc"
-STYLE_ACCENT = f"{FONT_H2};{FONT_BOLD};color:#ccc"  
-STYLE_DIM = f"color:rgb(130,130,130);font-size:{FONT_XS}"
-STYLE_HINT = f"color:rgb(130,130,130);{FONT_XS}"
-STYLE_FOOTER = f"color:rgb(100,100,100);{FONT_XS}"
-STYLE_DIVIDER = f"{FONT_DIV};color:#666"
-STYLE_CHECK_ROW = f"{FONT_H1};color:rgb(220,220,220)"
-STYLE_WARN = f"color:red;{FONT_BODY}"
-
-# ── UI 控件样式 ──
-BTN_STYLE = (
-    "QPushButton{max-height:28px;background-color:rgb(58,58,58);color:rgb(220,220,220);"
-    "border:1px solid rgb(80,80,80);border-radius:4px;padding:4px 12px}"
-    "QPushButton:hover{background-color:rgb(72,72,72)}"
-    "QPushButton:pressed{background-color:rgb(45,45,45)}"
-    "QPushButton:disabled{color:rgb(100,100,100);background-color:rgb(40,40,40)}"
-)
+from styles import (FONT_H1, FONT_H2, FONT_BODY, FONT_SM, FONT_XS, FONT_DIV, FONT_BOLD,
+                    SPACE_NONE, SPACE_TIGHT, SPACE_COMPACT, SPACE_SM, SPACE_NORMAL, SPACE_RELAXED, SPACE_WIDE,
+                    SIZE_BTN_H, SIZE_BTN_SM_W, SIZE_BTN_MD_W, SIZE_BTN_LG_W, SIZE_BTN_XL_W, SIZE_BTN_XL_H,
+                    SIZE_TOGGLE, SIZE_LINE_H, SIZE_CHECK_W, SIZE_GAP_TINY, SIZE_GAP_SM,
+                    PAD_BTN, PAD_PANEL, PAD_PANEL_WIDE, RAD_BTN, RAD_PANEL, DIVIDER_BARS,
+                    STYLE_HEADING, STYLE_ACCENT, STYLE_DIM, STYLE_HINT, STYLE_FOOTER, STYLE_DIVIDER,
+                    STYLE_CHECK_ROW, STYLE_WARN,
+                    BTN_STYLE, BTN_ICON, BTN_STYLE_SM, BTN_PRIMARY, BTN_DANGER)
 BTN_ICON = (
     "QPushButton{max-height:20px;max-width:24px;background-color:transparent;color:rgb(150,150,150);"
     "border:1px solid transparent;border-radius:3px;padding:0px}"
