@@ -39,6 +39,23 @@ grep "for f in.*交付自检工具.*\.py" 交付自检工具_个人版/build_per
 | `_load_api_keys` | ui.py 模块级 | R | 参数：`load_keys_fn` |
 | `shared.*` | shared/ | R | 保持原路径 import，不动 |
 
+### ⚠️ 关键发现（代码审查）
+
+`itm` 定义在 ui.py L905（依赖 `dlg` 窗口对象），`_UI_ERROR_COUNT` 定义在 L2504。两者在 ui.py 的 import 阶段（~L70）不存在。因此 **export_debug.py 不能 `from ui import`** 这些符号。
+
+**方案：参数传入**。函数内部符号改为局部变量/参数：
+
+| 旧引用 | 新引用 | 说明 |
+|--------|--------|------|
+| `global _UI_ERROR_COUNT` | `error_ref["count"]` | mutable dict |
+| `_action_log(...)` | `log_fn(...)` | 函数参数 |
+| `itm[BTN_ERR_SEND]` | `itm_dict[btn_key]` | 参数传入 |
+| `_DATA_DIR` | `data_dir` | 字符串参数 |
+| `_trial_days_left(tsd)` | `trial_days_fn(tsd)` | 函数参数 |
+| `_load_api_keys()` | `load_keys_fn()` | 函数参数 |
+| `version_string()` | `version_fn()` | 函数参数 |
+| `sys.platform` | `_sys.platform` | 模块顶 `import sys as _sys` |
+
 ### 实施
 
 **Step 1：创建 `交付自检工具/export_debug.py`**
@@ -91,8 +108,6 @@ from export_debug import export_debug_package
 > **注意**：`error_ref` 是 mutable dict，函数内修改 `error_ref["count"] = 0` 会反映到调用方的后续引用。但原代码使用的是 `global _UI_ERROR_COUNT`，改成 dict 后需要在 ui.py 中把 `_UI_ERROR_COUNT` 的后续读取改为 `error_ref["count"]`。**此处有行为变化风险**——建议暂时保持 `from ui import _UI_ERROR_COUNT` 的直引用方式，等全部拆完再统一收敛。
 
 **更安全的简化方案**：export_debug.py 直接 `from ui import _action_log, itm, BTN_ERR_SEND, _DATA_DIR, _UI_ERROR_COUNT, _trial_days_left, _load_api_keys`——完全不动函数体内部，只改位置。代价是子模块导入父模块，但 Python 允许且无循环依赖（ui.py 的 `from export_debug` 在模块末尾执行时全局变量已全部就绪）。
-
-**推荐**：用简化方案——先拆后治。参数化放到 v3.0。
 
 **验证**：
 ```bash
