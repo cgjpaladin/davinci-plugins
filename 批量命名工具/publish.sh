@@ -1,5 +1,5 @@
 #!/bin/bash
-# 批量命名工具 — 发布脚本 v3.7.15+
+# 批量命名工具 — 发布脚本
 # 用法:
 #   bash publish.sh quick     # 快修：splice → 注入桌面 app + py → 开箱即测（~5s）
 #   bash publish.sh delta     # 增量：build → 验证 → version.json → push CDN（~30s）
