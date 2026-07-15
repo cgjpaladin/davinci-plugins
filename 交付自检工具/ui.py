@@ -2499,7 +2499,7 @@ def _on_err_report(ev):
         return
     _lock_ui("导出日志")
     itm[BTN_ERR_SEND].Text = "⏳ 导出中..."
-    export_debug_package(itm, BTN_ERR_SEND, _ui_error_state, _action_log, _DATA_DIR, _trial_days_left, _load_api_keys, version_string)
+    export_debug_package(itm, BTN_ERR_SEND, _ui_error_state, _action_log, _DATA_DIR, trial_days_left, _load_api_keys, version_string)
     _unlock_ui()
 
 def _log_activate_fail(code: str, detail: str):
