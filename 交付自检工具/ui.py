@@ -189,7 +189,7 @@ from styles import (FONT_H1, FONT_H2, FONT_BODY, FONT_SM, FONT_XS, FONT_DIV, FON
                     STYLE_CHECK_ROW, STYLE_WARN,
                     BTN_STYLE, BTN_ICON, BTN_STYLE_SM, BTN_PRIMARY, BTN_DANGER)
 
-from config_dialog import (CONFIG_SECTIONS, _build_api_key_input, _build_censor_personal, _build_mask_ratio, _build_smb_paths, _build_auth_section, _sep, _load_api_keys, _save_api_keys, _MASK_PRESETS, _MASK_UNSET, TRIAL_LB, BTN_AI_TYPO, HINT_LB, CONFIG_WIDGETS)
+from config_dialog import (CONFIG_SECTIONS, _build_api_key_input, _build_censor_personal, _build_mask_ratio, _build_smb_paths, _build_auth_section, _sep, _sec, _load_api_keys, _save_api_keys, _MASK_PRESETS, _MASK_UNSET, TRIAL_LB, BTN_AI_TYPO, HINT_LB, CONFIG_WIDGETS)
 BTN_ICON = (
     "QPushButton{max-height:20px;max-width:24px;background-color:transparent;color:rgb(150,150,150);"
     "border:1px solid transparent;border-radius:3px;padding:0px}"
