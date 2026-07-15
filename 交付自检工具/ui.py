@@ -39,7 +39,7 @@ _smb_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _smb_root not in sys.path and not os.environ.get("WORKBUDDY_PERSONAL"):
     sys.path.insert(0, _smb_root)
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_CENSOR_PERSONAL_CSV = _CENSOR_PERSONAL_CSV
+_CENSOR_PERSONAL_CSV = os.path.join(_SCRIPT_DIR, "dicts", "短剧违禁词表.csv")
 
 from fusionscript_loader import bmd
 fu = bmd.scriptapp("Fusion")
@@ -63,13 +63,10 @@ from check_core import (check_track_structure, check_subtitle_clamping, check_di
                           check_black_frames, check_audio_mono, check_timeline_settings,
                           check_through_edits, check_tailboard, check_coloring_markers,
                           check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
-                          check_subtitle_track, check_audio_pre_post, check_shot_transitions,
-                          check_camera_on_high_tracks, check_audio_ducking, check_audio_dynamics,
-                          check_audio_loudness,
-                          _get_smpte, _make_result,
                           check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
                           check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
                           check_color, check_camera_on_high_tracks, check_audio_color_tracks,
+                          _get_smpte, _make_result,
                           check_path_location, check_offline_clips)
 
 # ═══════════════════════════════════════════
