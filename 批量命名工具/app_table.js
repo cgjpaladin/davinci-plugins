@@ -1681,11 +1681,12 @@ function result(m){call('debug_log','result: '+m);document.getElementById('resul
 
 // ═══ 自动更新（Downie 式：后台下载，状态栏进度） ═══
 // ═══ 自动更新（弹窗公告 + 差分下载） ═══
-let _updateVer='', _updateNotes='', _updating=false, _updateReady=false, _dlStart=0, _dialogEl=null;
-function onUpdateFound(ver, notes){
-  _updateVer=ver;_updateNotes=notes;
+let _updateVer='', _updateNotes='', _updating=false, _updateReady=false, _dlStart=0, _dialogEl=null, _fullInstall=false, _fullInstallUrl='';
+function onUpdateFound(ver, notes, requires_full_install, full_install_url){
+  _updateVer=ver;_updateNotes=notes;_fullInstall=requires_full_install;_fullInstallUrl=full_install_url||'';
   const el=document.getElementById('updateStatus');
-  el.innerHTML='<span class="up-dot"></span> v'+ver+' 可用 <button class="up-btn" onclick="showUpdateDialog()">更新</button>';
+  if(_fullInstall){ el.innerHTML='<span class="up-dot"></span> v'+ver+' <button class="up-btn" onclick="showUpdateDialog()">需全量安装</button>'; }
+  else{ el.innerHTML='<span class="up-dot"></span> v'+ver+' 可用 <button class="up-btn" onclick="showUpdateDialog()">更新</button>'; }
 }
 function showUpdateDialog(){
   if(!_updateVer)return;
@@ -1693,16 +1694,27 @@ function showUpdateDialog(){
   _dialogEl=document.createElement('div');_dialogEl.className='update-overlay show';
   _dialogEl.addEventListener('click',e=>{if(e.target===_dialogEl){_updating=false;_dialogEl.remove();_dialogEl=null;}});
   document.addEventListener('keydown',function esc(e){if(e.key==='Escape'){_updating=false;_dialogEl.remove();_dialogEl=null;document.removeEventListener('keydown',esc);}});
-  _dialogEl.innerHTML=`<div class="update-dialog">
-    <div class="up-title">\uD83C\uDF89 v${_updateVer}</div>
-    <div class="up-body" id="upBody" style="user-select:text;-webkit-user-select:text;white-space:pre-wrap">${APP_VERSION} \u2192 ${_updateVer}\n\n${(_updateNotes||'\u6682\u65E0\u66F4\u65B0\u8BF4\u660E')}</div>
-    <div class="up-progress" id="upProgress" style="display:none"><div class="up-progress-bar" id="upProgressBar"></div></div>
-    <div class="up-speed" id="upSpeed" style="display:none"></div>
-    <div class="up-actions" id="upActions">
-      <button class="up-btn-cancel" onclick="closeUpdateDialog()">\u53D6\u6D88</button>
-      <button class="up-btn-go" id="upGoBtn" onclick="doDownload()">\u4E0B\u8F7D\u66F4\u65B0</button>
-    </div>
-  </div>`;
+  if(_fullInstall){
+    _dialogEl.innerHTML=`<div class="update-dialog" style="text-align:center">
+      <div class="up-title">⚠️ v${_updateVer} 需全量安装</div>
+      <div class="up-body" style="user-select:text;-webkit-user-select:text;white-space:pre-wrap">此版本不支持增量更新，请打开使用手册下载全量包：</div>
+      <div class="up-body" style="user-select:text;-webkit-user-select:text;word-break:break-all;color:#8bf;font-size:12px;margin:8px 0">${_fullInstallUrl}</div>
+      <div class="up-actions">
+        <button class="up-btn-cancel" onclick="closeUpdateDialog()">关闭</button>
+      </div>
+    </div>`;
+  }else{
+    _dialogEl.innerHTML=`<div class="update-dialog">
+      <div class="up-title">\uD83C\uDF89 v${_updateVer}</div>
+      <div class="up-body" id="upBody" style="user-select:text;-webkit-user-select:text;white-space:pre-wrap">${APP_VERSION} \u2192 ${_updateVer}\n\n${(_updateNotes||'\u6682\u65E0\u66F4\u65B0\u8BF4\u660E')}</div>
+      <div class="up-progress" id="upProgress" style="display:none"><div class="up-progress-bar" id="upProgressBar"></div></div>
+      <div class="up-speed" id="upSpeed" style="display:none"></div>
+      <div class="up-actions" id="upActions">
+        <button class="up-btn-cancel" onclick="closeUpdateDialog()">\u53D6\u6D88</button>
+        <button class="up-btn-go" id="upGoBtn" onclick="doDownload()">\u4E0B\u8F7D\u66F4\u65B0</button>
+      </div>
+    </div>`;
+  }
   document.body.appendChild(_dialogEl);
 }
 function closeUpdateDialog(){
@@ -1764,7 +1776,7 @@ function onUpdateCheckDone(r){
   var st=document.getElementById('updateStatus');
   if(!r){ st.innerHTML='⚠ <a href="#" onclick="checkUpdate();return false" style="color:#e88">网络不可用</a>'; return; }
   if(r.reason){ st.innerHTML='⚠ <a href="#" onclick="checkUpdate();return false" style="color:#e88">'+_errHuman(r.reason)+'</a>'; return; }
-  if(r.update_available){ onUpdateFound(r.latest,r.notes); }
+  if(r.update_available){ onUpdateFound(r.latest,r.notes,r.requires_full_install,r.full_install_url); }
   else{ st.textContent='v'+APP_VERSION; }
 }
 function _errHuman(s){ s=s||''; if(/timeout|timed out|URLError|urlopen/i.test(s)) return '网络超时'; if(/429|Too Many/i.test(s)) return '服务器繁忙'; if(/所有.*不可达/i.test(s)) return '无法连接服务器'; return '检测失败'; }
