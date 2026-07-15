@@ -33,3 +33,4 @@ tools/_wsl.py
 .build_cache/
 shared/logs/
 AI去字幕/logs/
+.ui_instance.lock
