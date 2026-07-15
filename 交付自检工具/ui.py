@@ -699,7 +699,6 @@ def _ts():
     return time.strftime("%m-%d %H:%M:%S")
 
 def _action_log(msg: str):
-    global _UI_ERROR_COUNT
     _stderr_msg = msg  # try 外捕获，确保文件写入失败时 stderr 仍能输出
     try:
         _log.ui(f"[{_ts()}] {msg}")
@@ -708,7 +707,7 @@ def _action_log(msg: str):
     if any(k in _stderr_msg for k in ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常")):
         print(_stderr_msg, file=sys.stderr)
     if any(k in msg for k in ("异常", "崩溃", "Traceback", "ModuleNotFound", "ImportError")) and "结构异常" not in msg and "格式异常" not in msg:
-        _UI_ERROR_COUNT += 1
+        _ui_error_state["count"] += 1
         try: _update_err_counter()
         except Exception: pass  # noop: 配置写入失败不影响主流程
 
@@ -2501,12 +2500,11 @@ dlg.On[BTN_START].Clicked = lambda ev: _start_check()
 dlg.On[BTN_CONFIG].Clicked = lambda ev: _show_config_dialog()
 dlg.On[BTN_AI_TYPO].Clicked = lambda ev: _run_ai_typo()
 
-_UI_ERROR_COUNT = 0
+_ui_error_state = {"count": 0}
 
 def _on_err_report(ev):
     """导出日志到本地"""
-    global _UI_ERROR_COUNT
-    _action_log(f"📤 导出按钮被点击 (error_count={_UI_ERROR_COUNT})")
+    _action_log(f"📤 导出按钮被点击 (error_count={_ui_error_state["count"]})")
     if _BUSY:
         return
     _lock_ui("导出日志")
@@ -2531,7 +2529,6 @@ def _log_activate_fail(code: str, detail: str):
 
 def _export_debug_package():
     """打包完整诊断信息 → 用户选择目录 → zip → Finder 弹出"""
-    global _UI_ERROR_COUNT
     import zipfile, subprocess, os, time, platform, socket, json
     # ── 选目录 ──
     dest = ""
@@ -2554,7 +2551,7 @@ def _export_debug_package():
         except Exception as e:
             _action_log(f"❌ 选目录失败: {e}")
     if not dest or not os.path.isdir(dest):
-        itm[BTN_ERR_SEND].Text = "📋 导出日志" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
+        itm[BTN_ERR_SEND].Text = "📋 导出日志" if not _ui_error_state["count"] else f"⚠️ {_ui_error_state["count"]} 个报错"
     # ── 文件名 ──
     now = time.localtime()
     from shared.license import get_machine_fingerprint
@@ -2719,7 +2716,7 @@ def _export_debug_package():
         env_lines.append(f".env 读取失败: {e}")
 
     state_lines = []
-    state_lines.append(f"本次报错数: {_UI_ERROR_COUNT}")
+    state_lines.append(f"本次报错数: {_ui_error_state["count"]}")
     try:
         _keys = _load_api_keys()
         apis = [k for k in ("deepseek_key", "feishu_app_id", "feishu_secret") if _keys.get(k)]
@@ -2746,16 +2743,16 @@ def _export_debug_package():
         else:
             subprocess.run(["explorer", "/select,", zip_path], check=False)
         _action_log(f"✅ 排错包已导出: {zip_name}")
-        _UI_ERROR_COUNT = 0
+        _ui_error_state = {"count": 0}
         itm[BTN_ERR_SEND].Text = "✅ 已导出"
     except Exception as e:
         _action_log(f"❌ 导出失败: {e}")
-        itm[BTN_ERR_SEND].Text = "📋 导出日志" if not _UI_ERROR_COUNT else f"⚠️ {_UI_ERROR_COUNT} 个报错"
+        itm[BTN_ERR_SEND].Text = "📋 导出日志" if not _ui_error_state["count"] else f"⚠️ {_ui_error_state["count"]} 个报错"
 
 def _update_err_counter():
     """报错时更新按钮文字"""
-    if _UI_ERROR_COUNT > 0:
-        itm[BTN_ERR_SEND].Text = f"⚠️ {_UI_ERROR_COUNT} 个报错"
+    if _ui_error_state["count"] > 0:
+        itm[BTN_ERR_SEND].Text = f"⚠️ {_ui_error_state["count"]} 个报错"
     else:
         itm[BTN_ERR_SEND].Text = "📋 导出日志"
 dlg.On[BTN_ERR_SEND].Clicked = _on_err_report
@@ -3209,8 +3206,7 @@ def _do_update_sync(progress_callback=None):
         _action_log("✅ 更新完成，等待重启达芬奇")
     except Exception as e:
         _action_log(f"❌ 更新失败: {e}")
-        global _UI_ERROR_COUNT
-        _UI_ERROR_COUNT += 1
+        _ui_error_state["count"] += 1
         _update_err_counter()
         raise
     finally:
