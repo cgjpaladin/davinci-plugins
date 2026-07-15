@@ -138,18 +138,3 @@ fi
 find "$APP_OUT" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null
 DESKTOP_APP="$HOME/Desktop/$APP_NAME.app"
 ditto "$APP_OUT" "$DESKTOP_APP" 2>/dev/null && echo "✅ 桌面: $DESKTOP_APP"
-
-# ══════════════════════════════════════════════════
-# Windows 构建参考（在 PC 上执行）
-# ══════════════════════════════════════════════════
-# py -3.11 -m PyInstaller \
-#   --onefile --noconsole --clean --strip --noupx \
-#   --name "批量命名工具" \
-#   --icon app_icon.ico --version-file version_info.txt \
-#   --add-data "_build/renamer_table.html;." --add-data "../shared;shared" \
-#   --hidden-import webview --hidden-import webview.platforms.edgechromium \
-#   --hidden-import bottle \
-#   --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageOps \
-#   --hidden-import openpyxl --hidden-import openpyxl.utils --hidden-import openpyxl.drawing.image \
-#   --collect-all webview --collect-all bottle --collect-all openpyxl \
-#   --noconfirm renamer_web.py
