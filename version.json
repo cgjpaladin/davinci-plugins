@@ -1,13 +1,13 @@
 {
   "delivery_checker": {
-    "version": "2.6.0",
+    "version": "2.6.1",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/delivery_checker_update.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "fede852cf8ad2796ebf52fdbc5450536a9d5be27c21f06a9e647a3cf1aa19152",
-    "notes": "## v2.6.0\n\n📦 架构重构：ui.py 拆分为 4 个模块（config_dialog/styles/export_debug/license_ui）\n🧹 shared/ 瘦身：5 个专属模块 + pypdf 搬入产品目录\n🔗 导入链路：零循环依赖，config_dialog 完全独立\n📉 主文件瘦身 31%：3,564→3,258 行\n🔧 死代码清理：4 死模块 + 2 死子包 + .DS_Store 等",
+    "sha256": "33cb66f2ceb40f2be208d99236202a8758d32081d6c5bc230d8cd00c05f9b8de",
+    "notes": "## v2.6.1\n\n🎬 遮幅「自定义」选项联动隐藏，不干扰预设选择\n🐛 修复遮幅选框箭头溢出导致文字重叠",
     "history": [
       {
         "version": "2.5.14",
