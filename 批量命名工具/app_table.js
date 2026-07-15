@@ -1302,8 +1302,7 @@ function buildReviewFields(ff,isVideo){
     const attr = isDigit
       ? `inputmode=numeric maxlength=${fd.key==='ep'?3:2}`
       : `placeholder="${fd.hint || labels[fd.key]||fd.key}"`;
-    // 数字字段用短标签（适配 w=1 窄列），文本字段用全称
-    const displayLabel = isDigit ? fd.key.toUpperCase() : (labels[fd.key] || fd.key);
+    const displayLabel = labels[fd.key] || fd.key;
     (w === 1 ? rows[0] : rows[1]).push({...fd, w, attr, label: displayLabel});
   });
   const fields = rows.filter(r => r.length > 0);
