@@ -59,7 +59,7 @@
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
     "notes": "## v3.8.0  ⚠️ 需全量安装\n\n此版本为重大架构升级，**不支持增量更新**。\n请点击右下角 📖 使用手册，下载最新全量包（覆盖安装，不会丢失数据）。\n\n---\n\n📂 归档有进度条，重命名也有进度条了\n✅ 归档完成自动校验\n🖊 制作者支持中英文和数字\n🛡️ 增量更新修复，后续可正常增量\n🚀 导出日志并行，速度快一倍\n🐛 修复大量 bug",
-    "sha256": "77589d846b41bd4cb38de807584d7c3cd37c1feadfd7def65ef266f4bbfc5aa8",
+    "sha256": "42b2b1d92cf9a472291bd04e9da0f30fc2aadeb837499bc016d7131bd296a736",
     "requires_full_install": true,
     "full_install_url": "https://jcnjno6i0upk.feishu.cn/docx/HEvydRFQZorKEnxBTYkconsinih",
     "history": [
@@ -92,7 +92,7 @@
   "batch_renamer_win": {
     "version": "3.8.0",
     "notes": "## v3.8.0  ⚠️ 需全量安装\n\n此版本为重大架构升级，**不支持增量更新**。\n请点击右下角 📖 使用手册，下载最新全量包（覆盖安装，不会丢失数据）。\n\n---\n\n📂 归档有进度条，重命名也有进度条了\n✅ 归档完成自动校验\n🖊 制作者支持中英文和数字\n🛡️ 增量更新修复，后续可正常增量\n🚀 导出日志并行，速度快一倍\n🐛 修复大量 bug",
-    "sha256": "77589d846b41bd4cb38de807584d7c3cd37c1feadfd7def65ef266f4bbfc5aa8",
+    "sha256": "42b2b1d92cf9a472291bd04e9da0f30fc2aadeb837499bc016d7131bd296a736",
     "requires_full_install": true,
     "full_install_url": "https://jcnjno6i0upk.feishu.cn/docx/HEvydRFQZorKEnxBTYkconsinih",
     "urls": [
