@@ -1548,6 +1548,7 @@ print(result[0])
         
         for p in _MASK_PRESETS:
             combo.AddItem(p)
+        combo.AddItem("自定义…")  # 最后一个选项对应自定义输入
         
         if _mask_ratio is None:
             combo.SetCurrentIndex(0)
@@ -1559,16 +1560,17 @@ print(result[0])
             cfg["cfg_mask_custom"].Text = ""
             _action_log(f"🎬 mask_init: state=preset({_mask_ratio}) idx={idx}")
         else:
-            combo.SetCurrentIndex(len(_MASK_PRESETS))
+            combo.SetCurrentIndex(len(_MASK_PRESETS) + 1)  # "自定义…"
             cfg["cfg_mask_custom"].Text = _mask_ratio
             _action_log(f"🎬 mask_init: state=custom({_mask_ratio})")
     except Exception as _e:
         import traceback
         _action_log(f"⚠ 遮幅初始化失败: {_e}\n{traceback.format_exc()}")
 
-    # ── 遮幅："自定义"选项才显示标签+输入框 ──
+    # ── 遮幅："自定义…"选项才显示标签+输入框 ──
+    _CUSTOM_IDX = len(_MASK_PRESETS) + 1
     def _toggle_custom_visible():
-        is_custom = combo.CurrentIndex == len(_MASK_PRESETS)
+        is_custom = combo.CurrentIndex == _CUSTOM_IDX
         cfg["cfg_mask_custom_lbl"].Visible = is_custom
         cfg["cfg_mask_custom"].Visible = is_custom
     _toggle_custom_visible()
