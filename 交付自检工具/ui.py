@@ -498,6 +498,10 @@ CHECKS = [
 #   - 换位置：移动 list 中 dict 的位置
 #   - 暂时关闭：run_fn 设为 None
 
+# ── UI 锁 ──
+_checking = False
+_BUSY = False
+
 # ── 启动时校验：CHECKS 注册表与 run_fn 一致性 ──
 def _validate_checks():
     """确保 CHECKS 中每个 run_fn 都存在且可调用。"""
