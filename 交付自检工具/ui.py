@@ -846,6 +846,117 @@ _cached_sections = []
 # Tree 渲染
 # ═══════════════════════════════════════════
 
+# ═══════════════════════════════════════════
+# 结果处理
+# ═══════════════════════════════════════════
+#
+# 数据流 Schema（全链路）：
+#   check_core._make_result()
+#       → {status, track, timecode, detail, reason, is_summary}
+#           ↓ _process_result() + FIELD_TO_COLUMN
+#       → {icon, track, tc, msg, reason}
+#           ↓ _start_check() 分组
+#       → section: {group, title, summary, rows, all_ok}
+#           ↓ _render_group() 渲染
+#       → Tree:  1. Group ◆ Check → ❌ 问题 | 建议
+#
+# 扩展规则：
+#   - 加 check_core 字段 → _make_result + FIELD_TO_COLUMN + COLUMNS（3处）
+#   - 改字段映射 → 只改 FIELD_TO_COLUMN
+#   - 改列宽/顺序/显隐 → 只改 COLUMNS
+#
+# detail/reason 语义约定（2026-05-10 沉淀）：
+#   detail（→"问题"列）= 问题的简洁描述，不含"应为"/"建议"等
+#   reason（→"建议"列）= 修复方向或原因，可为空
+#   汇总行（is_summary）≠ 详情行（detail），禁止重复
+
+def _process_result(r, rows_list):
+    """处理单条检查结果，通过 FIELD_TO_COLUMN 映射到 Tree 列。
+    返回 (is_fail, is_warn, is_pass)，三者互斥"""
+    if r["status"] == "pass":
+        return False, False, True
+
+    icon = "❌" if r["status"] == "fail" else "⚠"
+    cols = FIELD_TO_COLUMN
+    rows_list.append({
+        cols["track"]:    r.get("track", ""),
+        cols["timecode"]: r.get("timecode", ""),
+        cols["detail"]:   f"{icon} | {r.get('detail', '')}",
+        cols["reason"]:   r.get("reason", ""),
+    })
+    return r["status"] == "fail", r["status"] == "warn", False
+
+# ═══════════════════════════════════════════
+# AI 校对
+# ═══════════════════════════════════════════
+
+def _save_typo_session(timeline, entries, entry_starts, parsed, all_lines,
+                       script_src, result, project=None):
+    """每次 LLM 校对后完整存档（输入+输出），复盘时对比交付 SRT 使用。
+
+    路径: ~/Library/Application Support/交付自检/typo_sessions/{项目}/{时间线}/{时间戳}.json
+    """
+    import json as _json, shutil as _shutil, hashlib as _hashlib, datetime as _dt
+    try:
+        proj_name = project.GetName() if project else "未知项目"
+        tl_name = timeline.GetName() or "未命名时间线"
+    except Exception:
+        proj_name, tl_name = "未知", "未知"
+
+    # sanitize: 替换文件名不安全字符
+    safe_proj = "".join(c if c.isalnum() or c in "_-." else "_" for c in proj_name)[:80]
+    safe_tl = "".join(c if c.isalnum() or c in "_-." else "_" for c in tl_name)[:60]
+
+    base = os.path.join(_DATA_DIR, "typo_sessions")
+    session_dir = os.path.join(base, safe_proj, safe_tl)
+    os.makedirs(session_dir, exist_ok=True)
+
+    ts = _dt.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    model = result.get("model", "unknown")
+    fname = f"{ts}_{model}.json"
+    path = os.path.join(session_dir, fname)
+
+    # 组装 session 数据
+    session = {
+        "meta": {
+            "project": proj_name,
+            "timeline": tl_name,
+            "timestamp": _dt.datetime.now().isoformat(),
+            "model": model,
+            "provider": result.get("provider", "?"),
+            "entry_count": len(entries),
+            "script_source": script_src,
+            "line_count": len(all_lines),
+        },
+        "entries": [
+            {"index": i, "start_frame": int(entry_starts[i]) if i < len(entry_starts) else 0,
+             "text": entries[i]}
+            for i in range(len(entries))
+        ],
+        "prompt": {
+            "script_preview": all_lines[:3] if all_lines else [],
+            "script_line_count": len(all_lines),
+        },
+        "result": {
+            "same_show": result.get("same_show"),
+            "corrections": result.get("corrections", []),
+            "error": result.get("error"),
+            "raw_tail": result.get("raw_tail"),
+        },
+    }
+
+    with open(path, "w", encoding="utf-8") as f:
+        _json.dump(session, f, ensure_ascii=False, indent=2)
+
+    log_fn(f"📁 校对存档: {os.path.join(safe_proj, safe_tl, fname)}")
+
+    # 清理：同时间线保留最近 20 份，删旧
+    existing = sorted([f for f in os.listdir(session_dir) if f.endswith(".json")])
+    if len(existing) > 20:
+        for old in existing[:-20]:
+            os.remove(os.path.join(session_dir, old))
+
+
 def _render_group(group_name, sections, tree, parent_group=""):
     """渲染一个 group 或 subgroup 的检查结果到右侧 Tree"""
     tree.Clear()
