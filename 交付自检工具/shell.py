@@ -8,6 +8,7 @@
 import subprocess, os, glob, json, time, re
 
 # 1. 找最新非达芬奇 Python（按版本号排序，不是字符串排序）
+# ⚠️ 此段代码与 AI去字幕/shell.py 同步。改了这里，两个地方都要改。
 _python = "/usr/bin/python3"
 _versions = []
 for p in glob.glob("/Library/Frameworks/Python.framework/Versions/3.*/bin/python3"):
