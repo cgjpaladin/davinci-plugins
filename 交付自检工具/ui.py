@@ -1067,7 +1067,7 @@ def _show_config_dialog():
 
     # ── 从注册表生成布局（个人版过滤）──
     _is_personal = bool(os.environ.get("WORKBUDDY_PERSONAL"))
-    _sections = CONFIG_SECTIONS if _is_personal else [s for s in CONFIG_SECTIONS if s["id"] in ("mask_ratio", "censor_personal", "smb_paths")]
+    _sections = CONFIG_SECTIONS if _is_personal else [s for s in CONFIG_SECTIONS if s["id"] not in ("deepseek_key", "feishu_app_id", "feishu_secret")]
     body_widgets = []
     # 授权区（仅个人版，三行固定布局）
     if _is_personal:
