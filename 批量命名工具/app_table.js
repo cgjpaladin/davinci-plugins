@@ -941,7 +941,7 @@ function showDialog(title,msg){return new Promise(r=>{
 // ═══ Actions ═══
 async function addFiles(){const r=await call('add_files_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);_undoSnap=null;_localUndos=[];applySort();reindex();r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
 async function addFolder(){const r=await call('add_folder_via_dialog');if(r&&r.files){const ex=new Set(files.map(f=>f.path));const fr=r.files.filter(f=>!ex.has(f.path));files=files.concat(fr);_undoSnap=null;_localUndos=[];applySort();reindex();r.total=fr.length;r.duplicates=r.files.length-fr.length;call("debug_log",`FILES list: ${files.length} total (addFiles)`);renderList();_toastResult(r);loadThumbs()}}
-function _toastResult(r){let m=`已追加 ${r.total} 个文件`;if(r.skipped)m+=` · ${r.skipped} 个格式不支持`;if(r.duplicates)m+=` · ${r.duplicates} 个重复跳过`;if(r.subdirs_skipped)m+=` · ${r.subdirs_skipped} 个子文件夹跳过`;if(r.truncated)m+=` (上限${r.max}个)`;toast(m)}
+function _toastResult(r){const wasEmpty=files.length===r.total;let m=wasEmpty?`已添加 ${r.total} 个文件`:`已追加 ${r.total} 个文件`;if(r.skipped)m+=` · ${r.skipped} 个格式不支持`;if(r.duplicates)m+=` · ${r.duplicates} 个重复跳过`;if(r.subdirs_skipped)m+=` · ${r.subdirs_skipped} 个子文件夹跳过`;if(r.truncated)m+=` (上限${r.max}个)`;toast(m)}
 
 async function doRename(){
   if(sel.size===0)return;
