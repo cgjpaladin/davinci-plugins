@@ -823,10 +823,19 @@ function activateEdit(td, key, i){
     renderList();
   };
 
-    // SELECT: change/Escape only. Click-outside → revert without commit.
+    // SELECT: change/Escape/Tab
     if(isSelect){
       const cancel = () => commit(true);
       window._activeCancel = cancel;
+      el.addEventListener('keydown', e => {
+        if(e.key === 'Tab'){ e.preventDefault(); el.blur(); commit(false);
+          const td0 = el.closest('td'); const tr0 = td0.parentElement;
+          const cells0 = [...tr0.querySelectorAll('td[data-key]')].filter(c => c.dataset.key !== 'tk' && !c.classList.contains('status-col'));
+          const idx0 = cells0.indexOf(td0);
+          if(idx0 >= 0){ activateEdit(cells0[(idx0 + 1) % cells0.length], cells0[(idx0 + 1) % cells0.length].dataset.key, i); }
+        }
+        if(e.key === 'Escape'){ el.value = oldVal; cancel(); }
+      });
       el.addEventListener('change', () => {
         if(el.value === '__free__'){
           // 自由输入 → 切换为 input
@@ -844,6 +853,12 @@ function activateEdit(td, key, i){
           input.addEventListener('keydown', e => {
             if(e.key === 'Enter'){ e.preventDefault(); window._activeCancel = null; commit(false); }
             if(e.key === 'Escape'){ input.value = oldVal; window._activeCancel = null; commit(true); }
+            if(e.key === 'Tab'){ e.preventDefault(); window._activeCancel = null; commit(false);
+              const td2 = input.closest('td'); const tr2 = td2.parentElement;
+              const cells2 = [...tr2.querySelectorAll('td[data-key]')].filter(c => c.dataset.key !== 'tk' && !c.classList.contains('status-col'));
+              const idx2 = cells2.indexOf(td2);
+              if(idx2 >= 0){ activateEdit(cells2[(idx2 + 1) % cells2.length], cells2[(idx2 + 1) % cells2.length].dataset.key, i); }
+            }
           });
           input.addEventListener('blur', () => {
             if(window._activeCancel){ window._activeCancel = null; commit(false); }
@@ -860,6 +875,12 @@ function activateEdit(td, key, i){
     el.addEventListener('keydown', e => {
       if(e.key === 'Enter'){ e.preventDefault(); window._activeCancel = null; commit(false); }
       if(e.key === 'Escape'){ el.value = oldVal; window._activeCancel = null; commit(true); }
+      if(e.key === 'Tab'){ e.preventDefault(); window._activeCancel = null; commit(false);
+        const td = el.closest('td'); const tr = td.parentElement;
+        const cells2 = [...tr.querySelectorAll('td[data-key]')].filter(c => c.dataset.key !== 'tk' && !c.classList.contains('status-col'));
+        const idx2 = cells2.indexOf(td);
+        if(idx2 >= 0){ activateEdit(cells2[(idx2 + 1) % cells2.length], cells2[(idx2 + 1) % cells2.length].dataset.key, i); }
+      }
     });
     el.addEventListener('blur', () => {
       if(window._activeCancel){ window._activeCancel = null; commit(false); }
