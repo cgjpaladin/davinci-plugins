@@ -1697,8 +1697,7 @@ function showUpdateDialog(){
   if(_fullInstall){
     _dialogEl.innerHTML=`<div class="update-dialog" style="text-align:center">
       <div class="up-title">⚠️ v${_updateVer} 需全量安装</div>
-      <div class="up-body" style="user-select:text;-webkit-user-select:text;white-space:pre-wrap">此版本不支持增量更新，请打开使用手册下载全量包：</div>
-      <div class="up-body" style="user-select:text;-webkit-user-select:text;word-break:break-all;color:#8bf;font-size:12px;margin:8px 0">${_fullInstallUrl}</div>
+      <div class="up-body" style="user-select:text;-webkit-user-select:text;white-space:pre-wrap">此版本不支持增量更新，请点击右下角 📖 使用手册，下载最新全量包（覆盖安装不会丢数据）。</div>
       <div class="up-actions">
         <button class="up-btn-cancel" onclick="closeUpdateDialog()">关闭</button>
       </div>
