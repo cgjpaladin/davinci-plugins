@@ -1550,6 +1550,8 @@ print(result[0])
             combo.AddItem(p)
         combo.AddItem("自定义…")  # 最后一个选项对应自定义输入
         
+        combo.RecalcLayout()  # AddItem 后重新计算 ComboBox 宽度
+        
         if _mask_ratio is None:
             combo.SetCurrentIndex(0)
             cfg["cfg_mask_custom"].Text = ""
@@ -1566,8 +1568,6 @@ print(result[0])
     except Exception as _e:
         import traceback
         _action_log(f"⚠ 遮幅初始化失败: {_e}\n{traceback.format_exc()}")
-
-    combo.RecalcLayout()  # 补：AddItem 后 ComboBox 重新计算宽度
 
     # ── 遮幅："自定义…"选项才显示标签+输入框 ──
     _CUSTOM_IDX = len(_MASK_PRESETS) + 1
