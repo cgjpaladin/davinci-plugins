@@ -62,7 +62,7 @@ function mock(m,...a){
   return new Promise(r=>{
     const C={ep:'01',sc:'01',gr:'01',desc:'',author:'',method:'',ver:'01',status:'OK',tk:'01'};
     switch(m){
-      case'get_config':r({fields:[{key:'ep',label:'Ep 集数',def:'01',hint:'01'},{key:'sc',label:'Sc 场次',def:'01',hint:'01'},{key:'gr',label:'Gr 小场次',def:'01',hint:'01'},{key:'desc',label:'镜头描述',def:'',hint:'由制作方式决定'},{key:'method',label:'制作方式',def:'',dv:['请选择','智能分镜版','双轨版','角色专属版']},{key:'author',label:'制作者',def:'',hint:'请输入姓名'},{key:'ver',label:'制作批次',def:'01',hint:'01'},{key:'status',label:'通过情况',def:'',dv:['请选择',...STATUS_OPTIONS]}],defaults:{},method_desc_map:{'智能分镜版':{mode:'locked',value:'智能分镜'},'双轨版':{mode:'dropdown',values:['请选择','智能分镜','幽灵角色','空镜','请手动输入…']},'角色专属版':{mode:'dropdown',values:['请选择','智能分镜','请手动输入…']}},name_format:[{pfx:'Ep',key:'ep'},{pfx:'Sc',key:'sc'},{pfx:'Gr',key:'gr'},{pfx:'Tk',key:'tk'},{pfx:'',key:'desc'},{pfx:'',key:'method'},{pfx:'',key:'author'},{pfx:'v',key:'ver'},{pfx:'',key:'status'}],field_rules:[{trigger:'method',targets:['desc'],map:{'智能分镜版':{desc:{locked:'智能分镜'}},'双轨版':{desc:{dropdown:['请选择','智能分镜','幽灵角色','空镜','请手动输入…']}},'角色专属版':{desc:{dropdown:['请选择','智能分镜','请手动输入…']}}}}]});break;
+      case'get_config':r({fields:[{key:'ep',label:'Ep 集数',def:'01',hint:'01'},{key:'sc',label:'Sc 场次',def:'01',hint:'01'},{key:'gr',label:'Gr 小场次',def:'01',hint:'01'},{key:'desc',label:'镜头描述',def:'',hint:'由制作方式决定'},{key:'method',label:'制作方式',def:'',dv:['请选择','智能分镜版','双轨版','角色专属版']},{key:'author',label:'制作者',def:'',hint:'请输入姓名'},{key:'ver',label:'制作批次',def:'01',hint:'01'},{key:'status',label:'通过情况',def:'',dv:['请选择',...STATUS_OPTIONS]}],defaults:{},method_desc_map:{'智能分镜版':{mode:'locked',value:'智能分镜'},'双轨版':{mode:'dropdown',values:['请选择','智能分镜','幽灵角色','空镜','请手动输入…']},'角色专属版':{mode:'dropdown',values:['请选择','智能分镜','请手动输入…']}},name_format:[{pfx:'Ep',key:'ep'},{pfx:'Sc',key:'sc'},{pfx:'Gr',key:'gr'},{pfx:'Tk',key:'tk'},{pfx:'',key:'desc'},{pfx:'',key:'method'},{pfx:'',key:'author'},{pfx:'v',key:'ver'},{pfx:'',key:'status'}],field_rules:[{trigger:'method',targets:['desc'],map:{'智能分镜版':{desc:{locked:'智能分镜'}},'双轨版':{desc:{dropdown:['请选择','智能分镜','幽灵角色','空镜','请手动输入…']}},'角色专属版':{desc:{dropdown:['请选择','智能分镜','请手动输入…']}}}}],video_formats:['mp4','mov','mxf','avi','mkv','webm','m4v','mts','mpg','mpeg','wmv','3gp','flv','r3d','braw'],image_formats:['jpg','jpeg','png','bmp','tiff','tif','gif','webp','tga','psd']});break;
             case'validate_dest':r({ok:true,msg:'✓ 格式正确'});break;
       case'do_rename':r({ok:1,total:1,fail:[],renamed:[]});break;
       case'do_undo':r({ok:0,msg:'Mock: 无操作'});break;
@@ -114,10 +114,30 @@ async function init(){
   window.METHOD_OPTIONS=(_fdMethod?.dv||['智能分镜版','双轨版','角色专属版']).filter(v=>v!=='请选择');
   window.STATUS_OPTIONS=(_fdStatus?.dv||['OK','KP','NG']).filter(v=>v!=='请选择');
 
+  // 审查状态按钮 — 从 STATUS_OPTIONS 动态生成，加状态只改 Python dv
+  const _rsContainer=document.getElementById('reviewStatusBtns');
+  if(_rsContainer){_rsContainer.innerHTML='';
+    window.STATUS_OPTIONS.forEach(s=>{
+      const btn=document.createElement('button');
+      btn.className='rs-'+s.toLowerCase();btn.id='rs'+s;btn.textContent=s;
+      btn.title={OK:'通过 — 素材合格',KP:'需修改 — 保留待改',NG:'不合格 — 标记废弃'}[s]||s;
+      _rsContainer.appendChild(btn);
+    });
+  }
+
   // 审查面板字段：排除方法联动字段（desc/method）和专用 UI 字段（tk/status）
   window._REVIEW_FIELDS=_allFields.filter(f=>!['desc','method','tk','status'].includes(f.key));
 
+  // 视频/图片格式从 Python SUPPORTED_EXT 派生，加格式只改 Python
+  if(cfg.video_formats) _VIDEO_EXT=new Set(cfg.video_formats.map(s=>s.toLowerCase()));
+  if(cfg.image_formats) _IMG_EXT=new Set(cfg.image_formats.map(s=>s.toLowerCase()));
+
   // 收集所有预置镜头描述值供碰撞检测
+  _reservedDesc.clear();
+  for(const v of Object.values(methodDescMap)){
+    if(v.value)_reservedDesc.add(v.value);
+    if(v.values)v.values.forEach(x=>{_reservedDesc.add(x)});
+  }
   dm.textContent = cfg.dev ? ('🔧 '+APP_VERSION) : '📋 导出日志';
   dm.title = '导出诊断日志';
   dm.onclick = () => {
@@ -1142,9 +1162,10 @@ function onDropResult(result){
 let _reviewIdx=-1, _mediaBlobUrl=null, _metaGen=0, _rcInterval=null, _vidCheckTimeout=null;
 const _speeds=[0.5,1,2];let _speedI=1;
 function formatTime(s){if(!isFinite(s)||s<0)return'0:00';const m=Math.floor(s/60),sec=Math.floor(s%60);return m+':'+String(sec).padStart(2,'0')}
-const _VIDEO_EXT=new Set(['.mp4','.mov','.mxf','.avi','.mkv','.webm','.m4v','.mts','.mpg','.mpeg','.wmv','.3gp','.flv','.r3d','.braw']);
-const _IMG_EXT=new Set(['.jpg','.jpeg','.png','.bmp','.tiff','.tif','.gif','.webp']);
-function _isVideo(ext){return _VIDEO_EXT.has((ext||'').toLowerCase())}
+// 视频/图片格式 — fallback 默认值，生产环境由 get_config 覆盖
+let _VIDEO_EXT=new Set(['mp4','mov','mxf','avi','mkv','webm','m4v','mts','mpg','mpeg','wmv','3gp','flv','r3d','braw']);
+let _IMG_EXT=new Set(['jpg','jpeg','png','bmp','tiff','tif','gif','webp','tga','psd']);
+function _isVideo(ext){return _VIDEO_EXT.has((ext||'').toLowerCase().replace('.',''))}
 
 // 审查模式文件名 — 从 get_config.name_format 生成，加字段时自动跟随
 function _buildReviewTitle(ff,tk){

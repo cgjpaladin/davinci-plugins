@@ -78,13 +78,14 @@ _update_version_json() {
   python3 -c "
 import json
 d=json.load(open('$WS/version.json'))
+# Mac 是唯一源 — Win 自动同步所有字段
 d['batch_renamer_mac']['version']='$VERSION'
 d['batch_renamer_mac']['sha256']='$SHA'
-d['batch_renamer_win']['version']='$VERSION'
-d['batch_renamer_win']['sha256']='$SHA'
+for k in ['version','sha256','urls','notes','history']:
+    d['batch_renamer_win'][k] = d['batch_renamer_mac'][k]
 json.dump(d,open('$WS/version.json','w'),indent=2,ensure_ascii=False)
 "
-  _ok "version.json → v$VERSION SHA=$SHA"
+  _ok "version.json → v$VERSION SHA=$SHA (Mac→Win synced)"
 }
 
 # ═══════════════════════════════════════

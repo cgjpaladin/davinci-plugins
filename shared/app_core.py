@@ -165,6 +165,7 @@ class RenamerAPI:
             elif k == "status": fmt.append({"pfx":"","key":"status"})
             else: fmt.append({"pfx":"","key":k})
         is_dev = not getattr(sys, '_MEIPASS', False)
+        _img_exts = {'.jpg','.jpeg','.png','.bmp','.tiff','.tif','.gif','.webp','.tga','.targa','.psd'}
         return {
             "fields": FIELD_CONFIG,  # 含 tk，P1a 动态 inspector 需要
             "dev": is_dev,
@@ -174,6 +175,8 @@ class RenamerAPI:
             "name_format": fmt,
             "manual_url": _MANUAL_URL,
             "app_version": _APP_VERSION,
+            "video_formats": sorted(e.lstrip('.') for e in SUPPORTED_EXT - _img_exts),
+            "image_formats": sorted(e.lstrip('.') for e in SUPPORTED_EXT & _img_exts),
         }
 
     def open_manual(self):
