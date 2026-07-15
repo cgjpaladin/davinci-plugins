@@ -28,6 +28,7 @@ agent_created: true
 | 2 | 只审 git diff 那行 | R13：关联文件也要查 |
 | 3 | 用 `except:` 代替 `except Exception` | R12/R17：裸 except 吞信号 |
 | 4 | 搬家后不执行双模式 grep | R21：两种 import 都要搜 |
+| 5 | 辅助模块（非 ui.py/check_core）import fusionscript_loader | R22：UIManager 单例，widgets 会丢失 |
 | 5 | 审 shared/ 不查所有产品的 import 链 | 搬走一个模块影响所有引用方 |
 
 ## ⏸️ 审查检查点
@@ -61,6 +62,7 @@ agent_created: true
 | R19 | ALL | **达芬奇 API 优先判 None。** `GetItemListInTrack` 等返回 `None` 而非抛异常，用 `or []` 代替 `try/except`。——2026-07-06 1666 次调用实测 | 审查新增代码中的 `except Exception` 是否可简化为 None 判断 |
 | R20 | ALL | **`subprocess.run` 必须设 `timeout=`。** 缺 timeout → 网络/IO 卡住进程永久假死。`open`/`explorer` 等瞬发命令可用 `timeout=5`。——2026-07-06 跨平台审计 | `grep -rn "subprocess\.\(run\|check_output\)(" --include="*.py" . \| grep -v "timeout"` |
 | R21 | ALL | **非标 import——`from X import` 而非 `from shared.X import`。** 依赖 `shared/` 在 sys.path 上，子进程中可能不可靠。新增/搬家后检查：`grep -rn "from (模块名) import" --include="*.py" . \| grep -v "from shared\." \| grep -v "from \."` ——2026-07-16 shared/净化审计发现系统性误判根因 | 改 shared/ 或搬家后执行双模式 grep |
+| R22 | ALL | **UIManager 单例——辅助模块禁止 `from fusionscript_loader`。** widget 和 window 必须共用同一个 `fu.UIManager`，否则 `GetItems()` 找不到 widget → 窗口空白。2026-07-16 config_dialog 拆分踩坑 | `grep -rn "from fusionscript_loader" --include="*.py" . \| grep -v "ui.py" \| grep -v "check_core.py" \| grep -v "launcher"` |
 
 🛑 **R 全部通过后暂停，展示结果，等裁缝老师确认再进入 S。**
 

@@ -16,6 +16,7 @@ agent_created: true
 | 5 | 在 check 函数中直接 `print()` | 用 `debug_log` 回调，否则污染达芬奇控制台 |
 | 6 | 硬编码飞书 Base ID / FC URL | 统一从 `shared/license.py` 和 `config.py` 读取 |
 | 7 | 搬出 shared/ 模块后不检查 sys.path 顺序 | 产品目录必须在 shared/ 之前，否则加载旧 .pyc |
+| 8 | 在 config_dialog.py 等辅助模块中 `from fusionscript_loader` | **UIManager 单例约束**——widget 必须与 `config_disp.AddWindow()` 共用同一个 UIManager 实例，否则 `GetItems()` 找不到 widget |
 
 ## ⏸️ 检查点
 
@@ -951,3 +952,23 @@ _sections = CONFIG_SECTIONS if _is_personal \
 ```
 
 黑名单优于白名单：加新配置项不需改过滤器。
+
+### config_dialog.py 架构（2026-07-16 定型）
+
+**原则**：config_dialog.py 是纯数据模块，**禁止**导入 fusionscript_loader。Builder 函数和 `_show_config_dialog` 留在 ui.py（共享同一个 UIManager 实例）。
+
+```python
+# config_dialog.py（38行，无 DaVinci 依赖）
+from secure_store import ...  # 只 import 纯 Python 模块
+_load_api_keys()  # API Key 持久化
+_save_api_keys()
+_MASK_PRESETS / _MASK_UNSET  # 遮幅常量
+TRIAL_LB / HINT_LB / ...     # 控件 ID
+
+# ui.py（3258行，所有 DaVinci UI）
+from config_dialog import _load_api_keys, _save_api_keys, ...
+_build_mask_ratio()  # builder 用 ui.Label/ComboBox 创建 widget
+_show_config_dialog() # 创建 config_disp.AddWindow()
+```
+
+**教训**：AI 手工编写 builder 函数会残缺（2026-07-16 连出 4 个 NameError）。搬迁代码一律用 `git show <commit>:path` 提取原文 + diff 验证。
