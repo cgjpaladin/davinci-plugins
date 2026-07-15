@@ -7,6 +7,11 @@ ui = fu.UIManager
 from config import IS_PERSONAL, MANUAL_URL
 from styles import *
 from license_ui import trial_days_left, format_trial
+
+# UI 控件 ID（主窗口）
+TRIAL_LB = "trial_lb"
+BTN_AI_TYPO = "btn_ai_typo"
+HINT_LB = "hint_lb"
 import os, subprocess, time, socket, json
 
 
@@ -138,7 +143,7 @@ def _build_auth_section():
     ]
 
 
-def show_config_dialog(log_fn=None):
+def show_config_dialog(log_fn=None, _main_itm=None):
     """打开配置窗口"""
     if _config_open:
         return
@@ -497,8 +502,8 @@ print(result[0])
                     _keys = _load_api_keys(); _keys["activation_code"] = code
                     if ts: _keys["trial_remain_secs"] = str(ts)
                     _save_api_keys(_keys)
-                    itm[BTN_AI_TYPO].Text = "字幕检测"; itm[BTN_AI_TYPO].Enabled = True
-                    itm[TRIAL_LB].Text = "已激活 ✓"
+                    _main_itm[BTN_AI_TYPO].Text = "字幕检测"; _main_itm[BTN_AI_TYPO].Enabled = True
+                    _main_itm[TRIAL_LB].Text = "已激活 ✓"
                     cfg["cfg_auth_status"].Text = "✅ 已激活 · 永久授权"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(80,200,100);font-size:13px"
                     cfg["cfg_activate_btn"].Enabled = False
@@ -540,7 +545,7 @@ print(result[0])
                     _ai_allowed = False
                     _keys = _load_api_keys()
                     if _keys.get("activation_code"): del _keys["activation_code"]; _save_api_keys(_keys)
-                    itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"; itm[BTN_AI_TYPO].Enabled = False
+                    _main_itm[BTN_AI_TYPO].Text = "字幕检测(需激活码)"; _main_itm[BTN_AI_TYPO].Enabled = False
                     c = load_credential()
                     p = c.get("payload", {}) if c else {}
                     tsd = p.get("trial_start_date")
@@ -551,7 +556,7 @@ print(result[0])
                         d = max(0, (p["expire_time"] - int(time.time())) // 86400)
                     else:
                         d = 30
-                    itm[TRIAL_LB].Text = format_trial(d, p.get("machine_fingerprint", "")[:8])
+                    _main_itm[TRIAL_LB].Text = format_trial(d, p.get("machine_fingerprint", "")[:8])
                     cfg["cfg_auth_status"].Text = f"⏳ 试用剩余 {d} 天"
                     cfg["cfg_auth_status"]["StyleSheet"] = "color:rgb(200,180,60);font-size:12px"
                     cfg["cfg_activate_btn"].Enabled = True
@@ -655,7 +660,7 @@ print(result[0])
                 log_fn(f"📂 即将打开 Explorer: {censor_path}")
                 subprocess.Popen(["explorer", "/select,", censor_path])
         except Exception:
-            itm[HINT_LB].Text = "右键「短剧违禁词表.csv」→ 打开方式 → WPS / Excel / Numbers"
+            _main_itm[HINT_LB].Text = "右键「短剧违禁词表.csv」→ 打开方式 → WPS / Excel / Numbers"
             log_fn("📝 Finder 已定位个人词典")
 
     # ── SMB 路径编辑 ──（_smb_paths_cache 已在上方从 deploy.json 加载）

@@ -1,6 +1,9 @@
 # TODO
 
-## 🔴 紧急
+> 原更新于 2026-05-25。v3.8.0（2026-07-16）已覆盖以下紧急项：石家庄部署/Windows构建/DMG打包/CDN发布链。
+> 剩余远期项仍有效，待排期。
+
+## 🔴 紧急（v3.8.0 已解决）
 
 - [ ] **石家庄部署**：桌面部署包拷 U 盘 → 到那边跑 test_smoke.py → 确认依赖装好 → 教用户用
 - [ ] **Windows 机器环境确认**：装 Python 3.12+ + pywebview + bottle + PyInstaller + ffmpeg → `build_win.bat table`

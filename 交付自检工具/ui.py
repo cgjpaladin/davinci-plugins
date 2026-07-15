@@ -1591,7 +1591,7 @@ for _c in CHECKS:
         )
     )
 dlg.On[BTN_START].Clicked = lambda ev: _start_check()
-dlg.On[BTN_CONFIG].Clicked = lambda ev: show_config_dialog(log_fn=_action_log)
+dlg.On[BTN_CONFIG].Clicked = lambda ev: show_config_dialog(log_fn=_action_log, _main_itm=itm)
 dlg.On[BTN_AI_TYPO].Clicked = lambda ev: _run_ai_typo()
 
 _ui_error_state = {"count": 0}
