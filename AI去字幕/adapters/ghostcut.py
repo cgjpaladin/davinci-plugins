@@ -153,7 +153,7 @@ class GhostCutAdapter(BaseAdapter):
             reason = str(e.reason) if hasattr(e, 'reason') else str(e)
             _log_ops.ops({"event": "http_fallback", "adapter": self.name,
                            "reason": reason[:100]})
-            from http_fallback import curl_post
+            from .http_fallback import curl_post
             return curl_post(f"{self.BASE_URL}{path}", headers, body_bytes)
 
     def submit(self, task: SubtitleTask) -> str:

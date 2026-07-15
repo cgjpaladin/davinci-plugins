@@ -616,7 +616,7 @@ def _unlock_ui():
 
 # ── 凭证持久化（macOS Keychain，零明文落盘）──
 def _load_api_keys():
-    from shared.secure_store import load_all, migrate_legacy
+    from secure_store import load_all, migrate_legacy
     keys = load_all()
     if not keys:
         migrate_legacy()
@@ -626,7 +626,7 @@ def _load_api_keys():
     return keys
 
 def _save_api_keys(keys):
-    from shared.secure_store import save
+    from secure_store import save
     for k, v in keys.items():
         if v:
             save(k, v)
@@ -1520,7 +1520,7 @@ print(result[0])
                 except Exception: pass
                 try:
                     cfg_info = _api_edit_config[sid]
-                    from shared.tk_dialogs import input_text
+                    from tk_dialogs import input_text
                     val = input_text(
                         prompt=cfg_info["prompt"],
                         title=cfg_info["title"],
@@ -3014,7 +3014,7 @@ def _paste_link(ev):
     if _link_busy: return
     _link_busy = True
     itm["btn_paste_link"].Enabled = False
-    from shared.tk_dialogs import input_text
+    from tk_dialogs import input_text
     try:
         val = input_text("粘贴飞书链接", title="交付自检工具")
         if val:
@@ -3094,7 +3094,7 @@ def main():
         "feishu_secret": "FEISHU_BOT_APP_SECRET",
     }
     try:
-        from shared.secure_store import load_all, migrate_legacy
+        from secure_store import load_all, migrate_legacy
         _keystore = load_all()
         if not _keystore:
             migrate_legacy()

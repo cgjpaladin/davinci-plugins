@@ -61,7 +61,7 @@ sed -i '' 's/^__channel__ = ".*"/__channel__ = ""/' "$PKG/交付自检工具/con
 python3 -c "import sys; sys.path.insert(0,'$PKG/交付自检工具'); from config import version_string; print(f'  ✅ 个人版: {version_string()}')"
 
 # ── 3. shared 共享模块 ──
-cp "$WS/shared"/{deploy_config,fusionscript_loader,log_writer,camera_detect,script_parser,llm_typo_check,llm_providers,timecode,updater,update_config,license,_write_env,secure_store,cross_platform,tk_dialogs,_qr}.py "$PKG/交付自检工具/shared/"
+cp "$WS/shared"/{deploy_config,fusionscript_loader,log_writer,camera_detect,timecode,updater,update_config,license,_write_env,cross_platform,_qr}.py "$PKG/交付自检工具/shared/"
 
 # ── 4. pypdf ──
 cp -r "$WS/shared/pypdf" "$PKG/交付自检工具/shared/"

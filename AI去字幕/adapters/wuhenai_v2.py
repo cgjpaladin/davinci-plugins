@@ -167,7 +167,7 @@ class WuhenAIV21Adapter(BaseAdapter):
             reason = str(e.reason) if hasattr(e, 'reason') else str(e)
             _ops.ops({"event": "http_fallback", "adapter": self.name,
                        "reason": reason[:100]})
-            from http_fallback import curl_post
+            from .http_fallback import curl_post
             result = curl_post(url, headers, data)
 
         if result.get("code") != 0:
@@ -193,7 +193,7 @@ class WuhenAIV21Adapter(BaseAdapter):
             reason = str(e.reason) if hasattr(e, 'reason') else str(e)
             _ops.ops({"event": "http_fallback", "adapter": self.name,
                        "reason": reason[:100]})
-            from http_fallback import curl_get
+            from .http_fallback import curl_get
             result = curl_get(url, headers)
 
         if result.get("code") != 0:

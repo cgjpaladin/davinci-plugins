@@ -13,8 +13,11 @@ import time
 import traceback
 import sys
 
-# shared/ 模块路径
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared'))
+# import 优先级: AI去字幕/ 先于 shared/（防同名模块冲突）
+_base = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _base)
+sys.path.insert(1, os.path.join(_base, 'adapters'))    # http_fallback
+sys.path.insert(2, os.path.join(_base, '..', 'shared'))
 
 from ui_widgets import (
     itm, dlg, disp, _state, WIN_ID, MODE,
