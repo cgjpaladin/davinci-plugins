@@ -7,47 +7,47 @@
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
     "sha256": "2a9db958d7ae41fcde78c1950ae1abf87433c87f7902542ed6a470938c2815bc",
-    "notes": "## v2.5.14\n\n\ud83d\udccb \u8bca\u65ad\u62a5\u544a\u4e2d\u6587\u540d\uff0c\u4e00\u952e\u5bfc\u51fa\u66f4\u5bb9\u6613\u627e\u5230\n\ud83d\udd04 \u66f4\u65b0\u7cfb\u7edf\u89e3\u8026\uff0c\u4e0d\u518d\u4e0e\u5176\u4ed6\u4ea7\u54c1\u51b2\u7a81\n\ud83d\udcc1 \u65e5\u5fd7\u8fc1\u79fb\u5230\u7cfb\u7edf\u6807\u51c6\u76ee\u5f55\uff0c\u4e0d\u6015\u8bef\u5220\n\ud83d\udda5 Windows \u6587\u4ef6\u5939\u9009\u62e9\u652f\u6301",
+    "notes": "## v2.5.14\n\n📋 诊断报告中文名，一键导出更容易找到\n🔄 更新系统解耦，不再与其他产品冲突\n📁 日志迁移到系统标准目录，不怕误删\n🖥 Windows 文件夹选择支持",
     "history": [
       {
         "version": "2.5.14",
-        "notes": "## v2.5.14\n\n\ud83d\udccb \u8bca\u65ad\u62a5\u544a\u4e2d\u6587\u540d\uff0c\u4e00\u952e\u5bfc\u51fa\u66f4\u5bb9\u6613\u627e\u5230\n\ud83d\udd04 \u66f4\u65b0\u7cfb\u7edf\u89e3\u8026\uff0c\u4e0d\u518d\u4e0e\u5176\u4ed6\u4ea7\u54c1\u51b2\u7a81\n\ud83d\udcc1 \u65e5\u5fd7\u8fc1\u79fb\u5230\u7cfb\u7edf\u6807\u51c6\u76ee\u5f55\uff0c\u4e0d\u6015\u8bef\u5220\n\ud83d\udda5 Windows \u6587\u4ef6\u5939\u9009\u62e9\u652f\u6301"
+        "notes": "## v2.5.14\n\n📋 诊断报告中文名，一键导出更容易找到\n🔄 更新系统解耦，不再与其他产品冲突\n📁 日志迁移到系统标准目录，不怕误删\n🖥 Windows 文件夹选择支持"
       },
       {
         "version": "2.5.11",
-        "notes": "## v2.5.11\n\n\ud83d\udd0d \u6392\u9519\u62a5\u544a\u4e00\u952e\u5bfc\u51fa\uff08\u7f51\u7edc\u8bca\u65ad+\u6388\u6743\u5feb\u7167+\u6fc0\u6d3b\u5386\u53f2+\u73af\u5883\u914d\u7f6e\uff09\n\ud83d\udee1\ufe0f \u6307\u7eb9\u7a33\u5b9a\u4e0d\u6f02\u79fb\uff0cVPN\u4e0d\u5f71\u54cd\u6fc0\u6d3b\n\ud83d\udccb \u914d\u7f6e\u9875\u4e00\u952e\u590d\u5236\u673a\u5668\u6307\u7eb9\uff0c\u53d1\u7ed9\u88c1\u7f1d\u8001\u5e08"
+        "notes": "## v2.5.11\n\n🔍 排错报告一键导出（网络诊断+授权快照+激活历史+环境配置）\n🛡️ 指纹稳定不漂移，VPN不影响激活\n📋 配置页一键复制机器指纹，发给裁缝老师"
       },
       {
         "version": "2.5.9",
-        "notes": "## v2.5.9\n\n\ud83d\udd17 \u98de\u4e66 Wiki \u94fe\u63a5\u76f4\u63a5\u5bfc\u5165\u5267\u672c\n\ud83e\udd16 \u4e0d\u540c\u5267\u96c6\u4e5f\u80fd\u6821\u5bf9\u5b57\u5e55\uff0c\u4e0d\u6015\u4f20\u9519\u5267\u672c\n\ud83d\udee1\ufe0f \u6821\u5bf9\u4e2d\u9501\u5b9a\u6309\u94ae\uff1a\u9632\u8bef\u89e6\u3001\u9632\u5d29\u6e83"
+        "notes": "## v2.5.9\n\n🔗 飞书 Wiki 链接直接导入剧本\n🤖 不同剧集也能校对字幕，不怕传错剧本\n🛡️ 校对中锁定按钮：防误触、防崩溃"
       },
       {
         "version": "2.5.8",
-        "notes": "## v2.5.8\n\n\ud83d\udce6 \u5b89\u88c5\u5305\u81ea\u5e26 Python\uff0c\u7701\u53bb\u624b\u52a8\u4e0b\u8f7d"
+        "notes": "## v2.5.8\n\n📦 安装包自带 Python，省去手动下载"
       },
       {
         "version": "2.5.7",
-        "notes": "## v2.5.7\n\n\ud83d\udc1b \u4fee\u590d\uff1a\u4e2a\u522b\u8bbe\u5907\u6388\u6743\u5f02\u5e38\u7684\u95ee\u9898\n\ud83d\udee1\ufe0f \u4fee\u590d\uff1a\u4e2d\u6587\u8f93\u5165\u6cd5\u4e0b\u8f93\u5165\u6fc0\u6d3b\u7801\u6216 API Key \u53ef\u80fd\u95ea\u9000\n\ud83d\udce6 \u5b89\u88c5\u6d41\u7a0b\u66f4\u7b80\u6d01\n\ud83d\udd04 \u66f4\u65b0\u68c0\u6d4b\u66f4\u51c6\u786e"
+        "notes": "## v2.5.7\n\n🐛 修复：个别设备授权异常的问题\n🛡️ 修复：中文输入法下输入激活码或 API Key 可能闪退\n📦 安装流程更简洁\n🔄 更新检测更准确"
       },
       {
         "version": "2.5.6",
-        "notes": "## v2.5.6\n\n\ud83d\udd11 \u6fc0\u6d3b\u7801\u7cfb\u7edf\u6b63\u5f0f\u4e0a\u7ebf\uff0c\u8d2d\u4e70\u540e\u8f93\u5165\u6fc0\u6d3b\u7801\u5373\u53ef\u6c38\u4e45\u4f7f\u7528"
+        "notes": "## v2.5.6\n\n🔑 激活码系统正式上线，购买后输入激活码即可永久使用"
       },
       {
         "version": "2.5.3",
-        "notes": "## v2.5.3\n\n\u2b07 \u8f6f\u4ef6\u66f4\u65b0\u652f\u6301\u8fdb\u5ea6\u6761\uff0c\u4e0b\u8f7d\u901f\u5ea6\u4e00\u76ee\u4e86\u7136"
+        "notes": "## v2.5.3\n\n⬇ 软件更新支持进度条，下载速度一目了然"
       },
       {
         "version": "2.5.1",
-        "notes": "## v2.5.1\n\n\ud83d\udcc2 \u7d20\u6750\u8def\u5f84\u68c0\u6d4b\u66f4\u7075\u6d3b\uff0c\u652f\u6301\u591a\u6587\u4ef6\u5939\n\ud83d\udd24 \u65b0\u589e\u5168\u534a\u89d2\u5b57\u7b26\u68c0\u6d4b\uff08\u5982\u5168\u89d2\u6570\u5b57\u2192\u534a\u89d2\uff09\n\ud83d\udcdd AI \u6821\u5bf9\u5927\u5e45\u6539\u8fdb\uff1a\u51cf\u5c11\u8bef\u62a5\uff0c\u4e0d\u518d\u9010\u5b57\u5bf9\u7167\u5267\u672c\n\ud83d\udc1b \u4fee\u590d\u591a\u5904\u5c0f\u95ee\u9898"
+        "notes": "## v2.5.1\n\n📂 素材路径检测更灵活，支持多文件夹\n🔤 新增全半角字符检测（如全角数字→半角）\n📝 AI 校对大幅改进：减少误报，不再逐字对照剧本\n🐛 修复多处小问题"
       },
       {
         "version": "2.5.0",
-        "notes": "## v2.5.0\n\n\ud83c\udfa8 \u754c\u9762\u91cd\u65b0\u8bbe\u8ba1\uff0c\u5b57\u5e55\u68c0\u6d4b\u72ec\u7acb\u4e3a\u53f3\u4fa7\u9762\u677f\n\ud83e\udd16 AI \u6821\u5bf9\u66f4\u806a\u660e\uff0c\u810f\u8bdd\u53d8\u4f53\u4e0d\u518d\u8bef\u62a5"
+        "notes": "## v2.5.0\n\n🎨 界面重新设计，字幕检测独立为右侧面板\n🤖 AI 校对更聪明，脏话变体不再误报"
       },
       {
         "version": "2.4.0",
-        "notes": "## v2.4.0\n\n\ud83d\udccf \u6296\u97f3\u77ed\u5267\u65f6\u957f\u5408\u89c4\n\n| \u65f6\u957f | \u7ed3\u679c | \u8bf4\u660e |\n|------|:--:|------|\n| \uff1c41s | \ud83d\udd34 | \u4f4e\u4e8e\u4ed8\u8d39\u96c6\u6700\u4f4e\u65f6\u957f |\n| \uff1e180s | \ud83d\udd34 | \u8d85\u65f6\u9a73\u56de\uff0c\u5efa\u8bae\u4f18\u5316\u81f390s |\n| 41~180s | \ud83d\udfe2 | \u901a\u8fc7 |"
+        "notes": "## v2.4.0\n\n📏 抖音短剧时长合规\n\n| 时长 | 结果 | 说明 |\n|------|:--:|------|\n| ＜41s | 🔴 | 低于付费集最低时长 |\n| ＞180s | 🔴 | 超时驳回，建议优化至90s |\n| 41~180s | 🟢 | 通过 |"
       }
     ]
   },
@@ -58,41 +58,41 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
-    "notes": "## v3.8.0  \u26a0\ufe0f \u9700\u5168\u91cf\u5b89\u88c5\n\n\u6b64\u7248\u672c\u4e3a\u91cd\u5927\u67b6\u6784\u5347\u7ea7\uff0c**\u4e0d\u652f\u6301\u589e\u91cf\u66f4\u65b0**\u3002\n\u8bf7\u70b9\u51fb\u53f3\u4e0b\u89d2 \ud83d\udcd6 \u4f7f\u7528\u624b\u518c\uff0c\u4e0b\u8f7d\u6700\u65b0\u5168\u91cf\u5305\uff08\u8986\u76d6\u5b89\u88c5\uff0c\u4e0d\u4f1a\u4e22\u5931\u6570\u636e\uff09\u3002\n\n---\n\n\ud83d\udcc2 \u5f52\u6863\u6709\u8fdb\u5ea6\u6761\uff0c\u91cd\u547d\u540d\u4e5f\u6709\u8fdb\u5ea6\u6761\u4e86\n\u2705 \u5f52\u6863\u5b8c\u6210\u81ea\u52a8\u6821\u9a8c\n\ud83d\udd8a \u5236\u4f5c\u8005\u652f\u6301\u4e2d\u82f1\u6587\u548c\u6570\u5b57\n\ud83d\udee1\ufe0f \u589e\u91cf\u66f4\u65b0\u4fee\u590d\uff0c\u540e\u7eed\u53ef\u6b63\u5e38\u589e\u91cf\n\ud83d\ude80 \u5bfc\u51fa\u65e5\u5fd7\u5e76\u884c\uff0c\u901f\u5ea6\u5feb\u4e00\u500d\n\ud83d\udc1b \u4fee\u590d\u5927\u91cf bug",
-    "sha256": "3b1f8103753c35a4f0733bf6b20d82d82272b98790826155cd491ee0e661bb76",
+    "notes": "## v3.8.0  ⚠️ 需全量安装\n\n此版本为重大架构升级，**不支持增量更新**。\n请点击右下角 📖 使用手册，下载最新全量包（覆盖安装，不会丢失数据）。\n\n---\n\n📂 归档有进度条，重命名也有进度条了\n✅ 归档完成自动校验\n🖊 制作者支持中英文和数字\n🛡️ 增量更新修复，后续可正常增量\n🚀 导出日志并行，速度快一倍\n🐛 修复大量 bug",
+    "sha256": "77589d846b41bd4cb38de807584d7c3cd37c1feadfd7def65ef266f4bbfc5aa8",
     "requires_full_install": true,
     "full_install_url": "https://jcnjno6i0upk.feishu.cn/docx/HEvydRFQZorKEnxBTYkconsinih",
     "history": [
       {
         "version": "3.8.0",
-        "notes": "## v3.8.0\n\n\ud83d\udcc2 \u5f52\u6863\u6709\u8fdb\u5ea6\u6761\uff0c\u91cd\u547d\u540d\u4e5f\u6709\u8fdb\u5ea6\u6761\u4e86\n\u2705 \u5f52\u6863\u5b8c\u6210\u81ea\u52a8\u6821\u9a8c\uff0c\u5c11\u6587\u4ef6\u6216\u635f\u574f\u7acb\u523b\u544a\u8bc9\u4f60\n\ud83d\udd8a \u5236\u4f5c\u8005\u652f\u6301\u4e2d\u82f1\u6587\u548c\u6570\u5b57\u4e86\n\ud83d\udee1\ufe0f \u589e\u91cf\u66f4\u65b0\u66f4\u53ef\u9760\uff0c\u4e0d\u4f1a\u518d\u9000\u56de\u65e7\u7248\u672c\n\ud83d\ude80 \u5bfc\u51fa\u65e5\u5fd7\u5e76\u884c\u68c0\u6d4b\uff0c\u901f\u5ea6\u5feb\u4e86\u4e00\u500d\n\ud83d\udc1b \u4fee\u590d\u4e86\u5927\u91cf bug\uff0c\u7a33\u5b9a\u6027\u5927\u5e45\u63d0\u5347"
+        "notes": "## v3.8.0\n\n📂 归档有进度条，重命名也有进度条了\n✅ 归档完成自动校验，少文件或损坏立刻告诉你\n🖊 制作者支持中英文和数字了\n🛡️ 增量更新更可靠，不会再退回旧版本\n🚀 导出日志并行检测，速度快了一倍\n🐛 修复了大量 bug，稳定性大幅提升"
       },
       {
         "version": "3.7.15",
-        "notes": "## v3.7.15\n\n\ud83d\udcc2 \u5f52\u6863\u6709\u8fdb\u5ea6\u6761\u4e86\uff0c\u6587\u4ef6\u591a\u7684\u65f6\u5019\u4e0d\u7528\u5e72\u7b49\n\u2705 \u5f52\u6863\u5b8c\u6210\u81ea\u52a8\u6821\u9a8c\uff0c\u5c11\u6587\u4ef6\u6216\u635f\u574f\u7acb\u523b\u544a\u8bc9\u4f60\n\ud83d\udee1\ufe0f \u589e\u91cf\u66f4\u65b0\u66f4\u53ef\u9760\uff0c\u4e0d\u4f1a\u518d\u9000\u56de\u65e7\u7248\u672c\n\ud83d\udc1b \u4fee\u590d\u4e86\u5927\u91cf\u5176\u4ed6 bug"
+        "notes": "## v3.7.15\n\n📂 归档有进度条了，文件多的时候不用干等\n✅ 归档完成自动校验，少文件或损坏立刻告诉你\n🛡️ 增量更新更可靠，不会再退回旧版本\n🐛 修复了大量其他 bug"
       },
       {
         "version": "3.7.14",
-        "notes": "## v3.7.14\n\n\ud83d\udcd6 \u53f3\u4e0b\u89d2\u65b0\u589e\u300c\u4f7f\u7528\u6559\u7a0b\u300d\u6309\u94ae\n\ud83d\udda5 Windows/Mac \u589e\u91cf\u66f4\u65b0\u7528\u540c\u4e00\u4e2a\u5305\uff0c\u4e00\u6b21\u63a8\u9001\u53cc\u7aef\u751f\u6548"
+        "notes": "## v3.7.14\n\n📖 右下角新增「使用教程」按钮\n🖥 Windows/Mac 增量更新用同一个包，一次推送双端生效"
       },
       {
         "version": "3.7.13",
-        "notes": "## v3.7.13\n\n\ud83d\udccb \u9047\u5230\u95ee\u9898\uff1f\u53f3\u4e0b\u89d2\u70b9 \ud83d\udccb\uff0c\u81ea\u52a8\u6253\u5305\u8bca\u65ad\u6587\u4ef6\u53d1\u7ed9\u4f5c\u8005\n\ud83d\udda5 \u65b0\u589e Windows \u7248\uff0c\u548c Mac \u7248\u529f\u80fd\u5b8c\u5168\u4e00\u6837\n\ud83d\udcc1 \u5de5\u4f5c\u65e5\u5fd7\u7edf\u4e00\u653e\u5230\u7cfb\u7edf\u76ee\u5f55\uff0c\u4e0d\u6015\u8bef\u5220\n\ud83d\udc1b \u4fee\u4e86\u4e00\u5904\u5bfc\u51fa\u65e5\u5fd7\u65f6\u62a5\u9519\u7684\u5c0f\u95ee\u9898"
+        "notes": "## v3.7.13\n\n📋 遇到问题？右下角点 📋，自动打包诊断文件发给作者\n🖥 新增 Windows 版，和 Mac 版功能完全一样\n📁 工作日志统一放到系统目录，不怕误删\n🐛 修了一处导出日志时报错的小问题"
       },
       {
         "version": "3.7.12",
-        "notes": "## v3.7.12\n\n\ud83d\udd04 \u6709\u65b0\u7248\u672c\u4f1a\u81ea\u52a8\u63d0\u9192\uff0c\u70b9\u4e00\u4e0b\u5c31\u80fd\u5728\u7ebf\u66f4\u65b0\n\ud83d\udda5 Mac \u9876\u90e8\u83dc\u5355\u680f\u53ef\u4ee5\u76f4\u63a5\u68c0\u67e5\u66f4\u65b0\n\ud83d\udd0d \u7f51\u7edc\u4e0d\u597d\u65f6\u6709\u660e\u786e\u63d0\u793a\uff0c\u4e0b\u8f7d\u5931\u8d25\u81ea\u52a8\u91cd\u8bd5"
+        "notes": "## v3.7.12\n\n🔄 有新版本会自动提醒，点一下就能在线更新\n🖥 Mac 顶部菜单栏可以直接检查更新\n🔍 网络不好时有明确提示，下载失败自动重试"
       },
       {
         "version": "3.7.11",
-        "notes": "## v3.7.11\n\n\ud83d\udee1\ufe0f \u5f52\u6863\u66f4\u806a\u660e\uff1a\u91cd\u590d\u6587\u4ef6\u53ea\u5b58\u4e00\u4efd\uff0c\u8282\u7701\u786c\u76d8\n\ud83d\udd19 \u6539\u9519\u4e86\u968f\u65f6\u64a4\u9500\u2014\u2014\u6539\u540d\u3001\u62d6\u62fd\u3001\u5f52\u6863\u90fd\u652f\u6301 Ctrl+Z\n\ud83d\uddb1 \u62d6\u62fd\u6392\u5e8f\u4e0d\u518d\u6296\u52a8\uff0c\u624b\u611f\u66f4\u7a33\n\ud83d\uddbc \u7f29\u7565\u56fe\u652f\u6301\u66f4\u591a\u683c\u5f0f\uff1agif\u3001webp\u3001tga\u3001psd\n\ud83d\udcca \u8868\u683c\u7248\u6b63\u5f0f\u4e0a\u7ebf"
+        "notes": "## v3.7.11\n\n🛡️ 归档更聪明：重复文件只存一份，节省硬盘\n🔙 改错了随时撤销——改名、拖拽、归档都支持 Ctrl+Z\n🖱 拖拽排序不再抖动，手感更稳\n🖼 缩略图支持更多格式：gif、webp、tga、psd\n📊 表格版正式上线"
       }
     ]
   },
   "batch_renamer_win": {
     "version": "3.8.0",
-    "notes": "## v3.8.0  \u26a0\ufe0f \u9700\u5168\u91cf\u5b89\u88c5\n\n\u6b64\u7248\u672c\u4e3a\u91cd\u5927\u67b6\u6784\u5347\u7ea7\uff0c**\u4e0d\u652f\u6301\u589e\u91cf\u66f4\u65b0**\u3002\n\u8bf7\u70b9\u51fb\u53f3\u4e0b\u89d2 \ud83d\udcd6 \u4f7f\u7528\u624b\u518c\uff0c\u4e0b\u8f7d\u6700\u65b0\u5168\u91cf\u5305\uff08\u8986\u76d6\u5b89\u88c5\uff0c\u4e0d\u4f1a\u4e22\u5931\u6570\u636e\uff09\u3002\n\n---\n\n\ud83d\udcc2 \u5f52\u6863\u6709\u8fdb\u5ea6\u6761\uff0c\u91cd\u547d\u540d\u4e5f\u6709\u8fdb\u5ea6\u6761\u4e86\n\u2705 \u5f52\u6863\u5b8c\u6210\u81ea\u52a8\u6821\u9a8c\n\ud83d\udd8a \u5236\u4f5c\u8005\u652f\u6301\u4e2d\u82f1\u6587\u548c\u6570\u5b57\n\ud83d\udee1\ufe0f \u589e\u91cf\u66f4\u65b0\u4fee\u590d\uff0c\u540e\u7eed\u53ef\u6b63\u5e38\u589e\u91cf\n\ud83d\ude80 \u5bfc\u51fa\u65e5\u5fd7\u5e76\u884c\uff0c\u901f\u5ea6\u5feb\u4e00\u500d\n\ud83d\udc1b \u4fee\u590d\u5927\u91cf bug",
-    "sha256": "3b1f8103753c35a4f0733bf6b20d82d82272b98790826155cd491ee0e661bb76",
+    "notes": "## v3.8.0  ⚠️ 需全量安装\n\n此版本为重大架构升级，**不支持增量更新**。\n请点击右下角 📖 使用手册，下载最新全量包（覆盖安装，不会丢失数据）。\n\n---\n\n📂 归档有进度条，重命名也有进度条了\n✅ 归档完成自动校验\n🖊 制作者支持中英文和数字\n🛡️ 增量更新修复，后续可正常增量\n🚀 导出日志并行，速度快一倍\n🐛 修复大量 bug",
+    "sha256": "77589d846b41bd4cb38de807584d7c3cd37c1feadfd7def65ef266f4bbfc5aa8",
     "requires_full_install": true,
     "full_install_url": "https://jcnjno6i0upk.feishu.cn/docx/HEvydRFQZorKEnxBTYkconsinih",
     "urls": [
@@ -103,27 +103,27 @@
     "history": [
       {
         "version": "3.8.0",
-        "notes": "## v3.8.0\n\n\ud83d\udcc2 \u5f52\u6863\u6709\u8fdb\u5ea6\u6761\uff0c\u91cd\u547d\u540d\u4e5f\u6709\u8fdb\u5ea6\u6761\u4e86\n\u2705 \u5f52\u6863\u5b8c\u6210\u81ea\u52a8\u6821\u9a8c\uff0c\u5c11\u6587\u4ef6\u6216\u635f\u574f\u7acb\u523b\u544a\u8bc9\u4f60\n\ud83d\udd8a \u5236\u4f5c\u8005\u652f\u6301\u4e2d\u82f1\u6587\u548c\u6570\u5b57\u4e86\n\ud83d\udee1\ufe0f \u589e\u91cf\u66f4\u65b0\u66f4\u53ef\u9760\uff0c\u4e0d\u4f1a\u518d\u9000\u56de\u65e7\u7248\u672c\n\ud83d\ude80 \u5bfc\u51fa\u65e5\u5fd7\u5e76\u884c\u68c0\u6d4b\uff0c\u901f\u5ea6\u5feb\u4e86\u4e00\u500d\n\ud83d\udc1b \u4fee\u590d\u4e86\u5927\u91cf bug\uff0c\u7a33\u5b9a\u6027\u5927\u5e45\u63d0\u5347"
+        "notes": "## v3.8.0\n\n📂 归档有进度条，重命名也有进度条了\n✅ 归档完成自动校验，少文件或损坏立刻告诉你\n🖊 制作者支持中英文和数字了\n🛡️ 增量更新更可靠，不会再退回旧版本\n🚀 导出日志并行检测，速度快了一倍\n🐛 修复了大量 bug，稳定性大幅提升"
       },
       {
         "version": "3.7.15",
-        "notes": "## v3.7.15\n\n\ud83d\udcc2 \u5f52\u6863\u6709\u8fdb\u5ea6\u6761\u4e86\uff0c\u6587\u4ef6\u591a\u7684\u65f6\u5019\u4e0d\u7528\u5e72\u7b49\n\u2705 \u5f52\u6863\u5b8c\u6210\u81ea\u52a8\u6821\u9a8c\uff0c\u5c11\u6587\u4ef6\u6216\u635f\u574f\u7acb\u523b\u544a\u8bc9\u4f60\n\ud83d\udee1\ufe0f \u589e\u91cf\u66f4\u65b0\u66f4\u53ef\u9760\uff0c\u4e0d\u4f1a\u518d\u9000\u56de\u65e7\u7248\u672c\n\ud83d\udc1b \u4fee\u590d\u4e86\u5927\u91cf\u5176\u4ed6 bug"
+        "notes": "## v3.7.15\n\n📂 归档有进度条了，文件多的时候不用干等\n✅ 归档完成自动校验，少文件或损坏立刻告诉你\n🛡️ 增量更新更可靠，不会再退回旧版本\n🐛 修复了大量其他 bug"
       },
       {
         "version": "3.7.14",
-        "notes": "## v3.7.14\n\n\ud83d\udcd6 \u53f3\u4e0b\u89d2\u65b0\u589e\u300c\u4f7f\u7528\u6559\u7a0b\u300d\u6309\u94ae\n\ud83d\udda5 Windows/Mac \u589e\u91cf\u66f4\u65b0\u7528\u540c\u4e00\u4e2a\u5305\uff0c\u4e00\u6b21\u63a8\u9001\u53cc\u7aef\u751f\u6548"
+        "notes": "## v3.7.14\n\n📖 右下角新增「使用教程」按钮\n🖥 Windows/Mac 增量更新用同一个包，一次推送双端生效"
       },
       {
         "version": "3.7.13",
-        "notes": "## v3.7.13\n\n\ud83d\udccb \u9047\u5230\u95ee\u9898\uff1f\u53f3\u4e0b\u89d2\u70b9 \ud83d\udccb\uff0c\u81ea\u52a8\u6253\u5305\u8bca\u65ad\u6587\u4ef6\u53d1\u7ed9\u4f5c\u8005\n\ud83d\udda5 \u65b0\u589e Windows \u7248\uff0c\u548c Mac \u7248\u529f\u80fd\u5b8c\u5168\u4e00\u6837\n\ud83d\udcc1 \u5de5\u4f5c\u65e5\u5fd7\u7edf\u4e00\u653e\u5230\u7cfb\u7edf\u76ee\u5f55\uff0c\u4e0d\u6015\u8bef\u5220\n\ud83d\udc1b \u4fee\u4e86\u4e00\u5904\u5bfc\u51fa\u65e5\u5fd7\u65f6\u62a5\u9519\u7684\u5c0f\u95ee\u9898"
+        "notes": "## v3.7.13\n\n📋 遇到问题？右下角点 📋，自动打包诊断文件发给作者\n🖥 新增 Windows 版，和 Mac 版功能完全一样\n📁 工作日志统一放到系统目录，不怕误删\n🐛 修了一处导出日志时报错的小问题"
       },
       {
         "version": "3.7.12",
-        "notes": "## v3.7.12\n\n\ud83d\udd04 \u6709\u65b0\u7248\u672c\u4f1a\u81ea\u52a8\u63d0\u9192\uff0c\u70b9\u4e00\u4e0b\u5c31\u80fd\u5728\u7ebf\u66f4\u65b0\n\ud83d\udda5 Mac \u9876\u90e8\u83dc\u5355\u680f\u53ef\u4ee5\u76f4\u63a5\u68c0\u67e5\u66f4\u65b0\n\ud83d\udd0d \u7f51\u7edc\u4e0d\u597d\u65f6\u6709\u660e\u786e\u63d0\u793a\uff0c\u4e0b\u8f7d\u5931\u8d25\u81ea\u52a8\u91cd\u8bd5"
+        "notes": "## v3.7.12\n\n🔄 有新版本会自动提醒，点一下就能在线更新\n🖥 Mac 顶部菜单栏可以直接检查更新\n🔍 网络不好时有明确提示，下载失败自动重试"
       },
       {
         "version": "3.7.11",
-        "notes": "## v3.7.11\n\n\ud83d\udee1\ufe0f \u5f52\u6863\u66f4\u806a\u660e\uff1a\u91cd\u590d\u6587\u4ef6\u53ea\u5b58\u4e00\u4efd\uff0c\u8282\u7701\u786c\u76d8\n\ud83d\udd19 \u6539\u9519\u4e86\u968f\u65f6\u64a4\u9500\u2014\u2014\u6539\u540d\u3001\u62d6\u62fd\u3001\u5f52\u6863\u90fd\u652f\u6301 Ctrl+Z\n\ud83d\uddb1 \u62d6\u62fd\u6392\u5e8f\u4e0d\u518d\u6296\u52a8\uff0c\u624b\u611f\u66f4\u7a33\n\ud83d\uddbc \u7f29\u7565\u56fe\u652f\u6301\u66f4\u591a\u683c\u5f0f\uff1agif\u3001webp\u3001tga\u3001psd\n\ud83d\udcca \u8868\u683c\u7248\u6b63\u5f0f\u4e0a\u7ebf"
+        "notes": "## v3.7.11\n\n🛡️ 归档更聪明：重复文件只存一份，节省硬盘\n🔙 改错了随时撤销——改名、拖拽、归档都支持 Ctrl+Z\n🖱 拖拽排序不再抖动，手感更稳\n🖼 缩略图支持更多格式：gif、webp、tga、psd\n📊 表格版正式上线"
       }
     ]
   }
