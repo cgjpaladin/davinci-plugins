@@ -904,10 +904,12 @@ def _build_mask_ratio():
         ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
             ui.ComboBox({"ID": "cfg_mask_preset", "Text": "", "Weight": 0, "MinimumSize": [100, 0]}),
             ui.Label({"ID": "cfg_mask_custom_lbl", "Text": "自定义",
-                      "StyleSheet": "color:rgb(140,140,140);font-size:13px", "Weight": 0}),
+                      "StyleSheet": "color:rgb(140,140,140);font-size:13px", "Weight": 0,
+                      "Visible": False}),
             ui.LineEdit({"ID": "cfg_mask_custom", "Text": "",
                          "StyleSheet": "font-size:12px",
-                         "MinimumSize": [60, 0], "Weight": 0}),
+                         "MinimumSize": [60, 0], "Weight": 0,
+                         "Visible": False}),
         ]),
     ]
 
@@ -1563,6 +1565,14 @@ print(result[0])
     except Exception as _e:
         import traceback
         _action_log(f"⚠ 遮幅初始化失败: {_e}\n{traceback.format_exc()}")
+
+    # ── 遮幅："自定义"选项才显示标签+输入框 ──
+    def _toggle_custom_visible():
+        is_custom = combo.CurrentIndex == len(_MASK_PRESETS)
+        cfg["cfg_mask_custom_lbl"].Visible = is_custom
+        cfg["cfg_mask_custom"].Visible = is_custom
+    _toggle_custom_visible()
+    config_dlg.On["cfg_mask_preset"].CurrentTextChanged = lambda ev: _toggle_custom_visible()
 
     config_dlg.Show()
     config_dlg.RecalcLayout()
