@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "74802dbb261013e1c4e9ba304a78a209b73b156373866fdc0519114548b86198",
+    "sha256": "2a9db958d7ae41fcde78c1950ae1abf87433c87f7902542ed6a470938c2815bc",
     "notes": "## v2.5.14\n\n\ud83d\udccb \u8bca\u65ad\u62a5\u544a\u4e2d\u6587\u540d\uff0c\u4e00\u952e\u5bfc\u51fa\u66f4\u5bb9\u6613\u627e\u5230\n\ud83d\udd04 \u66f4\u65b0\u7cfb\u7edf\u89e3\u8026\uff0c\u4e0d\u518d\u4e0e\u5176\u4ed6\u4ea7\u54c1\u51b2\u7a81\n\ud83d\udcc1 \u65e5\u5fd7\u8fc1\u79fb\u5230\u7cfb\u7edf\u6807\u51c6\u76ee\u5f55\uff0c\u4e0d\u6015\u8bef\u5220\n\ud83d\udda5 Windows \u6587\u4ef6\u5939\u9009\u62e9\u652f\u6301",
     "history": [
       {
