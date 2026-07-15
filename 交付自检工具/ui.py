@@ -902,8 +902,7 @@ def _build_mask_ratio():
                   "StyleSheet": "color:rgb(140,140,140);font-size:11px", "Weight": 0}),
         ui.VGap(SPACE_SM),
         ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
-            ui.ComboBox({"ID": "cfg_mask_preset", "Text": "", "Weight": 0, "MinimumSize": [100, 0]}),
-            ui.HGap(SPACE_NORMAL),
+            ui.ComboBox({"ID": "cfg_mask_preset", "Text": "", "Weight": 0}),
             ui.Label({"ID": "cfg_mask_custom_lbl", "Text": "自定义",
                       "StyleSheet": "color:rgb(140,140,140);font-size:13px", "Weight": 0,
                       "Visible": False}),
