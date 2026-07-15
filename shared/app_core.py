@@ -25,7 +25,7 @@ try:
     else:
         _log_dir = os.path.join(os.path.expanduser("~"), "Library", "Logs", "批量命名工具")
     os.makedirs(_log_dir, exist_ok=True)
-    _hdlr = logging.FileHandler(os.path.join(_log_dir, "renamer.log"), encoding="utf-8")
+    _hdlr = logging.FileHandler(os.path.join(_log_dir, _LOG_NAME), encoding="utf-8")
     _hdlr.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
     _log.addHandler(_hdlr)
 except Exception:
@@ -60,10 +60,13 @@ def _has_pil():
         return False
 
 THUMB_MAX = 100  # 缩略图批次上限
+THUMB_SIZE = 120  # 缩略图像素尺寸
 _undo_stack = []  # list of lists: [[(old,new),...], [(old,new),...]]
 _window = None  # 存引用
 _archive_progress = {"current": 0, "total": 0, "percent": 0, "status": "", "done": True}
 _rename_progress = {"current": 0, "total": 0, "percent": 0, "status": "", "done": True}
+_DELTA_DIR = os.path.expanduser('~/.config/renamer/delta')     # 增量覆盖目录
+_LOG_NAME = "renamer.log"                                        # 日志文件名
 
 
 def _err_human(e):
@@ -116,7 +119,7 @@ class RenamerAPI:
                         img = ImageOps.exif_transpose(img)
                     except Exception:
                         pass
-                    img.thumbnail((120, 120), Image.LANCZOS)
+                    img.thumbnail((THUMB_SIZE, THUMB_SIZE), Image.LANCZOS)
                     if img.mode in ('RGBA', 'P'):
                         img = img.convert('RGB')
                     from io import BytesIO
@@ -134,7 +137,7 @@ class RenamerAPI:
                     for ss in ('00:00:01', '00:00:00.1'):
                         subprocess.run(
                             [ffmpeg, '-y', '-ss', ss, '-i', p, '-vframes', '1',
-                             '-vf', 'scale=120:120:force_original_aspect_ratio=decrease',
+                             '-vf', 'scale=THUMB_SIZE:THUMB_SIZE:force_original_aspect_ratio=decrease',
                              '-q:v', '8', tmp.name],
                             **kw
                         )
@@ -331,7 +334,7 @@ class RenamerAPI:
         state.append(f"Undo栈: {len(_undo_stack)}")
         state.append(f"更新状态: {json.dumps({k: str(v)[:100] for k,v in _UPDATE_STATE.items() if k != 'urls'}, ensure_ascii=False)}")
         # delta 覆盖目录状态
-        delta_dir = os.path.expanduser('~/.config/renamer/delta')
+        delta_dir = _DELTA_DIR
         if os.path.isdir(delta_dir):
             state.append(f"delta目录: 存在")
             try:
@@ -355,7 +358,7 @@ class RenamerAPI:
         except Exception as e:
             config_lines.append(f"config读取失败: {e}")
 
-        # ── network.txt（并行检测，不阻塞导出）──
+        # ── network.txt（并行检测 CDN 连通性，仅诊断用）──
         net = [f"DNS: {socket.gethostbyname(socket.gethostname())}"]
         def _curl_check(label, url):
             try:
@@ -365,10 +368,12 @@ class RenamerAPI:
                 net.append(f"{label}: HTTP {r.returncode}")
             except Exception:
                 net.append(f"{label}: 不可达")
+        # URL 来自 update_config（单一事实来源，换仓库只改一处）
+        from shared import update_config as _uc
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
-            ex.submit(_curl_check, "GitHub raw", "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/version.json")
-            ex.submit(_curl_check, "ghproxy", "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/version.json")
+            ex.submit(_curl_check, "GitHub raw", _uc.DOWNLOAD_URLS[0])
+            ex.submit(_curl_check, "ghproxy", _uc.VERSION_CHECK_URLS[0])
 
         # ── 写 ZIP ──
         try:
@@ -381,10 +386,10 @@ class RenamerAPI:
                 if self._dbg_buf:
                     _add_str(zf, "debug_memory.log", self._dbg_buf)
                 # Python 日志文件
-                _log_file = os.path.join(_log_root, "renamer.log")
+                _log_file = os.path.join(_log_root, _LOG_NAME)
                 if os.path.isfile(_log_file):
                     try:
-                        zf.write(_log_file, "renamer.log")
+                        zf.write(_log_file, _LOG_NAME)
                     except Exception:
                         pass
                 # 当天/前一天日志
@@ -1033,7 +1038,7 @@ class RenamerAPI:
             import zipfile, tempfile, shutil as _sh, subprocess as _sp
             zip_path = _UPDATE_STATE["zip_path"]
             # macOS 禁止修改 .app bundle → 解压到 ~/.config/renamer/delta/
-            delta_dir = os.path.expanduser('~/.config/renamer/delta')
+            delta_dir = _DELTA_DIR
             if os.path.exists(delta_dir):
                 _sh.rmtree(delta_dir, ignore_errors=True)
             os.makedirs(delta_dir, exist_ok=True)
@@ -1429,7 +1434,7 @@ try:
             _m = _re_ver.search(r"const APP_VERSION='([^']+)'", content)
             if _m: _APP_VERSION = _m.group(1)
     # 增量覆盖目录的版本文件（优先级最高，但不降级）
-    _delta_ver = os.path.expanduser('~/.config/renamer/delta/version.txt')
+    _delta_ver = os.path.join(_DELTA_DIR, 'version.txt')
     if os.path.isfile(_delta_ver):
         with open(_delta_ver, encoding='utf-8') as _dv:
             _dver = _dv.read().strip()
@@ -1526,7 +1531,7 @@ def main():
     from bottle import route, run, static_file
 
     # 用 bottle HTTP 服务绕过 WKWebView 沙箱限制
-    _DELTA_HTML = os.path.expanduser('~/.config/renamer/delta')
+    _DELTA_HTML = _DELTA_DIR
     @route('/')
     def index():
         # 优先加载 delta 覆盖的 HTML

@@ -36,6 +36,7 @@ const FIELD_SANITIZE = {
 const _FIELD_KEYS  = ['ep','sc','gr','desc','method','author','ver','status'];
 const _HEADER_KEYS = ['ep','sc','gr','tk','desc','method','author','ver','status'];
 const STATUS_OPTIONS = ['OK','KP','NG'];
+const STATUS_TOOLTIPS = {OK:'通过 — 素材合格', KP:'需修改 — 保留待改', NG:'不合格 — 标记废弃'};
 const METHOD_OPTIONS = ['智能分镜版','双轨版','角色专属版'];
 
 function reindex(){files.forEach((f,i)=>{f._idx=i})}
@@ -120,7 +121,7 @@ async function init(){
     window.STATUS_OPTIONS.forEach(s=>{
       const btn=document.createElement('button');
       btn.className='rs-'+s.toLowerCase();btn.id='rs'+s;btn.textContent=s;
-      btn.title={OK:'通过 — 素材合格',KP:'需修改 — 保留待改',NG:'不合格 — 标记废弃'}[s]||s;
+      btn.title=STATUS_TOOLTIPS[s]||s;
       _rsContainer.appendChild(btn);
     });
   }
