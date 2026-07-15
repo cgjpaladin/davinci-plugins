@@ -1080,7 +1080,7 @@ async function openReview(i){
           if(mediaErr){mediaErr.innerHTML='⚠ 视频编码不支持<br><span style="color:#39f;cursor:pointer;text-decoration:underline" onclick="call(\"reveal_in_finder\",\"'+f.path.replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,'\\x27')+'\")">→ 在 Finder 中打开</span>';mediaErr.style.display='block'}
         }
       },3000);
-      video.addEventListener('loadeddata',()=>{clearTimeout(vidTimeout)}, {once:true});
+      video.addEventListener('loadeddata',()=>{clearTimeout(_vidCheckTimeout)}, {once:true});
       video.play().catch(()=>{if(mediaErr){mediaErr.textContent='⏯ 单击缩略图播放';mediaErr.style.display='block'}});
       initReviewControls(video);
     }else{
