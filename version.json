@@ -6,8 +6,8 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "2a9db958d7ae41fcde78c1950ae1abf87433c87f7902542ed6a470938c2815bc",
-    "notes": "## v2.5.14\n\n📋 诊断报告中文名，一键导出更容易找到\n🔄 更新系统解耦，不再与其他产品冲突\n📁 日志迁移到系统标准目录，不怕误删\n🖥 Windows 文件夹选择支持",
+    "sha256": "5418b4c5f246b9c22864c3775d66d2062a60b02f01227c6df170ffc7f04535ae",
+    "notes": "## v2.6.1\n\n📦 架构重构：ui.py 拆分为 6 个模块（config_dialog/styles/export_debug/license_ui）\n🧹 shared/ 瘦身：5 个专属模块 + pypdf 搬入产品目录\n🔗 导入链路：零循环依赖，config_dialog 完全独立\n📉 主文件瘦身 31%：3,564→2,444 行\n🔧 死代码清理：4 死模块 + 2 死子包 + .DS_Store 等",
     "history": [
       {
         "version": "2.5.14",
