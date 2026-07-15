@@ -19,7 +19,7 @@
 import json
 import os
 
-from cross_platform import app_logs_dir
+from shared.cross_platform import app_logs_dir
 import socket
 import threading
 import time
@@ -79,7 +79,7 @@ def _write(entry: dict):
     log_dir = _log_dir
     if not log_dir:
         # fallback：没确认项目路径时写到本地 ops 日志目录
-        from cross_platform import app_logs_dir
+        from shared.cross_platform import app_logs_dir
         log_dir = app_logs_dir("ops")
     with _lock:
         import random as _random

@@ -189,7 +189,7 @@ from styles import (FONT_H1, FONT_H2, FONT_BODY, FONT_SM, FONT_XS, FONT_DIV, FON
                     STYLE_CHECK_ROW, STYLE_WARN,
                     BTN_STYLE, BTN_ICON, BTN_STYLE_SM, BTN_PRIMARY, BTN_DANGER)
 
-from config_dialog import (CONFIG_SECTIONS, _build_api_key_input, _build_censor_personal, _build_mask_ratio, _build_smb_paths, _build_auth_section, _sep, _sec, _load_api_keys, _save_api_keys, _MASK_PRESETS, _MASK_UNSET, TRIAL_LB, BTN_AI_TYPO, HINT_LB, CONFIG_WIDGETS)
+from config_dialog import _load_api_keys, _save_api_keys, _MASK_PRESETS, _MASK_UNSET, TRIAL_LB, BTN_AI_TYPO, HINT_LB, CONFIG_WIDGETS
 BTN_ICON = (
     "QPushButton{max-height:20px;max-width:24px;background-color:transparent;color:rgb(150,150,150);"
     "border:1px solid transparent;border-radius:3px;padding:0px}"
@@ -524,7 +524,6 @@ def _validate_checks():
 _validate_checks()
 del _validate_checks  # 用完即焚，不污染命名空间
 
-# ═══════════════════════════════════════════
 # 全局状态
 # ═══════════════════════════════════════════
 _track_values = [DEFAULT_SUBTITLE_TRACKS, DEFAULT_VIDEO_TRACKS, DEFAULT_AUDIO_TRACKS]
@@ -870,21 +869,113 @@ def _render_group(group_name, sections, tree, parent_group=""):
                 _set_row(row, row_data)
                 tree.AddTopLevelItem(row)
 
+def _build_api_key_input(sid, label):
+    """Label 显示当前值 + 编辑按钮（弹系统输入框防 IME 崩溃）"""
+    is_secret = "secret" in sid or "key" in sid
+    lbl_id = f"cfg_{sid}_lbl"
+    btn_id = f"cfg_{sid}_btn"
+    return [
+        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
+            ui.Label({"ID": lbl_id, "Text": "",
+                "StyleSheet": "font-size:11px;color:rgb(160,160,160)", "Weight": 1,
+                "MinimumSize": [150, 22], "WordWrap": False}),
+            ui.Button({"ID": btn_id, "Text": "编辑", "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
+        ]),
+    ]
+
+def _build_censor_personal():
+    return [
+        ui.VGap(SPACE_TIGHT),
+        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
+            ui.Button({"ID": "cfg_edit_censor", "Text": "在 Finder 中定位",
+                       "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
+            ui.Label({"Text": "右键 → 打开方式 → WPS / Excel / Numbers",
+                      "StyleSheet": "color:rgb(140,140,140);font-size:12px", "Weight": 0}),
+        ]),
+    ]
+
+_MASK_PRESETS = ["1", "1.33", "1.66", "1.77", "1.85", "2.0", "2.35", "2.39", "2.40"]
+_MASK_UNSET = "（未设置）"
+
+def _build_mask_ratio():
+    """遮幅宽高比：下拉预设 + 自定义输入"""
+    return [
+        ui.Label({"Text": "DaVinci API 无法自动读取遮幅，请手动设置画面宽高比。",
+                  "StyleSheet": "color:rgb(140,140,140);font-size:11px", "Weight": 0}),
+        ui.VGap(SPACE_SM),
+        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
+            ui.ComboBox({"ID": "cfg_mask_preset", "Text": "", "Weight": 0, "MinimumSize": [100, 0]}),
+            ui.Label({"ID": "cfg_mask_custom_lbl", "Text": "自定义",
+                      "StyleSheet": "color:rgb(140,140,140);font-size:13px", "Weight": 0}),
+            ui.LineEdit({"ID": "cfg_mask_custom", "Text": "",
+                         "StyleSheet": "font-size:12px",
+                         "MinimumSize": [60, 0], "Weight": 0}),
+        ]),
+    ]
+
+def _build_smb_paths():
+    """服务器素材路径配置：ComboBox 选择 + 添加/删除按钮"""
+    return [
+        ui.ComboBox({"ID": "cfg_smb_paths_combo", "Text": ""}),
+        ui.VGap(SPACE_SM),
+        ui.HGroup({"Spacing": SPACE_SM, "Weight": 0}, [
+            ui.Button({"ID": "cfg_smb_add", "Text": "+ 添加路径",
+                       "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
+            ui.Button({"ID": "cfg_smb_del", "Text": "− 删除路径",
+                       "StyleSheet": BTN_STYLE_SM, "Weight": 0}),
+        ]),
+    ]
+
+CONFIG_SECTIONS = [
+    {"id": "deepseek_key",   "label": "DeepSeek API Key", "type": "api_key",       "builder": _build_api_key_input},
+    {"id": "feishu_app_id",  "label": "飞书 App ID", "type": "api_key",            "builder": _build_api_key_input},
+    {"id": "feishu_secret",  "label": "飞书 App Secret", "type": "api_key",        "builder": _build_api_key_input},
+    {"id": "mask_ratio",     "label": "画面遮幅宽高比", "type": "mask_ratio",      "builder": _build_mask_ratio},
+    {"id": "smb_paths",      "label": "脱机素材检测路径（可多选）", "type": "smb_paths", "builder": _build_smb_paths},
+    {"id": "censor_personal", "label": "个人词典", "type": "censor_personal",       "builder": _build_censor_personal},
+]
+
+
+# ── 分隔符 ──
+def _sep():
+    return ui.Label({"Text": "─" * 48, "Weight": 0,
+        "StyleSheet": "color:rgb(80,80,80);font-size:10px"})
+
+def _sec(title):
+    return ui.Label({"Text": f"▸ {title}", "Weight": 0,
+        "StyleSheet": "color:rgb(180,180,180);font-size:13px;font-weight:bold"})
+
+def _build_auth_section():
+    """授权管理：Label 显示状态/激活码 + 复制指纹 + 激活/停用按钮。"""
+    return [
+        _sec("授权管理"),
+        ui.VGap(SPACE_SM),
+        ui.Label({"ID": "cfg_auth_status", "Text": "", "Weight": 0,
+            "StyleSheet": "color:rgb(200,180,60);font-size:12px"}),
+        ui.VGap(SPACE_SM),
+        ui.HGroup({"Spacing": SPACE_NORMAL, "Weight": 0}, [
+            ui.Button({"ID": "cfg_copy_fp", "Text": "复制指纹", "StyleSheet": BTN_STYLE, "Weight": 0}),
+            ui.Button({"ID": "cfg_activate_btn", "Text": "激活", "StyleSheet": BTN_PRIMARY, "Weight": 0}),
+            ui.Button({"ID": "cfg_deactivate_btn", "Text": "停用", "StyleSheet": BTN_STYLE, "Weight": 0}),
+        ]),
+        ui.VGap(SPACE_SM),
+        _sep(),
+    ]
+
+
 def _show_config_dialog():
-    _action_log("🪟 打开配置…")
     """打开配置窗口"""
     global _config_open
     if _config_open:
         return
+    _config_open = True
     _check_project_mask_reset()  # 切工程则重置遮幅
     CONFIG_WIN_ID = "com.myjc.delivery_checker_config"
 
     config_disp = bmd.UIDispatcher(fu.UIManager)
-    _action_log("🪟 config_disp OK")
 
     # ── 从注册表生成布局（个人版过滤）──
     _is_personal = IS_PERSONAL
-    _action_log("🪟 sections OK")
     _sections = CONFIG_SECTIONS if _is_personal else [s for s in CONFIG_SECTIONS if s["id"] not in ("deepseek_key", "feishu_app_id", "feishu_secret")]
     body_widgets = []
     # 授权区（仅个人版，三行固定布局）
@@ -1476,9 +1567,7 @@ print(result[0])
         import traceback
         _action_log(f"⚠ 遮幅初始化失败: {_e}\n{traceback.format_exc()}")
 
-    _action_log("🪟 show OK")
     config_dlg.Show()
-    _config_open = True  #  对话框真正打开后再标已打开
     config_dlg.RecalcLayout()
     config_disp.RunLoop()
     config_dlg.Hide()
