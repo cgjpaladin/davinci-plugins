@@ -943,6 +943,8 @@ class RenamerAPI:
                 _UPDATE_STATE["latest"] = r.get("latest", "")
                 _UPDATE_STATE["notes"] = r.get("notes", "")
                 _UPDATE_STATE["urls"] = r.get("urls", [])
+                _UPDATE_STATE["requires_full_install"] = r.get("requires_full_install", False)
+                _UPDATE_STATE["full_install_url"] = r.get("full_install_url", "")
             return r
         except Exception as e:
             _log.info(f"check_update error: {e}")
