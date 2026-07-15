@@ -870,6 +870,7 @@ def _render_group(group_name, sections, tree, parent_group=""):
                 _set_row(row, row_data)
                 tree.AddTopLevelItem(row)
 
+def _show_config_dialog():
     """打开配置窗口"""
     global _config_open
     if _config_open:
