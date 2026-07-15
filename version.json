@@ -58,7 +58,7 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
-    "notes": "## v3.8.0  ⚠️ 需全量安装\n\n此版本为重大架构升级，**不支持增量更新**。\n请下载全量包（覆盖安装，不会丢失数据）：\n\n📥 https://jcnjno6i0upk.feishu.cn/docx/HEvydRFQZorKEnxBTYkconsinih\n\n---\n\n📂 归档有进度条，重命名也有进度条了\n✅ 归档完成自动校验\n🖊 制作者支持中英文和数字\n🛡️ 增量更新修复，后续可正常增量\n🚀 导出日志并行，速度快一倍\n🐛 修复大量 bug",
+    "notes": "## v3.8.0  ⚠️ 需全量安装\n\n此版本为重大架构升级，**不支持增量更新**。\n请点击右下角 📖 使用手册，下载最新全量包（覆盖安装，不会丢失数据）。\n\n---\n\n📂 归档有进度条，重命名也有进度条了\n✅ 归档完成自动校验\n🖊 制作者支持中英文和数字\n🛡️ 增量更新修复，后续可正常增量\n🚀 导出日志并行，速度快一倍\n🐛 修复大量 bug",
     "sha256": "3b1f8103753c35a4f0733bf6b20d82d82272b98790826155cd491ee0e661bb76",
     "requires_full_install": true,
     "full_install_url": "https://jcnjno6i0upk.feishu.cn/docx/HEvydRFQZorKEnxBTYkconsinih",
@@ -91,7 +91,7 @@
   },
   "batch_renamer_win": {
     "version": "3.8.0",
-    "notes": "## v3.8.0  ⚠️ 需全量安装\n\n此版本为重大架构升级，**不支持增量更新**。\n请下载全量包（覆盖安装，不会丢失数据）：\n\n📥 https://jcnjno6i0upk.feishu.cn/docx/HEvydRFQZorKEnxBTYkconsinih\n\n---\n\n📂 归档有进度条，重命名也有进度条了\n✅ 归档完成自动校验\n🖊 制作者支持中英文和数字\n🛡️ 增量更新修复，后续可正常增量\n🚀 导出日志并行，速度快一倍\n🐛 修复大量 bug",
+    "notes": "## v3.8.0  ⚠️ 需全量安装\n\n此版本为重大架构升级，**不支持增量更新**。\n请点击右下角 📖 使用手册，下载最新全量包（覆盖安装，不会丢失数据）。\n\n---\n\n📂 归档有进度条，重命名也有进度条了\n✅ 归档完成自动校验\n🖊 制作者支持中英文和数字\n🛡️ 增量更新修复，后续可正常增量\n🚀 导出日志并行，速度快一倍\n🐛 修复大量 bug",
     "sha256": "3b1f8103753c35a4f0733bf6b20d82d82272b98790826155cd491ee0e661bb76",
     "requires_full_install": true,
     "full_install_url": "https://jcnjno6i0upk.feishu.cn/docx/HEvydRFQZorKEnxBTYkconsinih",
