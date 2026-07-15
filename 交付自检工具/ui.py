@@ -1575,7 +1575,6 @@ print(result[0])
     def _toggle_custom_visible():
         idx = combo.CurrentIndex
         is_custom = idx == _CUSTOM_IDX
-        _action_log(f"🎬 mask_toggle: idx={idx} custom_idx={_CUSTOM_IDX} show={is_custom}")
         cfg["cfg_mask_custom_lbl"].Visible = is_custom
         cfg["cfg_mask_custom"].Visible = is_custom
         config_dlg.RecalcLayout()
