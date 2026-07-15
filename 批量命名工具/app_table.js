@@ -38,8 +38,8 @@ const _HEADER_KEYS = ['ep','sc','gr','tk','desc','method','author','ver','status
 const STATUS_OPTIONS = ['OK','KP','NG'];
 const STATUS_TOOLTIPS = {OK:'通过 — 素材合格', KP:'备选', NG:'不合格 — 标记废弃'};
 const METHOD_OPTIONS = ['智能分镜版','双轨版','角色专属版'];
-const HINT_NO_METHOD = HINT_NO_METHOD;  // 未选择制作方式时的提示
-const HINT_DESC = HINT_DESC;           // 镜头描述输入框占位
+const HINT_NO_METHOD = '请先选择制作方式';  // 未选择制作方式时的提示
+const HINT_DESC = '输入镜头描述';           // 镜头描述输入框占位
 
 function reindex(){files.forEach((f,i)=>{f._idx=i})}
 function updSortIndicators(){

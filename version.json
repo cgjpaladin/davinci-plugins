@@ -59,7 +59,7 @@
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/batch_renamer_update.zip"
     ],
     "notes": "## v3.8.0\n\n📂 归档有进度条，重命名也有进度条了\n✅ 归档完成自动校验，少文件或损坏立刻告诉你\n🖊 制作者支持中英文和数字了\n🛡️ 增量更新更可靠，不会再退回旧版本\n🚀 导出日志并行检测，速度快了一倍\n🐛 修复了大量 bug，稳定性大幅提升",
-    "sha256": "a1a387b26cf36bbae766e1c901e543754c8b7cb599783024d15840410e9c1656",
+    "sha256": "1df715694ee111f3ab117630f08baab5ff9a9ba362b7c5b755c0ba1c35c946eb",
     "history": [
       {
         "version": "3.8.0",
@@ -90,7 +90,7 @@
   "batch_renamer_win": {
     "version": "3.8.0",
     "notes": "## v3.8.0\n\n📂 归档有进度条，重命名也有进度条了\n✅ 归档完成自动校验，少文件或损坏立刻告诉你\n🖊 制作者支持中英文和数字了\n🛡️ 增量更新更可靠，不会再退回旧版本\n🚀 导出日志并行检测，速度快了一倍\n🐛 修复了大量 bug，稳定性大幅提升",
-    "sha256": "a1a387b26cf36bbae766e1c901e543754c8b7cb599783024d15840410e9c1656",
+    "sha256": "1df715694ee111f3ab117630f08baab5ff9a9ba362b7c5b755c0ba1c35c946eb",
     "urls": [
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/batch_renamer_update.zip",
