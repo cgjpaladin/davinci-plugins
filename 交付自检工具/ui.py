@@ -567,6 +567,22 @@ def _validate_checks():
 _validate_checks()
 del _validate_checks  # 用完即焚，不污染命名空间
 
+def _validate_config_sections():
+    """CONFIG_SECTIONS 注册表校验：builder 可调用 + type 有 saver"""
+    errors = []
+    _known_types = {"api_key", "mask_ratio", "smb_paths", "censor_personal"}
+    for s in CONFIG_SECTIONS:
+        b = s.get("builder")
+        if not callable(b):
+            errors.append(f"CONFIG_SECTIONS['{s['id']}'] builder 不可调用: {b}")
+        if s["type"] not in _known_types:
+            errors.append(f"CONFIG_SECTIONS['{s['id']}'] type={s['type']} 未在 _do_save 中处理")
+    if errors:
+        raise AssertionError("CONFIG_SECTIONS 注册表校验失败:\n  " + "\n  ".join(errors))
+
+_validate_config_sections()
+del _validate_config_sections
+
 # ═══════════════════════════════════════════
 # 全局状态
 # ═══════════════════════════════════════════
