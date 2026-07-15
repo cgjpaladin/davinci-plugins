@@ -109,6 +109,7 @@ async function init(){
   window._fieldKeysAll=_allFields.filter(f=>f.key!=='tk').map(f=>f.key);
   window._headerKeys=_allFields.map(f=>f.key);  // 含 tk，用于表头渲染
   window._fieldLabels={};_allFields.forEach(f=>{window._fieldLabels[f.key]=f.label});
+  call('debug_log','config: '+_allFields.length+' fields, '+window._headerKeys.length+' headers');
 
   // 从 fields[] 派生选项，加字段时自动跟随（无需手动同步）
   methodDescMap=cfg.method_desc_map||{};_nameFmt=cfg.name_format||[];
@@ -116,6 +117,7 @@ async function init(){
   const _fdStatus=_allFields.find(f=>f.key==='status');
   window.METHOD_OPTIONS=(_fdMethod?.dv||['智能分镜版','双轨版','角色专属版']).filter(v=>v!=='请选择');
   window.STATUS_OPTIONS=(_fdStatus?.dv||['OK','KP','NG']).filter(v=>v!=='请选择');
+  call('debug_log','config: METHOD='+window.METHOD_OPTIONS.length+' STATUS='+window.STATUS_OPTIONS.length);
 
   // 审查状态按钮 — 从 STATUS_OPTIONS 动态生成，加状态只改 Python dv
   const _rsContainer=document.getElementById('reviewStatusBtns');
@@ -124,17 +126,20 @@ async function init(){
       const btn=document.createElement('button');
       btn.className='rs-'+s.toLowerCase();btn.id='rs'+s;btn.textContent=s;
       btn.title=STATUS_TOOLTIPS[s]||s;
-      btn.addEventListener('click',()=>setReviewStatus(s));  // ⚠️ 事件绑定必须在此处，不能等DOM初始化
+      btn.addEventListener('click',()=>setReviewStatus(s));
       _rsContainer.appendChild(btn);
     });
-  }
+    call('debug_log','config: review buttons generated for '+window.STATUS_OPTIONS.length+' statuses');
+  }else{call('debug_log','WARN: reviewStatusBtns container not found');}
 
   // 审查面板字段：排除方法联动字段（desc/method）和专用 UI 字段（tk/status）
   window._REVIEW_FIELDS=_allFields.filter(f=>!['desc','method','tk','status'].includes(f.key));
+  call('debug_log','config: review fields='+window._REVIEW_FIELDS.length);
 
   // 视频/图片格式从 Python SUPPORTED_EXT 派生，加格式只改 Python
   if(cfg.video_formats) _VIDEO_EXT=new Set(cfg.video_formats.map(s=>s.toLowerCase()));
   if(cfg.image_formats) _IMG_EXT=new Set(cfg.image_formats.map(s=>s.toLowerCase()));
+  call('debug_log','config: video_formats='+(cfg.video_formats||[]).length+' image_formats='+(cfg.image_formats||[]).length);
 
   // 收集所有预置镜头描述值供碰撞检测
   _reservedDesc.clear();
