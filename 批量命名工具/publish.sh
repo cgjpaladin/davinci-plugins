@@ -15,7 +15,7 @@ VERSION=$(head -1 "$SCRIPT_DIR/app_table.js" | grep -o "3\.[0-9]*\.[0-9]*" || ec
 APP_SRC="$SCRIPT_DIR/dist/批量命名工具.app"
 DESKTOP_APP="$HOME/Desktop/批量命名工具.app"
 DESKTOP_HTML="$DESKTOP_APP/Contents/Resources/renamer_table.html"
-DESKTOP_PY="$DESKTOP_APP/Contents/Resources/shared/app_core.py"
+DESKTOP_PY="$DESKTOP_APP/Contents/Resources/app_core.py"
 
 _ok()  { echo "  ✅ $1"; }
 _warn(){ echo "  ⚠️  $1"; }
@@ -29,7 +29,7 @@ _precheck() {
 
   # 1. Python import 验证（mock webview 后完整加载）
   python3 -c "
-import sys,types; sys.path.insert(0,'$WS/shared')
+import sys,types; sys.path.insert(0,'$WS/批量命名工具'); sys.path.insert(0,'$WS/shared')
 wv=types.ModuleType('webview'); sys.modules['webview']=wv
 from app_core import RenamerAPI, _LOG_NAME; api=RenamerAPI()
 cfg=api.get_config()
@@ -37,7 +37,7 @@ assert len(cfg['video_formats'])>0 and len(cfg['image_formats'])>0
 " 2>&1 || _fail "Python import 崩溃（常量后定义先用？）"
 
   # 2. Python AST
-  python3 -c "import py_compile; py_compile.compile('$WS/shared/app_core.py', doraise=True)" \
+  python3 -c "import py_compile; py_compile.compile('$WS/批量命名工具/app_core.py', doraise=True)" \
     || _fail "app_core.py 语法错误"
 
   # 3. JS syntax
@@ -52,8 +52,8 @@ for m in re.finditer(r'const (\w+)\s*=\s*\1\s*[;\n]', js):
 " 2>&1 || _fail "JS 有自引用常量 (const X=X)"
 
   # 5. _LOG_NAME 定义在 logger 初始化之前
-  _ln_line=$(grep -n '_LOG_NAME' "$WS/shared/app_core.py" | head -1 | cut -d: -f1)
-  _log_line=$(grep -n '_hdlr = logging.FileHandler' "$WS/shared/app_core.py" | cut -d: -f1)
+  _ln_line=$(grep -n '_LOG_NAME' "$WS/批量命名工具/app_core.py" | head -1 | cut -d: -f1)
+  _log_line=$(grep -n '_hdlr = logging.FileHandler' "$WS/批量命名工具/app_core.py" | cut -d: -f1)
   [ "$_ln_line" -lt "$_log_line" ] || _fail "_LOG_NAME (L$_ln_line) 定义在 logger 初始化 (L$_log_line) 之后"
 
   _ok "预检 v$VERSION"
@@ -69,11 +69,11 @@ _patch_desktop() {
   cp _build/renamer_table.html "$DESKTOP_HTML"
   # 2) 注入 app_core.py
   if [ "$use_workspace" = "1" ]; then
-    cp "$WS/shared/app_core.py" "$DESKTOP_PY"
-  elif [ -f "$APP_SRC/Contents/Resources/shared/app_core.py" ]; then
-    cp "$APP_SRC/Contents/Resources/shared/app_core.py" "$DESKTOP_PY"
+    cp "$WS/批量命名工具/app_core.py" "$DESKTOP_PY"
+  elif [ -f "$APP_SRC/Contents/Resources/app_core.py" ]; then
+    cp "$APP_SRC/Contents/Resources/app_core.py" "$DESKTOP_PY"
   else
-    cp "$WS/shared/app_core.py" "$DESKTOP_PY"
+    cp "$WS/批量命名工具/app_core.py" "$DESKTOP_PY"
   fi
   # 3) 自测补丁
   python3 -c "

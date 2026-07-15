@@ -18,5 +18,5 @@ if os.path.isdir(_DELTA_DIR):
 if _MEIPASS not in sys.path:
     sys.path.insert(0, _MEIPASS)
 
-from shared.app_core import main
+from app_core import main
 main()

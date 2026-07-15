@@ -6,7 +6,7 @@ FAIL=0
 
 echo "═══ 1. Python import (mock webview) ═══"
 python3 -c "
-import sys; sys.path.insert(0,'shared')
+import sys; sys.path.insert(0,'批量命名工具'); sys.path.insert(0,'shared')
 # mock webview — it's only available at runtime in the app bundle
 import types; wv=types.ModuleType('webview'); sys.modules['webview']=wv
 from app_core import RenamerAPI, _LOG_NAME, _DELTA_DIR, THUMB_SIZE
@@ -15,7 +15,7 @@ print(f'OK: {len(cfg[\"video_formats\"])} video, {len(cfg[\"image_formats\"])} i
 " 2>&1 || { echo "❌ Python import failed"; FAIL=1; }
 
 echo "═══ 2. Python AST ═══"
-python3 -c "import py_compile; py_compile.compile('shared/app_core.py', doraise=True); print('OK')" 2>&1 || { echo "❌ app_core.py syntax error"; FAIL=1; }
+python3 -c "import py_compile; py_compile.compile('批量命名工具/app_core.py', doraise=True); print('OK')" 2>&1 || { echo "❌ app_core.py syntax error"; FAIL=1; }
 
 echo "═══ 3. JS syntax ═══"
 node --check 批量命名工具/app_table.js 2>&1 && echo "OK" || { echo "❌ JS syntax error"; FAIL=1; }
@@ -31,7 +31,7 @@ print('OK')
 
 echo "═══ 5. Python 常量先于使用 ═══"
 python3 << 'PYEOF' || FAIL=1
-import re; py_lines=open('shared/app_core.py').readlines()
+import re; py_lines=open('批量命名工具/app_core.py').readlines()
 defined=set(); issues=[]
 for i,l in enumerate(py_lines,1):
     m=re.match(r'^(\w+)\s*=',l.strip())
@@ -47,7 +47,7 @@ PYEOF
 
 echo "═══ 6. naming.py 命名逻辑 ═══"
 python3 -c "
-import sys; sys.path.insert(0,'shared')
+import sys; sys.path.insert(0,'批量命名工具'); sys.path.insert(0,'shared')
 from naming import build_filename, FIELD_CONFIG
 fields = {f['key']: '01' for f in FIELD_CONFIG if f['key'] not in ('method','desc','status')}
 fields.update({'method':'双轨版','desc':'测试镜头','status':'OK'})
@@ -61,7 +61,7 @@ print('OK: ' + result[:50])
 echo "═══ 7. 字符串字面量污染（replace_all 误伤检测） ═══"
 python3 -c "
 import re, sys
-files = ['批量命名工具/app_table.js', 'shared/app_core.py']
+files = ['批量命名工具/app_table.js', '批量命名工具/app_core.py']
 # 已知常量名 — 不应出现在普通字符串内（f-string / const def 除外）
 consts = ['THUMB_SIZE', '_DELTA_DIR', '_LOG_NAME', 'HINT_NO_METHOD', 'HINT_DESC',
           'FIELD_SANITIZE', 'METHOD_OPTIONS', 'STATUS_OPTIONS']

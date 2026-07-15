@@ -1,8 +1,9 @@
 """冒烟测试 — 核心流程自动化验证"""
 import os, sys, tempfile, shutil
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from shared.naming import build_filename, FIELD_CONFIG, parse_filename, FILENAME_RE
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # 批量命名工具/
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # workspace root
+from naming import build_filename, FIELD_CONFIG, parse_filename, FILENAME_RE
 from shared.naming_checks import check_zero_byte, check_double_ext
 
 passed = 0

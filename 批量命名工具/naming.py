@@ -1,5 +1,5 @@
 """
-shared/naming.py — 命名规则单一事实来源
+naming.py — 批量命名工具命名规则单一事实来源
 renamer_v3 和 checker 共用一个 FIELD_CONFIG，改一处全局生效
 """
 import os, re

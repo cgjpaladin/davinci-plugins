@@ -43,15 +43,6 @@ python3 _splice.py "$VARIANT"
 # 打包到临时 dist（每次 mktemp 全新目录，零删除）
 BUILD_DIST=$(mktemp -d /tmp/renamer_build_XXXXXX)
 
-# 构建隔离：临时替换 shared/ 目录为仅含批量命名所需的 7 个文件
-SHARED_NEEDED="app_core naming naming_checks _qr license updater update_config"
-SHARED_TMP=$(mktemp -d /tmp/shared_clean_XXXXXX)
-trap "rm -rf $SHARED_TMP" EXIT
-for m in $SHARED_NEEDED; do cp "../shared/${m}.py" "$SHARED_TMP/"; done
-# 挪走源码 shared/ → 用干净版替换（构建完自动恢复）
-mv ../shared ../_shared_backup
-mv "$SHARED_TMP" ../shared
-
 $SYSPY -m PyInstaller \
   --onedir --windowed \
   --strip --noupx \
@@ -60,8 +51,8 @@ $SYSPY -m PyInstaller \
   --name "批量命名工具" \
   --icon app_icon.icns \
   --add-data "$HTML_BUNDLE:." \
-  --add-data "../shared/app_core.py:shared/" \
-  --add-data "../shared/naming.py:shared/" \
+  --add-data "app_core.py:." \
+  --add-data "naming.py:." \
   --add-data "../shared/naming_checks.py:shared/" \
   --add-data "../shared/_qr.py:shared/" \
   --add-data "../shared/license.py:shared/" \
@@ -81,7 +72,6 @@ $SYSPY -m PyInstaller \
   --hidden-import openpyxl.drawing.image \
   --hidden-import openpyxl.utils.units \
   --collect-all openpyxl \
-  $EXCLUDES \
   --noconfirm \
   renamer_web.py
 
@@ -90,10 +80,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_OUT="$SCRIPT_DIR/dist/$APP_NAME.app"
 rm -rf "$APP_OUT"
 ditto "$BUILD_DIST/批量命名工具.app" "$APP_OUT" 2>/dev/null && echo "✅ $APP_NAME.app → dist/"
-
-# 恢复源码 shared/ 目录
-rm -rf ../shared && mv ../_shared_backup ../shared
-rm -rf "$SHARED_TMP"
 
 set +e  # 后续步骤可容忍失败（PlistBuddy 可能在 CI 不可用）
 
@@ -134,8 +120,8 @@ rm -f "$DELTA_ZIP"
  zip -rq "$DELTA_ZIP" \
   "$HTML_FILE" \
   "version.txt" \
-  shared/app_core.py \
-  shared/naming.py \
+  app_core.py \
+  naming.py \
   shared/naming_checks.py \
   shared/_qr.py \
   shared/license.py \

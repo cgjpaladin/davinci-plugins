@@ -7,7 +7,7 @@ from datetime import datetime
 from urllib.parse import unquote
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from shared.naming import (
+from naming import (
     FIELD_CONFIG, DISPLAY_FIELDS, METHOD_DESC_MAP, FIELD_RULES,
     build_filename, parse_filename, build_folder,
     MEDIA_EXT, sanitize_text,
