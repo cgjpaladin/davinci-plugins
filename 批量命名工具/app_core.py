@@ -181,6 +181,7 @@ class RenamerAPI:
             "app_version": _APP_VERSION,
             "video_formats": sorted(e.lstrip('.') for e in SUPPORTED_EXT - _img_exts),
             "image_formats": sorted(e.lstrip('.') for e in SUPPORTED_EXT & _img_exts),
+            "platform": "darwin" if sys.platform == "darwin" else "win32",
         }
 
     def open_manual(self):

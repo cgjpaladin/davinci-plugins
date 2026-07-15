@@ -491,8 +491,9 @@ function _initTBodyClick(){
     const menu = document.createElement('div'); menu.id='ctxMenu';
     menu.style.cssText='position:fixed;z-index:10000;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 0;min-width:160px;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,.5)';
     const safePath = files[i].path.replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,'\\x27');
+    const finderLabel = (window._cfg && window._cfg.platform === 'darwin') ? '📂 在 Finder 中显示' : '📂 在资源管理器中显示';
     menu.innerHTML=[
-      `<div style="padding:6px 12px;cursor:pointer;color:var(--text)" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('ctxMenu').remove();call('reveal_in_finder','${safePath}')">📂 在 Finder 中显示</div>`,
+      `<div style="padding:6px 12px;cursor:pointer;color:var(--text)" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('ctxMenu').remove();call('reveal_in_finder','${safePath}')">${finderLabel}</div>`,
       `<div style="padding:6px 12px;cursor:pointer;color:#e55" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('ctxMenu').remove();removeSelected()">🗑 从列表移除</div>`,
     ].join('');
     // 防止菜单溢出屏幕
@@ -1240,7 +1241,8 @@ async function openReview(i){
       _vidCheckTimeout=setTimeout(()=>{
         if(video.readyState<2||video.videoWidth===0){
           video.style.display='none';
-          if(mediaErr){mediaErr.innerHTML='⚠ 视频编码不支持<br><span style="color:#39f;cursor:pointer;text-decoration:underline" onclick="call(\"reveal_in_finder\",\"'+f.path.replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,'\\x27')+'\")">→ 在 Finder 中打开</span>';mediaErr.style.display='block'}
+          const finderLabel = (window._cfg && window._cfg.platform === 'darwin') ? '在 Finder 中打开' : '在资源管理器中打开';
+          if(mediaErr){mediaErr.innerHTML='⚠ 视频编码不支持<br><span style="color:#39f;cursor:pointer;text-decoration:underline" onclick="call(\"reveal_in_finder\",\"'+f.path.replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,'\\x27')+'\")">→ '+finderLabel+'</span>';mediaErr.style.display='block'}
         }
       },3000);
       video.addEventListener('loadeddata',()=>{clearTimeout(_vidCheckTimeout)}, {once:true});
