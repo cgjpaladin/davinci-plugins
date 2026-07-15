@@ -16,6 +16,7 @@ from shared.naming_checks import check_zero_byte, check_double_ext, check_size_a
 
 import webview
 import logging
+_LOG_NAME = "renamer.log"  # 日志文件名——必须在 logger 初始化之前定义
 _log = logging.getLogger("renamer_web")
 _log.setLevel(logging.DEBUG)
 try:
@@ -66,7 +67,6 @@ _window = None  # 存引用
 _archive_progress = {"current": 0, "total": 0, "percent": 0, "status": "", "done": True}
 _rename_progress = {"current": 0, "total": 0, "percent": 0, "status": "", "done": True}
 _DELTA_DIR = os.path.expanduser('~/.config/renamer/delta')     # 增量覆盖目录
-_LOG_NAME = "renamer.log"                                        # 日志文件名
 
 
 def _err_human(e):
