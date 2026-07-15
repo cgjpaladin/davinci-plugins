@@ -40,11 +40,21 @@ mkdir -p "$PKG/交付自检工具/shared/dftt_timecode/core" \
          "$PKG/交付自检工具/dicts" \
          "$PKG/交付自检工具/shared/ui"
 
-# ── 2. 核心文件 ──
-cp "$WS/交付自检工具"/{ui,check_core,config,install_agent}.py "$PKG/交付自检工具/"
-cp "$WS/交付自检工具"/{launcher_personal,shell_personal}.py \
-   "$WS/交付自检工具"/{install.command,.env.example} \
-   "$PKG/交付自检工具/"
+# ── 2. 核心文件（自动收录：目录下所有 .py，排除公司版专用文件）──
+# 规则：git tracked 的 .py 自动收录，launcher.py/shell.py 为公司版跳过
+echo "  📋 产品 .py 文件:"
+for f in "$WS/交付自检工具"/*.py; do
+    bn=$(basename "$f")
+    case "$bn" in
+        launcher.py|shell.py)
+            continue  # 公司版专用，个人版不需要
+            ;;
+    esac
+    cp "$f" "$PKG/交付自检工具/"
+    echo "    $bn"
+done
+# 以下两个不是 .py，单独 cp
+cp "$WS/交付自检工具"/{install.command,.env.example} "$PKG/交付自检工具/"
 
 # 发布版本不带 dev 通道
 sed -i '' 's/^__channel__ = ".*"/__channel__ = ""/' "$PKG/交付自检工具/config.py"

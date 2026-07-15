@@ -95,6 +95,16 @@ grep -q "_SECTION_BUILDERS" "$DELIVERY_DIR/ui.py" 2>/dev/null && { echo "  ❌ u
 grep -q "_make_result_passthrough" "$DELIVERY_DIR/ui.py" 2>/dev/null && { echo "  ❌ ui.py 仍有 _make_result_passthrough"; DRY_FAIL=1; }
 [ $DRY_FAIL -eq 0 ] && echo "  ✅ DRY 无回归" || FAIL=1
 
+# ── 新增产品 .py 提醒 ──
+NEW_PROD=$(git diff --cached --name-only --diff-filter=A 2>/dev/null | grep '交付自检工具/.*\.py$' | grep -v '__pycache__' || true)
+if [ -n "$NEW_PROD" ]; then
+    echo "$NEW_PROD" | while read f; do
+        bn=$(basename "$f")
+        case "$bn" in launcher.py|shell.py|__init__.py) continue ;; esac
+        echo "  💡 新增产品 .py: $bn（build_personal.sh 会自动收录）"
+    done
+fi
+
 echo "  🔍 检查: CHANGELOG 版本..."
 VER=$(grep "__version__" "$DELIVERY_DIR/config.py" | head -1 | grep -oE "[0-9]+\.[0-9]+")
 if grep -q "## v$VER" "$DELIVERY_DIR/CHANGELOG.md" 2>/dev/null; then
