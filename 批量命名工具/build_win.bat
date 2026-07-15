@@ -1,5 +1,5 @@
 @echo off
-REM 批量命名工具 - Windows 打包脚本 (v3.7.13)
+REM 批量命名工具 - Windows 打包脚本 (v3.8.0)
 REM 用法: build_win.bat table  表格版（推荐）
 REM       build_win.bat        卡片版（备用）
 REM 前提: Python 3.13 + pywebview 6.2.1 + ffmpeg.exe 在项目目录
