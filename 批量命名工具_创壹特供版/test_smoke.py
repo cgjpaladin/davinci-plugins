@@ -1,7 +1,10 @@
 """冒烟测试 — 创壹特供版核心流程自动化验证"""
 import os, sys, tempfile, shutil
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+sys.path.insert(0, HERE)   # 创壹目录（naming_createone.py）
+sys.path.insert(0, ROOT)    # 项目根（shared/）
 from naming_createone import build_filename, FIELD_CONFIG, parse_filename, FILENAME_RE, ext_to_type
 
 passed = 0

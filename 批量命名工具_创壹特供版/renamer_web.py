@@ -5,7 +5,10 @@ Python 后端 + HTML/CSS 前端（表格版）
 import os, sys, json, statistics, io as _sys_io
 from urllib.parse import unquote
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_HERE)
+sys.path.insert(0, _HERE)   # 创壹目录（naming_createone.py 所在）
+sys.path.insert(0, _ROOT)    # 项目根（shared/ 所在）
 from naming_createone import (
     FIELD_CONFIG,
     build_filename, parse_filename,
