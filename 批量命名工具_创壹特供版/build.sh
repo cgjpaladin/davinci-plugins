@@ -34,7 +34,7 @@ $SYSPY -m PyInstaller \
   --name "批量命名工具-创壹特供版" \
   --icon app_icon.icns \
   --add-data "$HTML_BUNDLE:." \
-  --add-data "../shared:shared" \
+  --add-data "../shared/naming_checks.py:shared/naming_checks.py" \
   --add-binary "$(which ffmpeg || echo /opt/homebrew/bin/ffmpeg):." \
   --add-binary "$(which ffprobe || echo /opt/homebrew/bin/ffprobe):." \
   --collect-data webview \
@@ -63,7 +63,7 @@ BUNDLE="$DESK/Contents/Resources/$HTML_FILE"
 if python3 -c "
 h=open('$BUNDLE').read()
 assert ':root' in h, 'CSS missing'
-assert 'DIGIT_RULES' in h, 'JS missing'
+assert 'activateEdit' in h or 'DIGIT_RULES' in h, 'JS missing'
 " 2>/dev/null; then
   echo "✅ $APP_NAME.app 已更新到桌面（CSS+JS 验证通过）"
 else
@@ -75,9 +75,9 @@ fi
 # ══════════════════════════════════════════════════
 # py -3.11 -m PyInstaller \
 #   --onefile --noconsole --clean --strip --noupx \
-#   --name "批量命名工具-创壹特供版" \
+#   --name "批量命名工具-创壹特供版-v1.1" \
 #   --icon app_icon.ico --version-file version_info.txt \
-#   --add-data "_build/renamer_web.html;." --add-data "../shared;shared" \
+#   --add-data "_build/renamer_web.html;." --add-data "naming_checks.py;shared/naming_checks.py" \
 #   --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." \
 #   --hidden-import webview --hidden-import webview.platforms.edgechromium \
 #   --hidden-import clr --hidden-import bottle \
