@@ -1,5 +1,16 @@
 # 创壹特供版 · TODO
 
+> v1.1 | 2026-07-16
+
+## v1.1 已完成
+- [x] 6 处 `except Exception: pass` → 日志/traceback
+- [x] `naming_createone.py` 从 `shared/` → 创壹目录（sys.path 修复）
+- [x] `build.sh` 瘦身：shared/ 全量 → 仅 naming_checks
+- [x] `build_win.bat` 重写：v1.0→v1.1 + py -3.11 + --onefile + openpyxl
+- [x] `打包指南_Windows.md` 更新
+- [x] 清理 dist/(217MB) + build/(37MB) 构建残留
+- [x] 冒烟测试 29/29 通过
+
 ## v1.0 已完成 (表格版)
 - [x] EP/SC/SH/TK/desc/type/author/V/status 9 字段命名系统
 - [x] 表格视图：双击单元格内联编辑，Enter 提交 / Escape 取消
@@ -14,8 +25,8 @@
 - [x] 无归档按钮、无目标路径输入
 - [x] Python 冒烟测试 29/29 ✅
 - [x] macOS + Windows 构建脚本
-- [x] 原版代码零改动
 
 ## 远期规划
 - [ ] Windows 实际打包+运行测试
 - [ ] 多文件批量编辑 SH（当前多选编辑 SH 不适用多镜逻辑）
+- [ ] `renamer_web.py` 架构对齐标准版（23行薄壳 vs 620行全内联）— 需先评估字段差异兼容性
