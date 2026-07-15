@@ -871,6 +871,7 @@ def _render_group(group_name, sections, tree, parent_group=""):
                 tree.AddTopLevelItem(row)
 
 def _show_config_dialog():
+    _action_log("🪟 打开配置…")
     """打开配置窗口"""
     global _config_open
     if _config_open:
