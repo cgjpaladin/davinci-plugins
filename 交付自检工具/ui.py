@@ -1576,7 +1576,7 @@ print(result[0])
         cfg["cfg_mask_custom_lbl"].Visible = is_custom
         cfg["cfg_mask_custom"].Visible = is_custom
     _toggle_custom_visible()
-    config_dlg.On["cfg_mask_preset"].CurrentTextChanged = lambda ev: _toggle_custom_visible()
+    config_dlg.On["cfg_mask_preset"].CurrentIndexChanged = lambda ev: _toggle_custom_visible()
 
     config_dlg.Show()
     config_dlg.RecalcLayout()
