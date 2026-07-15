@@ -580,9 +580,6 @@ def _validate_config_sections():
     if errors:
         raise AssertionError("CONFIG_SECTIONS 注册表校验失败:\n  " + "\n  ".join(errors))
 
-_validate_config_sections()
-del _validate_config_sections
-
 # ═══════════════════════════════════════════
 # 全局状态
 # ═══════════════════════════════════════════
@@ -1020,6 +1017,9 @@ CONFIG_SECTIONS = [
     {"id": "smb_paths",      "label": "脱机素材检测路径（可多选）", "type": "smb_paths", "builder": _build_smb_paths},
     {"id": "censor_personal", "label": "个人词典", "type": "censor_personal",       "builder": _build_censor_personal},
 ]
+
+_validate_config_sections()
+del _validate_config_sections
 
 # ── 分隔符 ──
 def _sep():
