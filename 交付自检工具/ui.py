@@ -876,7 +876,6 @@ def _show_config_dialog():
     global _config_open
     if _config_open:
         return
-    _config_open = True
     _check_project_mask_reset()  # 切工程则重置遮幅
     CONFIG_WIN_ID = "com.myjc.delivery_checker_config"
 
@@ -1476,6 +1475,7 @@ print(result[0])
         _action_log(f"⚠ 遮幅初始化失败: {_e}\n{traceback.format_exc()}")
 
     config_dlg.Show()
+    _config_open = True  #  对话框真正打开后再标已打开
     config_dlg.RecalcLayout()
     config_disp.RunLoop()
     config_dlg.Hide()
