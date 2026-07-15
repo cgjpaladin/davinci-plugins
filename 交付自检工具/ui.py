@@ -64,7 +64,6 @@ from check_core import (check_track_structure, check_subtitle_clamping, check_di
                           check_through_edits, check_tailboard, check_coloring_markers,
                           check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
                           check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
-                          check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
                           check_color, check_camera_on_high_tracks, check_audio_color_tracks,
                           _get_smpte, _make_result,
                           check_path_location, check_offline_clips)
