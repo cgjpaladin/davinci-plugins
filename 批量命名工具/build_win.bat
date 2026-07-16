@@ -36,9 +36,9 @@ mkdir _build
 python _splice.py %VARIANT%
 if errorlevel 1 ( echo 拼接失败 & exit /b 1 )
 
-REM 打包 --onefile（方案C：单文件 + 首次运行自安装）
+REM 打包 --onefile（--noupx 降低杀软误报）
 python -m PyInstaller ^
-  --onefile --windowed --clean --noconsole ^
+  --onefile --windowed --clean --noconsole --noupx ^
   --name "%APP_NAME%" ^
   --icon app_icon.ico --version-file version_info.txt ^
   --add-data "%HTML_BUNDLE%;." ^
