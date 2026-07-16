@@ -6,12 +6,16 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "bb09726f5346cf17fd473b313e5ec89d4f0a0b8c21a8166c441ee01122e6f846",
+    "sha256": "e84b395f9cffd7605f76780e78958e0b3c7e6164354441eea459f02c27eedf21",
     "notes": "## v2.6.1\n🧹 配置页更整洁，画面比例菜单不再字体重叠\n✨ 自定义宽高比也进了下拉菜单，不用再手动找",
     "history": [
       {
         "version": "2.6.1",
         "notes": "## v2.6.1\n🧹 配置页更整洁，画面比例菜单不再字体重叠\n✨ 自定义宽高比也进了下拉菜单，不用再手动找"
+      },
+      {
+        "version": "2.6.1",
+        "notes": "## v2.6.1\n🎵 声道检测三合一：静音检查 + 声道缩减检测 + 轨道错配提醒\n🔊 支持检测 5.1/7.1 素材声道被意外缩减，不影响正常下混\n🐛 音频轨类型与素材声道不匹配时精准提示"
       },
       {
         "version": "2.6.0",

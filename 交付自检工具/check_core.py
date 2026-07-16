@@ -621,7 +621,14 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
 
 
 def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
-    """检测音频片段声道异常：声道静音 / 立体声被压成单声道。
+    """检测音频片段声道异常：声道静音 / 声道缩减 / mono↔stereo 轨道错配。
+
+    规则：
+      ① 声道静音：ch_idx 含 0 或 mute=True
+      ② 声道缩减：源声道数 > mapping 中活跃声道数（5.1→2.0 删声道、stereo→mono 压单声道）
+         - 不检测 5.1→2.0 自动下混（emb=6, act=6，达芬奇正常下混不计为缩减）
+      ③ mono↔stereo 错配：单声道素材放立体声轨道 或 立体声素材放单声道轨道
+         - 仅检测 mono/stereo，不涉及 5.1/7.1
 
     Returns:
         list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
@@ -634,10 +641,12 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
         if not items:
             continue
         track = f"A{ai}"
+        track_sub = timeline.GetTrackSubType("audio", ai)
+        smpte = _get_smpte(fps)
+
         for it in items:
             if not _in_io_range(it, io_range):
                 continue
-            # 跳过禁用的片段
             if _get_cached(it, "enabled", True) is False:
                 continue
 
@@ -646,22 +655,25 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
             ch_map = _get_cached(it, "channel_mapping")
             if not ch_map:
                 continue
+            embedded = ch_map.get("embedded_audio_channels", 0)
+            if not embedded:
+                continue
 
-            smpte = _get_smpte(fps)
             tc = smpte.gettc(start_frame)
-
             tm = ch_map.get("track_mapping", {})
+            item_has_issue = False
+
+            # ── ① + ②：逐 mapping 遍历，同时统计活跃声道 ──
+            active_channels = 0
             for ch_key, ch_data in tm.items():
                 ch_idx = ch_data.get("channel_idx", [])
-                ch_type = ch_data.get("type", "")
                 ch_muted_flag = ch_data.get("mute", False)
 
-                # ① 声道静音（channel_idx 含 0 或 mute=True）
+                # ① 声道静音
                 if ch_muted_flag or 0 in ch_idx:
-                    # 判断左右
                     if len(ch_idx) >= 2 and ch_idx[1] == 0:
                         ch_reason = "右声道静音"
-                    elif ch_idx[0] == 0:
+                    elif len(ch_idx) >= 2 and ch_idx[0] == 0:
                         ch_reason = "左声道静音"
                     else:
                         ch_reason = "声道静音"
@@ -670,17 +682,47 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
                         detail=f"{name}，{ch_reason}",
                         reason="请将音频片段复制为立体声",
                     ))
-                    break  # 一片段只报一次
+                    item_has_issue = True
+                    break  # 一片段只报一次 mute
 
-                # ② 立体声源被压成单声道
-                embedded = ch_map.get("embedded_audio_channels", 0)
-                if embedded >= 2 and ch_type == "mono" and len(ch_idx) == 1:
-                    issues.append(_make_result(
-                        "fail", track=track, timecode=tc,
-                        detail=f"{name}，单声道片段",
-                        reason="请将音频片段复制为立体声",
-                    ))
-                    break
+                # 统计活跃声道（ch_idx 不含 0，取长度）
+                active_channels += len([c for c in ch_idx if c > 0])
+
+            # ① 已报 → 跳过 ②③
+            if item_has_issue:
+                continue
+
+            # ── ② 声道缩减：源声道 > 活跃声道 ──
+            if embedded > active_channels:
+                if active_channels == 0:
+                    ch_reason = "全部声道丢失"
+                elif embedded >= 6 and active_channels <= 2:
+                    ch_reason = f"多声道被缩减（{embedded}声道→{active_channels}声道）"
+                elif embedded == 2 and active_channels == 1:
+                    ch_reason = f"立体声被缩减为单声道"
+                else:
+                    ch_reason = f"声道被缩减（{embedded}→{active_channels}）"
+                issues.append(_make_result(
+                    "fail", track=track, timecode=tc,
+                    detail=f"{name}，{ch_reason}",
+                    reason="请检查音频片段声道设置",
+                ))
+                item_has_issue = True
+                continue
+
+            # ── ③ mono↔stereo 轨道错配 ──
+            if track_sub == "stereo" and embedded == 1:
+                issues.append(_make_result(
+                    "fail", track=track, timecode=tc,
+                    detail=f"{name}，单声道片段放在立体声轨道",
+                    reason="请将片段移到单声道轨道",
+                ))
+            elif track_sub == "mono" and embedded >= 2:
+                issues.append(_make_result(
+                    "fail", track=track, timecode=tc,
+                    detail=f"{name}，立体声片段放在单声道轨道",
+                    reason="请将片段移到立体声轨道",
+                ))
 
     if not issues:
         return [_make_result("pass",
