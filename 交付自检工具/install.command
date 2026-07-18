@@ -311,13 +311,24 @@ if [ $NEED_PYTHON -eq 1 ] || [ -z "$PYTHON" ]; then
     [ -n "$PYTHON" ] || { echo "❌ Python 未安装"; PASS=0; }
 fi
 if [ -n "$PYTHON" ]; then
+_PY_ERR=$(mktemp /tmp/_deli_verify.XXXXXX)
     $PYTHON -c "
 import sys
 sys.path.insert(0, '$INSTALL_DIR')
 sys.path.insert(0, '$INSTALL_DIR/shared')
 import config; import check_core
 print(f'验证通过 v{config.version_string()}')
-" 2>&1 || { echo "❌ 导入失败"; PASS=0; }
+" >"$_PY_ERR" 2>&1
+    if [ $? -ne 0 ]; then
+        echo "❌ 导入失败"  # log
+        cat "$_PY_ERR" >> "$LOG" 2>/dev/null  # full traceback → log
+        _LAST_ERR=$(tail -1 "$_PY_ERR" 2>/dev/null | tr '\n' ' ')  # last line for UI
+        _LAST_ERR=${_LAST_ERR:-未知错误}
+        PASS=0
+    else
+        cat "$_PY_ERR" >> "$LOG" 2>/dev/null
+    fi
+    rm -f "$_PY_ERR"
 fi
 
 # ═══════════════════════════════════════
@@ -334,8 +345,11 @@ else
     echo "❌ 验证失败"
     echo >&3
     echo "  ❌ 安装未通过验证" >&3
-    echo "  请截图终端窗口内容，联系微信 paladinpp / B站 电影裁缝Bryan" >&3
+    if [ -n "${_LAST_ERR:-}" ] && [ "${_LAST_ERR}" != "未知错误" ]; then
+        echo "  ${_LAST_ERR}" >&3
+    fi
+    echo "  如问题持续，截图终端窗口发给我（微信 paladinpp / B站 电影裁缝Bryan）" >&3
     rm -rf /tmp/_deli_src /tmp/_deli_python.pkg /tmp/_deli_temp 2>/dev/null
-    osascript -e $'display dialog "安装验证未通过。\n请截图终端窗口内容联系微信 paladinpp / B站 电影裁缝Bryan" buttons {"好的"} default button 1 with icon stop'
+    osascript -e "display dialog \"安装验证未通过。${_LAST_ERR:-}\n\n如问题持续，截图终端窗口发给我（微信 paladinpp / B站 电影裁缝Bryan）\" buttons {\"好的\"} default button 1 with icon stop"
     exit 1
 fi
