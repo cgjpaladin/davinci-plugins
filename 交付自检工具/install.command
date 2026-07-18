@@ -25,7 +25,7 @@ fi
 echo >&3
 echo "========================================" >&3
 echo "  交付自检工具" >&3
-echo "  针对短剧/影视成片的自动化质检插件" >&3
+echo "  针对 DaVinci Resolve 时间线的自动化检查插件" >&3
 echo "  作者：电影裁缝 Bryan（微信 paladinpp / B站 电影裁缝Bryan）" >&3
 echo "========================================" >&3
 echo >&3
@@ -201,6 +201,7 @@ echo >&3
 INSTALL_LOG="/tmp/_deli_install.log"
 
 if [ $IS_UPDATE -eq 1 ]; then
+    echo "→ backup full install" && rm -rf /tmp/_deli_rollback && cp -r "$INSTALL_DIR" /tmp/_deli_rollback 2>/dev/null || true &&
     echo "→ mkdir" && mkdir -p "$FUSION_SCRIPTS" &&
     echo "→ backup .env" && [ ! -f "$INSTALL_DIR/.env" ] || (cp "$INSTALL_DIR/.env" /tmp/_deli_env_bak || { echo "❌ 备份 .env 失败"; exit 1; }) &&
     echo "→ backup dicts" && (rm -rf /tmp/_deli_dicts_bak; if [ -d "$INSTALL_DIR/dicts" ]; then cp -r "$INSTALL_DIR/dicts/" /tmp/_deli_dicts_bak/; fi) &&
@@ -208,6 +209,8 @@ if [ $IS_UPDATE -eq 1 ]; then
     echo "→ rm old" && rm -rf "$INSTALL_DIR" &&
     echo "→ mv staging" && mv "$INSTALL_DIR.new" "$INSTALL_DIR" &&
     echo "→ restore dicts" && if [ -d /tmp/_deli_dicts_bak ]; then cp /tmp/_deli_dicts_bak/* "$INSTALL_DIR/dicts/" 2>/dev/null; rm -rf /tmp/_deli_dicts_bak; fi &&
+    echo "→ verify" && $PYTHON -c "import sys; sys.path.insert(0,'$INSTALL_DIR'); sys.path.insert(0,'$INSTALL_DIR/shared'); import config; import check_core" 2>&1 || { echo "❌ 更新后验证失败，回退"; rm -rf "$INSTALL_DIR" && cp -r /tmp/_deli_rollback "$INSTALL_DIR" && rm -rf /tmp/_deli_rollback && echo "⚠ 已恢复旧版本" >&3 && osascript -e 'display dialog "更新未通过验证，已自动恢复旧版本。\n\n请稍后重试或联系微信 paladinpp" buttons {"好的"} default button 1 with icon caution' && exit 1; } &&
+    rm -rf /tmp/_deli_rollback &&
     echo "→ deploy shell" && cp "$INSTALL_DIR/shell_personal.py" "$FUSION_SCRIPTS/交付自检工具.py" && chmod 755 "$FUSION_SCRIPTS/交付自检工具.py" &&
     echo "→ chown" && chown -R $USER "$INSTALL_DIR" &&
     echo "→ clean pyc" && find "$INSTALL_DIR" -name '__pycache__' -exec rm -rf {} + 2>/dev/null; true &&
@@ -297,7 +300,7 @@ if [ -n "$PYTHON" ]; then
 import sys
 sys.path.insert(0, '$INSTALL_DIR')
 sys.path.insert(0, '$INSTALL_DIR/shared')
-import config; import check_core; import ui
+import config; import check_core
 print(f'验证通过 v{config.version_string()}')
 " 2>&1 || { echo "❌ 导入失败"; PASS=0; }
 fi
