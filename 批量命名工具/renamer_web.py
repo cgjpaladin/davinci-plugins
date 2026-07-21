@@ -19,5 +19,16 @@ if os.path.isdir(_DELTA_DIR):
     if _DELTA_DIR not in sys.path:
         sys.path.insert(0, _DELTA_DIR)
 
+# 防御：检测不兼容的旧 delta（v3.7.x 的 shared/app_core.py 引用已搬走的 shared/naming.py）
+_delta_shared_ac = os.path.join(_DELTA_DIR, 'shared', 'app_core.py')
+if os.path.isfile(_delta_shared_ac):
+    try:
+        with open(_delta_shared_ac, encoding='utf-8') as _f:
+            if 'from shared.naming import' in _f.read(200):
+                import shutil
+                shutil.rmtree(_DELTA_DIR, ignore_errors=True)
+    except Exception:
+        pass
+
 from app_core import main
 main()
