@@ -966,7 +966,7 @@ def _build_auth_section():
 def _show_config_dialog():
     """打开配置窗口"""
     global _config_open
-    if _config_open:
+    if _config_open or _BUSY:
         return
     _config_open = True
     _check_project_mask_reset()  # 切工程则重置遮幅
@@ -2039,16 +2039,20 @@ def _start_check():
         resolve = bmd.scriptapp("Resolve")
         if not resolve:
             _action_log("❌ 未连接达芬奇")
+            _unlock_ui()
             return
 
         project = resolve.GetProjectManager().GetCurrentProject()
         if not project:
             _action_log("❌ 未打开项目")
+            _unlock_ui()
             return
 
         timeline = project.GetCurrentTimeline()
         if not timeline:
             _action_log("❌ 未打开时间线")
+            itm[HINT_LB].Text = "请先打开一条时间线"
+            _unlock_ui()
             return
 
         fps = float(project.GetSetting("timelineFrameRate"))
