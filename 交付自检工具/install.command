@@ -303,6 +303,15 @@ PASS=1
 [ -f "$INSTALL_DIR/ui.py" ] || { echo "❌ ui.py 缺失"; PASS=0; }
 echo "shared: $(find "$INSTALL_DIR/shared" -name "*.py" -maxdepth 1 2>/dev/null | wc -l | tr -d ' ') modules"
 [ -f "$INSTALL_DIR/.env" ] || echo "⚠ .env 缺失"
+# 子目录完整性
+for _chk in dicts pypdf; do
+    if [ -d "$INSTALL_DIR/$_chk" ] && [ "$(find "$INSTALL_DIR/$_chk" -type f 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]; then
+        :
+    else
+        echo "❌ $_chk/ 缺失或为空"
+        PASS=0
+    fi
+done
 
 if [ $NEED_PYTHON -eq 1 ] || [ -z "$PYTHON" ]; then
     for p in /Library/Frameworks/Python.framework/Versions/3.*/bin/python3 /opt/homebrew/bin/python3; do

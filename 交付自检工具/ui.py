@@ -3063,6 +3063,12 @@ def main():
     dlg.RecalcLayout()
     _init_connection()
 
+    # ── 安装完整性自查 ──
+    for _chk in ("dicts", "pypdf"):
+        _p = os.path.join(_here, _chk)
+        if not os.path.isdir(_p) or not os.listdir(_p):
+            _action_log(f"❌ 安装不完整: {_chk}/ 缺失或为空，请重新安装")
+
     # ══ License ══（仅个人版，同步校验）
     global _ai_allowed, _trial_expired
     _ai_allowed = True

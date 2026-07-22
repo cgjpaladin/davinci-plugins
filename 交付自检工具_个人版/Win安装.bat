@@ -277,6 +277,15 @@ if not exist "%LP%" (
     echo [失败] 启动器缺失 >> "%ERRFILE%"
     set "PASS=0"
 )
+REM 子目录完整性
+if not exist "%TOOLDIR%\dicts\*" (
+    echo [失败] dicts 目录缺失或为空 >> "%ERRFILE%"
+    set "PASS=0"
+)
+if not exist "%TOOLDIR%\pypdf\*" (
+    echo [失败] pypdf 目录缺失或为空 >> "%ERRFILE%"
+    set "PASS=0"
+)
 
 if "!PASS!"=="1" (
     !PYTHON! -c "import sys; sys.path.insert(0,r'%TOOLDIR%'); sys.path.insert(0,r'%TOOLDIR%\shared'); import config,check_core; print('验证通过 v'+config.version_string())" >> "%ERRFILE%" 2>&1
