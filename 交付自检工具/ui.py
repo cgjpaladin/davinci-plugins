@@ -2034,25 +2034,22 @@ def _start_check():
 
         _action_log(f"▶ 开始检查 (轨道模板={_track_values}, 夹帧阈值={_clamp_value})")
         itm[HINT_LB].Text = "检查中..."
-        itm[HINT_LB]["StyleSheet"] = f"{STYLE_HINT};"  # 重置样式
+        itm[HINT_LB]["StyleSheet"] = f"{STYLE_HINT};"
 
         resolve = bmd.scriptapp("Resolve")
         if not resolve:
             _action_log("❌ 未连接达芬奇")
-            _unlock_ui()
             return
 
         project = resolve.GetProjectManager().GetCurrentProject()
         if not project:
             _action_log("❌ 未打开项目")
-            _unlock_ui()
             return
 
         timeline = project.GetCurrentTimeline()
         if not timeline:
             _action_log("❌ 未打开时间线")
             itm[HINT_LB].Text = "请先打开一条时间线"
-            _unlock_ui()
             return
 
         fps = float(project.GetSetting("timelineFrameRate"))
