@@ -278,14 +278,26 @@ if not exist "%LP%" (
     set "PASS=0"
 )
 REM 子目录完整性
-if not exist "%TOOLDIR%\dicts\*" (
-    echo [失败] dicts 目录缺失或为空 >> "%ERRFILE%"
-    set "PASS=0"
+set "_MISSING="
+for %%d in ("%TOOLDIR%\dicts" "%TOOLDIR%\pypdf") do (
+    dir %%d /a-d /b 2>nul | find /c /v "" > "%TEMP%\_dcnt.tmp"
+    set /p _CNT=<"%TEMP%\_dcnt.tmp"
+    del "%TEMP%\_dcnt.tmp" 2>nul
+    if %%d=="%TOOLDIR%\dicts" (set "_MIN=5") else (set "_MIN=20")
+    if !_CNT! LSS !_MIN! (
+        echo [失败] %%~nxd 文件不全 ^(!_CNT!^<!_MIN!^) >> "%ERRFILE%"
+        set "_MISSING=1"
+    )
 )
-if not exist "%TOOLDIR%\pypdf\*" (
-    echo [失败] pypdf 目录缺失或为空 >> "%ERRFILE%"
-    set "PASS=0"
+if not exist "%TOOLDIR%\shared\dftt_timecode\core\dftt_timecode.py" (
+    echo [失败] dftt_timecode 缺失 >> "%ERRFILE%"
+    set "_MISSING=1"
 )
+if not exist "%TOOLDIR%\.env" if not exist "%TOOLDIR%\.env.example" (
+    echo [失败] .env 和 .env.example 均缺失 >> "%ERRFILE%"
+    set "_MISSING=1"
+)
+if defined _MISSING set "PASS=0"
 
 if "!PASS!"=="1" (
     !PYTHON! -c "import sys; sys.path.insert(0,r'%TOOLDIR%'); sys.path.insert(0,r'%TOOLDIR%\shared'); import config,check_core; print('验证通过 v'+config.version_string())" >> "%ERRFILE%" 2>&1

@@ -3064,10 +3064,14 @@ def main():
     _init_connection()
 
     # ── 安装完整性自查 ──
-    for _chk in ("dicts", "pypdf"):
+    for _chk, _min in (("dicts", 5), ("pypdf", 20)):
         _p = os.path.join(_here, _chk)
-        if not os.path.isdir(_p) or not os.listdir(_p):
-            _action_log(f"❌ 安装不完整: {_chk}/ 缺失或为空，请重新安装")
+        _cnt = len(os.listdir(_p)) if os.path.isdir(_p) else 0
+        if _cnt < _min:
+            _action_log(f"❌ 安装不完整: {_chk}/ 仅 {_cnt} 文件 (应 ≥{_min})，请重新安装")
+    _dtc = os.path.join(_here, "shared", "dftt_timecode", "core", "dftt_timecode.py")
+    if not os.path.isfile(_dtc):
+        _action_log(f"❌ 安装不完整: dftt_timecode 缺失，请重新安装")
 
     # ══ License ══（仅个人版，同步校验）
     global _ai_allowed, _trial_expired

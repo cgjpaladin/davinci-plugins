@@ -305,13 +305,19 @@ echo "shared: $(find "$INSTALL_DIR/shared" -name "*.py" -maxdepth 1 2>/dev/null 
 [ -f "$INSTALL_DIR/.env" ] || echo "⚠ .env 缺失"
 # 子目录完整性
 for _chk in dicts pypdf; do
-    if [ -d "$INSTALL_DIR/$_chk" ] && [ "$(find "$INSTALL_DIR/$_chk" -type f 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]; then
+    _cnt=$(find "$INSTALL_DIR/$_chk" -type f 2>/dev/null | wc -l | tr -d ' ')
+    _min=5; [ "$_chk" = "pypdf" ] && _min=20
+    if [ "$_cnt" -ge "$_min" ]; then
         :
     else
-        echo "❌ $_chk/ 缺失或为空"
+        echo "❌ $_chk/ 文件不全 ($_cnt < $_min)"
         PASS=0
     fi
 done
+# dftt_timecode
+[ -f "$INSTALL_DIR/shared/dftt_timecode/core/dftt_timecode.py" ] || { echo "❌ dftt_timecode 缺失"; PASS=0; }
+# .env 或 .env.example 至少一个存在
+[ -f "$INSTALL_DIR/.env" ] || [ -f "$INSTALL_DIR/.env.example" ] || { echo "❌ .env 和 .env.example 均缺失"; PASS=0; }
 
 if [ $NEED_PYTHON -eq 1 ] || [ -z "$PYTHON" ]; then
     for p in /Library/Frameworks/Python.framework/Versions/3.*/bin/python3 /opt/homebrew/bin/python3; do
