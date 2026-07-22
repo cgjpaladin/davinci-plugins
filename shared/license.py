@@ -76,7 +76,7 @@ _OLD_PATHS = [
 # ═══════════════════════════════════════════
 
 def _get_stats() -> dict:
-    """采集版本号+系统信息，用于飞书统计。永不抛异常。macOS/Windows 双平台。"""
+    """采集版本号+系统信息（不含网络请求，毫秒级返回）。macOS/Windows 双平台。"""
     version = "unknown"
     os_ver = "unknown"
     # 读 config.py 拿 __version__（兼容开发版和个人版路径）
@@ -108,7 +108,6 @@ def _get_stats() -> dict:
         try:
             import platform
             _v = platform.win32_ver()
-            # win32_ver() → (release, version, csd, ptype)
             os_ver = f"Windows {_v[0]}" if _v[0] else "Windows"
         except Exception:
             os_ver = "Windows"
@@ -133,46 +132,54 @@ def _get_stats() -> dict:
             winreg.CloseKey(_key)
         except Exception:
             pass
-    # ── 公网 IP + 地区（双链路并行，3 秒超时，不影响主流程） ──
-    public_ip = ""
-    ip_region = ""
+    return {"version": version, "os_version": os_ver, "resolve_version": resolve_ver}
+
+
+def _collect_ip_region() -> None:
+    """后台线程：收集公网 IP + 地区，异步发送到后端。不阻塞主流程。"""
     try:
         import threading as _th
-        _ip_result = [""]
-        _region_result = [""]
+        public_ip = ""
+        ip_region = ""
         def _get_ip():
+            nonlocal public_ip
             try:
                 for u in ("https://ifconfig.me", "https://api.ipify.org", "https://ip.sb"):
                     r = subprocess.run(["curl", "-s", "-m", "3", u],
                                        capture_output=True, text=True, timeout=5, creationflags=_CF)
                     if r.returncode == 0 and r.stdout.strip():
-                        _ip_result[0] = r.stdout.strip()
+                        public_ip = r.stdout.strip()
                         return
             except Exception: pass
         def _get_region():
+            nonlocal ip_region
             try:
-                if _ip_result[0]:
+                if public_ip:
                     r = subprocess.run(["curl", "-s", "-m", "3",
-                        f"http://ip-api.com/json/{_ip_result[0]}?lang=zh-CN&fields=country,regionName,city"],
+                        f"http://ip-api.com/json/{public_ip}?lang=zh-CN&fields=country,regionName,city"],
                         capture_output=True, text=True, timeout=5, creationflags=_CF)
                     if r.returncode == 0:
                         j = __import__("json").loads(r.stdout)
                         parts = [j.get("country",""), j.get("regionName",""), j.get("city","")]
                         parts = [p for p in parts if p]
-                        _region_result[0] = " / ".join(parts) if parts else ""
+                        ip_region = " / ".join(parts) if parts else ""
             except Exception: pass
         t1 = _th.Thread(target=_get_ip, daemon=True)
         t2 = _th.Thread(target=_get_region, daemon=True)
         t1.start()
-        t1.join(timeout=4)  # 先等 IP 拿到再查地区
-        if _ip_result[0]:
+        t1.join(timeout=4)
+        if public_ip:
             t2.start()
             t2.join(timeout=4)
-        public_ip = _ip_result[0].strip()
-        ip_region = _region_result[0].strip()
+        if public_ip or ip_region:
+            _post_to_backend("/license", {
+                "action": "init_trial",
+                "machine_fingerprint": get_machine_fingerprint(),
+                "public_ip": public_ip,
+                "ip_region": ip_region,
+            })
     except Exception:
         pass
-    return {"version": version, "os_version": os_ver, "resolve_version": resolve_ver, "public_ip": public_ip, "ip_region": ip_region}
 
 
 # ═══════════════════════════════════════════
@@ -385,10 +392,15 @@ def init_trial() -> Tuple[bool, str]:
     trial_start = now
     trial_start_date = _dt.date.today().toordinal()
     if BACKEND_URL:
+        stats = _get_stats()
         ok, resp = _post_to_backend("/license", {
             "action": "init_trial",
             "machine_fingerprint": fp,
+            **stats,
         })
+        # 后台线程：异步收集 IP + 地区，不阻塞
+        import threading as _th
+        _th.Thread(target=_collect_ip_region, daemon=True).start()
         if ok:
             tsd = resp.get("trial_date_ordinal")
             if tsd:
@@ -507,11 +519,16 @@ def verify_activation(_writeback: bool = True) -> Tuple[bool, str]:
     if p.get("is_trial", True):
         return True, ""  # 试用不校验
     fp = get_machine_fingerprint()
+    stats = _get_stats()
     ok, resp = _post_to_backend("/license", {
         "action": "verify_status",
         "activate_key": p.get("activate_key", ""),
         "machine_fingerprint": fp,
+        **stats,
     })
+    # 后台线程：异步更新 IP + 地区
+    import threading as _th
+    _th.Thread(target=_collect_ip_region, daemon=True).start()
     if not ok:
         # FC 不通：距上次成功校验 > 30 天才视为吊销
         now = int(time.time())

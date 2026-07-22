@@ -1,15 +1,15 @@
 @echo off
 chcp 65001 >nul 2>&1
 setlocal enabledelayedexpansion
-REM v2.5.8
+REM v2.6.1
 
 :: ============================================================
 ::  版本号（从 data.zip 内的 config.py 动态读取）
 :: ============================================================
 set "TOOLDIR=%SCRIPTS%\交付自检工具"
 :: 以下在解压后通过 Python 动态获取，此处仅占位
-:: 实际版本号在步骤 12 验证时显示
-set "ERRFILE=%~dp0如果安装失败就把这个发给作者.txt"
+:: 实际版本号在验证步骤显示
+set "ERRFILE=%TEMP%\dv_install_21328.log"
 echo ========== 安装日志 %date% %time% ========== > "%ERRFILE%"
 echo 系统: %OS%  计算机: %COMPUTERNAME%  用户: %USERNAME% >> "%ERRFILE%"
 
@@ -19,7 +19,7 @@ echo 系统: %OS%  计算机: %COMPUTERNAME%  用户: %USERNAME% >> "%ERRFILE%"
 echo.
 echo ========================================
 echo   交付自检工具
-echo   针对短剧/影视成片的自动化质检插件
+echo   针对 DaVinci Resolve 时间线的自动化检查插件
 echo   作者：电影裁缝 Bryan（微信 paladinpp）
 echo ========================================
 echo.
@@ -167,7 +167,7 @@ if "!DR_SCRIPTING_NEEDS_FIX!"=="1" echo     [*] 启用达芬奇外部脚本权限
 echo.
 echo   ------ 隐私说明 ------
 echo   * 本插件会采集公网IP地址（仅IP，非精准定位）
-echo     用于防盗版验证，同一激活码跨地区使用会被预警
+echo   * 用于防盗版验证，同一激活码跨地区使用会被预警
 echo   * 不会上传任何项目文件、时间线内容或个人信息
 echo   ------------------------
 echo.
