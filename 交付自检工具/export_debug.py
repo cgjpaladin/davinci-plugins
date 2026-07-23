@@ -203,8 +203,12 @@ def export_debug_package(itm_dict, btn_export, error_state, log_fn, data_dir,
     # ── 错误日志（最近 20 条 ❌/⚠/异常/失败） ──
     error_lines = ["# 最近错误日志", ""]
     try:
-        log_dir = os.path.join(data_dir, "logs") if data_dir else None
-        if log_dir and os.path.isdir(log_dir):
+        # 日志在 ~/Library/Logs/交付自检工具/交付自检工具/ (macOS) 或 %LOCALAPPDATA%/交付自检工具/Logs/ (Win)
+        if sys.platform == "darwin":
+            log_dir = os.path.join(os.path.expanduser("~/Library/Logs"), "交付自检工具", "交付自检工具")
+        else:
+            log_dir = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "交付自检工具", "Logs")
+        if os.path.isdir(log_dir):
             log_files = sorted(
                 [f for f in os.listdir(log_dir) if f.endswith(".log")],
                 key=lambda x: os.path.getmtime(os.path.join(log_dir, x)), reverse=True
