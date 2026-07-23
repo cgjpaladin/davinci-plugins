@@ -35,7 +35,7 @@ if os.path.isdir(_plugin_shared):
 _global_shared = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'shared')
 if os.path.isdir(_global_shared):
     sys.path.insert(1, _global_shared)
-_smb_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_smb_root = os.path.dirname(os.path.abspath(__file__))
 if _smb_root not in sys.path and not os.environ.get("WORKBUDDY_PERSONAL"):
     sys.path.insert(0, _smb_root)
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -3116,7 +3116,7 @@ def main():
                     import tempfile as _tmp_fc
                     _fc_result_path = os.path.join(_tmp_fc.gettempdir(), f"dv_fc_{os.getpid()}.json")
                     try:
-                        _shared_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "shared")
+                        _shared_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shared")
                         _script_dir = os.path.dirname(os.path.abspath(__file__))
                         _check_code = f'''import sys,json,os
 sys.path.insert(0,r"{_shared_dir}")
@@ -3193,7 +3193,7 @@ except Exception as e:
     _update_result_path = os.path.join(_tmp.gettempdir(), f"dv_update_{os.getpid()}.json")
     _subp = None
     try:
-        _shared_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "shared")
+        _shared_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shared")
         _check_code = f'''import sys,json,time
 sys.path.insert(0,"{_shared_dir}")
 from updater import check
