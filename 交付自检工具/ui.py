@@ -2373,16 +2373,16 @@ def _trial_heartbeat():
             return
         stats = _get_stats()
         from shared.license import _post_to_backend
-        _post_to_backend("/license", {
+        ok, resp = _post_to_backend("/license", {
             "action": "init_trial",
             "machine_fingerprint": fp,
             **stats,
         })
-        # 后台再收 IP/地区
+        _action_log(f"📊 试用心跳上报: {'✅' if ok else '❌'} v{stats.get('version','?')} {stats.get('os_version','?')} Dr{stats.get('resolve_version','?')}")
         import threading as _th3
         _th3.Thread(target=_collect_ip_region, daemon=True).start()
-    except Exception:
-        pass
+    except Exception as e:
+        _action_log(f"📊 试用心跳异常: {e}")
 
 def _init_connection():
     """初始化达芬奇连接，设置按钮状态"""
