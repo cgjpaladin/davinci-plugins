@@ -1551,8 +1551,6 @@ print(result[0])
             combo.AddItem(p)
         combo.AddItem("自定义…")  # 最后一个选项对应自定义输入
         
-        combo.RecalcLayout()  # AddItem 后重新计算 ComboBox 宽度
-        
         if _mask_ratio is None:
             combo.SetCurrentIndex(0)
             cfg["cfg_mask_custom"].Text = ""
