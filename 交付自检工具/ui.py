@@ -3209,7 +3209,7 @@ with open(sys.argv[2],"w") as f:json.dump(r,f)
     # 等子进程写出结果（最多 3s）
     import time as _poll_t
     _t0 = _poll_t.time()
-    for _ in range(30):
+    for _ in range(100):  # 最多等 10s（子进程每条链路 3s×3 条=9s 上限）
         if os.path.exists(_update_result_path):
             break
         _poll_t.sleep(0.1)

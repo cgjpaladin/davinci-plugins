@@ -200,6 +200,37 @@ def export_debug_package(itm_dict, btn_export, error_state, log_fn, data_dir,
     except Exception:
         state_lines.append("API Key: 读取失败")
 
+    # ── 错误日志（最近 20 条 ❌/⚠/异常/失败） ──
+    error_lines = ["# 最近错误日志", ""]
+    try:
+        log_dir = os.path.join(data_dir, "logs") if data_dir else None
+        if log_dir and os.path.isdir(log_dir):
+            log_files = sorted(
+                [f for f in os.listdir(log_dir) if f.endswith(".log")],
+                key=lambda x: os.path.getmtime(os.path.join(log_dir, x)), reverse=True
+            )
+            keywords = ("❌", "⚠", "Error", "失败", "Traceback", "崩溃", "异常", "🛑")
+            found = 0
+            for lf in log_files[:3]:  # 最近 3 个日志文件
+                try:
+                    with open(os.path.join(log_dir, lf), encoding="utf-8", errors="replace") as f:
+                        for line in f:
+                            if any(k in line for k in keywords):
+                                error_lines.append(line.rstrip())
+                                found += 1
+                                if found >= 20:
+                                    break
+                    if found >= 20:
+                        break
+                except Exception:
+                    pass
+            if found == 0:
+                error_lines.append("(未找到错误日志)")
+        else:
+            error_lines.append("(日志目录不存在)")
+    except Exception as e:
+        error_lines.append(f"(读取日志失败: {e})")
+
     # ── 写 zip ──
     try:
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -214,6 +245,7 @@ def export_debug_package(itm_dict, btn_export, error_state, log_fn, data_dir,
             _add_str(zf, "activate.txt", activate_lines)
             _add_str(zf, "env.txt", env_lines)
             _add_str(zf, "state.txt", state_lines)
+            _add_str(zf, "errors.txt", error_lines)
         if _sys.platform == "darwin":
             subprocess.run(["open", "-R", zip_path], check=False)
         else:

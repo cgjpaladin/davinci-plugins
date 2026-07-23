@@ -106,8 +106,17 @@ function msToOrdinal(ms) {
 async function handleInitTrial(data) {
   const fp = (data.machine_fingerprint || '').trim();
   if (!fp) return { status: 'error', msg: '参数不完整' };
+  // 指纹有效性校验：必须是 64 字符十六进制 SHA256
+  if (fp.length !== 64 || !/^[0-9a-f]{64}$/.test(fp)) {
+    return { status: 'error', msg: `指纹格式无效 (len=${fp.length})` };
+  }
 
-  const records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`);
+  let records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`);
+  // 去重：飞书搜索索引有延迟，等 1s 再查一次
+  if (records.length === 0) {
+    await new Promise(r => setTimeout(r, 1200));
+    records = await listRecords(`CurrentValue.[机器指纹]="${fp}"`);
+  }
 
   const heartbeatFields = { '最后活跃': Date.now() };
   if (data.version) heartbeatFields['插件版本'] = data.version;
