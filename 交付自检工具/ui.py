@@ -2363,6 +2363,27 @@ def _on_result_click(ev):
 def _on_show(ev):
     pass  # 初始化放在 main() 里，Show 事件在子进程模式下不可靠
 
+def _trial_heartbeat():
+    """试用用户每次启动后台上报系统信息到 FC（不阻塞）。"""
+    try:
+        from shared.license import _get_stats, _collect_ip_region, load_credential
+        cred = load_credential()
+        fp = (cred or {}).get("payload", {}).get("machine_fingerprint", "")
+        if not fp:
+            return
+        stats = _get_stats()
+        from shared.license import _post_to_backend
+        _post_to_backend("/license", {
+            "action": "init_trial",
+            "machine_fingerprint": fp,
+            **stats,
+        })
+        # 后台再收 IP/地区
+        import threading as _th3
+        _th3.Thread(target=_collect_ip_region, daemon=True).start()
+    except Exception:
+        pass
+
 def _init_connection():
     """初始化达芬奇连接，设置按钮状态"""
     _load_config_from_file()
@@ -3107,6 +3128,9 @@ def main():
                         _ai_allowed = d > 0
                         if not _ai_allowed:
                             _trial_expired = True
+                    # 试用用户每次启动后台上报系统信息
+                    import threading as _th2
+                    _th2.Thread(target=_trial_heartbeat, daemon=True).start()
                 else:
                     text = "已激活 ✓"
                     # 后台子进程验证 FC（不阻塞启动），verify_local 已通过
