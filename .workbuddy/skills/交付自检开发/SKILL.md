@@ -1002,6 +1002,16 @@ _show_config_dialog() # 创建 config_disp.AddWindow()
 - 指纹校验：必须 `len(fp)==64 && /^[0-9a-f]{64}$/`
 - 去重：写前等 1.2s 再搜一次，解决飞书搜索索引延迟导致重复记录
 
+### AI 校对 Token 用量采集（2026-07-28 实测）
+
+数据采集链路（五层透传，不碰剧本原文）：
+```
+DeepSeek API usage → _call_openai_compat → call_with_fallback → _single → check_typos → ui.py 日志
+```
+
+实测上海创壹 2 集：输入 89,604 / 输出 130 = 89,734 tokens，成本 ¥0.28/集。
+修改文件：`llm_providers.py`（提取 usage）、`llm_typo_check.py`（P1+P2 合并）、`ui.py`（日志行）
+
 ### 使用手册编写规范（2026-07-28 沉淀）
 
 > 手册是给剪辑师看的，不是给开发者看的。每个描述必须对照插件实际功能验证。

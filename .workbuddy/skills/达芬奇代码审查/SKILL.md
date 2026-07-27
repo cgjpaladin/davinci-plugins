@@ -90,6 +90,7 @@ agent_created: true
 | S16 | ALL | DaVinci 子进程网络调用不可靠——失败一次就停，不反复重试 | `grep` 子进程代码有无无限重试逻辑 |
 | S17 | DC | **子进程内 daemon 线程随进程 exit 被 kill。** `subprocess.Popen` 中的 `threading.Thread(daemon=True)` 无法存活——IP 采集等异步操作必须放在主进程。——2026-07-28 激活用户 IP 不更新根因 | 审查 `verify_activation()` 等子进程调用的函数 |
 | S18 | DC | **`_start_check()` 必须用 `try/finally` 包所有退出路径。** 无项目/无时间线/无勾选/异常/正常五条路径必须统一 `_unlock_ui()`。`_run_ai_typo()` 已实现，`_start_check()` 曾缺失。——2026-07-24 dd-mbp 测试 | `grep "_start_check\|_lock_ui\|_unlock_ui" ui.py` 确认对称 |
+| S19 | DC | **多级 API 调用链中关键字段必须逐层透传。** `_call_openai_compat` → `call_with_fallback` → `_single` → `check_typos` → ui。任一层 return 重建 dict 时漏传 → 后续全丢。——2026-07-28 token usage 采集发现 call_with_fallback + _single 两处断裂 | 遍历所有 `return {` 的 dict 构造，确认包含上层传入的全部关键字段 |
 
 ## 💭 N：优化
 
