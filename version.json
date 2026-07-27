@@ -1,14 +1,18 @@
 {
   "delivery_checker": {
-    "version": "2.6.1",
+    "version": "2.7.0",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/delivery_checker_update.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
     "sha256": "cdfb7f192026b8a60e5cc60e864062174654225bd39babf0ae4750f6a4c4d036",
-    "notes": "## v2.6.1\n🎵 声道检测三合一：静音检查 + 声道缩减检测 + 轨道错配提醒\n🔊 支持检测 5.1/7.1 素材声道被意外缩减，不影响正常下混\n🐛 音频轨类型与素材声道不匹配时精准提示\n🛡️ 增量更新失败自动回退旧版本，不再卡死\n🐛 修复安装脚本异常报错的问题",
+    "notes": "## v2.7.0\n🐛 声道检测改为检查时间线片段属性，不再误判媒体池源文件属性\n💬 单声道片段放立体声轨道时，提示改为「改片段属性」而非「移轨道」\n🎨 常规检查/字幕检测标题加大加粗",
     "history": [
+      {
+        "version": "2.7.0",
+        "notes": "## v2.7.0\n🐛 声道检测改为检查时间线片段属性，不再误判媒体池源文件属性\n💬 单声道片段放立体声轨道时，提示改为「改片段属性」而非「移轨道」\n🎨 常规检查/字幕检测标题加大加粗"
+      },
       {
         "version": "2.6.1",
         "notes": "## v2.6.1\n🎵 声道检测三合一：静音检查 + 声道缩减检测 + 轨道错配提醒\n🔊 支持检测 5.1/7.1 素材声道被意外缩减，不影响正常下混\n🐛 音频轨类型与素材声道不匹配时精准提示\n🛡️ 增量更新失败自动回退旧版本，不再卡死\n🐛 修复安装脚本异常报错的问题"
