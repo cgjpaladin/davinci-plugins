@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "27e106037686ac158b8db5fac211c9b5614313dc87ae1892ca84f06aa9f8f056",
+    "sha256": "7711f875578a82447f5ff84dc3d20e0a561ff6a1a119730d5db77f82907b0406",
     "notes": "## v2.6.1\n🎵 声道检测三合一：静音检查 + 声道缩减检测 + 轨道错配提醒\n🔊 支持检测 5.1/7.1 素材声道被意外缩减，不影响正常下混\n🐛 音频轨类型与素材声道不匹配时精准提示\n🛡️ 增量更新失败自动回退旧版本，不再卡死\n🐛 修复安装脚本异常报错的问题",
     "history": [
       {
