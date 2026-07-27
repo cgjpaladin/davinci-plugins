@@ -621,14 +621,13 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
 
 
 def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
-    """检测音频片段声道异常：声道静音 / 声道缩减 / 立体声→单声道错配。
+    """检测音频片段声道异常：声道静音 / 声道缩减 / mono↔stereo 轨道错配。
 
     规则：
       ① 声道静音：ch_idx 含 0 或 mute=True
       ② 声道缩减：源声道数 > mapping 中活跃声道数（5.1→2.0 删声道、stereo→mono 压单声道）
          - 不检测 5.1→2.0 自动下混（emb=6, act=6，达芬奇正常下混不计为缩减）
-      ③ 立体声→单声道错配：立体声素材放单声道轨道
-         - mono→stereo 不报（单声道音乐/音效放立体声轨是正常操作）
+      ③ mono↔stereo 错配：单声道素材放立体声轨道 或 立体声素材放单声道轨道
 
     Returns:
         list[dict]: 第一条为汇总(is_summary=True)，后续为具体问题
@@ -661,7 +660,6 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
 
             tc = smpte.gettc(start_frame)
             tm = ch_map.get("track_mapping", {})
-            source_channels = len(tm)  # 时间线片段实际源声道数（不是媒体池源文件的 embedded_audio_channels）
             item_has_issue = False
 
             # ── ① + ②：逐 mapping 遍历，同时统计活跃声道 ──
@@ -710,9 +708,14 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
                 ))
                 item_has_issue = True
                 continue
-
-            # ── ③ 立体声→单声道轨道（mono→stereo 是正常操作，不报） ──
-            if track_sub == "mono" and source_channels >= 2:
+            # ── ③ mono↔stereo 轨道错配 ──
+            if track_sub == "stereo" and embedded == 1:
+                issues.append(_make_result(
+                    "fail", track=track, timecode=tc,
+                    detail=f"{name}，单声道片段放在立体声轨道",
+                    reason="请将片段属性改为立体声（右键→片段属性→音频→格式）",
+                ))
+            elif track_sub == "mono" and embedded >= 2:
                 issues.append(_make_result(
                     "fail", track=track, timecode=tc,
                     detail=f"{name}，立体声片段放在单声道轨道",
