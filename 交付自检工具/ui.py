@@ -844,6 +844,10 @@ def _render_group(group_name, sections, tree, parent_group=""):
     """渲染一个 group 或 subgroup 的检查结果到右侧 Tree"""
     tree.Clear()
     _setup_tree_header(tree)
+    # 时间码排序辅助
+    _s = _get_smpte(25)  # fps 不影响相对排序，统一 25
+    def _sort_rows(rows):
+        rows.sort(key=lambda r: _s.getframes(r.get("tc") or "00:00:00:00"))
     # 判断是 group 还是 subgroup
     all_sg = sorted(set(c.get("subgroup", c.get("group", "")) for c in CHECKS if c.get("group") == group_name))
     if all_sg:
@@ -851,6 +855,7 @@ def _render_group(group_name, sections, tree, parent_group=""):
         for sg in all_sg:
             secs = [s for s in sections if s.get("subgroup") == sg and s.get("group") == group_name]
             for sec in secs:
+                _sort_rows(sec["rows"])
                 for row_data in sec["rows"]:
                     row = tree.NewItem()
                     _set_row(row, row_data)
@@ -862,6 +867,7 @@ def _render_group(group_name, sections, tree, parent_group=""):
         else:
             secs = [s for s in sections if s.get("subgroup") == group_name]
         for sec in secs:
+            _sort_rows(sec["rows"])
             for row_data in sec["rows"]:
                 row = tree.NewItem()
                 _set_row(row, row_data)
