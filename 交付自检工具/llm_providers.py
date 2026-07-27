@@ -130,7 +130,8 @@ def call_with_fallback(messages: list[dict], max_tokens: int = 2048,
 
         if result.get("ok"):
             return {"ok": True, "content": result["content"],
-                    "provider": p["vendor"], "model": p["name"]}
+                    "provider": p["vendor"], "model": p["name"],
+                    "usage": result.get("usage", {})}
 
         code = result.get("code", "")
         if code in _FATAL_CODES:

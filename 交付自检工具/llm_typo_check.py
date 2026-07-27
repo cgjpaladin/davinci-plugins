@@ -361,4 +361,5 @@ def _single(asr_lines, context_lines, offset=0, timeline_name="", episode="", sy
     return {"ok": True, "corrections": valid,
             "same_show": same_show if same_show is not None else True,
             "provider": result["provider"], "model": result["model"],
+            "usage": result.get("usage", {}),
             "_raw": result["content"][:500]}
