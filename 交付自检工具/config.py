@@ -4,7 +4,7 @@
 """
 
 __version__ = "2.7.0"
-__channel__ = "dev"
+__channel__ = ""
 
 def version_string():
     return f"{__version__}{'-' + __channel__ if __channel__ else ''}"
