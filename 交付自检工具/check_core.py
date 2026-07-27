@@ -709,12 +709,21 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
                 item_has_issue = True
                 continue
             # ── ③ mono↔stereo 轨道错配 ──
+            # 判断标准：channel_idx 只有单侧输出 → 另一声道静音
+            # [1,1] 或 [1,2] = 正常下混，不报；[1] 或 [2] = 缺声道，报
             if track_sub == "stereo" and embedded == 1:
-                issues.append(_make_result(
-                    "fail", track=track, timecode=tc,
-                    detail=f"{name}，单声道片段放在立体声轨道",
-                    reason="请将片段属性改为立体声（右键→片段属性→音频→格式）",
-                ))
+                # 检查是否有 channel 只输出到单侧
+                all_idxs = []
+                for ch_key, ch_data in tm.items():
+                    all_idxs.extend(ch_data.get("channel_idx", []))
+                unique_idxs = set(i for i in all_idxs if i > 0)
+                if len(unique_idxs) == 1:
+                    side = "左声道" if 1 in unique_idxs else "右声道"
+                    issues.append(_make_result(
+                        "fail", track=track, timecode=tc,
+                        detail=f"{name}，单声道片段仅输出到{side}",
+                        reason="请将片段属性改为立体声（右键→片段属性→音频→格式）",
+                    ))
             elif track_sub == "mono" and embedded >= 2:
                 issues.append(_make_result(
                     "fail", track=track, timecode=tc,
