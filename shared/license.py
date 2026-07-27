@@ -527,8 +527,6 @@ def verify_activation(_writeback: bool = True) -> Tuple[bool, str]:
         **stats,
     })
     # 后台线程：异步更新 IP + 地区
-    import threading as _th
-    _th.Thread(target=_collect_ip_region, daemon=True).start()
     if not ok:
         # FC 不通：距上次成功校验 > 30 天才视为吊销
         now = int(time.time())

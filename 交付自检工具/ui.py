@@ -3153,6 +3153,10 @@ except Exception as e:
                         subprocess.Popen([sys.executable, "-c", _check_code, _fc_result_path],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     except Exception: pass
+                    # 主进程后台采集 IP + 地区（子进程里跑会被 kill）
+                    import threading as _th_ip
+                    from shared.license import _collect_ip_region
+                    _th_ip.Thread(target=_collect_ip_region, daemon=True).start()
                 itm[TRIAL_LB].Text = text
                 _action_log(f"License: {text}  ({'✅' if ok else '❌ '+msg})")
             else:
