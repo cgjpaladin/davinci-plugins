@@ -712,13 +712,13 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
             # 判断标准：channel_idx 只有单侧输出 → 另一声道静音
             # [1,1] 或 [1,2] = 正常下混，不报；[1] 或 [2] = 缺声道，报
             if track_sub == "stereo" and embedded == 1:
-                # 检查是否有 channel 只输出到单侧
+                # 检查输出声道数：[1,1]=双声道正常不报 / [1]=单侧缺声道报
                 all_idxs = []
                 for ch_key, ch_data in tm.items():
                     all_idxs.extend(ch_data.get("channel_idx", []))
-                unique_idxs = set(i for i in all_idxs if i > 0)
-                if len(unique_idxs) == 1:
-                    side = "左声道" if 1 in unique_idxs else "右声道"
+                total_outputs = len([i for i in all_idxs if i > 0])
+                if total_outputs == 1:
+                    side = "左声道" if 1 in all_idxs else "右声道" if 2 in all_idxs else "单声道"
                     issues.append(_make_result(
                         "fail", track=track, timecode=tc,
                         detail=f"{name}，单声道片段仅输出到{side}",
