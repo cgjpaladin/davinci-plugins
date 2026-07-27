@@ -661,6 +661,7 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
 
             tc = smpte.gettc(start_frame)
             tm = ch_map.get("track_mapping", {})
+            source_channels = len(tm)  # 时间线片段实际源声道数（不是媒体池源文件的 embedded_audio_channels）
             item_has_issue = False
 
             # ── ① + ②：逐 mapping 遍历，同时统计活跃声道 ──
@@ -711,13 +712,14 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
                 continue
 
             # ── ③ mono↔stereo 轨道错配 ──
-            if track_sub == "stereo" and embedded == 1:
+            # 用 source_channels（时间线片段映射中的声道数），不是 embedded（媒体池源文件声道数）
+            if track_sub == "stereo" and source_channels == 1:
                 issues.append(_make_result(
                     "fail", track=track, timecode=tc,
                     detail=f"{name}，单声道片段放在立体声轨道",
-                    reason="请将片段移到单声道轨道",
+                    reason="请将片段属性改为立体声（右键→片段属性→音频→格式）",
                 ))
-            elif track_sub == "mono" and embedded >= 2:
+            elif track_sub == "mono" and source_channels >= 2:
                 issues.append(_make_result(
                     "fail", track=track, timecode=tc,
                     detail=f"{name}，立体声片段放在单声道轨道",
