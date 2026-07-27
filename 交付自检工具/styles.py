@@ -38,7 +38,7 @@ RAD_PANEL = "4px"
 DIVIDER_BARS = 6
 
 # ── 复合样式 ──
-STYLE_HEADING = f"{FONT_H1};{FONT_BOLD};color:#ccc"
+STYLE_HEADING = "font-size:15px;font-weight:bold;color:#fff"
 STYLE_ACCENT = f"{FONT_H2};{FONT_BOLD};color:#ccc"
 STYLE_DIM = f"color:rgb(130,130,130);font-size:{FONT_XS}"
 STYLE_HINT = f"color:rgb(130,130,130);{FONT_XS}"
