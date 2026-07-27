@@ -70,6 +70,10 @@ def check_typos(asr_lines: list[str],
             "provider": r1.get("provider") or r2.get("provider", "?"),
             "model": r1.get("model") or r2.get("model", "?"),
             "_passes": 2,
+            "usage": {
+                "total_tokens": (r1.get("usage", {}).get("total_tokens", 0) +
+                                 r2.get("usage", {}).get("total_tokens", 0)),
+            },
             "_raw1": r1.get("_raw", ""),
             "_raw2": r2.get("_raw", "")}
 

@@ -972,3 +972,53 @@ _show_config_dialog() # 创建 config_disp.AddWindow()
 ```
 
 **教训**：AI 手工编写 builder 函数会残缺（2026-07-16 连出 4 个 NameError）。搬迁代码一律用 `git show <commit>:path` 提取原文 + diff 验证。
+
+### v2.7.0 变更备忘录（2026-07-28）
+
+**声道检测**：
+- `check_audio_mono()` 的 ③ mono↔stereo 错配判断：必须用 `len(tm)`（时间线片段 mapping 的声道数），不能用 `embedded_audio_channels`（媒体池源文件声道数）
+- 单声道放立体声轨的提示：改为「右键→片段属性→音频→格式改为立体声」，不是「移到单声道轨道」
+- 旧版 `check_audio_mono`（commit 38cb66f）使用 `ch_type` 字段，三合一重写（6a724fe）误删了时间线属性读取
+
+**IP 采集**：
+- `verify_activation()` 在**子进程**中运行，其 daemon 线程会随子进程 exit 被 kill
+- 激活用户的 IP 采集必须从主进程 `_collect_ip_region()` 触发，不能放在 `verify_activation()` 内部
+- 试用用户走 `trial_heartbeat()`（主进程），IP 正常
+
+**UI**：
+- `ComboBox.RecalcLayout()` 在 DaVinci UIManager 中不支持 → 删除
+- `_start_check()` 必须用 `try/finally` 包所有退出路径（无项目/无时间线/无勾选/异常），和 `_run_ai_typo()` 对齐
+
+**诊断报告**：
+- 日志路径在 `~/Library/Logs/交付自检工具/交付自检工具/`，不是 `data_dir/logs/`
+- `export_debug.py` 的 `errors.txt` 从此目录读取最近 20 条错误日志
+
+**安装路径**：
+- 个人版安装后 `dirname(dirname)` 从 `ui.py` 往上两层是 `Scripts/`，shared 在 `Scripts/交付自检工具/shared/`
+- 开发版在 `达芬奇插件工坊/`，shared 在上一层。安装后必须用 `dirname`（一层）
+- 影响：更新检测子进程、FC 验证子进程找不到 shared 目录 → 全部静默失败
+
+**FC 后端**：
+- 指纹校验：必须 `len(fp)==64 && /^[0-9a-f]{64}$/`
+- 去重：写前等 1.2s 再搜一次，解决飞书搜索索引延迟导致重复记录
+
+### 使用手册编写规范（2026-07-28 沉淀）
+
+> 手册是给剪辑师看的，不是给开发者看的。每个描述必须对照插件实际功能验证。
+
+**语言铁律**：
+- 不用开发者术语：`mono↔stereo` → `单声道/立体声`；`dicts/` → `插件安装目录`
+- 不说内部概念：`embedded_audio_channels`、`RecalcLayout` 等一律不出现
+- 路径用通俗表达：`CSV 放 dicts/` → `找到「短剧违禁词表.csv」编辑即可`
+- 功能说「做什么」不说「怎么做」：`check_audio_mono() 遍历 mapping 计数` → `立体声被压成单声道`
+
+**数据铁律**：
+- 价格/金额必须去官网核实，不能凭记忆或 AI 训练数据
+- 次数/容量必须对照实际代码测过的值，不能估算
+- `str_replace` 涉及 `$` 符号必须用单引号包裹参数
+
+**对照铁律**（改手册前必做）：
+1. 先读插件代码确认实际功能（CHECKS 注册表、函数逻辑）
+2. 再用 `lark-cli docs +fetch` 读手册当前描述
+3. 逐条比对：代码 vs 手册 → 不一致就修
+4. 修完后 `lark-cli docs +fetch` 验证关键词已替换

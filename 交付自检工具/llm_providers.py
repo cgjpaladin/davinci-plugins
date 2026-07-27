@@ -97,7 +97,8 @@ def _call_openai_compat(cfg: dict, messages: list[dict],
     # OpenAI 兼容格式：choices[0].message.content
     try:
         content = data["choices"][0]["message"]["content"]
-        return {"ok": True, "content": content, "model": cfg["name"]}
+        usage = data.get("usage", {})
+        return {"ok": True, "content": content, "model": cfg["name"], "usage": usage}
     except (KeyError, IndexError):
         pass
 

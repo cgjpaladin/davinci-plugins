@@ -1854,6 +1854,9 @@ def _run_ai_typo():
                                     timeline_name=tl_name, episode=ep_input,
                                     system_candidates=sys_candidates, cpl=cpl)
         _action_log(f"🤖 AI 校对完成（+{time.time()-_ts_start:.0f}s）")
+        usage = result.get("usage", {})
+        if usage.get("total_tokens"):
+            _action_log(f"📊 Token 用量: {usage['total_tokens']} total (in/out: {usage.get('prompt_tokens','?')}/{usage.get('completion_tokens','?')})")
         if result.get("error"):
             attempts = result.get("attempts", [])
             if attempts:

@@ -63,6 +63,8 @@ agent_created: true
 | R20 | ALL | **`subprocess.run` 必须设 `timeout=`。** 缺 timeout → 网络/IO 卡住进程永久假死。`open`/`explorer` 等瞬发命令可用 `timeout=5`。——2026-07-06 跨平台审计 | `grep -rn "subprocess\.\(run\|check_output\)(" --include="*.py" . \| grep -v "timeout"` |
 | R21 | ALL | **非标 import——`from X import` 而非 `from shared.X import`。** 依赖 `shared/` 在 sys.path 上，子进程中可能不可靠。新增/搬家后检查：`grep -rn "from (模块名) import" --include="*.py" . \| grep -v "from shared\." \| grep -v "from \."` ——2026-07-16 shared/净化审计发现系统性误判根因 | 改 shared/ 或搬家后执行双模式 grep |
 | R22 | ALL | **UIManager 单例——辅助模块禁止 `from fusionscript_loader`。** widget 和 window 必须共用同一个 `fu.UIManager`，否则 `GetItems()` 找不到 widget → 窗口空白。2026-07-16 config_dialog 拆分踩坑 | `grep -rn "from fusionscript_loader" --include="*.py" . \| grep -v "ui.py" \| grep -v "check_core.py" \| grep -v "launcher"` |
+| R23 | DC | **`dirname(dirname)` 在安装环境路径错。** 安装后 shared/ 在脚本**同级目录**，不在上层。`os.path.dirname(os.path.dirname(__file__))` → `Scripts/shared/`（❌），应改为 `os.path.dirname(__file__)` → `交付自检工具/shared/`（✅）。影响：更新检测子进程、FC 验证子进程全静默失败。——2026-07-28 上海用户诊断 | `grep -rn "dirname.*dirname" --include="*.py" .` |
+| R24 | DC | **ComboBox.RecalcLayout() 不支持。** DaVinci UIManager 中 ComboBox 无此方法，调用抛 `'NoneType' object is not callable`。仅对话框/HGroup/VGroup 支持。——2026-07-28 上海用户诊断 | `grep -rn "combo.*RecalcLayout\|RecalcLayout.*combo" --include="*.py" .` |
 
 🛑 **R 全部通过后暂停，展示结果，等裁缝老师确认再进入 S。**
 
@@ -86,6 +88,8 @@ agent_created: true
 | S14 | ALL | 缓存验证：`exists` + `getsize > 0` | `os.path.exists(f) and os.path.getsize(f) > 0` |
 | S15 | ALL | 下载验证：记 Content-Length 对比 | 下载后对比实际文件大小与 HTTP 响应头 |
 | S16 | ALL | DaVinci 子进程网络调用不可靠——失败一次就停，不反复重试 | `grep` 子进程代码有无无限重试逻辑 |
+| S17 | DC | **子进程内 daemon 线程随进程 exit 被 kill。** `subprocess.Popen` 中的 `threading.Thread(daemon=True)` 无法存活——IP 采集等异步操作必须放在主进程。——2026-07-28 激活用户 IP 不更新根因 | 审查 `verify_activation()` 等子进程调用的函数 |
+| S18 | DC | **`_start_check()` 必须用 `try/finally` 包所有退出路径。** 无项目/无时间线/无勾选/异常/正常五条路径必须统一 `_unlock_ui()`。`_run_ai_typo()` 已实现，`_start_check()` 曾缺失。——2026-07-24 dd-mbp 测试 | `grep "_start_check\|_lock_ui\|_unlock_ui" ui.py` 确认对称 |
 
 ## 💭 N：优化
 
