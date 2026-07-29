@@ -23,6 +23,20 @@ _TAIL_KW = ("未完待续", "定格转场", "全剧终")
 _items_cache: dict = {}
 _props_cache: dict = {}  # item_uid → {enabled, name, mp, mp_props, property, channel_mapping}
 _smpte_cache: dict = {}  # fps → SMPTE 实例
+_resolve_version: tuple = None  # (21, 0, 3) 惰性缓存
+
+def dvr_at_least(major: int, minor: int = 0) -> bool:
+    """达芬奇版本 ≥ 指定版本？（惰性缓存，各 check 函数通用）"""
+    global _resolve_version
+    if _resolve_version is None:
+        try:
+            from fusionscript_loader import bmd
+            resolve = bmd.scriptapp('Resolve')
+            raw = resolve.GetVersion()  # 返回 (21, 0) 或 (21, 0, 3)
+            _resolve_version = tuple(raw) if raw else (0,)
+        except Exception:
+            _resolve_version = (0,)
+    return _resolve_version >= (major, minor)
 _censor_cache: dict = {}  # path → [words]
 
 def clear_censor_cache(path=None):
@@ -621,7 +635,7 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
 
 
 def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
-    """检测音频片段声道异常：声道静音 / 声道缩减 / mono↔stereo 轨道错配。
+    """检测音频片段声道异常：声道静音 / 声道缩减 / mono↔stereo 轨道错配（<21 版）。
 
     规则：
       ① 声道静音：ch_idx 含 0 或 mute=True
@@ -711,7 +725,8 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
             # ── ③ mono↔stereo 轨道错配 ──
             # 判断标准：channel_idx 只有单侧输出 → 另一声道静音
             # [1,1] 或 [1,2] = 正常下混，不报；[1] 或 [2] = 缺声道，报
-            if track_sub == "stereo" and embedded == 1:
+            # Resolve 21+ 自动将 mono 复制到左右双声道 → 免报
+            if not dvr_at_least(21) and track_sub == "stereo" and embedded == 1:
                 # 检查输出声道数：[1,1]=双声道正常不报 / [1]=单侧缺声道报
                 all_idxs = []
                 for ch_key, ch_data in tm.items():
