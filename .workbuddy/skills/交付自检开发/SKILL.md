@@ -973,7 +973,7 @@ _show_config_dialog() # 创建 config_disp.AddWindow()
 
 **教训**：AI 手工编写 builder 函数会残缺（2026-07-16 连出 4 个 NameError）。搬迁代码一律用 `git show <commit>:path` 提取原文 + diff 验证。
 
-### v2.7.0 变更备忘录（2026-07-28）
+### v2.7.0 变更备忘录（2026-07-29 更新）
 
 **声道检测**：
 - `check_audio_mono()` 的 ③ mono↔stereo 错配判断：必须用 `len(tm)`（时间线片段 mapping 的声道数），不能用 `embedded_audio_channels`（媒体池源文件声道数）
@@ -1011,6 +1011,12 @@ DeepSeek API usage → _call_openai_compat → call_with_fallback → _single �
 
 实测上海创壹 2 集：输入 89,604 / 输出 130 = 89,734 tokens，成本 ¥0.28/集。
 修改文件：`llm_providers.py`（提取 usage）、`llm_typo_check.py`（P1+P2 合并）、`ui.py`（日志行）
+
+**声道检测 ③ 精准化**（2026-07-29）：
+- 根因：`embedded == 1` 或 `len(tm) == 1` 无法区分双声道复制 `idx=[1,1]` 和单侧缺失 `idx=[1]`
+- 解法：用 `total_outputs`（channel_idx 中 >0 的元素个数）判断。2 = 正常，1 = 缺失
+- DaVinci 21+：官方自动将 mono 复制到双声道（changelog 证实），③ 的 mono→stereo 单侧缺失不再报
+- 新增 `dvr_at_least(major, minor=0)` — 惰性缓存版本号，各 check 函数通用
 
 ### 使用手册编写规范（2026-07-28 沉淀）
 
