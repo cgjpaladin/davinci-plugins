@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "61573f847e651afeb117599b8af1bd58acc4ceec560a5b7d210fe084357526a1",
+    "sha256": "bbf882168f0ad25727180d2e9765e9065c1515e306e005e85229f2824ada9ed9",
     "notes": "## v2.7.0\n🐛 声道检测改为检查时间线片段属性，不再误判媒体池源文件属性\n💬 单声道片段放立体声轨道时，提示改为「改片段属性」而非「移轨道」\n🎨 常规检查/字幕检测标题加大加粗",
     "history": [
       {
