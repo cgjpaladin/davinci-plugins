@@ -73,6 +73,13 @@ cp "$WS/shared/dftt_timecode/core"/{dftt_timecode,dftt_timerange}.py "$PKG/交�
 # ── 6. 字典 ──
 if ls "$WS/交付自检工具/dicts"/*.{txt,csv} 1>/dev/null 2>&1; then
     cp "$WS/交付自检工具/dicts"/*.{txt,csv} "$PKG/交付自检工具/dicts/" || { echo "❌ 字典拷贝失败"; exit 1; }
+    
+    # 字幕审查 Skill（仅全量包）
+    SKILL_ZIP="$SCRIPT_DIR/_assets/subtitle-review.zip"
+    if ! $IS_UPDATE && [ -f "$SKILL_ZIP" ]; then
+        unzip -q "$SKILL_ZIP" -d "$PKG/"
+        echo "  📖 内附字幕审查 Skill（批量导出+CSV报表）"
+    fi
 fi
 
 # ── 7. 安装脚本 ──
@@ -122,14 +129,20 @@ fi
 if $IS_UPDATE; then
     # 增量包：直接压源码目录（不含 Python 安装包）
     ZIP="$SCRIPT_DIR/_build/delivery_checker_update.zip"
+    rm -f "$ZIP"
     cd "$SCRIPT_DIR/_build" && zip -rq "$ZIP" "$(basename "$PKG")/"
     ls -lh "$ZIP"
     echo "📂 git push 后经 jsDelivr CDN 分发，插件内自动检测更新"
 else
     # 全量包：内层 data.zip + 外层说明书 + 安装脚本
     INNER_ZIP="$PKG/data.zip"
-    cd "$PKG" && zip -rq "$INNER_ZIP" "交付自检工具/"
-    rm -rf "$PKG/交付自检工具/"
+    rm -f "$INNER_ZIP"
+    if [ -d "$PKG/subtitle-review" ]; then
+        cd "$PKG" && zip -rq "$INNER_ZIP" "交付自检工具/" "subtitle-review/"
+    else
+        cd "$PKG" && zip -rq "$INNER_ZIP" "交付自检工具/"
+    fi
+    rm -rf "$PKG/交付自检工具/" "$PKG/subtitle-review/"
     echo "  📦 内层 data.zip 已创建"
 
     # 先读我.txt（人类安装指引 + Agent 安装指引）
@@ -226,6 +239,7 @@ for n in zf.namelist():
 
     # ── 外层 zip ──
     OUTER_ZIP="$SCRIPT_DIR/_build/交付自检工具_v${VER}.zip"
+    rm -f "$OUTER_ZIP"
     cd "$SCRIPT_DIR/_build" && zip -rq "$OUTER_ZIP" "$(basename "$PKG")/"
     ls -lh "$OUTER_ZIP"
     echo "📂 上传此 zip 到飞书文档分发"
