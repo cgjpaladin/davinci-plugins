@@ -62,7 +62,7 @@ from config import (
 from check_core import (check_track_structure, check_subtitle_clamping, check_disabled_items,
                           check_black_frames, check_audio_mono, check_timeline_settings,
                           check_through_edits, check_tailboard, check_coloring_markers,
-                          check_video_overlap, check_offline_media, check_color_space,
+                          check_video_overlap,
                           check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
                           check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
                           check_color, check_camera_on_high_tracks, check_audio_color_tracks,
