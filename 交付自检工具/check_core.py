@@ -185,10 +185,10 @@ def _track_short(track_type, index):
     return _TRACK_LABEL.get(track_type, track_type[0].upper()) + str(index)
 
 
-def _make_result(status, track="", timecode="", detail="", reason="", is_summary=False):
+def _make_result(status, track="", timecode="", detail="", suggestion="", is_summary=False):
     """工厂函数，统一构造结果 dict"""
     return {"status": status, "track": track, "timecode": timecode,
-            "detail": detail, "reason": reason, "is_summary": is_summary}
+            "detail": detail, "suggestion": suggestion, "is_summary": is_summary}
 
 
 def _check_track_empty(count, track_label):
@@ -203,7 +203,7 @@ def _check_track_details(timeline, track_type, prefix, preset_list, results):
 
     preset_list 每项: {"name": str, "enabled": bool, "subtype": str (optional)}
     只检查实际存在的轨道——缺失轨由数量总览行覆盖，不重复列出。
-    每个问题独立一行，detail=当前状态，reason=应为值。
+    每个问题独立一行，detail=问题描述，suggestion=建议操作。
     """
     actual_count = timeline.GetTrackCount(track_type)
     for idx, preset in enumerate(preset_list):
@@ -217,14 +217,14 @@ def _check_track_details(timeline, track_type, prefix, preset_list, results):
         if actual_name != preset_name:
             results.append(_make_result("fail", track=track_label,
                 detail=f"{preset_name}: 当前 \"{actual_name}\"",
-                reason=f"应为 \"{preset_name}\""))
+                suggestion=f"应为 \"{preset_name}\""))
 
         if "subtype" in preset:
             actual_sub = timeline.GetTrackSubType(track_type, ti)
             if actual_sub != preset["subtype"]:
                 results.append(_make_result("fail", track=track_label,
                     detail=f"{preset_name}: 当前 {actual_sub}",
-                    reason=f"应为 {preset['subtype']}"))
+                    suggestion=f"应为 {preset['subtype']}"))
 
         actual_enabled = timeline.GetIsTrackEnabled(track_type, ti)
         if actual_enabled != preset["enabled"]:
@@ -232,7 +232,7 @@ def _check_track_details(timeline, track_type, prefix, preset_list, results):
             expected_state = "启用" if preset["enabled"] else "禁用"
             results.append(_make_result("fail", track=track_label,
                 detail=f"{preset_name}: {state}",
-                reason=f"应为 {expected_state}"))
+                suggestion=f"应为 {expected_state}"))
 
 
 def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expected_audio=10,
@@ -272,7 +272,7 @@ def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expec
             results.append(_make_result("pass", detail=f"{label}轨道: {actual} (通过)", is_summary=True))
         else:
             results.append(_make_result("fail",
-                detail=f"{label}轨道: 当前 {actual} 轨", reason=f"应为 {expected} 轨", is_summary=True))
+                detail=f"{label}轨道: 当前 {actual} 轨", suggestion=f"应为 {expected} 轨", is_summary=True))
 
     # ═══ 音频检查 ═══
     actual_audio = timeline.GetTrackCount("audio")
@@ -290,14 +290,14 @@ def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expec
             status = "warn" if _IS_PERSONAL else "fail"
             results.append(_make_result(status,
                 detail="Fairlight 预设: 版本过旧",
-                reason="交付总线设置.dat 与参考版本不一致，请更新预设文件"))
+                suggestion="交付总线设置.dat 与参考版本不一致，请更新预设文件"))
         else:
             results.append(_make_result("pass",
                 detail="Fairlight 预设: 版本正确 (MD5 校验通过)"))
     except Exception:
         results.append(_make_result("fail",
             detail="Fairlight 预设: 文件缺失或无法读取",
-            reason=f"请确保 {preset_path} 存在且为最新版本"))
+            suggestion=f"请确保 {preset_path} 存在且为最新版本"))
 
     # ③ 轨道名称/数量（推断是否正确应用到时间线）
     if actual_audio == expected_audio:
@@ -314,11 +314,11 @@ def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expec
         else:
             results.append(_make_result("fail",
                 detail=f"音频轨道: 当前 {actual_audio} 轨，但轨道名称与预设不符",
-                reason="请重新应用总线预设"))
+                suggestion="请重新应用总线预设"))
     else:
         results.append(_make_result("fail",
             detail=f"音频轨道: 当前 {actual_audio} 轨",
-            reason=f"应为 {expected_audio} 轨，请重新应用总线预设"))
+            suggestion=f"应为 {expected_audio} 轨，请重新应用总线预设"))
 
     # ── 各轨详情 ──
     _check_track_details(timeline, "subtitle", "ST", subtitle_preset, results)
@@ -383,7 +383,7 @@ def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0, io_range=Non
                 issues_short.append(_make_result(
                     "fail", track=track, timecode=tc,
                     detail=f"{text}  {duration}帧，过短",
-                    reason="请检查字幕是否夹帧",
+                    suggestion="请检查字幕是否夹帧",
                 ))
 
             # ② 间距夹帧
@@ -395,7 +395,7 @@ def check_subtitle_clamping(timeline, threshold_frames=5, fps=25.0, io_range=Non
                     issues_gap.append(_make_result(
                         "fail", track=track, timecode=tc,
                         detail=f"{prev_name} → {text}  {gap}帧，夹帧",
-                        reason="请调整字幕间距",
+                        suggestion="请调整字幕间距",
                     ))
 
             prev_end = end_frame
@@ -456,7 +456,7 @@ def check_disabled_items(timeline, fps=25.0, io_range=None) -> list:
                 issues.append(_make_result(
                     "fail", track=track, timecode=tc,
                     detail=f"{name}，未启用",
-                    reason="请在时间线上启用该片段",
+                    suggestion="请在时间线上启用该片段",
                 ))
 
     if not issues:
@@ -548,7 +548,7 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
     prev = tl_start
     for s, e in merged:
         if s > prev:
-            reason = "无片段覆盖"
+            _suggestion = "无片段覆盖"
             track = ""
             gap_name = ""
             clip_tc = prev  # 间隙时码
@@ -562,7 +562,7 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
             gaps.append((prev, s, reason, track, gap_name, clip_tc))
         prev = max(prev, e)
     if prev < tl_end:
-        reason = "无片段覆盖"
+        _suggestion = "无片段覆盖"
         track = ""
         gap_name = ""
         clip_tc = prev
@@ -612,24 +612,24 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
         tc = smpte.gettc(clip_tc)
         if gap_reason == "无片段覆盖":
             detail = f"空白 {duration} 帧"
-            reason = "请删除大段黑场" if duration >= threshold_sec * fps else "请检查是否有夹帧"
+            _suggestion = "请删除大段黑场" if duration >= threshold_sec * fps else "请检查是否有夹帧"
         elif gap_reason.startswith("音频超出"):
             detail = f"{gap_reason}，{name}" if name else gap_reason
-            reason = "请调整音频长度使其不超过视频尾"
+            _suggestion = "请调整音频长度使其不超过视频尾"
         elif gap_reason.startswith("不透明度"):
             detail = f"{name}，不透明度不为 100%"
-            reason = "请将不透明度调回 100%"
+            _suggestion = "请将不透明度调回 100%"
         elif gap_reason == "未启用":
             detail = f"{name}，{gap_reason}"
-            reason = "请在时间线上启用该片段"
+            _suggestion = "请在时间线上启用该片段"
         elif name:
             detail = f"{name}，{gap_reason}"
-            reason = "请替换为有效视频素材"
+            _suggestion = "请替换为有效视频素材"
         else:
             detail = f"{duration} 帧，{gap_reason}"
-            reason = ""
+            _suggestion = "空白段落，请检查是否有覆盖或缺失素材"
         results.append(_make_result("fail", timecode=tc, track=track,
-                                    detail=detail, reason=reason))
+                                    detail=detail, suggestion=reason))
 
     return results
 
@@ -693,7 +693,7 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
                     issues.append(_make_result(
                         "fail", track=track, timecode=tc,
                         detail=f"{name}，{ch_reason}",
-                        reason="请将音频片段复制为立体声",
+                        suggestion="请将音频片段复制为立体声",
                     ))
                     item_has_issue = True
                     break  # 一片段只报一次 mute
@@ -718,7 +718,7 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
                 issues.append(_make_result(
                     "fail", track=track, timecode=tc,
                     detail=f"{name}，{ch_reason}",
-                    reason="请检查音频片段声道设置",
+                    suggestion="请检查音频片段声道设置",
                 ))
                 item_has_issue = True
                 continue
@@ -737,13 +737,13 @@ def check_audio_mono(timeline, fps=25.0, io_range=None) -> list:
                     issues.append(_make_result(
                         "fail", track=track, timecode=tc,
                         detail=f"{name}，单声道片段仅输出到{side}",
-                        reason="请将片段属性改为立体声（右键→片段属性→音频→格式）",
+                        suggestion="请将片段属性改为立体声（右键→片段属性→音频→格式）",
                     ))
             elif track_sub == "mono" and embedded >= 2:
                 issues.append(_make_result(
                     "fail", track=track, timecode=tc,
                     detail=f"{name}，立体声片段放在单声道轨道",
-                    reason="请将片段移到立体声轨道",
+                    suggestion="请将片段移到立体声轨道",
                 ))
 
     if not issues:
@@ -824,7 +824,7 @@ def check_subtitle_glyph(timeline, fps=25.0, io_range=None) -> list:
             if m:
                 issues.append(_make_result("warn", track=track, timecode=tc,
                     detail=f"{text}，含不规范字符「{m.group()}」",
-                    reason="请替换为规范汉字"))
+                    suggestion="请替换为规范汉字"))
 
     if not issues:
         return [_make_result("pass", detail="异体字: 全部通过", is_summary=True)]
@@ -868,14 +868,14 @@ def check_subtitle_linebreak(timeline, fps=25.0, io_range=None) -> list:
             if '\n' in text:
                 issues.append(_make_result("fail", track=track, timecode=tc,
                     detail=f"硬换行: {text}",
-                    reason="请调整断句"))
+                    suggestion="请调整断句"))
                 continue
 
             # CPL 超限
             if cpl > 0 and len(text) > cpl:
                 issues.append(_make_result("fail", track=track, timecode=tc,
                     detail=f"超单行 {cpl} 字上限: {text}",
-                    reason="请调整断句"))
+                    suggestion="请调整断句"))
                 continue
 
     if not issues:
@@ -985,7 +985,7 @@ def check_subtitle_censor(timeline, dict_path, fps=25.0, io_range=None, use_warn
                 reason_text = "检查违禁词"
                 status = "warn" if use_warn else "fail"
                 issues.append(_make_result(status, track=track, timecode=tc,
-                    detail=word, reason=reason_text))
+                    detail=word, suggestion=reason_text))
 
     if not issues:
         return [_make_result("pass", detail="无违禁词", is_summary=True)]
@@ -1016,7 +1016,7 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     start_tc = timeline.GetStartTimecode()
     if start_tc != "00:00:00:00":
         results.append(_make_result("fail",
-            detail=f"起始时码 {start_tc}", reason="应为 00:00:00:00", is_summary=True))
+            detail=f"起始时码 {start_tc}", suggestion="应为 00:00:00:00", is_summary=True))
     else:
         results.append(_make_result("pass", detail="起始时码: 00:00:00:00 (通过)", is_summary=True))
 
@@ -1026,11 +1026,11 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     if duration_sec < 41:
         results.append(_make_result("fail",
             detail=f"时长 {duration_sec:.0f}s（不足41s）",
-            reason="低于付费集最低时长，单集需≥41s"))
+            suggestion="低于付费集最低时长，单集需≥41s"))
     elif duration_sec > 180:
         results.append(_make_result("fail",
             detail=f"时长 {_fmt_duration(duration_sec)}（超过180s）",
-            reason="抖音单集≤3分钟，超时驳回。建议优化至90秒左右"))
+            suggestion="抖音单集≤3分钟，超时驳回。建议优化至90秒左右"))
     else:
         results.append(_make_result("pass", detail=f"时长: {_fmt_duration(duration_sec)} (通过)"))
 
@@ -1044,7 +1044,7 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
     else:
         results.append(_make_result("fail",
             detail=f"命名: {tl_name}",
-            reason="请改为 01、02、03 等两位数格式"))
+            suggestion="请改为 01、02、03 等两位数格式"))
 
     # ── ④ 使用项目设置 ──
     if project is None:
@@ -1075,7 +1075,7 @@ def check_timeline_settings(timeline, project=None, fps=25.0) -> list:
 
         if unchecked:
             results.append(_make_result("fail",
-                detail="未使用项目设置", reason="应勾选「使用项目设置」"))
+                detail="未使用项目设置", suggestion="应勾选「使用项目设置」"))
         else:
             results.append(_make_result("pass", detail="使用项目设置 (通过)"))
     else:
@@ -1115,7 +1115,7 @@ def check_through_edits(timeline, fps=25.0, io_range=None) -> list:
             tc = smpte.gettc(_get_cached(a, "start"))
             issues.append(_make_result("warn", track=f"V{vi}", timecode=tc,
                 detail=f"直通编辑: {name}",
-                reason="建议连接片段，以减少调色镜头数"))
+                suggestion="建议连接片段，以减少调色镜头数"))
     if not issues:
         return [_make_result("pass", detail="直通编辑: 全部通过", is_summary=True)]
     return [_make_result("warn", detail=f"直通编辑: {len(issues)} 处", is_summary=True)] + issues
@@ -1167,10 +1167,10 @@ def check_tailboard(timeline, fps=25.0, io_range=None) -> list:
 
     return [
         _make_result("warn", detail=detail,
-                     reason="请在时间线末尾添加定格转场和未完待续（或全剧终）",
+                     suggestion="请在时间线末尾添加定格转场和未完待续（或全剧终）",
                      is_summary=True),
         _make_result("warn", detail=detail,
-                     reason="请在时间线末尾添加定格转场和未完待续（或全剧终）"),
+                     suggestion="请在时间线末尾添加定格转场和未完待续（或全剧终）"),
     ]
 
 
@@ -1237,7 +1237,7 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_l
             detail="黑边检测: 无法读取时间线分辨率，已跳过",
             is_summary=True),
             _make_result("fail",
-            reason="请检查项目设置中的时间线分辨率是否正常")]
+            suggestion="请检查项目设置中的时间线分辨率是否正常")]
 
     smpte = _get_smpte(fps)
     # ── 遮幅：用户设了宽高比 → 计算有效画面区域，排除有意的上下遮幅 ──
@@ -1344,7 +1344,7 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_l
                 tc = smpte.gettc(exp_s)
                 dur_info = f"（{exp_e - exp_s}帧）" if (exp_e - exp_s) < clip_dur else ""
                 issues.append(_make_result("fail", track=track, timecode=tc,
-                    detail=f"{name}，有黑边{dur_info}", reason="适当调整以规避黑边"))
+                    detail=f"{name}，有黑边{dur_info}", suggestion="适当调整以规避黑边"))
     if not issues:
         return [_make_result("pass", detail="黑边: 全部通过", is_summary=True)]
     results = [_make_result("fail", detail=f"黑边: {len(issues)} 处", is_summary=True)]
@@ -1403,7 +1403,7 @@ def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> li
                 tc = smpte.gettc(_get_cached(it, "start", 0))
                 issues.append(_make_result("fail", track=track, timecode=tc,
                     detail=f"{name}，速度为{speed:.0f}%",
-                    reason="调整变速，或使用帧混合/光流法"))
+                    suggestion="调整变速，或使用帧混合/光流法"))
     if not issues:
         return [_make_result("pass", detail="变速: 全部通过", is_summary=True)]
     results = [_make_result("fail", detail=f"变速: {len(issues)} 处", is_summary=True)]
@@ -1434,7 +1434,7 @@ def check_video_clamping(timeline, threshold_frames=1, fps=25.0, io_range=None, 
                 tc = smpte.gettc(_get_cached(it, "start", 0))
                 issues.append(_make_result("fail", track=track, timecode=tc,
                     detail=f"{name}，仅 {duration} 帧，时长过短",
-                    reason="检查是否夹帧"))
+                    suggestion="检查是否夹帧"))
     if not issues:
         return [_make_result("pass",
             detail="视频夹帧: 全部通过", is_summary=True)]
@@ -1461,12 +1461,12 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
     except Exception:
         issues.append(_make_result("fail",
             detail="调色: 无法读取时间线 NodeGraph",
-            reason="可能是达芬奇版本不支持，请手动检查调色节点"))
+            suggestion="可能是达芬奇版本不支持，请手动检查调色节点"))
 
     if tl_nodes > 0:
         issues.append(_make_result("fail",
             detail=f"时间线有 {tl_nodes} 个节点",
-            reason="请删除时间线节点"))
+            suggestion="请删除时间线节点"))
 
     # ── ② 片段节点（加缓存避免重复 IPC）──
     _lut_cache = {}
@@ -1508,7 +1508,7 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
                 tc = smpte.gettc(_get_cached(it, "start", 0))
                 issues.append(_make_result("fail", track=track, timecode=tc,
                     detail=f"{name}，在唯一节点上应用了索尼 LUT",
-                    reason="请检查是否漏掉了调色"))
+                    suggestion="请检查是否漏掉了调色"))
 
     if not issues:
         return [_make_result("pass",
@@ -1571,7 +1571,7 @@ def check_video_overlap(timeline, fps=25.0, io_range=None) -> list:
                 up_name = _get_clip_name(up)
                 issues.append(_make_result("fail", track=f"V{vi+1}", timecode=tc,
                     detail=f"{up_name}，完全遮盖下层 V{vi}「{lo_name}」",
-                    reason="往下覆盖，建议删除冗余的上层片段或下移"))
+                    suggestion="往下覆盖，建议删除冗余的上层片段或下移"))
     if not issues:
         return [_make_result("pass", detail="视频重叠: 全部通过", is_summary=True)]
     return [_make_result("warn", detail=f"视频重叠: {len(issues)} 处", is_summary=True)] + issues
@@ -1632,7 +1632,7 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
                     track=f"V{vi}",
                     timecode=_get_smpte(fps).gettc(start_f),
                     detail=f"{_get_cached(it, 'name', '')}，打标记失败",
-                    reason="请手动添加调色标记"))
+                    suggestion="请手动添加调色标记"))
 
     if issues:
         total = marker_count + len(issues)
@@ -1643,7 +1643,7 @@ def check_coloring_markers(timeline, project=None, fps=25.0, io_range=None) -> l
     detail = f"已完成: {marker_count} 处标记" if marker_count else "无需标记"
     return [
         _make_result("pass", detail=f"调色标记: {detail}", is_summary=True),
-        _make_result("pass", detail=detail, reason="已自动打红色标记，请在时间线确认")
+        _make_result("pass", detail=detail, suggestion="已自动打红色标记，请在时间线确认")
     ]
 
 
@@ -1745,7 +1745,7 @@ def check_path_location(timeline, project=None, fps=25.0, io_range=None) -> list
             tc = smpte.gettc(info["start"])
             issues.append(_make_result("fail", track=track, timecode=tc,
                 detail=f"{name}，不在服务器路径",
-                reason="请将素材移至服务器后重新链接"))
+                suggestion="请将素材移至服务器后重新链接"))
 
     if not issues:
         return [_make_result("pass",
@@ -1791,7 +1791,7 @@ def check_offline_clips(timeline, fps=25.0, io_range=None, debug_log=None) -> li
             tc = smpte.gettc(info["start"])
             issues.append(_make_result("fail", track=track, timecode=tc,
                 detail=f"{name}，脱机文件",
-                reason="请重新链接源文件或替换素材"))
+                suggestion="请重新链接源文件或替换素材"))
             continue
         try:
             mp_uid = mp.GetUniqueId()
@@ -1811,7 +1811,7 @@ def check_offline_clips(timeline, fps=25.0, io_range=None, debug_log=None) -> li
         tc = smpte.gettc(info["start"])
         issues.append(_make_result("fail", track=track, timecode=tc,
             detail=f"{name}，脱机文件",
-            reason="请重新链接源文件或替换素材"))
+            suggestion="请重新链接源文件或替换素材"))
 
     if not issues:
         return [_make_result("pass",
@@ -1874,7 +1874,7 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None, debug_log=Non
             tc = smpte.gettc(_get_cached(it, "start", 0))
             issues.append(_make_result("fail", track=track, timecode=tc,
                 detail=f"{name}，位于第 {vi} 轨",
-                reason="实拍素材请放 V1-V3"))
+                suggestion="实拍素材请放 V1-V3"))
 
     # ── ② 尾板素材不得在 V1-V3 ──
     for vi in (1, 2, 3):
@@ -1895,7 +1895,7 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None, debug_log=Non
             tc = smpte.gettc(_get_cached(it, "start", 0))
             issues.append(_make_result("fail", track=track, timecode=tc,
                 detail=f"{name}，位于第 {vi} 轨",
-                reason="尾板请放 V4-V5"))
+                suggestion="尾板请放 V4-V5"))
 
     # ── ③ 文本/Text+ 不得在 V1-V3 ──
     _type_cache = {}  # mp_uid → type str
@@ -1935,7 +1935,7 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None, debug_log=Non
             tc = smpte.gettc(_get_cached(it, "start", 0))
             issues.append(_make_result("fail", track=track, timecode=tc,
                 detail=f"{name}，位于第 {vi} 轨",
-                reason="文本/Text+请放 V4-V5"))
+                suggestion="文本/Text+请放 V4-V5"))
 
     # ── ④ 调整图层不得在 V1/V4/V5 ──
     for vi in (1, 4, 5):
@@ -1973,7 +1973,7 @@ def check_camera_on_high_tracks(timeline, fps=25.0, io_range=None, debug_log=Non
             tc = smpte.gettc(_get_cached(it, "start", 0))
             issues.append(_make_result("fail", track=track, timecode=tc,
                 detail=f"{name}，位于第 {vi} 轨",
-                reason="调整图层请放 V2-V3"))
+                suggestion="调整图层请放 V2-V3"))
 
     if not issues:
         return [_make_result("pass", detail="视频越轨: 全部通过", is_summary=True)]
@@ -2090,7 +2090,7 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None, debug_log=None) 
             smpte = _get_smpte(fps)
             tc = smpte.gettc(_get_cached(it, "start", 0))
             issues.append(_make_result("fail", track=track, timecode=tc,
-                detail=result[0], reason=result[1]))
+                detail=result[0], suggestion=result[1]))
 
     if not issues:
         return [_make_result("pass", detail="音频越轨: 全部通过", is_summary=True)]

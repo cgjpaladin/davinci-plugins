@@ -115,7 +115,7 @@ COLUMNS = [
     {"header": "轨道",   "width": 48,  "key": "track",  "enabled": True},
     {"header": "时码",   "width": 120, "key": "tc",     "enabled": True},
     {"header": "问题",   "width": 300, "key": "msg",    "enabled": True},
-    {"header": "建议",   "width": 180, "key": "reason", "enabled": True},
+    {"header": "建议",   "width": 180, "key": "suggestion", "enabled": True},
 ]
 
 # 当前启用的列（enabled=True）
@@ -131,7 +131,7 @@ FIELD_TO_COLUMN = {
     "track":    "track",     # 轨道（直接透传）
     "timecode": "tc",        # 时码（仅 key 名不同）
     "detail":   "msg",       # 问题（仅 key 名不同）
-    "reason":   "reason",    # 建议（直接透传）
+    "suggestion": "suggestion", # 建议（直接透传）
 }
 
 # 启动时校验：FIELD_TO_COLUMN 与 COLUMNS 一致
@@ -270,7 +270,7 @@ def _run_fw_check(timeline, fps, **_kw):
                     results.append({"status": "fail", "track": "ST1",
                                     "timecode": tc,
                                     "detail": f"{text} → {fixed}",
-                                    "reason": "全角转半角"})
+                                    "suggestion": "全角转半角"})
         except Exception:
             pass
     if not results:
@@ -1634,7 +1634,7 @@ def _process_result(r, rows_list):
         cols["track"]:    r.get("track", ""),
         cols["timecode"]: r.get("timecode", ""),
         cols["detail"]:   f"{icon} | {r.get('detail', '')}",
-        cols["reason"]:   r.get("reason", ""),
+        cols["suggestion"]:   r.get("suggestion", ""),
     })
     return r["status"] == "fail", r["status"] == "warn", False
 
@@ -1777,7 +1777,7 @@ def _run_ai_typo():
                             FIELD_TO_COLUMN["track"]:r.get("track",""),
                             FIELD_TO_COLUMN["timecode"]:r.get("timecode",""),
                             FIELD_TO_COLUMN["detail"]:f"{icon} | {r.get('detail','')}",
-                            FIELD_TO_COLUMN["reason"]:r.get("reason","")})
+                            FIELD_TO_COLUMN["suggestion"]:r.get("suggestion","")})
                 for sg in sections.values():
                     sg["rows"].sort(key=lambda r: r.get(FIELD_TO_COLUMN["timecode"],""))
                 tree = itm[TREE_RESULT]; tree.Clear(); _setup_tree_header(tree)
@@ -1904,7 +1904,7 @@ def _run_ai_typo():
             icon = "❌" if r.get("status")=="fail" else "⚠"
             row = {"track": r.get("track",""), "tc": r.get("timecode",""),
                    "msg": f"{icon} | {r.get('detail','')}（{r.get('_check_name','系统')}）",
-                   "reason": r.get("reason","")}
+                   "suggestion": r.get("suggestion","")}
             all_rows.append(row)
             direct_rows.append(row)
         _action_log(f"🎨 direct={len(direct_rows)}")
@@ -1928,8 +1928,8 @@ def _run_ai_typo():
                     tc_str = smpte.gettc(entry_starts[idx])
                 icon = "⚠"
                 row = {"track": "ST1", "tc": tc_str,
-                       "msg": f"{icon} | {c['original']} → {c['correction']}",
-                       "reason": c.get('reason', '')}
+                       "msg": f"{icon} | {c.get('reason', '?')}",
+                       "suggestion": f"{c['original']} → {c['correction']}"}
                 all_rows.append(row)
                 ai_rows.append(row)
 
@@ -1952,7 +1952,7 @@ def _run_ai_typo():
         else:
             # 无任何结果时显示一行提示，避免用户以为卡住了
             row = tree.NewItem()
-            _set_row(row, {"track": "—", "tc": "—", "msg": "✅ 未发现问题", "reason": f"AI: {provider}/{model}"})
+            _set_row(row, {"track": "—", "tc": "—", "msg": "✅ 未发现问题", "suggestion": f"AI: {provider}/{model}"})
             tree.AddTopLevelItem(row)
 
         # 重建左侧分类（用 · 前缀区分子类，匹配 _on_group_click）
