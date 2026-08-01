@@ -62,6 +62,7 @@ from config import (
 from check_core import (check_track_structure, check_subtitle_clamping, check_disabled_items,
                           check_black_frames, check_audio_mono, check_timeline_settings,
                           check_through_edits, check_tailboard, check_coloring_markers,
+                          check_video_overlap, check_offline_media, check_color_space,
                           check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
                           check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
                           check_color, check_camera_on_high_tracks, check_audio_color_tracks,
@@ -89,6 +90,7 @@ CHK_OFFLINE = "chk_offline"
 CHK_BLACK_FRAME = CHK_BLACK  # 别名
 CHK_THROUGH_EDITS = "chk_through_edits"
 CHK_TAILBOARD = "chk_tailboard"
+CHK_OVERLAP = "chk_overlap"
 BTN_START = "btn_start"
 BTN_CONFIG = "btn_config"
 BTN_AI_TYPO = "btn_ai_typo"
@@ -318,6 +320,10 @@ def _run_tailboard_check(timeline, fps, **_kw):
     """尾板检测"""
     return check_tailboard(timeline, fps, io_range=_kw.get("io_range"))
 
+def _run_video_overlap_check(timeline, fps, **_kw):
+    """视频重叠检测"""
+    return check_video_overlap(timeline, fps, io_range=_kw.get("io_range"))
+
 def _run_audio_color_check(timeline, fps, **_kw):
     """音频颜色越轨"""
     return check_audio_color_tracks(timeline, fps=fps, io_range=_kw.get("io_range"))
@@ -485,6 +491,7 @@ CHECKS = [
     {"id": "camera_track",  "section": "视频越轨", "chk_id": CHK_CAMERA,          "group": "视频", "subgroup": "越轨",   "run_fn": _run_camera_track_check,  "tracks": ["video"], "gate": "video"},
     {"id": "through_edit",  "section": "直通编辑", "chk_id": CHK_THROUGH_EDITS,  "group": "视频", "subgroup": "直通",   "run_fn": None,                     "tracks": ["video"], "gate": "",  "hidden": True},
     {"id": "tailboard",     "section": "尾板",     "chk_id": CHK_TAILBOARD,     "group": "视频", "subgroup": "尾板",   "run_fn": _run_tailboard_check,     "tracks": ["video"], "gate": "video"},
+    {"id": "video_overlap","section": "视频重叠", "chk_id": CHK_OVERLAP,       "group": "视频", "subgroup": "重叠",   "run_fn": _run_video_overlap_check,  "tracks": ["video"], "gate": "video"},
     {"id": "color",         "section": "色彩",     "chk_id": CHK_COLOR,           "group": "色彩", "subgroup": "色彩",   "run_fn": _run_color_check,         "tracks": ["video"], "gate": "video"},
     {"id": "tag_markers",    "section": "调色标记", "chk_id": CHK_TAG_MARKERS,     "group": "色彩", "subgroup": "调色标记","run_fn": _run_tag_markers_check,    "tracks": ["video"], "gate": "video"},
     # 音频门

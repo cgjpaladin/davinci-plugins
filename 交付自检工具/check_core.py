@@ -1519,6 +1519,64 @@ def check_color(timeline, project=None, fps=25.0, io_range=None) -> list:
                          is_summary=True)] + issues
 
 
+# ── 视频重叠 ──
+
+def check_video_overlap(timeline, fps=25.0, io_range=None) -> list:
+    """检测高轨道片段 100% 不透明度完全遮盖低轨道片段（上层不可见 = 剪辑残留）。
+
+    规则：仅 Opacity==100 且 CompositeMode 为 "Normal" 时触发。
+    排除：文本/生成器（无 MediaPoolItem）、Opacity<100、合成模式非 Normal。
+    """
+    smpte = _get_smpte(fps)
+    issues = []
+    total_v = timeline.GetTrackCount("video")
+    if total_v < 2:
+        return [_make_result("pass", detail="视频重叠: 单轨无重叠", is_summary=True)]
+
+    for vi in range(1, total_v):
+        lower_items = timeline.GetItemListInTrack("video", vi) or []
+        upper_items = timeline.GetItemListInTrack("video", vi + 1) or []
+        for lo in lower_items:
+            lo_s = lo.GetStart()
+            lo_e = lo.GetEnd()
+            if not _in_io_range(lo, io_range):
+                continue
+            for up in upper_items:
+                up_s = up.GetStart()
+                up_e = up.GetEnd()
+                if up_s >= lo_e or up_e <= lo_s:
+                    continue  # 不重叠
+                # 排除文本/生成器（无 MediaPoolItem 的纯合成层）
+                if not up.GetMediaPoolItem() or not lo.GetMediaPoolItem():
+                    continue
+                # 检查上层不透明度
+                try:
+                    op = up.GetProperty("Opacity")
+                except Exception:
+                    op = None
+                if op is None or op != 100.0:
+                    continue
+                # 排除合成模式非 Normal
+                try:
+                    composite = up.GetProperty("Composite Mode") or 0
+                except Exception:
+                    composite = 0
+                if composite != 0:  # 0 = Normal
+                    continue
+                # 上层完全遮盖 → 下层重叠区不可见
+                overlap_s = max(lo_s, up_s)
+                overlap_e = min(lo_e, up_e)
+                tc = smpte.gettc(overlap_s)
+                lo_name = _get_clip_name(lo)
+                up_name = _get_clip_name(up)
+                issues.append(_make_result("fail", track=f"V{vi}", timecode=tc,
+                    detail=f"{lo_name}，被上层 V{vi+1}「{up_name}」完全遮盖",
+                    reason="上层不透明度100%，下层不可见，请删除多余的轨道片段"))
+    if not issues:
+        return [_make_result("pass", detail="视频重叠: 全部通过", is_summary=True)]
+    return [_make_result("warn", detail=f"视频重叠: {len(issues)} 处", is_summary=True)] + issues
+
+
 # ── 调色标记 ──
 
 # 打码效果关键词（OFX 工具名含以下即可匹配）
