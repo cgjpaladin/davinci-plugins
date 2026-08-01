@@ -1569,9 +1569,9 @@ def check_video_overlap(timeline, fps=25.0, io_range=None) -> list:
                 tc = smpte.gettc(overlap_s)
                 lo_name = _get_clip_name(lo)
                 up_name = _get_clip_name(up)
-                issues.append(_make_result("fail", track=f"V{vi}", timecode=tc,
-                    detail=f"{lo_name}，被上层 V{vi+1}「{up_name}」完全遮盖",
-                    reason="上层不透明度100%，下层不可见，请删除多余的轨道片段"))
+                issues.append(_make_result("fail", track=f"V{vi+1}", timecode=tc,
+                    detail=f"{up_name}，完全遮盖下层 V{vi}「{lo_name}」",
+                    reason="往下覆盖，建议删除冗余的上层片段或下移"))
     if not issues:
         return [_make_result("pass", detail="视频重叠: 全部通过", is_summary=True)]
     return [_make_result("warn", detail=f"视频重叠: {len(issues)} 处", is_summary=True)] + issues
