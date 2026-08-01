@@ -993,6 +993,40 @@ _show_config_dialog() # 创建 config_disp.AddWindow()
 - 日志路径在 `~/Library/Logs/交付自检工具/交付自检工具/`，不是 `data_dir/logs/`
 - `export_debug.py` 的 `errors.txt` 从此目录读取最近 20 条错误日志
 
+### v2.7.1 变更备忘录（2026-08-02）
+
+**字段命名重构**：
+- `_make_result()` 参数 `reason=` → `suggestion=`，返回值 `"reason"` → `"suggestion"`
+- `COLUMNS` 和 `FIELD_TO_COLUMN` 同步更新：`"reason"` 列 key → `"suggestion"`
+- 上层 `r.get("reason")` → `r.get("suggestion")`，旧缓存兼容（`.get()` 安全返回 `""`）
+- 新增检查项写 `_make_result` 时记住：`detail=问题描述, suggestion=建议操作`
+
+**新增检查项**：
+- `check_video_overlap()`：检测上层 100% 不透明度遮盖下层（排除文本/生成器/非 Normal 合成模式）
+- 注册到 CHECKS 表：`id="video_overlap"`，`group="视频"`，`subgroup="重叠"`，`gate="video"`
+
+**通用工具**：
+- `dvr_at_least(major, minor=0)`：惰性缓存达芬奇版本号，各 check 函数按需判断
+  ```python
+  if dvr_at_least(21):
+      # Resolve 21+ 专属逻辑
+  ```
+
+**AI 提示词重构**：
+- 删 `_reason_names` 硬枚举，`reason` 从「标签」改为「自由文本」
+- 每条规则 `→「标签名」` 改成直接描述
+- prompt 要求 AI 输出 5-15 字简短中文说明如「什字重复」「的地得」「叶珠→叶姝」
+- Tree 行 AI 部分交换：`问题`列放简短原因，`建议`列放原文→修改对比
+- 示例 reason：用「的地得」不用「的当作地用」（用户原话：太拗口）
+
+**声道检测 v2**：
+- ③ mono→stereo 单侧缺失：必须用 `total_outputs`（channel_idx 中 >0 元素个数），不能用 `set()` 去重
+- `idx=[1,1]` → total_outputs=2（双声道正常）不报；`idx=[1]` → total_outputs=1（单侧缺失）报
+- DaVinci 21+：官方 changelog 证实自动下混 → `dvr_at_least(21)` 跳过 ③
+
+**Tree 按时码排序**：
+- `_render_group()` 内部对 `sec["rows"]` 调用 `_sort_rows()`，按 SMPTE frame 排序
+
 **安装路径**：
 - 个人版安装后 `dirname(dirname)` 从 `ui.py` 往上两层是 `Scripts/`，shared 在 `Scripts/交付自检工具/shared/`
 - 开发版在 `达芬奇插件工坊/`，shared 在上一层。安装后必须用 `dirname`（一层）
