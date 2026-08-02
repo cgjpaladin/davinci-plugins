@@ -1018,6 +1018,7 @@ _show_config_dialog() # 创建 config_disp.AddWindow()
 - prompt 要求 AI 输出 5-15 字简短中文说明如「什字重复」「的地得」「叶珠→叶姝」
 - Tree 行 AI 部分交换：`问题`列放简短原因，`建议`列放原文→修改对比
 - 示例 reason：用「的地得」不用「的当作地用」（用户原话：太拗口）
+- **全半角检测**：正则机检（`re.compile(r'[\uff00-\uffef]')`），不是 AI，不需联网。只在点「字幕检测」时作为 6 项本地检查之一自动跑，左边面板无独立开关。手册不能写「导入剧本后 AI 额外检查」
 
 **声道检测 v2**：
 - ③ mono→stereo 单侧缺失：必须用 `total_outputs`（channel_idx 中 >0 元素个数），不能用 `set()` 去重
@@ -1045,12 +1046,16 @@ _show_config_dialog() # 创建 config_disp.AddWindow()
 | 改纯文本 | `str_replace` | `--command str_replace --pattern '旧' --content '新'` |
 | 拆 `<li>`/拆段落 | 先 `block_insert_after`，再 `str_replace` 清 | 见下例 |
 | 删整个 block | `block_delete` | `--command block_delete --block-id <id>` |
+| 末尾追加新段落 | `append --doc-format markdown` | 最可靠，XML 常在 h2 后失效 |
 
 **常见错误**：
 - `str_replace` 插入 `</li><li>` → 飞书静默拒绝，不报错
 - `--detail simple` 丢失 `id` 属性，改结构时必须用 `with-ids`
 - 中文内容在 Shell 中可能被转码，建议用单引号包裹或 Python 文件写入
 - `$` 符号必须用单引号包裹内容参数
+- `str_replace` 在 `</h2>` 后插 `<p>` → 内容被吞入 h2 块内部，不报错但不独立成段
+- `block_insert_after` 对文档最后一个块可能静默失败
+- **追加新段落优先用 `append --doc-format markdown`**，比 XML 稳定得多。仅改已有文本用 `str_replace`
 
 **Block 拆分示例**：
 ```bash
@@ -1076,7 +1081,7 @@ lark-cli docs +update --doc <doc_id> --as user \
 DeepSeek API usage → _call_openai_compat → call_with_fallback → _single → check_typos → ui.py 日志
 ```
 
-实测上海创壹 2 集：输入 89,604 / 输出 130 = 89,734 tokens，成本 ¥0.28/集。
+实测：输入 62,389 / 输出 1,124 = 63,513 tokens，成本 ¥0.20/集（1551 行剧本）；上海 3127 行剧本时 ¥0.28/集。价格区间 ¥0.20-0.50。
 修改文件：`llm_providers.py`（提取 usage）、`llm_typo_check.py`（P1+P2 合并）、`ui.py`（日志行）
 
 **声道检测 ③ 精准化**（2026-07-29）：
@@ -1105,3 +1110,15 @@ DeepSeek API usage → _call_openai_compat → call_with_fallback → _single �
 2. 再用 `lark-cli docs +fetch` 读手册当前描述
 3. 逐条比对：代码 vs 手册 → 不一致就修
 4. 修完后 `lark-cli docs +fetch` 验证关键词已替换
+
+### 字幕审查 Skill（subtitle-review）与交付自检工具的边界（2026-08-02）
+
+| 维度 | 交付自检工具 | subtitle-review Skill |
+|------|------------|----------------------|
+| 运行方式 | 达芬奇插件，实时 | WorkBuddy Agent，离线 |
+| 场景 | 单集快速校对 | 全集批量审查 + 交付报表 |
+| 输出 | 时间线标记 + Tree 结果 | CSV + 达芬奇 Marker |
+| 问题类型 | AI 自由文本（5-15字） | CSV 列「问题类型」自由文本 + 「问题说明」详细描述 |
+| 依赖 | DeepSeek API | Agent LLM（不需额外 API Key） |
+
+**两者不冲突**：单集用插件快扫 → 全集用 Skill 再扫一遍保整体性。Skill 的 CSV 格式独立，不要用工具内部的 `suggestion`/`detail` 字段名去套。
