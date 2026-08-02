@@ -74,12 +74,12 @@ cp "$WS/shared/dftt_timecode/core"/{dftt_timecode,dftt_timerange}.py "$PKG/交�
 if ls "$WS/交付自检工具/dicts"/*.{txt,csv} 1>/dev/null 2>&1; then
     cp "$WS/交付自检工具/dicts"/*.{txt,csv} "$PKG/交付自检工具/dicts/" || { echo "❌ 字典拷贝失败"; exit 1; }
     
-    # 字幕审查 Skill（仅全量包）
-    SKILL_ZIP="$SCRIPT_DIR/_assets/subtitle-review.zip"
-    if ! $IS_UPDATE && [ -f "$SKILL_ZIP" ]; then
-        unzip -q "$SKILL_ZIP" -d "$PKG/"
-        echo "  📖 内附字幕审查 Skill（批量导出+CSV报表）"
-    fi
+    # 字幕审查 Skill — 暂撤，下次要加取消下面注释即可
+    # SKILL_ZIP="$SCRIPT_DIR/_assets/subtitle-review.zip"
+    # if ! $IS_UPDATE && [ -f "$SKILL_ZIP" ]; then
+    #     unzip -q "$SKILL_ZIP" -d "$PKG/"
+    #     echo "  📖 内附字幕审查 Skill（批量导出+CSV报表）"
+    # fi
 fi
 
 # ── 7. 安装脚本 ──
