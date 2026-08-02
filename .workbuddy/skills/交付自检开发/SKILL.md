@@ -1032,17 +1032,38 @@ _show_config_dialog() # 创建 config_disp.AddWindow()
 - 开发版在 `达芬奇插件工坊/`，shared 在上一层。安装后必须用 `dirname`（一层）
 - 影响：更新检测子进程、FC 验证子进程找不到 shared 目录 → 全部静默失败
 
-### 飞书文档更新规则（2026-08-02 踩坑）
+### 飞书文档更新 SOP（2026-08-02 踩坑沉淀）
 
-**`str_replace` 只能改文本，不能拆分块级结构**：
-- 飞书文档每个 `<li>`/`<p>` 是一个独立 block，有固定 `id` 属性
-- `str_replace` 插入 `</li><li>` 会被飞书 API 静默拒绝（不报错但也不生效）
-- 必须先 `lark-cli docs +update --command block_insert_after --block-id <id> --content <html>` 插入新 block
-- 再 `str_replace` 清理旧 block 中多余内容
+**铁律**：
+1. 改前先 `lark-cli docs +fetch --detail with-ids` 抓完整 HTML，看 block 结构和 ID
+2. 改后用 `lark-cli docs +fetch --detail simple` 验证渲染效果
 
-**务必 `--detail with-ids` 抓原始 HTML 确认格式**，`--detail simple` 剥离标签后会丢失 `id` 信息。
+**工具选择**：
 
-**全半角检测**：正则机检（非 AI），只在「字幕检测」流程中随 AI 校对一起跑，左边面板无独立开关。
+| 场景 | 工具 | 命令 |
+|------|------|------|
+| 改纯文本 | `str_replace` | `--command str_replace --pattern '旧' --content '新'` |
+| 拆 `<li>`/拆段落 | 先 `block_insert_after`，再 `str_replace` 清 | 见下例 |
+| 删整个 block | `block_delete` | `--command block_delete --block-id <id>` |
+
+**常见错误**：
+- `str_replace` 插入 `</li><li>` → 飞书静默拒绝，不报错
+- `--detail simple` 丢失 `id` 属性，改结构时必须用 `with-ids`
+- 中文内容在 Shell 中可能被转码，建议用单引号包裹或 Python 文件写入
+- `$` 符号必须用单引号包裹内容参数
+
+**Block 拆分示例**：
+```bash
+# 1. 在 block A 后插入新 block B
+lark-cli docs +update --doc <doc_id> --as user \
+  --command block_insert_after --block-id <id_of_A> \
+  --content '<li><b>新项</b> — 描述</li>'
+
+# 2. 从 block A 中清除被拆出去的内容
+lark-cli docs +update --doc <doc_id> --as user \
+  --command str_replace \
+  --pattern '旧内容<多余文本>' --content '旧内容'
+```
 
 **FC 后端**：
 - 指纹校验：必须 `len(fp)==64 && /^[0-9a-f]{64}$/`
