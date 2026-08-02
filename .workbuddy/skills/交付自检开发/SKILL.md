@@ -1032,6 +1032,18 @@ _show_config_dialog() # 创建 config_disp.AddWindow()
 - 开发版在 `达芬奇插件工坊/`，shared 在上一层。安装后必须用 `dirname`（一层）
 - 影响：更新检测子进程、FC 验证子进程找不到 shared 目录 → 全部静默失败
 
+### 飞书文档更新规则（2026-08-02 踩坑）
+
+**`str_replace` 只能改文本，不能拆分块级结构**：
+- 飞书文档每个 `<li>`/`<p>` 是一个独立 block，有固定 `id` 属性
+- `str_replace` 插入 `</li><li>` 会被飞书 API 静默拒绝（不报错但也不生效）
+- 必须先 `lark-cli docs +update --command block_insert_after --block-id <id> --content <html>` 插入新 block
+- 再 `str_replace` 清理旧 block 中多余内容
+
+**务必 `--detail with-ids` 抓原始 HTML 确认格式**，`--detail simple` 剥离标签后会丢失 `id` 信息。
+
+**全半角检测**：正则机检（非 AI），只在「字幕检测」流程中随 AI 校对一起跑，左边面板无独立开关。
+
 **FC 后端**：
 - 指纹校验：必须 `len(fp)==64 && /^[0-9a-f]{64}$/`
 - 去重：写前等 1.2s 再搜一次，解决飞书搜索索引延迟导致重复记录
