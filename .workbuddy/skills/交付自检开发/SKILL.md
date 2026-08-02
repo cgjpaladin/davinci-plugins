@@ -1057,6 +1057,18 @@ _show_config_dialog() # 创建 config_disp.AddWindow()
 - `block_insert_after` 对文档最后一个块可能静默失败
 - **追加新段落优先用 `append --doc-format markdown`**，比 XML 稳定得多。仅改已有文本用 `str_replace`
 
+**追加示例**（今天实测可用）：
+```bash
+lark-cli docs +update --doc <doc_id> --as user --command append --doc-format markdown --content '
+段落一：搭配插件使用...
+
+段落二：可导出 CSV 报表...
+
+段落三：下载附件 → 对 WorkBuddy 说「帮我安装」...
+'
+```
+Markdown 的 `'...'` 三引号内可以换行，飞书自动转换为段落 blocks。
+
 **Block 拆分示例**：
 ```bash
 # 1. 在 block A 后插入新 block B
