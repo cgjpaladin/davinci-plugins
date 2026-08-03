@@ -2137,7 +2137,7 @@ def check_audio_source_trim(timeline, fps, **_kw):
                     detail=f"{name} — 音频头部未修剪",
                     suggestion="从源文件头部至少修剪 1 帧以去除可能的爆音"))
             if ro == 0:
-                issues.append(_make_result("warn", track=track, timecode=tc,
+                issues.append(_make_result("warn", track=track, timecode=smpte.gettc(int(ai.GetEnd())),
                     detail=f"{name} — 音频尾部未修剪",
                     suggestion="从源文件尾部至少修剪 1 帧以去除可能的爆音"))
 
