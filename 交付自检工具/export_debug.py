@@ -28,7 +28,7 @@ def export_debug_package(itm_dict, btn_export, error_state, log_fn, data_dir,
         except Exception as e:
             log_fn(f"❌ 选目录失败: {e}")
     if not dest or not os.path.isdir(dest):
-        itm_dict[btn_export].Text = "📋 导出日志" if not error_state["count"] else f"⚠️ {error_state["count"]} 个报错"
+        itm_dict[btn_export].Text = "📋 导出日志" if not error_state["count"] else f'⚠️ {error_state["count"]} 个报错'
     # ── 文件名 ──
     now = time.localtime()
     from shared.license import get_machine_fingerprint
@@ -192,7 +192,7 @@ def export_debug_package(itm_dict, btn_export, error_state, log_fn, data_dir,
         env_lines.append(f".env 读取失败: {e}")
 
     state_lines = []
-    state_lines.append(f"本次报错数: {error_state["count"]}")
+    state_lines.append(f'本次报错数: {error_state["count"]}')
     try:
         _keys = load_keys_fn()
         apis = [k for k in ("deepseek_key", "feishu_app_id", "feishu_secret") if _keys.get(k)]
@@ -259,4 +259,4 @@ def export_debug_package(itm_dict, btn_export, error_state, log_fn, data_dir,
         itm_dict[btn_export].Text = "✅ 已导出"
     except Exception as e:
         log_fn(f"❌ 导出失败: {e}")
-        itm_dict[btn_export].Text = "📋 导出日志" if not error_state["count"] else f"⚠️ {error_state["count"]} 个报错"
+        itm_dict[btn_export].Text = "📋 导出日志" if not error_state["count"] else f'⚠️ {error_state["count"]} 个报错'

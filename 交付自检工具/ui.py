@@ -2469,7 +2469,7 @@ _ui_error_state = {"count": 0}
 
 def _on_err_report(ev):
     """导出日志到本地"""
-    _action_log(f"📤 导出按钮被点击 (error_count={_ui_error_state["count"]})")
+    _action_log(f'📤 导出按钮被点击 (error_count={_ui_error_state["count"]})')
     if _BUSY:
         return
     _lock_ui("导出日志")
@@ -2495,7 +2495,7 @@ def _log_activate_fail(code: str, detail: str):
 def _update_err_counter():
     """报错时更新按钮文字"""
     if _ui_error_state["count"] > 0:
-        itm[BTN_ERR_SEND].Text = f"⚠️ {_ui_error_state["count"]} 个报错"
+        itm[BTN_ERR_SEND].Text = f'⚠️ {_ui_error_state["count"]} 个报错'
     else:
         itm[BTN_ERR_SEND].Text = "📋 导出日志"
 dlg.On[BTN_ERR_SEND].Clicked = _on_err_report
