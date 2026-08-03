@@ -7,15 +7,11 @@
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
     "sha256": "3fec5b906562cf6d6aa26bcedecc417ac65f12d1a8dd79d2b3ff0f1ef7676a20",
-    "notes": "🔊 新增功能，详见使用手册",
+    "notes": "## v2.7.3\n🔊 新增音频爆音检测，自动发现 Seedance 素材未修剪的尾端音频",
     "history": [
       {
         "version": "2.7.3",
-        "notes": "## v2.7.3\n🔊 音频爆音检测仅查尾部（Seedance只有尾爆音没有头爆音）"
-      },
-      {
-        "version": "2.7.3",
-        "notes": "## v2.7.3\n🔊 新增功能，详见使用手册"
+        "notes": "## v2.7.3\n🔊 新增音频爆音检测，自动发现 Seedance 素材未修剪的尾端音效"
       },
       {
         "version": "2.7.2",
