@@ -1,3 +1,4 @@
+from __future__ import annotations
 #!/usr/bin/env python3
 """剧本解析器 — 从文档/飞书提取纯文本行，喂给 AI 校对。
 

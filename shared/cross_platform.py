@@ -1,3 +1,4 @@
+from __future__ import annotations
 #!/usr/bin/env python3
 """跨平台抽象层 — 统一 macOS / Windows 路径和系统命令差异。
 

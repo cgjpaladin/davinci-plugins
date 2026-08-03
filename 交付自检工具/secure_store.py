@@ -1,3 +1,4 @@
+from __future__ import annotations
 #!/usr/bin/env python3
 """API Key 安全存储：macOS Keychain（主）→ chmod 600 文件（兜底）。
 
