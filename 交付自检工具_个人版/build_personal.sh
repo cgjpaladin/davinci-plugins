@@ -237,6 +237,39 @@ for n in zf.namelist():
     fi
     echo "✅ 出厂检验通过: $VER_ZIP"
 
+    # ── 自动更新 version.json（版本号+公告+history）──
+    cd "$WS"
+    python3 -c "
+import json,re,hashlib,os
+v='$VER'
+ws='$WS'
+# 读 CHANGELOG 取最新公告
+cl=open('交付自检工具/CHANGELOG.md').read()
+# 匹配 ## vX.Y.Z 段落到下一个 ## 或 EOF
+m=re.search(r'## v' + re.escape(v) + r'\n(.*?)(?=\n## v|\Z)', cl, re.DOTALL)
+notes=m.group(1).strip() if m else '🔊 新增功能，详见使用手册'
+
+# 更新 version.json
+vj=json.load(open('version.json'))
+dc=vj['delivery_checker']
+dc['version']=v
+dc['notes']=notes
+
+# 写 delta sha
+z_path=os.path.join(ws,'delivery_checker_update.zip')
+if os.path.exists(z_path):
+    dc['sha256']=hashlib.sha256(open(z_path,'rb').read()).hexdigest()
+
+# 补 history
+history=dc.setdefault('history',[])
+existing={h['version'] for h in history}
+if v not in existing:
+    history.insert(0,{'version':v,'notes':'## v'+v+'\n'+notes})
+
+json.dump(vj,open('version.json','w'),ensure_ascii=False,indent=2)
+print(f'  📋 version.json: {v} history={v in {h[\"version\"] for h in history}}')
+" 2>/dev/null || echo "  ⚠ version.json 更新失败（网络正常时手动修复）"
+
     # ── 外层 zip ──
     OUTER_ZIP="$SCRIPT_DIR/_build/交付自检工具_v${VER}.zip"
     rm -f "$OUTER_ZIP"
