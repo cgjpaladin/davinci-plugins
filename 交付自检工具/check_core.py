@@ -2025,7 +2025,7 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None, debug_log=None) 
       A8-A10（BGM）  → 巧克力色（音乐）
       其他颜色       → 未归类
 
-    MP 颜色 ≠ 时间线颜色。此检查读 MediaPoolItem.GetClipColor()。
+    MP 颜色 ≠ 时间线颜色。此检查读 TimelineItem.GetClipColor()。
     包含复合片段。
 
     Returns:
@@ -2054,7 +2054,6 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None, debug_log=None) 
             is_summary=True)]
 
     # ── 颜色检查 ──
-    _color_cache = {}  # mp_unique_id → color str
     issues = []
 
     for vi in range(1, audio_count + 1):
@@ -2071,19 +2070,11 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None, debug_log=None) 
             if mp is None:
                 continue
 
-            # 缓存：同一 MediaPoolItem 只查一次颜色
+            # 时间线颜色：每个实例独立读取
             try:
-                mp_uid = mp.GetUniqueId()
+                color = it.GetClipColor() or ""
             except Exception:
-                continue
-            if mp_uid not in _color_cache:
-                try:
-                    _color_cache[mp_uid] = mp.GetClipColor() or ""
-                except Exception:
-                    _color_cache[mp_uid] = ""
-                except Exception:
-                    _color_cache[mp_uid] = ""
-            color = _color_cache[mp_uid]
+                color = ""
 
             result = _audio_color_detail(color, vi, _get_clip_name(it))
             if result is None:
