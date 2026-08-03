@@ -66,6 +66,7 @@ from check_core import (check_track_structure, check_subtitle_clamping, check_di
                           check_black_borders, check_speed, check_video_clamping, preload_timeline_items,
                           check_subtitle_glyph, check_subtitle_linebreak, check_subtitle_censor,
                           check_color, check_camera_on_high_tracks, check_audio_color_tracks,
+                          check_audio_source_trim,
                           _get_smpte, _make_result,
                           check_path_location, check_offline_clips)
 from export_debug import export_debug_package
@@ -84,6 +85,7 @@ CHK_BLACK, CHK_VIDEO_CLAMP, CHK_BORDER, CHK_SPEED, CHK_MONO, CHK_LOUDNESS, CHK_F
 CHK_CENSOR_SYSTEM, CHK_CENSOR_PERSONAL = "chk_censor_sys", "chk_censor_personal"
 CHK_CAMERA = "chk_camera"
 CHK_AUDIO_COLOR = "chk_audio_color"
+CHK_AUDIO_TRIM  = "chk_audio_trim"
 CHK_TAG_MARKERS = "chk_tag_markers"
 CHK_PATH = "chk_path"
 CHK_OFFLINE = "chk_offline"
@@ -328,6 +330,10 @@ def _run_audio_color_check(timeline, fps, **_kw):
     """音频颜色越轨"""
     return check_audio_color_tracks(timeline, fps=fps, io_range=_kw.get("io_range"))
 
+def _run_audio_trim_check(timeline, fps, **_kw):
+    """音频源帧修剪（Seedance 爆音）"""
+    return check_audio_source_trim(timeline, fps=fps)
+
 def _run_timeline_check(timeline, fps, **_kw):
     """时间线设置"""
     return check_timeline_settings(timeline, fps=fps, project=_kw.get("project"))
@@ -498,6 +504,7 @@ CHECKS = [
     {"id": "audio_mono",    "section": "声道",     "chk_id": CHK_MONO,           "group": "音频", "subgroup": "声道",   "run_fn": _run_mono_check,          "tracks": ["audio"], "gate": "audio"},
     {"id": "audio_loudness","section": "音量",     "chk_id": CHK_LOUDNESS,       "group": "音频", "subgroup": "声道",   "run_fn": None,                     "tracks": [], "gate": "audio"},
     {"id": "audio_color",   "section": "音频越轨", "chk_id": CHK_AUDIO_COLOR,     "group": "音频", "subgroup": "越轨",   "run_fn": _run_audio_color_check,   "tracks": ["audio"], "gate": "audio"},
+    {"id": "audio_trim",    "section": "音频爆音", "chk_id": CHK_AUDIO_TRIM,      "group": "音频", "subgroup": "爆音",   "run_fn": _run_audio_trim_check,    "tracks": [], "gate": ""},
 ]
 # 扩展指南：
 #   - gate: ""=不用门控制直接跑, 非空=受 gates_ok 控制（四扇并行门全过才跑）

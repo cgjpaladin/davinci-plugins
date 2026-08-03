@@ -2099,3 +2099,48 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None, debug_log=None) 
         detail=f"音频越轨: {len(issues)} 处", is_summary=True)]
     results.extend(issues)
     return results
+
+
+def check_audio_source_trim(timeline, fps, **_kw):
+    """检测音频片段源帧头尾是否修剪（Seedance 爆音检测）。
+    
+    仅查媒体池 Type="视频 + 音频" 的片段（嵌入式音频），跳过独立 WAV/MP3。
+    left_offset=0 → 源文件头部未修剪，right_offset=0 → 源文件尾部未修剪。
+    """
+    smpte = _get_smpte(fps)
+    issues = []
+
+    for a_ti in range(1, 10):
+        items = timeline.GetItemListInTrack("audio", a_ti) or []
+        for ai in items:
+            name = ai.GetName()
+            mpi = ai.GetMediaPoolItem()
+            if not mpi:
+                continue
+            try:
+                clip_type = mpi.GetClipProperty("Type") or ""
+            except Exception:
+                clip_type = ""
+            if clip_type != "视频 + 音频":
+                continue
+
+            lo = ai.GetLeftOffset()
+            ro = ai.GetRightOffset()
+            if lo == 0 and ro == 0:
+                continue  # 两端都未修剪且无余量 = 整段源文件，无法判断
+
+            tc = smpte.gettc(int(ai.GetStart()))
+            track = f"A{a_ti}"
+
+            if lo == 0:
+                issues.append(_make_result("warn", track=track, timecode=tc,
+                    detail=f"{name} — 音频头部未修剪",
+                    suggestion="从源文件头部至少修剪 1 帧以去除可能的爆音"))
+            if ro == 0:
+                issues.append(_make_result("warn", track=track, timecode=tc,
+                    detail=f"{name} — 音频尾部未修剪",
+                    suggestion="从源文件尾部至少修剪 1 帧以去除可能的爆音"))
+
+    if not issues:
+        return [_make_result("pass", detail="音频爆音: 全部通过", is_summary=True)]
+    return [_make_result("warn", detail=f"音频爆音: {len(issues)} 处", is_summary=True)] + issues
