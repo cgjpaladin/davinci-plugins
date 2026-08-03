@@ -2078,7 +2078,7 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None, debug_log=None) 
                 continue
             if mp_uid not in _color_cache:
                 try:
-                    _color_cache[mp_uid] = it.GetClipColor() or ""
+                    _color_cache[mp_uid] = mp.GetClipColor() or ""
                 except Exception:
                     _color_cache[mp_uid] = ""
             color = _color_cache[mp_uid]
