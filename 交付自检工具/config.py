@@ -3,8 +3,8 @@
 时间线检查 — 配置
 """
 
-__version__ = "2.7.1"
-__channel__ = "dev"
+__version__ = "2.7.2"
+__channel__ = ""
 
 def version_string():
     return f"{__version__}{'-' + __channel__ if __channel__ else ''}"

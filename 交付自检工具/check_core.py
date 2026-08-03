@@ -2135,11 +2135,11 @@ def check_audio_source_trim(timeline, fps, **_kw):
             if lo == 0:
                 issues.append(_make_result("warn", track=track, timecode=tc,
                     detail=f"{name} — 音频头部未修剪",
-                    suggestion="从源文件头部至少修剪 1 帧以去除可能的爆音"))
+                    suggestion="从头部至少修剪 1 帧以去除可能的爆音"))
             if ro == 0:
                 issues.append(_make_result("warn", track=track, timecode=smpte.gettc(int(ai.GetEnd())),
                     detail=f"{name} — 音频尾部未修剪",
-                    suggestion="从源文件尾部至少修剪 1 帧以去除可能的爆音"))
+                    suggestion="从尾部至少修剪 1 帧以去除可能的爆音"))
 
     if not issues:
         return [_make_result("pass", detail="音频爆音: 全部通过", is_summary=True)]
