@@ -2081,6 +2081,8 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None, debug_log=None) 
                     _color_cache[mp_uid] = mp.GetClipColor() or ""
                 except Exception:
                     _color_cache[mp_uid] = ""
+                except Exception:
+                    _color_cache[mp_uid] = ""
             color = _color_cache[mp_uid]
 
             result = _audio_color_detail(color, vi, _get_clip_name(it))
@@ -2102,10 +2104,10 @@ def check_audio_color_tracks(timeline, fps=25.0, io_range=None, debug_log=None) 
 
 
 def check_audio_source_trim(timeline, fps, **_kw):
-    """检测音频片段源帧头尾是否修剪（Seedance 爆音检测）。
+    """检测音频片段源帧尾部是否修剪（Seedance 尾爆音检测）。
     
     仅查媒体池 Type="视频 + 音频" 的片段（嵌入式音频），跳过独立 WAV/MP3。
-    left_offset=0 → 源文件头部未修剪，right_offset=0 → 源文件尾部未修剪。
+    right_offset=0 → 源文件尾部未修剪，可能残留爆音。
     """
     smpte = _get_smpte(fps)
     issues = []
@@ -2129,13 +2131,8 @@ def check_audio_source_trim(timeline, fps, **_kw):
             if lo == 0 and ro == 0:
                 continue  # 两端都未修剪且无余量 = 整段源文件，无法判断
 
-            tc = smpte.gettc(int(ai.GetStart()))
             track = f"A{a_ti}"
 
-            if lo == 0:
-                issues.append(_make_result("warn", track=track, timecode=tc,
-                    detail=f"{name} — 音频头部未修剪",
-                    suggestion="从头部至少修剪 1 帧以去除可能的爆音"))
             if ro == 0:
                 issues.append(_make_result("warn", track=track, timecode=smpte.gettc(int(ai.GetEnd())),
                     detail=f"{name} — 音频尾部未修剪",
