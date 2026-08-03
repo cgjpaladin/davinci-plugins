@@ -1,14 +1,22 @@
 {
   "delivery_checker": {
-    "version": "2.7.2",
+    "version": "2.7.3",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/delivery_checker_update.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "0b8c78a7c7d428a0c1cf251ce8bae65ce2b8d693ee0f243d6eba058322d85b53",
-    "notes": "## v2.7.2\n🔊 新增音频爆音检测，自动发现头尾未修剪的音频",
+    "sha256": "3168c7f0a3d2e6693b2a4659cd5fbd17376f97c039f852405c8f79d9c22ff87b",
+    "notes": "## v2.7.3\n🔊 新增音频尾部爆音检测，自动发现 Seedance 素材未修剪的尾端音频",
     "history": [
+      {
+        "version": "2.7.3",
+        "notes": "## v2.7.3\n🔊 音频爆音检测仅查尾部（Seedance只有尾爆音没有头爆音）"
+      },
+      {
+        "version": "2.7.3",
+        "notes": "## v2.7.3\n🔊 新增功能，详见使用手册"
+      },
       {
         "version": "2.7.2",
         "notes": "## v2.7.2\n🔊 新增音频爆音检测，自动发现头尾未修剪的音频"
