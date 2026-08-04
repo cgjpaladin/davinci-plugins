@@ -552,6 +552,7 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
             track = ""
             gap_name = ""
             clip_tc = prev  # 间隙时码
+            reason = ""
             for is_, ie, ir, it_, in_ in invalid_intervals:
                 if is_ < s and ie > prev:
                     reason = ir
@@ -566,6 +567,7 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
         track = ""
         gap_name = ""
         clip_tc = prev
+        reason = ""
         for is_, ie, ir, it_, in_ in invalid_intervals:
             if is_ < tl_end and ie > prev:
                 reason = ir
