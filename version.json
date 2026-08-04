@@ -6,7 +6,7 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "72e71fdf5f3b6c298212d4e8229124a5d40d7a370355c057c33e11287b69328e",
+    "sha256": "748082aabf44a6141cb02fc010975727d2efc35cc870ab4c40cdd1003724ef71",
     "notes": "🔊 新增音频爆音检测，自动发现 Seedance 素材未修剪的尾端音效",
     "history": [
       {
