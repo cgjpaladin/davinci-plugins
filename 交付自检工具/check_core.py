@@ -631,7 +631,7 @@ def check_black_frames(timeline, fps=25.0, threshold_sec=1.0, io_range=None) -> 
             detail = f"{duration} 帧，{gap_reason}"
             _suggestion = "空白段落，请检查是否有覆盖或缺失素材"
         results.append(_make_result("fail", timecode=tc, track=track,
-                                    detail=detail, suggestion=reason))
+                                    detail=detail, suggestion=_suggestion))
 
     return results
 
