@@ -204,7 +204,7 @@ def export_debug_package(itm_dict, btn_export, error_state, log_fn, data_dir,
     error_lines = ["# 最近错误日志", ""]
     try:
         # 日志在 ~/Library/Logs/交付自检工具/交付自检工具/ (macOS) 或 %LOCALAPPDATA%/交付自检工具/Logs/ (Win)
-        if sys.platform == "darwin":
+        if _sys.platform == "darwin":
             log_dir = os.path.join(os.path.expanduser("~/Library/Logs"), "交付自检工具", "交付自检工具")
         else:
             log_dir = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "交付自检工具", "Logs")
