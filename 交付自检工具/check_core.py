@@ -249,9 +249,29 @@ def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expec
     """
     import hashlib
 
-    # 个人版跳过（轨数/轨名/Fairlight 均为公司预设）
+    results = []
+
+    # ── 轨道启用/禁用检测（个人版+公司版通用）──
+    for ttype, prefix, fail_if in [("video", "V", True), ("audio", "A", False)]:
+        count = timeline.GetTrackCount(ttype)
+        for ti in range(1, count + 1):
+            if not timeline.GetIsTrackEnabled(ttype, ti):
+                label = f"{prefix}{ti}"
+                if fail_if:
+                    results.append(_make_result("fail", track=label,
+                        detail=f"{label}: 已禁用",
+                        suggestion="请启用该视频轨道"))
+                else:
+                    results.append(_make_result("warn", track=label,
+                        detail=f"{label}: 已静音",
+                        suggestion="请取消静音该音频轨道"))
+
+    # 个人版跳过轨数/轨名/Fairlight（公司预设），但保留上面的启用检测
     if _IS_PERSONAL:
-        return [_make_result("pass", detail="轨道结构: 个人版已跳过（轨数/轨名/Fairlight 不可用）", is_summary=True)]
+        if not any(r.get("status") != "pass" for r in results):
+            return [_make_result("pass", detail="轨道结构: 个人版已跳过（轨数/轨名/Fairlight 不可用）", is_summary=True)]
+        summary = "轨道结构: 个人版，有禁用轨"
+        return [_make_result("fail", detail=summary, is_summary=True)] + results
 
     if audio_preset is None:
         audio_preset = AUDIO_TRACK_PRESET
@@ -259,8 +279,6 @@ def check_track_structure(timeline, expected_subtitle=1, expected_video=5, expec
         video_preset = VIDEO_TRACK_PRESET
     if subtitle_preset is None:
         subtitle_preset = SUBTITLE_TRACK_PRESET
-
-    results = []
 
     # ── 轨道数量 ──
     for label, track_type, expected in [
