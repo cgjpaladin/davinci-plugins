@@ -1,14 +1,22 @@
 {
   "delivery_checker": {
-    "version": "2.7.3",
+    "version": "2.7.4",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/delivery_checker_update.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "748082aabf44a6141cb02fc010975727d2efc35cc870ab4c40cdd1003724ef71",
-    "notes": "🔊 新增音频爆音检测，自动发现 Seedance 素材未修剪的尾端音效",
+    "sha256": "04e5b8fe92a20877e4725dd22b6f22220024fc9d799a4fcbaba287a619018a48",
+    "notes": "## v2.7.4\n🎚 新增轨道禁用/静音检测，自动发现被关闭的视频轨和静音的音轨",
     "history": [
+      {
+        "version": "2.7.4",
+        "notes": "## v2.7.4\n🎚 新增轨道禁用/静音检测\n🐛 修复黑帧检查报错和诊断报告空白的问题"
+      },
+      {
+        "version": "2.7.4",
+        "notes": "## v2.7.4\n🔊 新增功能，详见使用手册"
+      },
       {
         "version": "2.7.3",
         "notes": "## v2.7.3\n🔊 新增音频爆音检测，自动发现 Seedance 素材未修剪的尾端音效"
