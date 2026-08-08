@@ -1375,9 +1375,10 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_l
 def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> list:
     """检测视频轨片段变速问题：慢放但未使用光流或帧混合。
 
-    纯帧数比对，不使用百分比阈值：
-    - 同帧率：t_dur > s_dur 即慢放（精确，0 容差）
-    - 异帧率：t_dur > ceil(s_dur * timeline_fps / src_fps) 即慢放（帧率转换舍入 ±1 帧容差）
+    纯帧数比对，以理论最小容差逼近零误报：
+    - 同帧率：t_dur > s_dur + 1（+1 防子帧裁剪舍入）
+    - 异帧率：t_dur > ceil(s_dur * fps / src_fps) + 1（+2: 帧网格边界舍入）
+    这是帧计数法的物理精度上限——帧率不同的素材无法完全对齐。
     """
     import math
     issues = []
@@ -1391,7 +1392,13 @@ def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> li
         for it in items:
             if not _in_io_range(it, io_range): continue
             if _get_cached(it, "enabled", True) is False: continue
-            if _get_cached(it, "mp") is None: continue
+            mp = _get_cached(it, "mp")
+            if mp is None:
+                try:
+                    mp = it.GetMediaPoolItem()
+                    if mp is None: continue
+                except Exception:
+                    continue
             t_dur = _get_cached(it, "end", 0) - _get_cached(it, "start", 0)
             if t_dur <= 0: continue
             s_dur = abs(_get_cached(it, "source_end", 0) - _get_cached(it, "source_start", 0)) + 1
@@ -1412,17 +1419,16 @@ def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> li
             if retime in (2, 3):
                 continue  # 已配置光流/帧混合
 
-            # 纯帧数比对：同帧率零容差，异帧率容差 1 帧（ceil 舍入）
+            # 帧数比对：同帧率 +1 帧（子帧裁剪舍入），异帧率 +2 帧（帧网格不对齐）
             if src_fps == project_fps:
-                if t_dur <= s_dur:
-                    continue  # 未慢放
+                if t_dur <= s_dur + 1:
+                    continue  # 未慢放（±1 帧 = 子帧裁剪舍入）
             else:
                 expected = math.ceil(s_dur * (project_fps / src_fps))
-                if t_dur <= expected:
-                    continue  # 帧率转换自然偏差，未慢放
+                if t_dur <= expected + 1:
+                    continue  # 未慢放（ceil 兜 1 + 边界 1 = 2 帧物理上限）
 
             # 跳过静帧/图片（天然无变速，素材1帧拉长到N帧）
-            mp = _get_cached(it, "mp")
             if mp:
                 try:
                     if mp.GetClipProperty("Type") in ("静帧", "Still"):
@@ -1579,36 +1585,36 @@ def check_video_overlap(timeline, fps=25.0, io_range=None) -> list:
             for uvi in range(vi + 1, total_v + 1):
                 upper_items = timeline.GetItemListInTrack("video", uvi) or []
                 for up in upper_items:
-                up_s = up.GetStart()
-                up_e = up.GetEnd()
-                if up_s >= lo_e or up_e <= lo_s:
-                    continue  # 不重叠
-                # 排除文本/生成器（无 MediaPoolItem 的纯合成层）
-                if not up.GetMediaPoolItem() or not lo.GetMediaPoolItem():
-                    continue
-                # 检查上层不透明度
-                try:
-                    op = up.GetProperty("Opacity")
-                except Exception:
-                    op = None
-                if op is None or op != 100.0:
-                    continue
-                # 排除合成模式非 Normal
-                try:
-                    composite = up.GetProperty("Composite Mode") or 0
-                except Exception:
-                    composite = 0
-                if composite != 0:  # 0 = Normal
-                    continue
-                # 上层完全遮盖 → 下层重叠区不可见
-                overlap_s = max(lo_s, up_s)
-                overlap_e = min(lo_e, up_e)
-                tc = smpte.gettc(overlap_s)
-                lo_name = _get_clip_name(lo)
-                up_name = _get_clip_name(up)
-                issues.append(_make_result("fail", track=f"V{uvi}", timecode=tc,
-                    detail=f"{up_name}，完全遮盖下层 V{vi}「{lo_name}」",
-                    suggestion="往下覆盖，建议删除冗余的上层片段或下移"))
+                    up_s = up.GetStart()
+                    up_e = up.GetEnd()
+                    if up_s >= lo_e or up_e <= lo_s:
+                        continue  # 不重叠
+                    # 排除文本/生成器（无 MediaPoolItem 的纯合成层）
+                    if not up.GetMediaPoolItem() or not lo.GetMediaPoolItem():
+                        continue
+                    # 检查上层不透明度
+                    try:
+                        op = up.GetProperty("Opacity")
+                    except Exception:
+                        op = None
+                    if op is None or op != 100.0:
+                        continue
+                    # 排除合成模式非 Normal
+                    try:
+                        composite = up.GetProperty("Composite Mode") or 0
+                    except Exception:
+                        composite = 0
+                    if composite != 0:  # 0 = Normal
+                        continue
+                    # 上层完全遮盖 → 下层重叠区不可见
+                    overlap_s = max(lo_s, up_s)
+                    overlap_e = min(lo_e, up_e)
+                    tc = smpte.gettc(overlap_s)
+                    lo_name = _get_clip_name(lo)
+                    up_name = _get_clip_name(up)
+                    issues.append(_make_result("fail", track=f"V{uvi}", timecode=tc,
+                        detail=f"{up_name}，完全遮盖下层 V{vi}「{lo_name}」",
+                        suggestion="往下覆盖，建议删除冗余的上层片段或下移"))
     if not issues:
         return [_make_result("pass", detail="视频重叠: 全部通过", is_summary=True)]
     return [_make_result("warn", detail=f"视频重叠: {len(issues)} 处", is_summary=True)] + issues
