@@ -1731,6 +1731,14 @@ def _collect_clip_files(timeline, io_range=None):
             key = (f"V{vi}", name)
             if key not in info:
                 props = _get_cached(it, "props", {})
+            # 脱机片段缓存可能为空，直调 API 兜底
+            if not props:
+                try:
+                    props = it.GetProperty() or {}
+                except Exception:
+                    props = {}
+            key = (f"V{vi}", name)
+            if key not in info:
                 info[key] = {"start": start, "mp": mp, "path": path, "track": f"V{vi}", "mp_type": mp_type, "props": props}
     for ai in range(1, timeline.GetTrackCount("audio") + 1):
         for it in _get_items(timeline, "audio", ai):
@@ -1765,7 +1773,13 @@ def _collect_clip_files(timeline, io_range=None):
                     pass
             key = (f"A{ai}", name)
             if key not in info:
-                info[key] = {"start": start, "mp": mp, "path": path, "track": f"A{ai}", "mp_type": mp_type}
+                props = _get_cached(it, "props", {})
+                if not props:
+                    try:
+                        props = it.GetProperty() or {}
+                    except Exception:
+                        props = {}
+                info[key] = {"start": start, "mp": mp, "path": path, "track": f"A{ai}", "mp_type": mp_type, "props": props}
     _clip_files_cache = info
     return info
 
@@ -1811,30 +1825,27 @@ def check_offline_clips(timeline, fps=25.0, io_range=None, debug_log=None) -> li
       - MediaPoolItem 被删：mp=None，时间线上还在但媒体池里找不到
       - 源文件丢失：mp 存在，但 File Path 为空（文件被移动/删除/改名）
     """
-    _MEDIA_EXT = {".mp4", ".mxf", ".mov", ".avi", ".r3d", ".braw",
-        ".mts", ".m2t", ".m2ts", ".mpg", ".mpeg", ".m4v", ".mkv",
-        ".wmv", ".flv", ".webm", ".ts", ".3gp", ".vob",
-        ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp",
-        ".dpx", ".exr", ".psd", ".tga", ".targa",
-        ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".rw2",
-        ".heic", ".heif", ".avif", ".webp", ".crm", ".ari"}
     issues = []
     seen_mp = set()
     for (track, name), info in _collect_clip_files(timeline, io_range).items():
         mp = info["mp"]
         if mp is None:
             # 无 MediaPoolItem → 多级判脱机
-            # L1: 空 Property → 转场（交叉叠化等），跳过
             props = info.get("props", {})
+            is_audio = track.startswith("A")
+            # L1: 空 Property。视频轨可能是转场/生成器，跳过；音轨直接判脱机
             if not props:
+                if is_audio:
+                    smpte = _get_smpte(fps)
+                    tc = smpte.gettc(info["start"])
+                    issues.append(_make_result("fail", track=track, timecode=tc,
+                        detail=f"{name}，脱机文件",
+                        suggestion="请重新链接源文件或替换素材"))
                 continue
-            # L2: 无 Distortion 键 → 生成器/文字（Text+/纯色等），跳过
-            if "Distortion" not in props:
+            # L2: 视频轨无 Distortion → 生成器/文字（Text+/纯色等），跳过
+            if not is_audio and "Distortion" not in props:
                 continue
-            # L3: 有 Distortion 但无 mp → 按扩展名判脱机
-            lo = name.lower()
-            if not any(lo.endswith(ext) for ext in _MEDIA_EXT):
-                continue
+            # L3: 确认脱机（媒体片段必有 mp）
             smpte = _get_smpte(fps)
             tc = smpte.gettc(info["start"])
             issues.append(_make_result("fail", track=track, timecode=tc,
