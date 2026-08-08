@@ -6,8 +6,8 @@
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "04e5b8fe92a20877e4725dd22b6f22220024fc9d799a4fcbaba287a619018a48",
-    "notes": "## v2.7.4\n🎚 新增轨道禁用/静音检测，自动发现被关闭的视频轨和静音的音轨",
+    "sha256": "c55204c49c6bf26fce62078a502fd24ee7b3124128ca53f9f3c57b8915cc3fe4",
+    "notes": "🔊 新增功能，详见使用手册",
     "history": [
       {
         "version": "2.7.4",
