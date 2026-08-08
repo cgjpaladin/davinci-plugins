@@ -1425,8 +1425,8 @@ def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> li
                     continue  # 未慢放（±1 帧 = 子帧裁剪舍入）
             else:
                 expected = math.ceil(s_dur * (project_fps / src_fps))
-                if t_dur <= expected + 1:
-                    continue  # 未慢放（ceil 兜 1 + 边界 1 = 2 帧物理上限）
+                if t_dur <= expected + 2:
+                    continue  # 未慢放（帧网格位移 + 边界舍入 = 最多 3 帧偏差）
 
             # 跳过静帧/图片（天然无变速，素材1帧拉长到N帧）
             if mp:
@@ -1605,6 +1605,11 @@ def check_video_overlap(timeline, fps=25.0, io_range=None) -> list:
                     except Exception:
                         composite = 0
                     if composite != 0:  # 0 = Normal
+                        continue
+                    # 忽略尾板片段（定格转场等）
+                    if any(kw in _get_clip_name(up) or "" for kw in _TAIL_KW):
+                        continue
+                    if any(kw in _get_clip_name(lo) or "" for kw in _TAIL_KW):
                         continue
                     # 上层完全遮盖 → 下层重叠区不可见
                     overlap_s = max(lo_s, up_s)
