@@ -1728,7 +1728,8 @@ def _collect_clip_files(timeline, io_range=None):
                     mp_type = mp.GetClipProperty("Type") or ""
                 except Exception:
                     pass
-            key = (f"V{vi}", name)
+            item_uid = it.GetUniqueId()
+            key = (f"V{vi}", item_uid)
             if key not in info:
                 props = _get_cached(it, "props", {})
             # 脱机片段缓存可能为空，直调 API 兜底
@@ -1737,9 +1738,10 @@ def _collect_clip_files(timeline, io_range=None):
                     props = it.GetProperty() or {}
                 except Exception:
                     props = {}
-            key = (f"V{vi}", name)
+            item_uid = it.GetUniqueId()
+            key = (f"V{vi}", item_uid)
             if key not in info:
-                info[key] = {"start": start, "mp": mp, "path": path, "track": f"V{vi}", "mp_type": mp_type, "props": props}
+                info[key] = {"start": start, "mp": mp, "path": path, "track": f"V{vi}", "mp_type": mp_type, "props": props, "name": name}
     for ai in range(1, timeline.GetTrackCount("audio") + 1):
         for it in _get_items(timeline, "audio", ai):
             if not _in_io_range(it, io_range):
@@ -1771,7 +1773,8 @@ def _collect_clip_files(timeline, io_range=None):
                     mp_type = mp.GetClipProperty("Type") or ""
                 except Exception:
                     pass
-            key = (f"A{ai}", name)
+            item_uid = it.GetUniqueId()
+            key = (f"A{ai}", item_uid)
             if key not in info:
                 props = _get_cached(it, "props", {})
                 if not props:
@@ -1779,7 +1782,7 @@ def _collect_clip_files(timeline, io_range=None):
                         props = it.GetProperty() or {}
                     except Exception:
                         props = {}
-                info[key] = {"start": start, "mp": mp, "path": path, "track": f"A{ai}", "mp_type": mp_type, "props": props}
+                info[key] = {"start": start, "mp": mp, "path": path, "track": f"A{ai}", "mp_type": mp_type, "props": props, "name": name}
     _clip_files_cache = info
     return info
 
@@ -1839,7 +1842,7 @@ def check_offline_clips(timeline, fps=25.0, io_range=None, debug_log=None) -> li
                     smpte = _get_smpte(fps)
                     tc = smpte.gettc(info["start"])
                     issues.append(_make_result("fail", track=track, timecode=tc,
-                        detail=f"{name}，脱机文件",
+                        detail=info.get("name", name) + "，脱机文件",
                         suggestion="请重新链接源文件或替换素材"))
                 continue
             # L2: 视频轨无 Distortion → 生成器/文字（Text+/纯色等），跳过
@@ -1849,7 +1852,7 @@ def check_offline_clips(timeline, fps=25.0, io_range=None, debug_log=None) -> li
             smpte = _get_smpte(fps)
             tc = smpte.gettc(info["start"])
             issues.append(_make_result("fail", track=track, timecode=tc,
-                detail=f"{name}，脱机文件",
+                detail=info.get("name", name) + "，脱机文件",
                 suggestion="请重新链接源文件或替换素材"))
             continue
         try:
@@ -1864,12 +1867,12 @@ def check_offline_clips(timeline, fps=25.0, io_range=None, debug_log=None) -> li
         if mp_type in ("复合", "合成", "Compound", "Fusion Composition"):
             continue
         path = info["path"]
-        if path:
-            continue
+        if path and os.path.exists(path):
+            continue  # 文件确实存在，非脱机
         smpte = _get_smpte(fps)
         tc = smpte.gettc(info["start"])
         issues.append(_make_result("fail", track=track, timecode=tc,
-            detail=f"{name}，脱机文件",
+            detail=info.get("name", name) + "，脱机文件",
             suggestion="请重新链接源文件或替换素材"))
 
     if not issues:
