@@ -1571,13 +1571,14 @@ def check_video_overlap(timeline, fps=25.0, io_range=None) -> list:
 
     for vi in range(1, total_v):
         lower_items = timeline.GetItemListInTrack("video", vi) or []
-        upper_items = timeline.GetItemListInTrack("video", vi + 1) or []
         for lo in lower_items:
             lo_s = lo.GetStart()
             lo_e = lo.GetEnd()
             if not _in_io_range(lo, io_range):
                 continue
-            for up in upper_items:
+            for uvi in range(vi + 1, total_v + 1):
+                upper_items = timeline.GetItemListInTrack("video", uvi) or []
+                for up in upper_items:
                 up_s = up.GetStart()
                 up_e = up.GetEnd()
                 if up_s >= lo_e or up_e <= lo_s:
@@ -1605,7 +1606,7 @@ def check_video_overlap(timeline, fps=25.0, io_range=None) -> list:
                 tc = smpte.gettc(overlap_s)
                 lo_name = _get_clip_name(lo)
                 up_name = _get_clip_name(up)
-                issues.append(_make_result("fail", track=f"V{vi+1}", timecode=tc,
+                issues.append(_make_result("fail", track=f"V{uvi}", timecode=tc,
                     detail=f"{up_name}，完全遮盖下层 V{vi}「{lo_name}」",
                     suggestion="往下覆盖，建议删除冗余的上层片段或下移"))
     if not issues:
@@ -2139,7 +2140,7 @@ def check_audio_source_trim(timeline, fps, **_kw):
     smpte = _get_smpte(fps)
     issues = []
 
-    for a_ti in range(1, 10):
+    for a_ti in range(1, timeline.GetTrackCount("audio") + 1):
         items = timeline.GetItemListInTrack("audio", a_ti) or []
         for ai in items:
             name = ai.GetName()
