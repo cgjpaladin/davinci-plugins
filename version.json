@@ -1,14 +1,22 @@
 {
   "delivery_checker": {
-    "version": "2.7.4",
+    "version": "2.7.5",
     "urls": [
       "https://cdn.jsdelivr.net/gh/cgjpaladin/davinci-plugins@main/delivery_checker_update.zip",
       "https://ghproxy.net/https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip",
       "https://raw.githubusercontent.com/cgjpaladin/davinci-plugins/main/delivery_checker_update.zip"
     ],
-    "sha256": "1b446e29c3aff98c2a8e6febe8df37c15c204fa2bc8c82e7d078b1874b7b4a7d",
-    "notes": "🔊 新增功能，详见使用手册",
+    "sha256": "64350ca8e030808aff8038c38da2318e46ee0c2cef66c7ff62c3ebaf3fc3f4ad",
+    "notes": "## v2.7.5\n🐛 修复多处小问题，检测更精准",
     "history": [
+      {
+        "version": "2.7.5",
+        "notes": "## v2.7.5\n🔧 变速检测改用纯帧数比对，不再误报帧率转换\n🔧 音频爆音检测覆盖全部轨道\n🔧 视频重叠检测跨层覆盖 + 自动忽略尾板\n🔧 脱机检测全面重写：不再漏报非扩展名片段、支持文件真实存在检测、按时间线实例逐一报告\n🐛 修复部分时间线黑帧检测报错和诊断报告空白的问题\n🐛 修复 Python 3.9 兼容性问题"
+      },
+      {
+        "version": "2.7.5",
+        "notes": "## v2.7.5\n🔊 新增功能，详见使用手册"
+      },
       {
         "version": "2.7.4",
         "notes": "## v2.7.4\n🎚 新增轨道禁用/静音检测\n🐛 修复黑帧检查报错和诊断报告空白的问题"
