@@ -1373,7 +1373,13 @@ def check_black_borders(timeline, project=None, fps=25.0, io_range=None, debug_l
 
 
 def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> list:
-    """检测视频轨片段变速问题：慢放但未使用光流或帧混合。"""
+    """检测视频轨片段变速问题：慢放但未使用光流或帧混合。
+
+    纯帧数比对，不使用百分比阈值：
+    - 同帧率：t_dur > s_dur 即慢放（精确，0 容差）
+    - 异帧率：t_dur > ceil(s_dur * timeline_fps / src_fps) 即慢放（帧率转换舍入 ±1 帧容差）
+    """
+    import math
     issues = []
     video_count = timeline.GetTrackCount("video")
     empty = _check_track_empty(video_count, "视频")
@@ -1402,22 +1408,19 @@ def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> li
             if not src_fps or src_fps <= 0:
                 continue  # 无法确定帧率，跳过
             retime = int(_get_cached(it, "props", {}).get("RetimeProcess", 0))
-            tl_sec = t_dur / project_fps
-            src_sec = s_dur / src_fps
-            speed = src_sec / tl_sec * 100
 
             if retime in (2, 3):
                 continue  # 已配置光流/帧混合
 
-            # 判断是否慢放：同帧率用百分比，异帧率用帧数比较
+            # 纯帧数比对：同帧率零容差，异帧率容差 1 帧（ceil 舍入）
             if src_fps == project_fps:
-                threshold = 100
-                if speed >= threshold - 2.0:
-                    continue
+                if t_dur <= s_dur:
+                    continue  # 未慢放
             else:
-                expected_frames = s_dur * (project_fps / src_fps)
-                if t_dur - expected_frames <= 3:
-                    continue  # 帧率转换造成的自然帧差，容忍 3 帧
+                expected = math.ceil(s_dur * (project_fps / src_fps))
+                if t_dur <= expected:
+                    continue  # 帧率转换自然偏差，未慢放
+
             # 跳过静帧/图片（天然无变速，素材1帧拉长到N帧）
             mp = _get_cached(it, "mp")
             if mp:
@@ -1429,6 +1432,9 @@ def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> li
             name = _get_clip_name(it)
             if any(kw in name for kw in _TAIL_KW):
                 continue
+            tl_sec = t_dur / project_fps
+            src_sec = s_dur / src_fps
+            speed = src_sec / tl_sec * 100
             smpte = _get_smpte(project_fps)
             tc = smpte.gettc(_get_cached(it, "start", 0))
             issues.append(_make_result("fail", track=track, timecode=tc,
