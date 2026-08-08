@@ -1405,25 +1405,35 @@ def check_speed(timeline, project_fps=25.0, io_range=None, debug_log=None) -> li
             tl_sec = t_dur / project_fps
             src_sec = s_dur / src_fps
             speed = src_sec / tl_sec * 100
-            threshold = min(project_fps / src_fps, 1.0) * 100
-            # 容忍 ±2% 误差（如 50fps→25fps 时间线，49% 不报）
-            if speed < threshold - 2.0 and retime not in (2, 3):
-                # 跳过静帧/图片（天然无变速，素材1帧拉长到N帧）
-                mp = _get_cached(it, "mp")
-                if mp:
-                    try:
-                        if mp.GetClipProperty("Type") in ("静帧", "Still"):
-                            continue
-                    except Exception:
-                        pass
-                name = _get_clip_name(it)
-                if any(kw in name for kw in _TAIL_KW):
+
+            if retime in (2, 3):
+                continue  # 已配置光流/帧混合
+
+            # 判断是否慢放：同帧率用百分比，异帧率用帧数比较
+            if src_fps == project_fps:
+                threshold = 100
+                if speed >= threshold - 2.0:
                     continue
-                smpte = _get_smpte(project_fps)
-                tc = smpte.gettc(_get_cached(it, "start", 0))
-                issues.append(_make_result("fail", track=track, timecode=tc,
-                    detail=f"{name}，速度为{speed:.0f}%",
-                    suggestion="调整变速，或使用帧混合/光流法"))
+            else:
+                expected_frames = s_dur * (project_fps / src_fps)
+                if t_dur - expected_frames <= 3:
+                    continue  # 帧率转换造成的自然帧差，容忍 3 帧
+            # 跳过静帧/图片（天然无变速，素材1帧拉长到N帧）
+            mp = _get_cached(it, "mp")
+            if mp:
+                try:
+                    if mp.GetClipProperty("Type") in ("静帧", "Still"):
+                        continue
+                except Exception:
+                    pass
+            name = _get_clip_name(it)
+            if any(kw in name for kw in _TAIL_KW):
+                continue
+            smpte = _get_smpte(project_fps)
+            tc = smpte.gettc(_get_cached(it, "start", 0))
+            issues.append(_make_result("fail", track=track, timecode=tc,
+                detail=f"{name}，速度为{speed:.0f}%",
+                suggestion="调整变速，或使用帧混合/光流法"))
     if not issues:
         return [_make_result("pass", detail="变速: 全部通过", is_summary=True)]
     results = [_make_result("fail", detail=f"变速: {len(issues)} 处", is_summary=True)]
