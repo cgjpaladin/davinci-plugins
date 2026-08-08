@@ -1829,7 +1829,6 @@ def check_offline_clips(timeline, fps=25.0, io_range=None, debug_log=None) -> li
       - 源文件丢失：mp 存在，但 File Path 为空（文件被移动/删除/改名）
     """
     issues = []
-    seen_mp = set()
     for (track, name), info in _collect_clip_files(timeline, io_range).items():
         mp = info["mp"]
         if mp is None:
@@ -1859,9 +1858,6 @@ def check_offline_clips(timeline, fps=25.0, io_range=None, debug_log=None) -> li
             mp_uid = mp.GetUniqueId()
         except Exception:
             continue
-        if mp_uid in seen_mp:
-            continue
-        seen_mp.add(mp_uid)
         # 复合片段/内部合成无外部文件，跳过脱机检测
         mp_type = info.get("mp_type", "")
         if mp_type in ("复合", "合成", "Compound", "Fusion Composition"):
